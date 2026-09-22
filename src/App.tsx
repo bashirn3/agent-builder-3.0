@@ -419,11 +419,6 @@ function App() {
     setState((prev) => ({ ...prev, authed: false, historyOpen: false }))
   }
 
-  const resetPrototype = () => {
-    window.localStorage.removeItem(STORAGE_KEY)
-    setState(initialState())
-  }
-
   const saveVersion = (lockAfter = false) => {
     const instanceName = state.instance
     const snapshot = state.instances[instanceName]
@@ -758,7 +753,6 @@ function App() {
         state={state}
         setState={setState}
         signIn={signIn}
-        resetPrototype={resetPrototype}
       />
     )
   }
@@ -874,17 +868,15 @@ type SharedProps = {
   openSheet: (kind: SheetKind) => void
 }
 
-function AuthScreen({ state, setState, signIn, resetPrototype }: {
+function AuthScreen({ state, setState, signIn }: {
   state: AppState
   setState: React.Dispatch<React.SetStateAction<AppState>>
   signIn: (event?: FormEvent) => void
-  resetPrototype: () => void
 }) {
   return (
     <main className="auth-shell">
       <header className="auth-header">
         <Brand />
-        <button className="quiet-button" onClick={resetPrototype}>Reset prototype</button>
       </header>
       <motion.form
         className="auth-card"
