@@ -152,12 +152,14 @@ alter table public.agent_builder_versions enable row level security;
 
 -- Direct browser access is safe only after authenticated users receive a
 -- `tenant_key` claim in app_metadata. Until then, use the n8n proxy path.
+drop policy if exists "agent builder agents read by tenant" on public.agent_builder_agents;
 create policy "agent builder agents read by tenant"
 on public.agent_builder_agents
 for select
 to authenticated
 using ((auth.jwt() -> 'app_metadata' ->> 'tenant_key') = tenant_key);
 
+drop policy if exists "agent builder agents update by tenant" on public.agent_builder_agents;
 create policy "agent builder agents update by tenant"
 on public.agent_builder_agents
 for update
@@ -165,6 +167,7 @@ to authenticated
 using ((auth.jwt() -> 'app_metadata' ->> 'tenant_key') = tenant_key)
 with check ((auth.jwt() -> 'app_metadata' ->> 'tenant_key') = tenant_key);
 
+drop policy if exists "agent builder versions read by tenant" on public.agent_builder_versions;
 create policy "agent builder versions read by tenant"
 on public.agent_builder_versions
 for select
@@ -178,6 +181,7 @@ using (
   )
 );
 
+drop policy if exists "agent builder versions insert by tenant" on public.agent_builder_versions;
 create policy "agent builder versions insert by tenant"
 on public.agent_builder_versions
 for insert
