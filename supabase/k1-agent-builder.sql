@@ -99,8 +99,7 @@ declare
 begin
   select * into target_agent
   from public.agent_builder_agents
-  where tenant_key = p_tenant_key
-  for update;
+  where tenant_key = p_tenant_key;
 
   if not found then
     insert into public.agent_builder_agents (tenant_key, display_name, locked)
