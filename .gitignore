@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+.cursor/
+.codex/
+vite.config.js
+vite.config.d.ts
+.impeccable/tmp/
+.impeccable/review/
+.impeccable/hook.cache.json

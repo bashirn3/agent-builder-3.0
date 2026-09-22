@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet"><style>body{margin:0;background:#e8e6e2;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#1d1d1b}a{color:#1d1d1b}a:hover{color:#000}*{box-sizing:border-box}button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}input,textarea{font-family:inherit}textarea{resize:none}::placeholder{color:#75756f}@keyframes wsp{to{transform:rotate(360deg)}}@keyframes wbl{0%,60%,100%{opacity:.25}30%{opacity:1}}@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style></helmet>
+
+<section style="padding:40px 44px 34px;border-bottom:1px solid rgba(0,0,0,.08)">
+<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px"><span style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px">4</span><span style="font-weight:600;font-size:13px">Final interface — clickable with mock data</span></div>
+<div style="font:400 11.5px/1.6 'IBM Plex Mono',monospace;color:rgba(0,0,0,.5);max-width:900px;margin-bottom:22px">Both frames share one state, so an edit on the left shows up on the right. Try: expand Add instructions → Apply with AI → Save version → send a test message → Lock configuration → Unlock to edit. No real authentication and no live n8n calls — the replies are canned.</div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">
+<button onClick="{{ reset }}" style="padding:7px 13px;border:1px solid #c9c9c3;border-radius:8px;font-size:12.5px;background:#fff">Reset prototype</button>
+<sc-if value="{{ authed }}" hint-placeholder-val="{{ true }}"><button onClick="{{ signOut }}" style="padding:7px 13px;border:1px solid #c9c9c3;border-radius:8px;font-size:12.5px;background:#fff">Sign out</button></sc-if>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:9px">
+<div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:rgba(0,0,0,.55)">Desktop · 1240×840</div>
+<div style="width:1240px;height:840px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;display:flex;flex-direction:column">
+
+<sc-if value="{{ notAuthed }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;display:flex;flex-direction:column;background:#fff">
+<div style="padding:26px 28px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:24px;height:24px;border-radius:7px;background:#1d1d1b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;letter-spacing:-.03em">w</div><span style="font-weight:600;font-size:15px;letter-spacing:-.01em">wasup</span></div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:70px">
+<div style="width:352px;display:flex;flex-direction:column;gap:18px">
+<div style="font-size:28px;font-weight:600;letter-spacing:-.02em;text-align:center;margin-bottom:4px">Sign in</div>
+<label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:13px;font-weight:500;color:#4a4a45">Username</span><input value="{{ user }}" onChange="{{ onUser }}" placeholder="username" style="height:48px;border:1px solid #d4d4cf;border-radius:999px;background:#fff;padding:0 18px;font-size:15px;color:#1d1d1b;outline-color:#1d1d1b"></label>
+<label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:13px;font-weight:500;color:#4a4a45">Password</span><span style="position:relative;display:flex"><input value="{{ pass }}" onChange="{{ onPass }}" type="{{ passType }}" placeholder="password" style="height:48px;flex:1;border:1px solid #d4d4cf;border-radius:999px;background:#fff;padding:0 74px 0 18px;font-size:15px;color:#1d1d1b;outline-color:#1d1d1b"><button onClick="{{ togglePass }}" style="position:absolute;right:6px;top:6px;height:36px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:500;color:#4a4a45">{{ showPassLabel }}</button></span></label>
+<sc-if value="{{ loginError }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:9px;padding:12px 15px;border:1px solid #e3cfcf;background:#fcf6f6;border-radius:12px;font-size:13.5px;color:#8a3f3f;line-height:1.5">{{ loginError }}</div></sc-if>
+<button onClick="{{ signIn }}" style="height:50px;border-radius:999px;background:#1d1d1b;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:500;margin-top:2px">
+<sc-if value="{{ signingIn }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>
+{{ signInLabel }}</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ authed }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;flex-direction:column;min-height:0;background:#f7f7f5">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 22px;height:60px;background:#fff;border-bottom:1px solid #e4e4e0;flex:none">
+<div style="display:flex;align-items:center;gap:15px">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:24px;height:24px;border-radius:7px;background:#1d1d1b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;letter-spacing:-.03em">w</div><span style="font-weight:600;font-size:14.5px;letter-spacing:-.01em">wasup</span></div>
+<div style="width:1px;height:22px;background:#e4e4e0"></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:26px;height:26px;border-radius:8px;background:#efefec;border:1px solid #e4e4e0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#4a4a45">B</div><span style="font-weight:600;font-size:15px">Booklapland</span></div>
+<div style="position:relative">
+<button onClick="{{ toggleInstMenu }}" style="display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid #e4e4e0;border-radius:8px;font-size:13px;color:#4a4a45;background:#fbfbfa">{{ instance }}<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M4 6.5l4 4 4-4" stroke="#6f6f6a" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg></button>
+<sc-if value="{{ instMenu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:38px;left:0;width:216px;background:#fff;border:1px solid #dedeD9;border-radius:11px;box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;z-index:20;display:flex;flex-direction:column;gap:2px">
+<div style="padding:7px 10px 5px;font-size:11.5px;font-weight:500;color:#6f6f6a">Agent instance</div>
+<sc-for list="{{ instances }}" as="it" hint-placeholder-count="2"><button onClick="{{ it.pick }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:8px;font-size:13.5px;text-align:left;background:{{ it.bg }}">{{ it.name }}<span style="font-size:12px;color:#6f6f6a">{{ it.mark }}</span></button></sc-for>
+</div>
+</sc-if>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:12px">
+<button onClick="{{ openHistory }}" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid #e4e4e0;border-radius:8px;font-size:13px;color:#4a4a45;background:#fff"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="5.6" stroke="#6f6f6a" stroke-width="1.4" fill="none"></circle><path d="M8 5v3.2l2.2 1.3" stroke="#6f6f6a" stroke-width="1.4" fill="none" stroke-linecap="round"></path></svg>Version history</button>
+<div style="width:1px;height:22px;background:#e4e4e0"></div>
+<button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:8px;padding:6px 11px 6px 6px;border:1px solid #e4e4e0;border-radius:999px;font-size:13px;color:#4a4a45;background:#fff"><span style="width:24px;height:24px;border-radius:50%;background:#1d1d1b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">M</span>Sign out</button>
+</div>
+</div>
+
+<div style="flex:1;min-height:0;display:flex;position:relative">
+<sc-if value="{{ unlocked }}" hint-placeholder-val="{{ true }}">
+<div style="width:50%;min-width:420px;display:flex;flex-direction:column;min-height:0;background:#fff;border-right:1px solid #e4e4e0">
+<div style="display:flex;flex-direction:column;flex:none;border-bottom:1px solid #eeeeeb;background:#fbfbfa">
+<button onClick="{{ toggleInstr }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 24px;text-align:left"><span style="display:flex;align-items:center;gap:10px;font-size:14.5px;font-weight:500"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="#4a4a45" stroke-width="1.5" stroke-linecap="round"></path></svg>Add instructions</span><span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#6f6f6a">{{ instrHint }}<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="{{ instrChevron }}" stroke="#6f6f6a" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg></span></button>
+<sc-if value="{{ addInstr }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:12px;padding:0 24px 18px">
+<textarea value="{{ instrText }}" onChange="{{ onInstr }}" placeholder="Describe a change — for example: be shorter, ask one follow-up, hand off when facts are missing." style="min-height:74px;border:1px solid #d4d4cf;border-radius:11px;background:#fff;padding:13px 15px;font-size:15px;line-height:1.55;color:#1d1d1b;outline-color:#1d1d1b"></textarea>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px"><span style="font-size:13px;color:#4a4a45;line-height:1.5;max-width:56%">Writes a draft into the master prompt. Nothing is saved until you review it.</span><button onClick="{{ applyAI }}" style="display:flex;align-items:center;gap:9px;padding:11px 18px;border-radius:10px;background:#1d1d1b;color:#fff;font-size:14px;font-weight:500"><sc-if value="{{ applying }}" hint-placeholder-val="{{ false }}"><span style="width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>Apply with AI</button></div>
+</div>
+</sc-if>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px;padding:18px 24px;border-bottom:1px solid #eeeeeb;flex:none">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><label style="font-size:14px;font-weight:600" for="dop">Opening message</label><span style="font-size:13px;color:#4a4a45">Shown first in every conversation</span></div>
+<textarea id="dop" value="{{ draftOpener }}" onChange="{{ onOpener }}" style="min-height:52px;border:1px solid #d4d4cf;border-radius:11px;background:#fff;padding:13px 15px;font-size:15px;line-height:1.55;color:#1d1d1b;outline-color:#1d1d1b"></textarea>
+<div style="font-size:13px;color:#4a4a45">Variables are filled per conversation. <span style="color:#6f6f6a">Sample value in the playground: Maria.</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:11px;padding:18px 24px 0;flex:1;min-height:0">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none">
+<div style="display:flex;align-items:center;gap:11px"><label style="font-size:14px;font-weight:600" for="dmp">Master prompt</label><sc-if value="{{ isDraft }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;gap:6px;padding:3px 10px;background:#faf4e4;border:1px solid #e8dcb8;border-radius:7px;font-size:12px;font-weight:500;color:#7d6310">Draft from AI — review</span></sc-if></div>
+<span style="font-size:13px;color:#4a4a45">{{ promptChars }}</span>
+</div>
+<textarea id="dmp" value="{{ draftPrompt }}" onChange="{{ onPrompt }}" style="flex:1;min-height:0;border:1px solid #d4d4cf;border-radius:11px;background:#fff;padding:16px 18px;font:400 15px/1.75 'IBM Plex Mono',monospace;color:#2e2e2a;overflow:auto;outline-color:#1d1d1b"></textarea>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px;flex:none;border-top:1px solid #f1f1ee;background:#fff">
+<div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:{{ saveStateColor }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ saveDotColor }}"></span>{{ saveStateLabel }}</div>
+<div style="display:flex;align-items:center;gap:10px">
+<button onClick="{{ lockClick }}" style="display:flex;align-items:center;gap:8px;padding:11px 15px;border:1px solid #d4d4cf;border-radius:10px;font-size:14px;color:#1d1d1b;background:#fff"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3.6" y="7.1" width="8.8" height="6.3" rx="1.7" stroke="#1d1d1b" stroke-width="1.4" fill="none"></rect><path d="M5.7 7.1V5.3a2.3 2.3 0 014.6 0v1.8" stroke="#1d1d1b" stroke-width="1.4" fill="none"></path></svg>Lock configuration</button>
+<sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}"><button onClick="{{ discard }}" style="padding:11px 15px;border:1px solid #d4d4cf;border-radius:10px;font-size:14px;color:#4a4a45;background:#fff">Discard draft</button></sc-if>
+<button onClick="{{ saveVersion }}" style="display:flex;align-items:center;gap:9px;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:500;background:{{ saveBtnBg }};color:{{ saveBtnFg }}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><span style="width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>Save version</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:#f7f7f5">
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 24px;background:#f1f1ee;border-bottom:1px solid #e4e4e0;flex:none">
+<div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#3a3a35"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3.6" y="7.1" width="8.8" height="6.3" rx="1.7" stroke="#3a3a35" stroke-width="1.4" fill="none"></rect><path d="M5.7 7.1V5.3a2.3 2.3 0 014.6 0v1.8" stroke="#3a3a35" stroke-width="1.4" fill="none"></path></svg>Configuration locked · {{ activeVersion }}</div>
+<button onClick="{{ unlock }}" style="padding:9px 16px;border-radius:9px;background:#1d1d1b;color:#fff;font-size:13.5px;font-weight:500">Unlock to edit</button>
+</div>
+</sc-if>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 24px;height:52px;border-bottom:1px solid #e9e9e5;flex:none">
+<div style="font-size:14px;color:#4a4a45">Last saved version <span style="font-weight:600;color:#1d1d1b">{{ activeVersion }}</span>{{ testingSuffix }}</div>
+<button onClick="{{ newConversation }}" style="display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid #e4e4e0;border-radius:8px;font-size:13px;color:#4a4a45;background:#fff">New conversation</button>
+</div>
+
+<sc-if value="{{ showSavedBanner }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 24px 0;padding:13px 16px;border:1px solid #cfe3d6;background:#f1f8f3;border-radius:11px;flex:none">
+<div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1f5d3b"><span style="width:7px;height:7px;border-radius:50%;background:#2f9e5f"></span>{{ savedBannerText }}</div>
+<button onClick="{{ newConversation }}" style="padding:8px 14px;border:1px solid #9cc4ab;border-radius:9px;font-size:13px;font-weight:500;color:#1f5d3b;background:#fff">Start a fresh test</button>
+</div>
+</sc-if>
+<sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:10px;margin:16px 24px 0;padding:13px 16px;border:1px solid #e8dcb8;background:#faf4e4;border-radius:11px;font-size:14px;color:#6f5910;line-height:1.5;flex:none">Your unsaved draft is not part of this test. Save a version to test it.</div>
+</sc-if>
+
+<div style="flex:1;min-height:0;overflow:auto;padding:24px 24px 8px">
+<div style="max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:22px">
+<sc-if value="{{ emptyConversation }}" hint-placeholder-val="{{ false }}">
+<div style="padding:64px 0;display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center"><div style="font-size:15.5px;font-weight:500">Your test conversation appears here</div><div style="font-size:14px;color:#4a4a45;max-width:330px;line-height:1.55">No opening message is configured, so the agent replies only after your first message.</div></div>
+</sc-if>
+<sc-for list="{{ messages }}" as="m" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:9px;align-items:{{ m.align }}">
+<div style="max-width:{{ m.max }};padding:{{ m.pad }};border-radius:{{ m.radius }};background:{{ m.bg }};border:{{ m.border }};color:{{ m.fg }};font-size:15.5px;line-height:1.65;white-space:pre-wrap">{{ m.text }}</div>
+<sc-if value="{{ m.isAgent }}" hint-placeholder-val="{{ false }}"><button onClick="{{ m.copy }}" style="display:flex;align-items:center;gap:7px;padding:4px 2px;font-size:12.5px;color:#4a4a45"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><rect x="5.4" y="5.4" width="7.2" height="7.2" rx="1.6" stroke="#4a4a45" stroke-width="1.3" fill="none"></rect><path d="M10.4 5.4V4.6A1.2 1.2 0 009.2 3.4H4.6A1.2 1.2 0 003.4 4.6v4.6a1.2 1.2 0 001.2 1.2h.8" stroke="#4a4a45" stroke-width="1.3" fill="none"></path></svg>{{ m.copyLabel }}</button></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ sending }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:15px 18px;border:1px solid #e4e4e0;border-radius:16px 16px 16px 6px;background:#fff"><span style="width:7px;height:7px;border-radius:50%;background:#6f6f6a;animation:wbl 1.2s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:#6f6f6a;animation:wbl 1.2s .2s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:#6f6f6a;animation:wbl 1.2s .4s infinite"></span></div>
+</sc-if>
+</div>
+</div>
+<div style="padding:12px 24px 24px;flex:none">
+<div style="max-width:660px;margin:0 auto">
+<div style="display:flex;align-items:flex-end;gap:10px;padding:9px 9px 9px 18px;border:1px solid #d4d4cf;border-radius:16px;background:#fff">
+<textarea value="{{ composer }}" onChange="{{ onComposer }}" onKeyDown="{{ onComposerKey }}" placeholder="{{ composerPlaceholder }}" style="flex:1;min-height:34px;max-height:90px;border:none;outline:none;background:none;font-size:15.5px;line-height:1.6;padding:5px 0;color:#1d1d1b"></textarea>
+<button onClick="{{ send }}" aria-label="Send message" style="width:38px;height:38px;border-radius:11px;background:{{ sendBg }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 13V4M8 4L4.4 7.6M8 4l3.6 3.6" stroke="#fff" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div style="margin-top:10px;font-size:13px;color:#4a4a45">Messages run against the last saved version. Nothing is sent to a real number.</div>
+</div>
+</div>
+</div>
+
+<sc-if value="{{ drawer }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(20,20,18,.18);display:flex;justify-content:flex-end;z-index:30">
+<div style="width:480px;background:#fff;border-left:1px solid #dedeD9;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:60px;border-bottom:1px solid #e4e4e0;flex:none"><span style="font-weight:600;font-size:15px">Version history</span><button onClick="{{ closeHistory }}" aria-label="Close version history" style="width:32px;height:32px;border-radius:9px;background:#f1f1ee;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="#3a3a35" stroke-width="1.5" stroke-linecap="round"></path></svg></button></div>
+<div style="display:flex;flex-direction:column;gap:9px;padding:18px 22px;border-bottom:1px solid #eeeeeb;flex:none;max-height:250px;overflow:auto">
+<sc-for list="{{ versionRows }}" as="v" hint-placeholder-count="3">
+<button onClick="{{ v.view }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;border:{{ v.border }};border-radius:11px;background:{{ v.bg }};text-align:left;width:100%">
+<span style="display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:9px"><span style="font-weight:600;font-size:14.5px">{{ v.id }}</span><sc-if value="{{ v.isActive }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;gap:6px;padding:2px 9px;background:#eaf5ee;border:1px solid #cfe5d8;border-radius:6px;font-size:12px;font-weight:500;color:#1f6e43"><span style="width:5px;height:5px;border-radius:50%;background:#2f9e5f"></span>Active</span></sc-if><sc-if value="{{ v.isViewing }}" hint-placeholder-val="{{ false }}"><span style="padding:2px 9px;background:#1d1d1b;color:#fff;border-radius:6px;font-size:12px;font-weight:500">Viewing</span></sc-if></span><span style="font-size:13px;color:#4a4a45">{{ v.meta }}</span></span>
+<sc-if value="{{ v.showView }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:#4a4a45">View</span></sc-if>
+</button>
+</sc-for>
+</div>
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:11px;padding:18px 22px">
+<div style="font-size:13.5px;font-weight:500;color:#4a4a45">Read-only · {{ viewVersion }}</div>
+<div style="flex:1;min-height:0;border:1px solid #e4e4e0;border-radius:11px;background:#fafafa;padding:15px 17px;font:400 14px/1.75 'IBM Plex Mono',monospace;color:#3a3a35;overflow:auto;white-space:pre-wrap">{{ viewText }}</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;padding:0 22px 22px;flex:none">
+<sc-if value="{{ canRestore }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><button onClick="{{ closeHistory }}" style="padding:11px 15px;border:1px solid #d4d4cf;border-radius:10px;font-size:14px;color:#4a4a45;background:#fff">Close</button><button onClick="{{ restoreClick }}" style="padding:11px 19px;border-radius:10px;background:#1d1d1b;color:#fff;font-size:14px;font-weight:500">Restore {{ viewVersion }}</button></div>
+<div style="font-size:13px;color:#4a4a45;line-height:1.55">Restoring loads this text into the editor as unsaved changes. The agent keeps running {{ activeVersion }} until you save.</div>
+</sc-if>
+<sc-if value="{{ lockedRestore }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #e4e4e0;background:#f7f7f5;border-radius:11px"><span style="font-size:13.5px;color:#3a3a35">Unlock to restore a version</span><button onClick="{{ unlockAndKeepDrawer }}" style="padding:9px 15px;border-radius:9px;background:#1d1d1b;color:#fff;font-size:13.5px;font-weight:500">Unlock to edit</button></div>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ dialog }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(20,20,18,.2);display:flex;align-items:center;justify-content:center;z-index:40">
+<div style="width:440px;background:#fff;border:1px solid #dedeD9;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.14);padding:22px;display:flex;flex-direction:column;gap:12px">
+<div style="font-weight:600;font-size:16px">{{ dialogTitle }}</div>
+<div style="font-size:14px;color:#4a4a45;line-height:1.6">{{ dialogBody }}</div>
+<sc-if value="{{ dialogError }}" hint-placeholder-val="{{ false }}"><div style="padding:12px 14px;border:1px solid #e3cfcf;background:#fcf6f6;border-radius:10px;font-size:13.5px;color:#8a3f3f;line-height:1.5">{{ dialogError }}</div></sc-if>
+<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px"><button onClick="{{ dialogCancel }}" style="padding:11px 16px;border:1px solid #d4d4cf;border-radius:10px;font-size:14px;color:#4a4a45;background:#fff">Cancel</button><button onClick="{{ dialogConfirm }}" style="display:flex;align-items:center;gap:9px;padding:11px 18px;border-radius:10px;background:#1d1d1b;color:#fff;font-size:14px;font-weight:500"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><span style="width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>{{ dialogConfirmLabel }}</button></div>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:9px">
+<div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:rgba(0,0,0,.55)">Mobile · 390×844</div>
+<div style="width:390px;height:844px;background:#fff;border:1px solid rgba(0,0,0,.12);border-radius:30px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;display:flex;flex-direction:column;position:relative">
+<div style="height:34px;flex:none;background:#fff;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 2px;font-size:12.5px;font-weight:500;color:#1d1d1b"><span>9:41</span><span style="display:flex;gap:4px;align-items:center"><span style="width:16px;height:9px;border:1.2px solid #1d1d1b;border-radius:2.5px;display:block"></span></span></div>
+
+<sc-if value="{{ notAuthed }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;display:flex;flex-direction:column;padding:0 22px">
+<div style="padding:14px 0;display:flex;align-items:center;gap:9px"><div style="width:24px;height:24px;border-radius:7px;background:#1d1d1b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;letter-spacing:-.03em">w</div><span style="font-weight:600;font-size:15px;letter-spacing:-.01em">wasup</span></div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:17px;padding-bottom:90px">
+<div style="font-size:26px;font-weight:600;letter-spacing:-.02em">Sign in</div>
+<label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:13.5px;font-weight:500;color:#4a4a45">Username</span><input value="{{ user }}" onChange="{{ onUser }}" placeholder="username" style="height:52px;border:1px solid #d4d4cf;border-radius:999px;padding:0 18px;font-size:16px;outline-color:#1d1d1b"></label>
+<label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:13.5px;font-weight:500;color:#4a4a45">Password</span><span style="position:relative;display:flex"><input value="{{ pass }}" onChange="{{ onPass }}" type="{{ passType }}" placeholder="password" style="height:52px;flex:1;border:1px solid #d4d4cf;border-radius:999px;padding:0 78px 0 18px;font-size:16px;outline-color:#1d1d1b"><button onClick="{{ togglePass }}" style="position:absolute;right:7px;top:7px;height:38px;padding:0 15px;border-radius:999px;font-size:13.5px;font-weight:500;color:#4a4a45">{{ showPassLabel }}</button></span></label>
+<sc-if value="{{ loginError }}" hint-placeholder-val="{{ false }}"><div style="padding:13px 15px;border:1px solid #e3cfcf;background:#fcf6f6;border-radius:12px;font-size:14px;color:#8a3f3f;line-height:1.5">{{ loginError }}</div></sc-if>
+<button onClick="{{ signIn }}" style="height:54px;border-radius:999px;background:#1d1d1b;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:500;margin-top:2px"><sc-if value="{{ signingIn }}" hint-placeholder-val="{{ false }}"><span style="width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>{{ signInLabel }}</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ authed }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;background:#f7f7f5">
+<div style="display:flex;flex-direction:column;gap:11px;padding:6px 18px 13px;background:#fff;border-bottom:1px solid #e4e4e0;flex:none">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="display:flex;align-items:center;gap:10px;min-width:0"><div style="width:30px;height:30px;border-radius:9px;background:#efefec;border:1px solid #e4e4e0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#4a4a45;flex:none">B</div><div style="display:flex;flex-direction:column;min-width:0"><span style="font-weight:600;font-size:15px">Booklapland</span><button onClick="{{ toggleInstMenu }}" style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#4a4a45;padding:0">{{ instance }}<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M4 6.5l4 4 4-4" stroke="#6f6f6a" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></button></div></div>
+<div style="display:flex;align-items:center;gap:8px;flex:none"><button onClick="{{ openHistory }}" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e4e4e0;border-radius:999px;font-size:12.5px;color:#4a4a45;min-height:36px">{{ activeVersion }}<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="#6f6f6a" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></button><button onClick="{{ newConversation }}" aria-label="New conversation" style="width:36px;height:36px;border:1px solid #e4e4e0;border-radius:999px;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="#4a4a45" stroke-width="1.6" stroke-linecap="round"></path></svg></button></div>
+</div>
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;background:#f1f1ee;border:1px solid #e4e4e0;border-radius:11px"><span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3a3a35"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><rect x="3.6" y="7.1" width="8.8" height="6.3" rx="1.7" stroke="#3a3a35" stroke-width="1.4" fill="none"></rect><path d="M5.7 7.1V5.3a2.3 2.3 0 014.6 0v1.8" stroke="#3a3a35" stroke-width="1.4" fill="none"></path></svg>Configuration locked · {{ activeVersion }}</span><button onClick="{{ unlock }}" style="padding:9px 13px;border-radius:9px;background:#1d1d1b;color:#fff;font-size:13px;font-weight:500;min-height:36px">Unlock to edit</button></div>
+</sc-if>
+</div>
+
+<sc-if value="{{ mobileEdit }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-height:0;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+<div style="border:1px solid #e4e4e0;border-radius:13px;background:#fff;overflow:hidden">
+<button onClick="{{ toggleInstr }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;width:100%;text-align:left;min-height:56px"><span style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:500"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="#4a4a45" stroke-width="1.5" stroke-linecap="round"></path></svg>Add instructions</span><svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="{{ instrChevron }}" stroke="#6f6f6a" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></button>
+<sc-if value="{{ addInstr }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:12px;padding:0 16px 16px"><textarea value="{{ instrText }}" onChange="{{ onInstr }}" placeholder="Describe a change — for example: be shorter." style="min-height:84px;border:1px solid #d4d4cf;border-radius:11px;padding:13px 14px;font-size:16px;line-height:1.55;outline-color:#1d1d1b"></textarea><button onClick="{{ applyAI }}" style="min-height:48px;border-radius:11px;background:#1d1d1b;color:#fff;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:9px"><sc-if value="{{ applying }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>Apply with AI</button><div style="font-size:13px;color:#4a4a45;line-height:1.5">Writes a draft into the master prompt. Nothing is saved until you review it.</div></div>
+</sc-if>
+</div>
+<div style="display:flex;flex-direction:column;border:1px solid #e4e4e0;border-radius:13px;background:#fff;overflow:hidden">
+<button onClick="{{ editOpener }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-bottom:1px solid #eeeeeb;min-height:60px;text-align:left"><span style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px;font-weight:500">Opening message</span><span style="font-size:13.5px;color:#4a4a45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px">{{ openerSummary }}</span></span><span style="display:flex;align-items:center;gap:8px;flex:none"><span style="font-size:13.5px;color:#4a4a45">Edit</span><svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="#6f6f6a" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></span></button>
+<button onClick="{{ editPrompt }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-bottom:1px solid #eeeeeb;min-height:60px;text-align:left"><span style="display:flex;flex-direction:column;gap:3px"><span style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:500">Master prompt</span><sc-if value="{{ isDraft }}" hint-placeholder-val="{{ false }}"><span style="padding:2px 8px;background:#faf4e4;border:1px solid #e8dcb8;border-radius:6px;font-size:11.5px;font-weight:500;color:#7d6310">Draft</span></sc-if></span><span style="font-size:13.5px;color:#4a4a45">{{ promptChars }}</span></span><span style="display:flex;align-items:center;gap:8px;flex:none"><span style="font-size:13.5px;color:#4a4a45">Edit</span><svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="#6f6f6a" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></span></button>
+<button onClick="{{ openHistory }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;min-height:60px;text-align:left"><span style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:500">Version history</span><span style="font-size:13.5px;color:#4a4a45">{{ historySummary }}</span></span><svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="#6f6f6a" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg></button>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border:1px solid #e4e4e0;border-radius:13px;background:#fff;min-height:60px"><span style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:500">Lock configuration</span><span style="font-size:13.5px;color:#4a4a45">Protects the prompt from accidental edits</span></span><button onClick="{{ lockClick }}" aria-label="Lock configuration" style="width:52px;height:31px;border-radius:999px;background:#e4e4e0;display:flex;align-items:center;padding:3px;flex:none"><span style="width:25px;height:25px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span></button></div>
+<sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}"><button onClick="{{ discard }}" style="align-self:flex-start;padding:12px 16px;border:1px solid #d4d4cf;border-radius:11px;font-size:14.5px;color:#4a4a45;background:#fff;min-height:48px">Discard draft</button></sc-if>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:#fff;border-top:1px solid #e4e4e0;flex:none"><span style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:{{ saveStateColor }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ saveDotColor }}"></span>{{ saveStateLabel }}</span><button onClick="{{ saveVersion }}" style="display:flex;align-items:center;gap:9px;padding:0 20px;min-height:46px;border-radius:11px;font-size:15px;font-weight:500;background:{{ saveBtnBg }};color:{{ saveBtnFg }}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>Save version</button></div>
+</sc-if>
+
+<sc-if value="{{ mobilePlay }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ showSavedBanner }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 18px 0;padding:12px 14px;border:1px solid #cfe3d6;background:#f1f8f3;border-radius:11px;flex:none"><span style="font-size:13.5px;color:#1f5d3b;line-height:1.45">Saved as {{ activeVersion }}</span><button onClick="{{ newConversation }}" style="padding:9px 13px;border:1px solid #9cc4ab;border-radius:9px;font-size:13px;font-weight:500;color:#1f5d3b;background:#fff;min-height:38px">Fresh test</button></div>
+</sc-if>
+<div style="flex:1;min-height:0;overflow:auto;padding:18px 18px 6px;display:flex;flex-direction:column;gap:20px">
+<sc-if value="{{ emptyConversation }}" hint-placeholder-val="{{ false }}"><div style="padding:60px 0;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><div style="font-size:15.5px;font-weight:500">Your test conversation appears here</div><div style="font-size:14px;color:#4a4a45;line-height:1.55">No opening message is configured.</div></div></sc-if>
+<sc-for list="{{ messages }}" as="m" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:8px;align-items:{{ m.align }}">
+<div style="max-width:{{ m.maxM }};padding:{{ m.pad }};border-radius:{{ m.radius }};background:{{ m.bg }};border:{{ m.border }};color:{{ m.fg }};font-size:16px;line-height:1.6;white-space:pre-wrap">{{ m.text }}</div>
+<sc-if value="{{ m.isAgent }}" hint-placeholder-val="{{ false }}"><button onClick="{{ m.copy }}" style="display:flex;align-items:center;gap:7px;padding:6px 2px;font-size:13px;color:#4a4a45;min-height:34px"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="5.4" y="5.4" width="7.2" height="7.2" rx="1.6" stroke="#4a4a45" stroke-width="1.3" fill="none"></rect><path d="M10.4 5.4V4.6A1.2 1.2 0 009.2 3.4H4.6A1.2 1.2 0 003.4 4.6v4.6a1.2 1.2 0 001.2 1.2h.8" stroke="#4a4a45" stroke-width="1.3" fill="none"></path></svg>{{ m.copyLabel }}</button></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ sending }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:15px 18px;border:1px solid #e4e4e0;border-radius:18px 18px 18px 6px;background:#fff"><span style="width:7px;height:7px;border-radius:50%;background:#6f6f6a;animation:wbl 1.2s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:#6f6f6a;animation:wbl 1.2s .2s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:#6f6f6a;animation:wbl 1.2s .4s infinite"></span></div></sc-if>
+</div>
+<div style="padding:10px 16px 14px;flex:none"><div style="display:flex;align-items:flex-end;gap:9px;padding:7px 7px 7px 17px;border:1px solid #d4d4cf;border-radius:999px;background:#fff"><textarea value="{{ composer }}" onChange="{{ onComposer }}" placeholder="Message…" style="flex:1;min-height:34px;max-height:80px;border:none;outline:none;background:none;font-size:16px;line-height:1.55;padding:5px 0"></textarea><button onClick="{{ send }}" aria-label="Send message" style="width:40px;height:40px;border-radius:50%;background:{{ sendBg }};display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true"><path d="M8 13V4M8 4L4.4 7.6M8 4l3.6 3.6" stroke="#fff" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></button></div></div>
+</sc-if>
+
+<sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:stretch;border-top:1px solid #e4e4e0;background:#fff;flex:none">
+<button onClick="{{ goEdit }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 22px;font-size:12px;font-weight:{{ editTabWeight }};color:{{ editTabColor }}"><svg viewBox="0 0 16 16" width="19" height="19" aria-hidden="true"><path d="M3.2 12.8h9.6M4.6 10.4l5.6-5.6 1.8 1.8-5.6 5.6H4.6v-1.8z" stroke="{{ editTabColor }}" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>Edit</button>
+<button onClick="{{ goPlay }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 22px;font-size:12px;font-weight:{{ playTabWeight }};color:{{ playTabColor }}"><svg viewBox="0 0 16 16" width="19" height="19" aria-hidden="true"><path d="M13.2 8.6c0 2.3-2.3 4.2-5.2 4.2-.7 0-1.4-.1-2-.3l-3 1 .9-2.3c-.7-.7-1.1-1.6-1.1-2.6 0-2.3 2.3-4.2 5.2-4.2s5.2 1.9 5.2 4.2z" stroke="{{ playTabColor }}" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>Playground</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;z-index:50">
+<div style="height:34px;flex:none"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 16px 13px;border-bottom:1px solid #e4e4e0;flex:none"><button onClick="{{ sheetCancel }}" style="font-size:15px;color:#4a4a45;min-width:70px;text-align:left;min-height:40px">Cancel</button><span style="font-weight:600;font-size:15px">{{ sheetTitle }}</span><button onClick="{{ sheetDone }}" style="font-size:15px;font-weight:600;min-width:70px;text-align:right;min-height:40px">Done</button></div>
+<textarea value="{{ sheetText }}" onChange="{{ onSheetText }}" style="flex:1;min-height:0;border:none;outline:none;padding:16px 18px;font:{{ sheetFont }};color:#2e2e2a;overflow:auto"></textarea>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid #e4e4e0;background:#fbfbfa;font-size:13px;color:#4a4a45;flex:none"><span>{{ sheetHelper }}</span><span>{{ sheetChars }}</span></div>
+<div style="height:252px;background:#e6e9ec;border-top:1px solid #d6d9dc;flex:none;display:flex;align-items:center;justify-content:center;font:400 12px 'IBM Plex Mono',monospace;color:#7b8288">keyboard</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ drawer }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(20,20,18,.22);display:flex;align-items:flex-end;z-index:55">
+<div style="width:100%;max-height:82%;background:#fff;border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid #e4e4e0;flex:none"><span style="font-weight:600;font-size:15px">Version history</span><button onClick="{{ closeHistory }}" aria-label="Close version history" style="width:36px;height:36px;border-radius:999px;background:#f1f1ee;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="#3a3a35" stroke-width="1.6" stroke-linecap="round"></path></svg></button></div>
+<div style="flex:1;min-height:0;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ versionRows }}" as="v" hint-placeholder-count="3">
+<button onClick="{{ v.view }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px;border:{{ v.border }};border-radius:12px;background:{{ v.bg }};text-align:left;min-height:62px"><span style="display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:8px"><span style="font-weight:600;font-size:15px">{{ v.id }}</span><sc-if value="{{ v.isActive }}" hint-placeholder-val="{{ false }}"><span style="padding:2px 8px;background:#eaf5ee;border:1px solid #cfe5d8;border-radius:6px;font-size:11.5px;font-weight:500;color:#1f6e43">Active</span></sc-if><sc-if value="{{ v.isViewing }}" hint-placeholder-val="{{ false }}"><span style="padding:2px 8px;background:#1d1d1b;color:#fff;border-radius:6px;font-size:11.5px;font-weight:500">Viewing</span></sc-if></span><span style="font-size:13.5px;color:#4a4a45">{{ v.meta }}</span></span></button>
+</sc-for>
+<div style="border:1px solid #e4e4e0;border-radius:12px;background:#fafafa;padding:14px;font:400 14px/1.7 'IBM Plex Mono',monospace;color:#3a3a35;white-space:pre-wrap">{{ viewText }}</div>
+</div>
+<div style="padding:14px 18px 22px;border-top:1px solid #eeeeeb;flex:none;display:flex;flex-direction:column;gap:10px">
+<sc-if value="{{ canRestore }}" hint-placeholder-val="{{ true }}"><button onClick="{{ restoreClick }}" style="min-height:50px;border-radius:12px;background:#1d1d1b;color:#fff;font-size:15px;font-weight:500">Restore {{ viewVersion }}</button><div style="font-size:13px;color:#4a4a45;line-height:1.5">Loads this text into the editor as unsaved changes.</div></sc-if>
+<sc-if value="{{ lockedRestore }}" hint-placeholder-val="{{ false }}"><button onClick="{{ unlockAndKeepDrawer }}" style="min-height:50px;border-radius:12px;background:#1d1d1b;color:#fff;font-size:15px;font-weight:500">Unlock to edit</button><div style="font-size:13px;color:#4a4a45;line-height:1.5">Versions are read-only while the configuration is locked.</div></sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ instMenu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(20,20,18,.22);display:flex;align-items:flex-end;z-index:60"><div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:16px 18px 24px;display:flex;flex-direction:column;gap:8px"><div style="font-size:13.5px;font-weight:500;color:#4a4a45;padding:4px 2px 6px">Agent instance</div><sc-for list="{{ instances }}" as="it" hint-placeholder-count="2"><button onClick="{{ it.pick }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;border:{{ it.border }};border-radius:12px;background:{{ it.bg }};font-size:15.5px;text-align:left;min-height:58px">{{ it.name }}<span style="font-size:13px;color:#4a4a45">{{ it.mark }}</span></button></sc-for></div></div>
+</sc-if>
+
+<sc-if value="{{ dialog }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(20,20,18,.24);display:flex;align-items:center;justify-content:center;padding:22px;z-index:70"><div style="width:100%;background:#fff;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px"><div style="font-weight:600;font-size:16px">{{ dialogTitle }}</div><div style="font-size:14.5px;color:#4a4a45;line-height:1.6">{{ dialogBody }}</div><sc-if value="{{ dialogError }}" hint-placeholder-val="{{ false }}"><div style="padding:12px 14px;border:1px solid #e3cfcf;background:#fcf6f6;border-radius:10px;font-size:13.5px;color:#8a3f3f">{{ dialogError }}</div></sc-if><div style="display:flex;flex-direction:column;gap:9px;margin-top:4px"><button onClick="{{ dialogConfirm }}" style="min-height:50px;border-radius:12px;background:#1d1d1b;color:#fff;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:9px"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:wsp .7s linear infinite"></span></sc-if>{{ dialogConfirmLabel }}</button><button onClick="{{ dialogCancel }}" style="min-height:50px;border-radius:12px;border:1px solid #d4d4cf;font-size:15px;color:#4a4a45">Cancel</button></div></div></div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+</div>
+
+</div>
+</section>
+
+<section style="padding:40px 44px 34px;border-bottom:1px solid rgba(0,0,0,.08)">
+<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:20px"><span style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px">4b</span><span style="font-weight:600;font-size:13px">Component states not reachable in the prototype</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+<div style="width:520px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;overflow:hidden">
+<div style="padding:16px 20px;border-bottom:1px solid #eeeeeb;font-size:13.5px;font-weight:600">Reply failed</div>
+<div style="padding:20px;display:flex;flex-direction:column;gap:14px;background:#f7f7f5">
+<div style="align-self:flex-end;max-width:76%;padding:13px 16px;border-radius:16px 16px 6px 16px;background:#1d1d1b;color:#fff;font-size:15.5px;line-height:1.6">Anything for two in December?</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 15px;border:1px solid #e3cfcf;background:#fcf6f6;border-radius:12px"><span style="font-size:14px;color:#8a3f3f;line-height:1.5">The agent did not respond.</span><button style="padding:9px 15px;border:1px solid #c9a7a7;border-radius:9px;font-size:13.5px;font-weight:500;color:#8a3f3f;background:#fff">Retry</button></div>
+<div style="font-size:13px;color:#4a4a45;line-height:1.5">The sent message stays in place. Retry resends it.</div>
+</div>
+</div>
+<div style="width:520px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;overflow:hidden">
+<div style="padding:16px 20px;border-bottom:1px solid #eeeeeb;font-size:13.5px;font-weight:600">Loading a saved configuration</div>
+<div style="padding:20px;display:flex;flex-direction:column;gap:12px;background:#f7f7f5">
+<div style="height:15px;width:46%;background:#e8e8e4;border-radius:4px"></div>
+<div style="height:96px;background:#e8e8e4;border-radius:11px"></div>
+<div style="height:15px;width:32%;background:#e8e8e4;border-radius:4px"></div>
+<div style="font-size:13px;color:#4a4a45;line-height:1.5">Skeletons appear only on first load of the workspace, never in place of real content.</div>
+</div>
+</div>
+<div style="width:520px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;overflow:hidden">
+<div style="padding:16px 20px;border-bottom:1px solid #eeeeeb;font-size:13.5px;font-weight:600">Save failed while locking</div>
+<div style="padding:20px;background:#f7f7f5;display:flex;justify-content:center">
+<div style="width:400px;background:#fff;border:1px solid #dedeD9;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.1);padding:20px;display:flex;flex-direction:column;gap:12px"><div style="font-weight:600;font-size:15.5px">Save changes before locking?</div><div style="font-size:14px;color:#4a4a45;line-height:1.55">Locking makes the configuration read-only. Your changes are saved as a new version first.</div><div style="padding:12px 14px;border:1px solid #e3cfcf;background:#fcf6f6;border-radius:10px;font-size:13.5px;color:#8a3f3f;line-height:1.5">Could not save. Your edits are still here — try again.</div><div style="display:flex;gap:10px;justify-content:flex-end"><button style="padding:11px 16px;border:1px solid #d4d4cf;border-radius:10px;font-size:14px;color:#4a4a45">Cancel</button><button style="padding:11px 18px;border-radius:10px;background:#1d1d1b;color:#fff;font-size:14px;font-weight:500">Save and lock</button></div></div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="padding:40px 44px 44px">
+<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:20px"><span style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px">4c</span><span style="font-weight:600;font-size:13px">Handoff for Cursor</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+<div style="width:620px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;overflow:hidden;font-size:13.5px;line-height:1.65">
+<div style="display:flex;flex-direction:column;gap:9px;padding:20px 22px;border-bottom:1px solid #eeeeeb"><div style="font-weight:600;font-size:14.5px">Components</div><div style="color:#4a4a45">Routes: <span style="font-family:'IBM Plex Mono',monospace">/login</span>, <span style="font-family:'IBM Plex Mono',monospace">/workspace</span>. Locked is a state of the workspace, not a route. AppHeader (mark, agent, InstanceSelector, VersionHistory trigger, account) · LockStrip · EditorPanel (AddInstructions, OpeningMessageField, MasterPromptEditor, SaveBar containing save state + Lock configuration + Discard draft + Save version) · VersionHistory (drawer on desktop, sheet on mobile) · Playground (ContextBar, SavedBanner, DraftBanner, ConversationList, Composer) · FieldEditor (mobile full screen, Cancel/Done) · ConfirmDialog.</div></div>
+<div style="display:flex;flex-direction:column;gap:9px;padding:20px 22px;border-bottom:1px solid #eeeeeb"><div style="font-weight:600;font-size:14.5px">Tokens</div><div style="color:#4a4a45;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.85">ink #1d1d1b · ink-2 #3a3a35 · ink-3 #4a4a45 · ink-4 #6f6f6a · line #e4e4e0 · line-strong #d4d4cf · surface #fff · canvas #f7f7f5 · sunken #f1f1ee · active #2f9e5f on #eaf5ee · draft #7d6310 on #faf4e4 · error #8a3f3f on #fcf6f6<br>radius: control 8–11 · card 12–14 · bubble 16/6 · pill 999<br>type: UI 13.5–15 / labels 14 600 / prompt+chat 15.5–16 mono-for-prompt / mobile inputs 16 / titles 26–28 600</div></div>
+<div style="display:flex;flex-direction:column;gap:9px;padding:20px 22px;border-bottom:1px solid #eeeeeb"><div style="font-weight:600;font-size:14.5px">Responsive</div><div style="color:#4a4a45">≥1180px editor and playground split 50/50. 900–1180px editor 46% with a 420px floor. &lt;900px switch to the two-tab mobile shell — never scale the split down. Conversation column caps at 660px for line length. Composer and field editors use <span style="font-family:'IBM Plex Mono',monospace">dvh</span> plus visual-viewport insets.</div></div>
+<div style="display:flex;flex-direction:column;gap:9px;padding:20px 22px;border-bottom:1px solid #eeeeeb"><div style="font-weight:600;font-size:14.5px">Behaviour</div><div style="color:#4a4a45"><span style="font-weight:600">Draft vs saved.</span> The workspace holds one draft per instance. Mobile field editors return values to that draft with Done; Cancel abandons only that field session. Save version is the only thing that persists, on both platforms.<br><span style="font-weight:600">Lock.</span> Lives in the editor action area next to Save version, secondary weight. With unsaved changes it offers Cancel or Save and lock, and locks only after the save resolves; on failure the edits and the error stay. Unlock is one click, available in the lock strip and in version history.<br><span style="font-weight:600">Versions.</span> Selecting a row previews only. Restore loads the text into the draft, needs unlocking, and warns before replacing an existing draft.<br><span style="font-weight:600">Testing.</span> The context bar reports the last saved version, not a claim about the open conversation. Saving shows "Saved as vNN" with Start a fresh test and never clears the conversation. An unsaved draft shows its own banner.<br><span style="font-weight:600">Instances.</span> Switching Original/Copy with a draft present asks first, and swaps conversation with configuration so one agent's chat is never shown under the other.</div></div>
+<div style="display:flex;flex-direction:column;gap:9px;padding:20px 22px"><div style="font-weight:600;font-size:14.5px">Motion</div><div style="color:#4a4a45">150–200ms ease on: Add instructions expand, version history drawer/sheet, editor panel on lock/unlock, spinner and save feedback. Nothing else. All suppressed under <span style="font-family:'IBM Plex Mono',monospace">prefers-reduced-motion</span>; no interaction waits on a transition.</div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="width:560px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;overflow:hidden;font-size:13.5px;line-height:1.65">
+<div style="padding:20px 22px;border-bottom:1px solid #eeeeeb;font-weight:600;font-size:14.5px">Taken from each Mobbin reference</div>
+<div style="display:flex;flex-direction:column;gap:13px;padding:20px 22px;color:#4a4a45">
+<div><span style="font-weight:600;color:#1d1d1b">01 login.</span> The narrow centred column with a large quiet title, pill-shaped inputs and one full-width dark action; I kept that composition and rhythm and dropped the social buttons, sign-up line and legal footer.</div>
+<div><span style="font-weight:600;color:#1d1d1b">02 desktop playground.</span> Labelled configuration stacked above a tall monospace prompt box, a thin vertical rule to the conversation, save state sitting beside the save action, and the quiet right-hand pane with its own slim context bar. I dropped the model row, tools, variables chips and the platform sidebar.</div>
+<div><span style="font-weight:600;color:#1d1d1b">03 mobile instructions.</span> The focused single-field editor: centred title, circular close, short helper line under the field, and one unmistakable commit control. I moved commit to the top bar as Done so the keyboard cannot cover it, and kept version saving out of the field editor.</div>
+<div><span style="font-weight:600;color:#1d1d1b">04 mobile chat.</span> Conversation density and rhythm: light grey right-aligned user bubbles against low-chrome agent text, a small action row under agent replies, and the pill composer with a circular send control. I kept Copy only, and dropped voice, attachments and the consumer account controls.</div>
+</div>
+</div>
+<div style="width:560px;background:#fbfbfa;border:1px solid rgba(0,0,0,.1);border-radius:12px;overflow:hidden;font-size:13.5px;line-height:1.65">
+<div style="padding:20px 22px;border-bottom:1px solid #eeeeeb;font-weight:600;font-size:14.5px">Still needs backend confirmation</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:20px 22px;color:#4a4a45">
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#6f6f6a">TESTING</span><br>Whether an open conversation keeps the version it started on or picks up a newly saved one. Until this is answered the UI states only the last saved version and offers a fresh test — no pinning claim.</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#6f6f6a">VARS</span><br>Opening-message variable syntax. The prototype uses a double-brace stand-in and labels Maria as sample data.</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#6f6f6a">RESTORE</span><br>Confirm restore loads into the draft rather than switching the live version server-side.</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#6f6f6a">LOCK</span><br>Is lock state per agent and shared between users, or per session?</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#6f6f6a">COPY</span><br>What Original/Copy switches — configuration, the agent under test, or both — and whether both have independent version histories.</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#6f6f6a">DRAFT</span><br>Whether unsaved drafts survive a page reload server-side, or are local only.</div>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1720&quot;,&quot;height&quot;:&quot;1000&quot;}}">
+const P0 = `You are the booking assistant for Booklapland.
+
+Answer in two sentences or fewer. Ask one follow-up question when a date, party size or destination is missing.
+
+Never invent availability or pricing. If a fact is not in context, say so and hand off to a human.
+
+Tone: warm, direct, no filler.`;
+
+const P29 = `You are the booking assistant for Booklapland.
+
+Never invent availability or pricing. If a fact is not in context, say so and hand off to a human.`;
+
+const P28 = `You are the booking assistant for Booklapland. Help leads plan winter trips and collect their dates, party size and destination.`;
+
+const OPENER = "Hi {{first_name}} — ready to plan your trip?";
+
+const REPLIES = [
+  "I can check that. Which destination are you thinking of, and are the dates flexible?",
+  "The winter package covers accommodation, transfers and two guided activities. Would you like December or January dates?",
+  "I don't have live pricing for that week. I'll pass this to a colleague who can confirm it today.",
+  "Two adults, five nights, late December. Shall I hold that while you check with your travel companion?"
+];
+
+function mkInstance(seed) {
+  return {
+    locked: false,
+    savedPrompt: P0, savedOpener: OPENER,
+    draftPrompt: P0, draftOpener: OPENER,
+    isDraft: false,
+    versions: [
+      { id: "v30", meta: "21 Sep, 14:02 · Shorter answers", text: P0 },
+      { id: "v29", meta: "20 Sep, 09:41 · Handoff rule", text: P29 },
+      { id: "v28", meta: "18 Sep, 16:20 · Initial context", text: P28 }
+    ],
+    active: "v30",
+    messages: [{ role: "agent", text: "Hi Maria — ready to plan your trip?" }],
+    savedBanner: false,
+    replyIx: seed
+  };
+}
+
+class Component extends DCLogic {
+  state = {
+    authed: false, user: "maria", pass: "hunter2hunter", showPass: false, signingIn: false, loginError: "",
+    instance: "Original", instMenu: false, pendingInstance: null,
+    data: { Original: mkInstance(0), Copy: mkInstance(2) },
+    dialog: null, dialogError: "", saving: false, applying: false,
+    drawer: false, viewVersion: "v30",
+    mobileTab: "edit", sheet: null, sheetText: "",
+    addInstr: false, instrText: "", composer: "", sending: false, copied: -1
+  };
+
+  cur() { return this.state.data[this.state.instance]; }
+
+  patch(changes, extra) {
+    this.setState(s => {
+      const d = Object.assign({}, s.data[s.instance], changes);
+      const data = Object.assign({}, s.data);
+      data[s.instance] = d;
+      return Object.assign({ data: data }, extra || {});
+    });
+  }
+
+  dirtyOf(d) { return d.draftPrompt !== d.savedPrompt || d.draftOpener !== d.savedOpener; }
+
+  componentWillUnmount() { (this.timers || []).forEach(clearTimeout); }
+  later(fn, ms) { this.timers = this.timers || []; this.timers.push(setTimeout(fn, ms)); }
+
+  renderVals() {
+    const s = this.state, d = this.cur(), dirty = this.dirtyOf(d);
+    const locked = d.locked, unlocked = !locked;
+    const viewing = d.versions.find(v => v.id === s.viewVersion) || d.versions[0];
+
+    const messages = d.messages.map((m, i) => {
+      const agent = m.role === "agent";
+      return {
+        text: m.text, isAgent: agent,
+        align: agent ? "flex-start" : "flex-end",
+        max: agent ? "92%" : "78%", maxM: agent ? "96%" : "84%",
+        pad: agent ? "13px 17px" : "13px 16px",
+        radius: agent ? "16px 16px 16px 6px" : "16px 16px 6px 16px",
+        bg: agent ? "#ffffff" : "#1d1d1b",
+        border: agent ? "1px solid #e4e4e0" : "1px solid #1d1d1b",
+        fg: agent ? "#1d1d1b" : "#ffffff",
+        copyLabel: s.copied === i ? "Copied" : "Copy",
+        copy: () => { this.setState({ copied: i }); this.later(() => this.setState({ copied: -1 }), 1400); }
+      };
+    });
+
+    const versionRows = d.versions.map(v => ({
+      id: v.id, meta: v.meta,
+      isActive: v.id === d.active,
+      isViewing: v.id === s.viewVersion,
+      showView: v.id !== s.viewVersion,
+      border: v.id === s.viewVersion ? "1.5px solid #1d1d1b" : "1px solid #e4e4e0",
+      bg: v.id === s.viewVersion ? "#fafafa" : "#ffffff",
+      view: () => this.setState({ viewVersion: v.id })
+    }));
+
+    const instances = ["Original", "Copy"].map(name => ({
+      name: name,
+      mark: name === s.instance ? "Current" : "",
+      bg: name === s.instance ? "#f1f1ee" : "#ffffff",
+      border: name === s.instance ? "1.5px solid #1d1d1b" : "1px solid #e4e4e0",
+      pick: () => this.pickInstance(name)
+    }));
+
+    const dialogs = {
+      lock: {
+        title: "Save changes before locking?",
+        body: "Locking makes the configuration read-only. Your changes are saved as a new version first.",
+        confirm: "Save and lock"
+      },
+      switch: {
+        title: "Save changes before switching?",
+        body: "You have unsaved changes on " + s.instance + ". Save them as a new version before opening " + (s.pendingInstance || "the other instance") + ".",
+        confirm: "Save and switch"
+      },
+      restore: {
+        title: "Replace your unsaved draft?",
+        body: "Restoring " + s.viewVersion + " overwrites the unsaved changes currently in the editor. This cannot be undone.",
+        confirm: "Restore " + s.viewVersion
+      }
+    };
+    const dl = s.dialog ? dialogs[s.dialog] : null;
+
+    return {
+      authed: s.authed, notAuthed: !s.authed,
+      user: s.user, pass: s.pass, passType: s.showPass ? "text" : "password",
+      showPassLabel: s.showPass ? "Hide" : "Show",
+      signingIn: s.signingIn, signInLabel: s.signingIn ? "Signing in…" : "Sign in",
+      loginError: s.loginError,
+      onUser: e => this.setState({ user: e.target.value, loginError: "" }),
+      onPass: e => this.setState({ pass: e.target.value, loginError: "" }),
+      togglePass: () => this.setState({ showPass: !s.showPass }),
+      signIn: () => {
+        if (s.signingIn) return;
+        if (!s.user.trim() || !s.pass.trim()) { this.setState({ loginError: "Enter your username and password." }); return; }
+        this.setState({ signingIn: true, loginError: "" });
+        this.later(() => {
+          if (s.pass.length < 6) this.setState({ signingIn: false, loginError: "Username or password is incorrect." });
+          else this.setState({ signingIn: false, authed: true });
+        }, 900);
+      },
+      signOut: () => this.setState({ authed: false, pass: "hunter2hunter", drawer: false, sheet: null, dialog: null, instMenu: false }),
+      reset: () => this.setState({
+        authed: false, user: "maria", pass: "hunter2hunter", showPass: false, signingIn: false, loginError: "",
+        instance: "Original", instMenu: false, pendingInstance: null,
+        data: { Original: mkInstance(0), Copy: mkInstance(2) },
+        dialog: null, dialogError: "", saving: false, applying: false,
+        drawer: false, viewVersion: "v30", mobileTab: "edit", sheet: null, sheetText: "",
+        addInstr: false, instrText: "", composer: "", sending: false, copied: -1
+      }),
+
+      instance: s.instance, instMenu: s.instMenu, instances: instances,
+      toggleInstMenu: () => this.setState({ instMenu: !s.instMenu }),
+
+      locked: locked, unlocked: unlocked, dirty: dirty, isDraft: d.isDraft,
+      activeVersion: d.active,
+      testingSuffix: dirty ? " · draft not included" : "",
+      draftPrompt: d.draftPrompt, draftOpener: d.draftOpener,
+      promptChars: d.draftPrompt.length.toLocaleString() + " characters",
+      openerSummary: d.draftOpener || "Not set",
+      historySummary: d.active + " active · " + d.versions.length + " versions",
+      onPrompt: e => this.patch({ draftPrompt: e.target.value }),
+      onOpener: e => this.patch({ draftOpener: e.target.value }),
+
+      addInstr: s.addInstr, instrText: s.instrText, applying: s.applying,
+      instrHint: s.addInstr ? "" : "Optional",
+      instrChevron: s.addInstr ? "M4 9.5l4-4 4 4" : "M4 6.5l4 4 4-4",
+      toggleInstr: () => this.setState({ addInstr: !s.addInstr }),
+      onInstr: e => this.setState({ instrText: e.target.value }),
+      applyAI: () => {
+        if (s.applying) return;
+        const t = s.instrText.trim();
+        if (!t) return;
+        this.setState({ applying: true });
+        this.later(() => {
+          this.patch({
+            draftPrompt: d.draftPrompt + "\n\n" + t.charAt(0).toUpperCase() + t.slice(1).replace(/\.$/, "") + ".",
+            isDraft: true
+          }, { applying: false, instrText: "" });
+        }, 800);
+      },
+
+      saveStateLabel: dirty ? "Unsaved changes" : "Saved as " + d.active,
+      saveStateColor: dirty ? "#7d6310" : "#4a4a45",
+      saveDotColor: dirty ? "#b0871f" : "#2f9e5f",
+      saveBtnBg: dirty ? "#1d1d1b" : "#efefec",
+      saveBtnFg: dirty ? "#ffffff" : "#8f8f89",
+      saving: s.saving,
+      discard: () => this.patch({ draftPrompt: d.savedPrompt, draftOpener: d.savedOpener, isDraft: false }),
+      saveVersion: () => { if (dirty && !s.saving) this.doSave(); },
+
+      lockClick: () => {
+        if (dirty) this.setState({ dialog: "lock", dialogError: "" });
+        else this.patch({ locked: true }, { sheet: null, mobileTab: "play" });
+      },
+      unlock: () => this.patch({ locked: false }, { mobileTab: "edit" }),
+      unlockAndKeepDrawer: () => this.patch({ locked: false }),
+
+      drawer: s.drawer, viewVersion: s.viewVersion, viewText: viewing.text,
+      canRestore: unlocked && s.viewVersion !== d.active,
+      lockedRestore: locked,
+      openHistory: () => this.setState({ drawer: true, viewVersion: d.active, instMenu: false }),
+      closeHistory: () => this.setState({ drawer: false }),
+      restoreClick: () => {
+        if (dirty) this.setState({ dialog: "restore" });
+        else this.doRestore();
+      },
+
+      dialog: s.dialog, dialogError: s.dialogError,
+      dialogTitle: dl ? dl.title : "", dialogBody: dl ? dl.body : "", dialogConfirmLabel: dl ? dl.confirm : "",
+      dialogCancel: () => this.setState({ dialog: null, dialogError: "", saving: false }),
+      dialogConfirm: () => {
+        if (s.dialog === "lock") this.doSave(true);
+        else if (s.dialog === "switch") this.doSave(false, s.pendingInstance);
+        else if (s.dialog === "restore") { this.setState({ dialog: null }); this.doRestore(); }
+      },
+
+      messages: messages, versionRows: versionRows,
+      emptyConversation: d.messages.length === 0,
+      showSavedBanner: d.savedBanner,
+      savedBannerText: "Saved as " + d.active + ". This conversation started before the save.",
+      sending: s.sending, composer: s.composer,
+      composerPlaceholder: locked ? "Message the agent…" : "Send a test message…",
+      sendBg: s.composer.trim() ? "#1d1d1b" : "#c4c4bf",
+      onComposer: e => this.setState({ composer: e.target.value }),
+      onComposerKey: e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.doSend(); } },
+      send: () => this.doSend(),
+      newConversation: () => {
+        const first = d.draftOpener === d.savedOpener ? d.savedOpener : d.savedOpener;
+        const msgs = first.trim() ? [{ role: "agent", text: first.replace(/\{\{\s*first_name\s*\}\}/g, "Maria") }] : [];
+        this.patch({ messages: msgs, savedBanner: false }, { composer: "", sending: false, copied: -1 });
+      },
+
+      mobileEdit: !locked && s.mobileTab === "edit",
+      mobilePlay: locked || s.mobileTab === "play",
+      showTabs: !locked,
+      goEdit: () => this.setState({ mobileTab: "edit" }),
+      goPlay: () => this.setState({ mobileTab: "play" }),
+      editTabColor: s.mobileTab === "edit" ? "#1d1d1b" : "#6f6f6a",
+      playTabColor: s.mobileTab === "play" ? "#1d1d1b" : "#6f6f6a",
+      editTabWeight: s.mobileTab === "edit" ? "600" : "450",
+      playTabWeight: s.mobileTab === "play" ? "600" : "450",
+
+      sheet: s.sheet, sheetText: s.sheetText,
+      sheetTitle: s.sheet === "prompt" ? "Master prompt" : "Opening message",
+      sheetFont: s.sheet === "prompt" ? "400 16px/1.75 'IBM Plex Mono',monospace" : "400 17px/1.6 'IBM Plex Sans',sans-serif",
+      sheetHelper: s.sheet === "prompt" ? "Done returns to the workspace draft" : "Variables are filled per conversation",
+      sheetChars: s.sheetText.length.toLocaleString() + " characters",
+      onSheetText: e => this.setState({ sheetText: e.target.value }),
+      editPrompt: () => this.setState({ sheet: "prompt", sheetText: d.draftPrompt }),
+      editOpener: () => this.setState({ sheet: "opener", sheetText: d.draftOpener }),
+      sheetCancel: () => this.setState({ sheet: null, sheetText: "" }),
+      sheetDone: () => {
+        if (s.sheet === "prompt") this.patch({ draftPrompt: s.sheetText }, { sheet: null, sheetText: "" });
+        else this.patch({ draftOpener: s.sheetText }, { sheet: null, sheetText: "" });
+      }
+    };
+  }
+
+  doSave(thenLock, thenSwitch) {
+    const d = this.cur();
+    const next = "v" + (parseInt(d.active.slice(1), 10) + 1);
+    this.setState({ saving: true, dialogError: "" });
+    this.later(() => {
+      const vs = [{ id: next, meta: "Just now · Manual edit", text: d.draftPrompt }].concat(d.versions);
+      this.patch({
+        versions: vs, active: next,
+        savedPrompt: d.draftPrompt, savedOpener: d.draftOpener,
+        isDraft: false, savedBanner: true,
+        locked: thenLock ? true : d.locked
+      }, { saving: false, dialog: null, viewVersion: next, mobileTab: thenLock ? "play" : this.state.mobileTab });
+      if (thenSwitch) this.setState({ instance: thenSwitch, pendingInstance: null, drawer: false, viewVersion: this.state.data[thenSwitch].active });
+    }, 750);
+  }
+
+  doRestore() {
+    const d = this.cur();
+    const v = d.versions.find(x => x.id === this.state.viewVersion);
+    if (!v) return;
+    this.patch({ draftPrompt: v.text, isDraft: false }, { drawer: false });
+  }
+
+  doSend() {
+    const s = this.state, d = this.cur(), text = s.composer.trim();
+    if (!text || s.sending) return;
+    this.patch({ messages: d.messages.concat([{ role: "user", text: text }]) }, { composer: "", sending: true });
+    this.later(() => {
+      const cur = this.cur();
+      const reply = REPLIES[cur.replyIx % REPLIES.length];
+      this.patch({ messages: cur.messages.concat([{ role: "agent", text: reply }]), replyIx: cur.replyIx + 1 }, { sending: false });
+    }, 1100);
+  }
+
+  pickInstance(name) {
+    const s = this.state;
+    if (name === s.instance) { this.setState({ instMenu: false }); return; }
+    if (this.dirtyOf(this.cur())) { this.setState({ instMenu: false, pendingInstance: name, dialog: "switch" }); return; }
+    this.setState({ instance: name, instMenu: false, drawer: false, sheet: null, composer: "", viewVersion: s.data[name].active });
+  }
+}
+</script>
+</body>
+</html>

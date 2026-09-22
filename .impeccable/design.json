@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-21T16:57:00+01:00",
+  "title": "Design System: wasup agent builder",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Operational Ink",
+        "canonical": "#1d1d1b",
+        "tonalRamp": ["#0f0f0e", "#1d1d1b", "#373733", "#55554f", "#73736b", "#a6a69e", "#d4d4cc", "#f7f7f4"]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas Chalk",
+        "canonical": "#f7f7f4",
+        "tonalRamp": ["#373733", "#55554f", "#73736b", "#a6a69e", "#d4d4cc", "#e5e5df", "#efefea", "#f7f7f4"]
+      },
+      "dot": {
+        "role": "neutral",
+        "displayName": "Preview Dot",
+        "canonical": "#deded8",
+        "tonalRamp": ["#373733", "#55554f", "#73736b", "#a6a69e", "#c7c7bf", "#d4d4cc", "#deded8", "#f7f7f4"]
+      },
+      "active-row": {
+        "role": "neutral",
+        "displayName": "Active Row",
+        "canonical": "#e7e7e1",
+        "tonalRamp": ["#373733", "#55554f", "#73736b", "#a6a69e", "#d4d4cc", "#e5e5df", "#e7e7e1", "#f7f7f4"]
+      },
+      "placeholder": {
+        "role": "neutral",
+        "displayName": "Placeholder Ink",
+        "canonical": "#8a8a83",
+        "tonalRamp": ["#373733", "#55554f", "#73736b", "#8a8a83", "#a6a69e", "#c7c7bf", "#e5e5df", "#f7f7f4"]
+      },
+      "selection": {
+        "role": "neutral",
+        "displayName": "Selection Wash",
+        "canonical": "#dfeee4",
+        "tonalRamp": ["#1f6b43", "#54a574", "#9cc8ad", "#cae5d4", "#dfeee4", "#edf8f1", "#f7fcf8", "#ffffff"]
+      },
+      "prompt-ink": {
+        "role": "neutral",
+        "displayName": "Prompt Ink",
+        "canonical": "#2d2d29",
+        "tonalRamp": ["#0f0f0e", "#1d1d1b", "#2d2d29", "#373733", "#55554f", "#73736b", "#a6a69e", "#d4d4cc"]
+      },
+      "scrollbar": {
+        "role": "neutral",
+        "displayName": "Scrollbar Thumb",
+        "canonical": "#c7c7bf",
+        "tonalRamp": ["#55554f", "#73736b", "#8a8a83", "#a6a69e", "#c7c7bf", "#d4d4cc", "#e5e5df", "#f7f7f4"]
+      },
+      "success": {
+        "role": "primary",
+        "displayName": "Saved Green",
+        "canonical": "#1f6b43",
+        "tonalRamp": ["#113b25", "#1f6b43", "#2d8656", "#54a574", "#9cc8ad", "#cae5d4", "#edf8f1", "#f7fcf8"]
+      },
+      "draft": {
+        "role": "secondary",
+        "displayName": "Draft Amber",
+        "canonical": "#806410",
+        "tonalRamp": ["#3d2f07", "#806410", "#a17f1c", "#c49d35", "#d9bd70", "#eadcb8", "#fbf3df", "#fffaf0"]
+      },
+      "error": {
+        "role": "tertiary",
+        "displayName": "Recovery Red",
+        "canonical": "#8a3f3f",
+        "tonalRamp": ["#421d1d", "#8a3f3f", "#a75656", "#c27b7b", "#d6a8a8", "#e4cece", "#fcf5f5", "#fffafa"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Login Display",
+        "purpose": "Only for the login title; tight but not decorative."
+      },
+      "title": {
+        "displayName": "Operational Title",
+        "purpose": "Editor section names, mobile rows, and panel titles."
+      },
+      "body": {
+        "displayName": "Interface Body",
+        "purpose": "Instructional copy, messages, helper text."
+      },
+      "micro": {
+        "displayName": "Microcopy",
+        "purpose": "Small uppercase labels and compact metadata."
+      },
+      "menu-label": {
+        "displayName": "Menu Label",
+        "purpose": "Tiny section labels inside popovers and menus."
+      },
+      "avatar": {
+        "displayName": "Avatar Letter",
+        "purpose": "Initial letters inside compact identity marks."
+      },
+      "field-mobile": {
+        "displayName": "Mobile Field Text",
+        "purpose": "Readable text inside mobile sheets and inputs."
+      },
+      "mono": {
+        "displayName": "Prompt Mono",
+        "purpose": "Master prompt editing and version previews."
+      }
+    },
+    "shadows": [
+      {
+        "name": "control-inset",
+        "value": "0 1px 0 rgba(255,255,255,0.9)",
+        "purpose": "Subtle edge definition on controls and fields."
+      },
+      {
+        "name": "panel-lift",
+        "value": "0 14px 42px rgba(20, 20, 18, 0.14)",
+        "purpose": "Drawers, menus, dialogs, and toasts."
+      }
+    ],
+    "motion": [
+      {
+        "name": "workspace-ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Drawers, sheets, accordions, messages, and state banners."
+      },
+      {
+        "name": "short-transition",
+        "value": "160ms-280ms",
+        "purpose": "Fast operational transitions that clarify state without delaying work."
+      },
+      {
+        "name": "tab-continuity",
+        "value": "200ms with workspace-ease",
+        "purpose": "Shared active tab indicator between Prompt and Opening."
+      },
+      {
+        "name": "mobile-savebar-entry",
+        "value": "200ms opacity/translate/blur",
+        "purpose": "Make unsaved state appear above mobile navigation without surprise."
+      },
+      {
+        "name": "thread-refresh",
+        "value": "220ms opacity/translate/blur",
+        "purpose": "Clarify that New test has replaced the conversation thread."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "tablet-switch",
+        "value": "1100px"
+      },
+      {
+        "name": "mobile-shell",
+        "value": "899px"
+      },
+      {
+        "name": "phone-tight",
+        "value": "520px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Commit action for save, continue, send, and unlock.",
+      "html": "<button class=\"ds-btn-primary\">Save version</button>",
+      "css": ".ds-btn-primary { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 10px; padding: 0 17px; background: #1d1d1b; color: #fff; font: 610 14px/1.2 Inter, ui-sans-serif, system-ui, sans-serif; box-shadow: 0 1px 0 rgba(255,255,255,0.16) inset, 0 10px 22px rgba(20,20,18,0.12); } .ds-btn-primary:hover { background: #0f0f0e; } .ds-btn-primary:focus-visible { outline: 2px solid #1d1d1b; outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral action for history, reset, discard, and non-primary operations.",
+      "html": "<button class=\"ds-btn-secondary\">Version history</button>",
+      "css": ".ds-btn-secondary { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #e5e5df; border-radius: 10px; padding: 0 12px; background: #fff; color: #55554f; font: 540 13px/1.2 Inter, ui-sans-serif, system-ui, sans-serif; box-shadow: 0 1px 0 rgba(255,255,255,0.9); } .ds-btn-secondary:hover { background: #f4f4f0; } .ds-btn-secondary:focus-visible { outline: 2px solid #1d1d1b; outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "Small explicit save/draft/locked state label.",
+      "html": "<span class=\"ds-status-pill ds-status-saved\">v30 active</span>",
+      "css": ".ds-status-pill { min-height: 30px; display: inline-flex; align-items: center; border-radius: 999px; padding: 0 10px; border: 1px solid #e5e5df; background: #fff; color: #55554f; font: 570 12.5px/1.2 Inter, ui-sans-serif, system-ui, sans-serif; } .ds-status-saved { background: #edf8f1; border-color: #cae5d4; color: #1f6b43; }"
+    },
+    {
+      "name": "Mobile Card Row",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Compact mobile edit row that opens a sheet or drawer.",
+      "html": "<button class=\"ds-mobile-row\"><span><strong>Master prompt</strong><em>291 chars</em></span><span>Edit</span></button>",
+      "css": ".ds-mobile-row { width: 100%; min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; border: 1px solid #e5e5df; border-radius: 14px; background: #fff; color: #1d1d1b; text-align: left; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-mobile-row strong { display: block; font-size: 15px; font-weight: 610; } .ds-mobile-row em { display: block; color: #55554f; font-size: 13.5px; font-style: normal; } .ds-mobile-row:focus-visible { outline: 2px solid #1d1d1b; outline-offset: 3px; }"
+    },
+    {
+      "name": "Prompt Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Large editable instruction field for system prompts and version previews.",
+      "html": "<textarea class=\"ds-prompt-field\">You are the appointment-booking assistant for K1 Katsastus.</textarea>",
+      "css": ".ds-prompt-field { width: 100%; min-height: 220px; border: 1px solid #d4d4cc; border-radius: 12px; background: #fff; color: #2d2d29; padding: 14px 16px; font: 400 14.5px/1.75 SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace; resize: none; } .ds-prompt-field:focus-visible { outline: 2px solid #1d1d1b; outline-offset: 3px; }"
+    },
+    {
+      "name": "Chat Bubble",
+      "kind": "custom",
+      "refersTo": "chat-bubble",
+      "description": "Asymmetric message bubble for tester conversations.",
+      "html": "<div class=\"ds-chat ds-chat-agent\">Hi Bashir, this is K1 Katsastus. Your vehicle with registration ABC-123 is due for inspection soon. Would you like to book an appointment?</div>",
+      "css": ".ds-chat { width: fit-content; max-width: min(92%, 620px); padding: 13px 16px; border-radius: 17px; font: 400 15.5px/1.65 Inter, ui-sans-serif, system-ui, sans-serif; white-space: pre-wrap; } .ds-chat-agent { background: #fff; border: 1px solid #e5e5df; border-bottom-left-radius: 6px; color: #1d1d1b; } .ds-chat-user { background: #1d1d1b; color: #fff; border-bottom-right-radius: 6px; }"
+    },
+    {
+      "name": "Configuration Tabs",
+      "kind": "nav",
+      "refersTo": "config-tabs",
+      "description": "Focused Chatbase-style section tabs for Prompt and Opening without broad product navigation.",
+      "html": "<div class=\"ds-config-tabs\"><button class=\"active\">Prompt</button><button>Opening</button></div>",
+      "css": ".ds-config-tabs { display: inline-flex; width: fit-content; align-items: center; gap: 3px; padding: 3px; border: 1px solid #e5e5df; border-radius: 12px; background: #efefea; } .ds-config-tabs button { min-height: 30px; padding: 0 11px; border: 0; border-radius: 9px; background: transparent; color: #55554f; font: 570 13px/1.2 Inter, ui-sans-serif, system-ui, sans-serif; } .ds-config-tabs button.active { color: #1d1d1b; background: #fff; box-shadow: 0 1px 2px rgba(20,20,18,.07); }"
+    },
+    {
+      "name": "Live Tester Preview",
+      "kind": "custom",
+      "refersTo": "tester-preview",
+      "description": "Contained chat tester card centered on a faint dotted preview canvas.",
+      "html": "<section class=\"ds-preview\"><div class=\"ds-tester-card\">Agent tester</div></section>",
+      "css": ".ds-preview { display: grid; place-items: center; padding: 28px; background: radial-gradient(circle, #deded8 1px, transparent 1px) 0 0 / 18px 18px, #f7f7f4; } .ds-tester-card { width: min(620px, 100%); min-height: 520px; border: 1px solid #e5e5df; border-radius: 24px; background: #fff; box-shadow: 0 24px 70px rgba(20,20,18,.10); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Focused Agent Bench",
+    "overview": "The interface is a quiet bench for configuring one existing agent, not a campaign page or a general AI lab. It blends OpenAI Platform's restrained product-console typography and density with Chatbase's focused settings column, tabbed configuration, sticky save decisions, and live chat preview on a dotted canvas. The visual system is restrained and operational: off-white canvas, white work surfaces, thin neutral rules, near-black primary actions, and state color only where it changes the user's decision. Motion is used to clarify state changes such as drawers, sheets, saved banners, locks, and new chat messages.",
+    "keyCharacteristics": [
+      "Calm, low-contrast workspace with high-contrast actions.",
+      "Focused enough for one existing agent; no broad product navigation.",
+      "Dense enough for prompt work, never card-stacked for decoration.",
+      "State-first language: saved, draft, locked, restored, active.",
+      "Mobile interactions use sheets and bottom navigation instead of shrinking desktop panes."
+    ],
+    "rules": [
+      {
+        "name": "The Rare Action Rule",
+        "body": "Near-black is reserved for the action that commits or sends. Secondary actions stay on paper with a rule.",
+        "section": "colors"
+      },
+      {
+        "name": "The State Color Rule",
+        "body": "Green, amber, and red only describe real status or recovery. They are not decorative accents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Prompt Legibility Rule",
+        "body": "Prompt text gets larger line height and a monospaced face; it is edited like instructions, not scanned like marketing copy.",
+        "section": "typography"
+      },
+      {
+        "name": "The Split-Then-Sheet Rule",
+        "body": "Desktop keeps edit and test visible together; mobile uses one focused task surface at a time.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do keep the user's current state visible: saved, draft, active version, or locked.",
+      "Do keep desktop editing and testing adjacent unless the configuration is locked.",
+      "Do use sheets/drawers for mobile details rather than dense desktop controls.",
+      "Do reserve semantic color for actual save, draft, error, and locked states.",
+      "Do use the prompt type treatment for long editable agent instructions."
+    ],
+    "donts": [
+      "Don't introduce new-agent creation, workflow-building, or broad AI-platform navigation.",
+      "Don't use decorative color, gradient text, emoji icons, or generic AI-themed ornament.",
+      "Don't make locked state visually similar to editable state.",
+      "Don't bury version restore behind a hidden desktop-only control."
+    ]
+  }
+}
