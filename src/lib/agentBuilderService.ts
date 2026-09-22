@@ -37,6 +37,7 @@ export type SaveAgentBuilderConfigInput = {
 export type TestAgentBuilderInput = {
   tenantKey: string
   masterPrompt: string
+  additionalInformation?: string
   messages: AgentBuilderChatMessage[]
 }
 
@@ -232,6 +233,10 @@ export async function saveAgentBuilderConfig(input: SaveAgentBuilderConfigInput)
   return version
 }
 
+// Isolation: config load/save talks to the K1 agent-builder store (n8n proxy or local fallback).
+// The customer WhatsApp workflow keeps its own prompt and is not updated here.
+// `/chat/test` is a prompt-only model call: it has no WhatsApp, email, or booking tools.
+// Additional instructions are stored separately and appended by that test workflow.
 export async function testAgentBuilderMessage(input: TestAgentBuilderInput, fallbackReply: string): Promise<TestAgentBuilderResult> {
   if (!N8N_BUILDER_BASE_URL) {
     await new Promise((resolve) => window.setTimeout(resolve, 450))
