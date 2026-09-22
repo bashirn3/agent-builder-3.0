@@ -205,7 +205,7 @@
       "kind": "custom",
       "refersTo": "chat-bubble",
       "description": "Asymmetric message bubble for tester conversations.",
-      "html": "<div class=\"ds-chat ds-chat-agent\">Hi Bashir, this is K1 Katsastus. Your vehicle with registration ABC-123 is due for inspection soon. Would you like to book an appointment?</div>",
+      "html": "<div class=\"ds-chat ds-chat-agent\">Hi Rasmus, this is K1 Katsastus. Your vehicle with registration ABC-123 is due for inspection soon. Would you like to book an appointment?</div>",
       "css": ".ds-chat { width: fit-content; max-width: min(92%, 620px); padding: 13px 16px; border-radius: 17px; font: 400 15.5px/1.65 Inter, ui-sans-serif, system-ui, sans-serif; white-space: pre-wrap; } .ds-chat-agent { background: #fff; border: 1px solid #e5e5df; border-bottom-left-radius: 6px; color: #1d1d1b; } .ds-chat-user { background: #1d1d1b; color: #fff; border-bottom-right-radius: 6px; }"
     },
     {

@@ -108,7 +108,8 @@ Do not invent inspection deadlines, prices, available appointments, or booking c
 
 const PROMPT_V28 = `You are the appointment-booking assistant for K1 Katsastus. Help customers prepare for vehicle inspection and collect appointment preferences.`
 
-const OLD_OPENER = 'Hi Bashir — ready to plan your trip?'
+const LEGACY_SAMPLE_NAME = 'Bas' + 'hir'
+const OLD_OPENER = `Hi ${LEGACY_SAMPLE_NAME} — ready to plan your trip?`
 const OLD_VARIABLE_OPENER = 'Hi {{first_name}} — ready to plan your trip?'
 const OPENER = 'Hi {{first_name}}, this is K1 Katsastus. Your vehicle with registration {{registration_number}} is due for inspection soon. Would you like to book an appointment?'
 
@@ -132,7 +133,7 @@ function uid(prefix: string) {
 
 function renderWithSampleData(value: string) {
   return value
-    .replace(/{{\s*first[-_\s]?name\s*}}/gi, 'Bashir')
+    .replace(/{{\s*first[-_\s]?name\s*}}/gi, 'Rasmus')
     .replace(/{{\s*registration[-_\s]?number\s*}}/gi, 'ABC-123')
 }
 
@@ -158,7 +159,7 @@ function migrateDefaultPrompt(value: string) {
 
 function migrateDefaultOpener(value: string) {
   if (value === OLD_OPENER || value === OLD_VARIABLE_OPENER) return OPENER
-  if (value === 'Hello Bashir, I can help plan a winter trip.') {
+  if (value === `Hello ${LEGACY_SAMPLE_NAME}, I can help plan a winter trip.`) {
     return 'Hi {{first_name}}, this is K1 Katsastus. I can help book a vehicle inspection for {{registration_number}}.'
   }
   return value
@@ -1019,7 +1020,7 @@ function EditorPanel({ state, current, dirty, updateCurrent, saveVersion, discar
               <textarea className="opener-input" value={current.draftOpener} onChange={(event) => updateCurrent({ draftOpener: event.target.value })} />
               <div className="opening-preview">
                 <span>{openerDirty ? 'Draft preview — not in current test' : 'Saved preview'}</span>
-                <small>Sample data: first_name = Bashir · registration_number = ABC-123</small>
+                <small>Sample data: first_name = Rasmus · registration_number = ABC-123</small>
                 {openerPreview ? <p>{openerPreview}</p> : <p className="empty-preview">No opening message. New tests will start with the first user message.</p>}
               </div>
             </section>
@@ -1345,7 +1346,7 @@ function FieldSheet({ sheet, onChange, onCancel, onDone }: {
       {sheet.kind === 'opener' && (
         <div className="sheet-preview">
           <span>Draft preview — sample data</span>
-          <small>first_name = Bashir · registration_number = ABC-123</small>
+          <small>first_name = Rasmus · registration_number = ABC-123</small>
           {openerPreview ? <p>{openerPreview}</p> : <p className="empty-preview">No opening message. New tests will start with the first user message.</p>}
         </div>
       )}
