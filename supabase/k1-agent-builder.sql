@@ -27,11 +27,20 @@ create table if not exists public.agent_builder_versions (
   unique(agent_id, version_number)
 );
 
-alter table public.agent_builder_agents
-  add constraint agent_builder_agents_active_version_fk
-  foreign key (active_version_id)
-  references public.agent_builder_versions(id)
-  deferrable initially deferred;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'agent_builder_agents_active_version_fk'
+  ) then
+    alter table public.agent_builder_agents
+      add constraint agent_builder_agents_active_version_fk
+      foreign key (active_version_id)
+      references public.agent_builder_versions(id)
+      deferrable initially deferred;
+  end if;
+end $$;
 
 create unique index if not exists agent_builder_versions_active_uidx
   on public.agent_builder_versions(agent_id)
@@ -99,9 +108,9 @@ begin
     returning * into target_agent;
   end if;
 
-  select coalesce(max(version_number), 0) + 1 into next_version
-  from public.agent_builder_versions
-  where agent_id = target_agent.id;
+  select coalesce(max(v.version_number), 0) + 1 into next_version
+  from public.agent_builder_versions v
+  where v.agent_id = target_agent.id;
 
   insert into public.agent_builder_versions (
     agent_id,
