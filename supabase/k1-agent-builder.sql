@@ -124,7 +124,7 @@ begin
   values (
     target_agent.id,
     next_version,
-    true,
+    false,
     p_master_prompt,
     p_additional_information,
     p_opening_message,
@@ -136,6 +136,10 @@ begin
   set is_active = false
   where agent_id = target_agent.id
     and id <> inserted_version_id;
+
+  update public.agent_builder_versions
+  set is_active = true
+  where id = inserted_version_id;
 
   update public.agent_builder_agents
   set active_version_id = inserted_version_id,
