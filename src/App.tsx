@@ -24,6 +24,7 @@ type DialogState =
   | { kind: 'sign-out' }
   | { kind: 'restore'; versionId: string }
   | { kind: 'use-last-question' }
+  | { kind: 'discard' }
 
 type SheetState = {
   kind: 'opener' | 'prompt'
@@ -48,6 +49,7 @@ type AppState = {
   masterOpen: boolean
   openerOpen: boolean
   refineOpen: boolean
+  panelExpanded: boolean
   accountOpen: boolean
   instructionDraft: string
   saving: boolean
@@ -67,7 +69,53 @@ type AppState = {
 }
 
 const STORAGE_KEY = 'wasup-agent-builder-v1'
-const ease = [0.16, 1, 0.3, 1] as const
+const ease = [0.4, 0, 0.2, 1] as const
+
+function focusableIn(root: HTMLElement) {
+  return [...root.querySelectorAll<HTMLElement>('button, [href], textarea, input, select')]
+    .filter((node) => !node.hasAttribute('disabled') && node.tabIndex !== -1)
+}
+
+function useOverlayChrome(onClose: () => void) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  const closingRef = useRef(false)
+  onCloseRef.current = onClose
+  const requestClose = () => {
+    if (closingRef.current) return
+    closingRef.current = true
+    onCloseRef.current()
+  }
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        requestClose()
+        return
+      }
+      if (event.key !== 'Tab' || !rootRef.current) return
+      const nodes = focusableIn(rootRef.current)
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('keydown', onKey, true)
+      previous?.focus?.()
+    }
+  }, [])
+  return { rootRef, requestClose }
+}
 // Prototype gate only. This is not production authentication.
 const LOGIN_USERNAME = 'K1Admin'
 const LOGIN_PASSWORD = 'Wasup@123'
@@ -222,6 +270,7 @@ function initialState(): AppState {
     masterOpen: false,
     openerOpen: false,
     refineOpen: false,
+    panelExpanded: false,
     accountOpen: false,
     instructionDraft: '',
     saving: false,
@@ -316,13 +365,37 @@ function App() {
 
   useEffect(() => {
     if (!state.refineOpen) return
+    const previous = document.activeElement as HTMLElement | null
     refineCloseRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setState((prev) => ({ ...prev, refineOpen: false }))
+      if (event.key === 'Escape') {
+        setState((prev) => {
+          if (prev.dialog || prev.sheet) return prev
+          return { ...prev, refineOpen: false }
+        })
+        return
+      }
+      if (event.key !== 'Tab' || state.dialog || state.sheet) return
+      const root = document.querySelector<HTMLElement>('.refine-sheet')
+      if (!root) return
+      const nodes = focusableIn(root)
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [state.refineOpen])
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      previous?.focus?.()
+    }
+  }, [state.refineOpen, state.dialog, state.sheet])
 
   useEffect(() => {
     const persisted = {
@@ -732,6 +805,13 @@ function App() {
   const dialogContent = useMemo(() => {
     const dialog = state.dialog
     if (!dialog) return null
+    if (dialog.kind === 'discard') {
+      return {
+        title: 'Discard unsaved changes?',
+        body: 'Additional information, opening message, and base-prompt edits that are not saved will be reverted. The current test is unchanged.',
+        confirm: 'Discard changes',
+      }
+    }
     if (dialog.kind === 'save-lock') {
       return {
         title: 'Save changes before locking?',
@@ -766,6 +846,21 @@ function App() {
   const confirmDialog = () => {
     const dialog = state.dialog
     if (!dialog) return
+    if (dialog.kind === 'discard') {
+      setState((prev) => ({
+        ...prev,
+        dialog: null,
+        saveError: null,
+        instructionDraft: '',
+        agent: {
+          ...prev.agent,
+          draftBase: prev.agent.savedBase,
+          draftOpener: prev.agent.savedOpener,
+          draftAdditional: prev.agent.savedAdditional,
+          locked: prev.agent.savedLocked,
+        },
+      }))
+    }
     if (dialog.kind === 'save-lock') saveAndLock()
     if (dialog.kind === 'sign-out') setState((prev) => ({ ...prev, authed: false, historyOpen: false, dialog: null, sheet: null, refineOpen: false, accountOpen: false }))
     if (dialog.kind === 'restore') performRestore(dialog.versionId)
@@ -803,6 +898,8 @@ function App() {
       statusText={statusText}
       setState={setState}
       onSaveAndTest={saveAndTest}
+      onDiscard={() => setState((prev) => ({ ...prev, dialog: { kind: 'discard' } }))}
+      onTogglePanel={() => setState((prev) => ({ ...prev, panelExpanded: !prev.panelExpanded }))}
       onLock={requestLock}
       onUnlock={unlock}
     />
@@ -836,7 +933,7 @@ function App() {
         </div>
       </header>
 
-      <main className="workspace">
+      <main className={state.panelExpanded ? 'workspace workspace--expanded' : 'workspace'}>
         <section className="refine-panel desktop-pane">{refinement}</section>
         <section className="playground-panel desktop-pane">
           <Tester
@@ -885,56 +982,50 @@ function App() {
         </div>
       )}
 
-      <AnimatePresence>
-        {state.historyOpen && selectedVersion && (
-          <VersionHistory
-            versions={agent.versions}
-            activeVersion={agent.activeVersion}
-            selectedVersion={selectedVersion}
-            historyLimited={state.historyLimited}
-            onClose={() => setState((prev) => ({ ...prev, historyOpen: false }))}
-            onSelect={(versionId) => setState((prev) => ({ ...prev, selectedVersionId: versionId }))}
-            onRestore={restoreVersion}
-          />
-        )}
-      </AnimatePresence>
+      {state.historyOpen && selectedVersion && (
+        <VersionHistory
+          versions={agent.versions}
+          activeVersion={agent.activeVersion}
+          selectedVersion={selectedVersion}
+          historyLimited={state.historyLimited}
+          onClose={() => setState((prev) => ({ ...prev, historyOpen: false }))}
+          onSelect={(versionId) => setState((prev) => ({ ...prev, selectedVersionId: versionId }))}
+          onRestore={restoreVersion}
+        />
+      )}
 
-      <AnimatePresence>
-        {state.dialog && dialogContent && (
-          <ConfirmDialog
-            title={dialogContent.title}
-            body={dialogContent.body}
-            confirmLabel={dialogContent.confirm}
-            loading={state.saving}
-            onCancel={() => setState((prev) => ({ ...prev, dialog: null }))}
-            onConfirm={confirmDialog}
-          />
-        )}
-      </AnimatePresence>
+      {state.dialog && dialogContent && (
+        <ConfirmDialog
+          title={dialogContent.title}
+          body={dialogContent.body}
+          confirmLabel={dialogContent.confirm}
+          loading={state.saving}
+          onCancel={() => setState((prev) => ({ ...prev, dialog: null }))}
+          onConfirm={confirmDialog}
+        />
+      )}
 
-      <AnimatePresence>
-        {state.sheet && (
-          <FieldSheet
-            sheet={state.sheet}
-            locked={agent.locked}
-            onChange={(value) => setState((prev) => ({ ...prev, sheet: prev.sheet ? { ...prev.sheet, value } : null }))}
-            onCancel={() => setState((prev) => ({ ...prev, sheet: null }))}
-            onDone={() => {
-              if (!state.sheet || state.sheet.readOnly) {
-                setState((prev) => ({ ...prev, sheet: null }))
-                return
-              }
-              const sheet = state.sheet
-              patchAgent(sheet.kind === 'opener' ? { draftOpener: sheet.value } : { draftBase: sheet.value }, { sheet: null })
-            }}
-            onUnlock={() => setState((prev) => ({
-              ...prev,
-              agent: { ...prev.agent, locked: false },
-              sheet: prev.sheet?.kind === 'prompt' ? { ...prev.sheet, readOnly: false } : prev.sheet,
-            }))}
-          />
-        )}
-      </AnimatePresence>
+      {state.sheet && (
+        <FieldSheet
+          sheet={state.sheet}
+          locked={agent.locked}
+          onChange={(value) => setState((prev) => ({ ...prev, sheet: prev.sheet ? { ...prev.sheet, value } : null }))}
+          onCancel={() => setState((prev) => ({ ...prev, sheet: null }))}
+          onDone={() => {
+            if (!state.sheet || state.sheet.readOnly) {
+              setState((prev) => ({ ...prev, sheet: null }))
+              return
+            }
+            const sheet = state.sheet
+            patchAgent(sheet.kind === 'opener' ? { draftOpener: sheet.value } : { draftBase: sheet.value }, { sheet: null })
+          }}
+          onUnlock={() => setState((prev) => ({
+            ...prev,
+            agent: { ...prev.agent, locked: false },
+            sheet: prev.sheet?.kind === 'prompt' ? { ...prev.sheet, readOnly: false } : prev.sheet,
+          }))}
+        />
+      )}
 
       <AnimatePresence>
         {state.toast && (
@@ -984,12 +1075,14 @@ function AuthScreen({ state, setState, signIn }: {
   )
 }
 
-function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, onLock, onUnlock }: {
+function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, onDiscard, onTogglePanel, onLock, onUnlock }: {
   state: AppState
   dirty: boolean
   statusText: string
   setState: Dispatch<SetStateAction<AppState>>
   onSaveAndTest: () => void
+  onDiscard: () => void
+  onTogglePanel: () => void
   onLock: () => void
   onUnlock: () => void
 }) {
@@ -1000,12 +1093,16 @@ function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, on
 
   return (
     <div className="refine-content">
+      <div className="refine-body">
       <section className="refine-block">
         <div className="field-header">
           <div>
             <h2>Additional information</h2>
-            <p>This is added once, after the base prompt. The wording is kept as you wrote it.</p>
+            <p>Tell the agent what to do differently.</p>
           </div>
+          <button className="secondary-button refine-expand" type="button" onClick={onTogglePanel}>
+            {state.panelExpanded ? 'Collapse panel' : 'Expand panel'}
+          </button>
         </div>
         <textarea
           className="instruction-input"
@@ -1014,14 +1111,7 @@ function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, on
           onChange={(event) => setState((prev) => ({ ...prev, instructionDraft: event.target.value, saveError: null }))}
           placeholder="Describe what the agent should know or do differently…"
         />
-        <p className="example-hint">Example: If the customer asks for a Saturday appointment, explain that this station is open Monday to Friday only.</p>
-        <button className="primary-button save-test-button" type="button" onClick={onSaveAndTest} disabled={!dirty || state.saving}>
-          {state.saving && <Spinner />}
-          Save & test
-        </button>
-        <p className="save-help">Saves your refinement as a new version and starts a fresh test.</p>
-        <p className={`save-state ${state.saveError ? 'error' : state.saving ? 'saving' : dirty ? 'draft' : 'saved'}`} role="status"><span />{statusText}</p>
-        {state.saveError && <button className="secondary-button" type="button" onClick={onSaveAndTest} disabled={state.saving}>Retry save</button>}
+        <p className="example-hint">Example: Saturday bookings are Monday to Friday only.</p>
       </section>
 
       <section className={`disclosure ${state.masterOpen ? 'open' : ''}`}>
@@ -1079,6 +1169,22 @@ function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, on
           </div>
         )}
       </section>
+      </div>
+      <div className="savebar">
+        {(dirty || state.saving || state.saveError) && (
+          <div className="savebar-actions">
+            {dirty && (
+              <button className="secondary-button" type="button" onClick={onDiscard} disabled={state.saving}>Discard</button>
+            )}
+            <button className="primary-button save-test-button" type="button" onClick={onSaveAndTest} disabled={!dirty || state.saving}>
+              {state.saving && <Spinner />}
+              {state.saving ? 'Saving…' : state.saveError ? 'Retry save' : 'Save & test'}
+            </button>
+          </div>
+        )}
+        <p className={`save-state ${state.saveError ? 'error' : state.saving ? 'saving' : dirty ? 'draft' : 'saved'}`} role="status"><span />{statusText}</p>
+        {dirty && !state.saving && !state.saveError && <p className="save-help">Saves a new version and starts a fresh test.</p>}
+      </div>
     </div>
   )
 }
@@ -1102,14 +1208,17 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
   const agent = state.agent
   const previousQuestion = lastCustomerQuestion(agent.previousTest?.messages ?? [])
   const ready = state.feedback === 'ready' && !dirty && !state.testError
+  const usesSample = agent.messages.some((message) => message.sample)
 
   return (
     <div className={`playground-content ${compact ? 'compact' : ''}`}>
       <div className="context-row">
         <span className="tester-title" tabIndex={-1} data-tester-heading="true">
-          <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
-          <strong>Agent tester</strong>
-          <em>{contextLabel}</em>
+          <span className="tester-k" aria-hidden="true">K</span>
+          <span className="tester-meta">
+            <strong>Agent tester</strong>
+            <em>{contextLabel}</em>
+          </span>
         </span>
         <span className="tester-actions">
           {compact && (
@@ -1118,10 +1227,11 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
               {dirty && <i className="pending-dot" aria-hidden="true" />}
             </button>
           )}
-          <button className="secondary-button" type="button" onClick={onNewTest}>New test</button>
+          <button className="secondary-button" type="button" onClick={onNewTest} aria-label="Start a new test">New test</button>
         </span>
       </div>
-      {dirty && <div className="draft-banner">This test excludes your unsaved changes.</div>}
+      {usesSample && <p className="sample-note">Sample customer: Rasmus · ABC-123</p>}
+      {dirty && <div className="draft-banner">Unsaved refinements are not included in this test.</div>}
       {ready && <div className="success-banner" role="status"><span><i className="dot" />{agent.testingVersionId && isolatedTester ? `${agent.testingVersionId} saved · Ready to test.` : `${agent.activeVersion} saved · Ready to test.`}</span></div>}
       {state.testError && (
         <div className="error-banner" role="status">
@@ -1157,10 +1267,9 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
               transition={{ duration: reducedMotion ? 0.01 : 0.2, ease }}
             >
               <div>{message.text}</div>
-              {message.sample && <span className="mock-tag">Sample data</span>}
-              {message.mocked && <span className="mock-tag">Mocked reply</span>}
+              {message.mocked && <span className="mock-tag">Mocked</span>}
               {message.role === 'agent' && (
-                <button className="message-action" type="button" onClick={() => onCopy(message)}><CopyIcon />{state.copiedMessageId === message.id ? 'Copied' : 'Copy'}</button>
+                <button className="message-action" type="button" onClick={() => onCopy(message)} aria-label={state.copiedMessageId === message.id ? 'Copied' : 'Copy reply'}><CopyIcon />{state.copiedMessageId === message.id ? 'Copied' : 'Copy'}</button>
               )}
             </motion.article>
           ))}
@@ -1182,8 +1291,8 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
           </motion.button>
         </div>
         <p>{isolatedTester
-          ? 'Tests the last saved version only. No WhatsApp messages, emails, or appointment changes.'
-          : 'Mocked reply. These canned responses do not change when the prompt changes. Nothing is sent to customers.'}
+          ? 'Last saved version only. Nothing is sent to customers.'
+          : 'Mocked replies. Nothing is sent to customers.'}
         </p>
       </div>
     </div>
@@ -1200,13 +1309,28 @@ function VersionHistory({ versions, activeVersion, selectedVersion, historyLimit
   onRestore: (versionId: string) => void
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const [leaving, setLeaving] = useState(false)
+  const startClose = () => {
+    if (leaving) return
+    setLeaving(true)
+    window.setTimeout(onClose, 220)
+  }
+  const { rootRef, requestClose } = useOverlayChrome(startClose)
   useEffect(() => { closeRef.current?.focus() }, [])
   return (
-    <div className="overlay" onKeyDown={(event) => { if (event.key === 'Escape') onClose() }}>
-      <aside className="history-drawer" role="dialog" aria-modal="true" aria-labelledby="versions-title">
+    <motion.div
+      ref={rootRef}
+      className="overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: leaving ? 0 : 1 }}
+      transition={{ duration: 0.2, ease }}
+      style={leaving ? { pointerEvents: 'none' } : undefined}
+      onClick={(event) => { if (event.target === event.currentTarget) requestClose() }}
+    >
+      <motion.aside className="history-drawer" role="dialog" aria-modal="true" aria-labelledby="versions-title" initial={{ x: '100%' }} animate={{ x: leaving ? '100%' : 0 }} transition={{ duration: 0.22, ease }}>
         <header>
           <h2 id="versions-title">Versions</h2>
-          <button ref={closeRef} className="icon-button" type="button" onClick={onClose} aria-label="Close versions"><CloseIcon /></button>
+          <button ref={closeRef} className="icon-button" type="button" onClick={requestClose} aria-label="Close versions"><CloseIcon /></button>
         </header>
         {historyLimited && <p className="history-note">Only the current saved version is available. Older versions appear here when they can be loaded.</p>}
         <div className="version-list">
@@ -1233,11 +1357,11 @@ function VersionHistory({ versions, activeVersion, selectedVersion, historyLimit
           <pre>{selectedVersion.prompt}</pre>
         </section>
         <footer>
-          <button className="secondary-button" type="button" onClick={onClose}>Close</button>
+          <button className="secondary-button" type="button" onClick={requestClose}>Close</button>
           <button className="primary-button" type="button" onClick={() => onRestore(selectedVersion.id)}>Restore {selectedVersion.id}</button>
         </footer>
-      </aside>
-    </div>
+      </motion.aside>
+    </motion.div>
   )
 }
 
@@ -1250,14 +1374,23 @@ function ConfirmDialog({ title, body, confirmLabel, loading, onCancel, onConfirm
   onConfirm: () => void
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const { rootRef, requestClose } = useOverlayChrome(onCancel)
   useEffect(() => { cancelRef.current?.focus() }, [])
   return (
-    <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={(event) => { if (event.key === 'Escape') onCancel() }}>
-      <motion.div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2, ease }}>
+    <motion.div
+      ref={rootRef}
+      className="modal-backdrop"
+      tabIndex={-1}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      onClick={(event) => { if (event.target === event.currentTarget) requestClose() }}
+      onKeyDown={(event) => { if (event.key === 'Escape') requestClose() }}
+    >
+      <motion.div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-body" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.2, ease }}>
         <h2 id="dialog-title">{title}</h2>
-        <p>{body}</p>
+        <p id="dialog-body">{body}</p>
         <div>
-          <button className="secondary-button" type="button" ref={cancelRef} onClick={onCancel}>Cancel</button>
+          <button className="secondary-button" type="button" ref={cancelRef} onClick={requestClose}>Cancel</button>
           <button className="primary-button" type="button" onClick={onConfirm} disabled={loading}>{loading && <Spinner />}{confirmLabel}</button>
         </div>
       </motion.div>
@@ -1275,11 +1408,12 @@ function FieldSheet({ sheet, locked, onChange, onCancel, onDone, onUnlock }: {
 }) {
   const openerPreview = sheet.kind === 'opener' ? renderWithSampleData(sheet.value).trim() : ''
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const { rootRef, requestClose } = useOverlayChrome(onCancel)
   useEffect(() => { cancelRef.current?.focus() }, [])
   return (
-    <motion.div className="field-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.2, ease }} onKeyDown={(event) => { if (event.key === 'Escape') onCancel() }}>
+    <motion.div ref={rootRef} className="field-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2, ease }}>
       <header>
-        <button ref={cancelRef} type="button" onClick={onCancel}>Cancel</button>
+        <button ref={cancelRef} type="button" onClick={requestClose}>Cancel</button>
         <h2 id="sheet-title">{sheet.title}</h2>
         <button type="button" onClick={onDone}>{sheet.readOnly ? 'Close' : 'Done'}</button>
       </header>
