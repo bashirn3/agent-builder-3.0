@@ -1,296 +1,38 @@
 import { animate } from 'motion'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Dispatch, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction, SVGProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { getAgentBuilderBackendMode, getK1TenantKey, loadAgentBuilderConfig, saveAgentBuilderConfig, testAgentBuilderMessage, type AgentBuilderVersionRecord } from './lib/agentBuilderService'
+import { KeyboardEvent as ReactKeyboardEvent, ReactNode, SVGProps, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { shouldAcceptTestReply, type ChatMessage } from './lib/refinement'
 import {
-  applyFreshTest,
-  applySavedConfig,
-  beginFreshTest,
-  captureSaveSnapshot,
-  hasMeaningfulChanges,
-  lastCustomerQuestion,
-  renderWithSampleData,
-  restorePlan,
-  shouldAcceptTestReply,
-  starterMessages,
-  versionScope,
-  type AgentDraft,
-  type ChatMessage,
-  type PromptVersion,
-  type SaveSnapshot,
-} from './lib/refinement'
+  conversationFromOpener,
+  createMockPlaygroundService,
+  openerPreview,
+  type AgentConfig,
+  type PlaygroundService,
+} from './lib/playgroundService'
+import { backdropVariants, dialogVariants, ease, fade, sheetMotion, space } from './lib/motion'
 
-type DialogState =
-  | { kind: 'save-lock' }
-  | { kind: 'sign-out' }
-  | { kind: 'restore'; versionId: string }
-  | { kind: 'use-last-question' }
-  | { kind: 'discard' }
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+type NavId = 'playground' | 'activity' | 'leads'
 
-type SheetState = {
-  kind: 'opener' | 'prompt'
-  title: string
-  value: string
-  readOnly: boolean
+const service: PlaygroundService = createMockPlaygroundService()
+
+function uid(prefix: string) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-type Feedback = 'idle' | 'ready' | 'locked'
-
-type AppState = {
-  authed: boolean
-  username: string
-  password: string
-  showPassword: boolean
-  signingIn: boolean
-  loginError: string | null
-  agent: AgentDraft
-  historyOpen: boolean
-  historyLimited: boolean
-  selectedVersionId: string
-  masterOpen: boolean
-  openerOpen: boolean
-  refineOpen: boolean
-  accountOpen: boolean
-  instructionDraft: string
-  saving: boolean
-  saveError: string | null
-  pendingSaveId: string | null
-  feedback: Feedback
-  composer: string
-  sending: boolean
-  pendingResponseId: string | null
-  testError: string | null
-  retryingTest: boolean
-  dialog: DialogState | null
-  sheet: SheetState | null
-  copiedMessageId: string | null
-  toast: string | null
-  versionConfirmed: boolean
-}
-
-const STORAGE_KEY = 'wasup-agent-builder-v1'
-const ease = [0.4, 0, 0.2, 1] as const
-const arrive = [0.16, 1, 0.3, 1] as const
-const space = { duration: 0.22, ease }
-const fade = { duration: 0.2, ease }
-const slideIn = { duration: 0.28, ease: arrive }
-const slideOut = { duration: 0.22, ease }
-const REFINE_DEFAULT = 420
-const REFINE_MIN = 320
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function useNarrowWorkspace() {
-  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 899px)').matches)
+function useViewport() {
+  const [width, setWidth] = useState(() => (typeof window === 'undefined' ? 1440 : window.innerWidth))
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 899px)')
-    const sync = () => setNarrow(media.matches)
-    sync()
-    media.addEventListener('change', sync)
-    return () => media.removeEventListener('change', sync)
+    const onResize = () => setWidth(window.innerWidth)
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
-  return narrow
-}
-
-function useLeaveMotion(onGone: () => void, ms = 220) {
-  const reducedMotion = useReducedMotion()
-  const [leaving, setLeaving] = useState(false)
-  const startLeave = () => {
-    if (leaving) return
-    if (reducedMotion) {
-      onGone()
-      return
-    }
-    setLeaving(true)
-    window.setTimeout(onGone, ms)
+  return {
+    width,
+    mobile: width < 900,
+    compactLaptop: width >= 900 && width < 1280,
   }
-  return { leaving, startLeave, reduced: !!reducedMotion }
-}
-
-function useOverlayEntrance(axis: 'x' | 'y', leaving: boolean, reduced: boolean) {
-  const backdropRef = useRef<HTMLDivElement | null>(null)
-  const panelRef = useRef<HTMLElement | null>(null)
-  const armedRef = useRef(false)
-  const setBackdrop = useCallback((node: HTMLDivElement | null) => { backdropRef.current = node }, [])
-  const setPanel = useCallback((node: HTMLElement | null) => { panelRef.current = node }, [])
-  useLayoutEffect(() => {
-    const backdrop = backdropRef.current
-    const panel = panelRef.current
-    if (!backdrop || !panel) return
-    armedRef.current = false
-    const arm = window.setTimeout(() => { armedRef.current = true }, 240)
-    if (reduced) {
-      backdrop.style.opacity = leaving ? '0' : '1'
-      panel.style.transform = leaving ? (axis === 'y' ? 'translateY(100%)' : 'translateX(100%)') : 'none'
-      return () => window.clearTimeout(arm)
-    }
-    const hidden = axis === 'y' ? 'translateY(100%)' : 'translateX(100%)'
-    const shown = 'translateX(0%) translateY(0%)'
-    animate(backdrop, { opacity: leaving ? [1, 0] : [0, 1] }, fade)
-    animate(panel, { transform: leaving ? [shown, hidden] : [hidden, shown] }, leaving ? slideOut : slideIn)
-    return () => window.clearTimeout(arm)
-  }, [axis, leaving, reduced])
-  return { setBackdrop, setPanel, isArmed: () => armedRef.current }
-}
-
-function Accordion({ id, title, open, onToggle, meta, trailing, children }: {
-  id: string
-  title: ReactNode
-  open: boolean
-  onToggle: () => void
-  meta?: ReactNode
-  trailing?: ReactNode
-  children: ReactNode
-}) {
-  const reducedMotion = useReducedMotion()
-  const [clip, setClip] = useState(!open)
-  const buttonId = `${id}-toggle`
-  const panelId = `${id}-panel`
-  useEffect(() => {
-    if (open) return
-    setClip(true)
-    const panel = document.getElementById(panelId)
-    const toggle = document.getElementById(buttonId)
-    if (panel && toggle && panel.contains(document.activeElement)) toggle.focus()
-  }, [open, buttonId, panelId])
-  return (
-    <section className={`disclosure${open ? ' open' : ''}`} data-disclosure={id}>
-      <div className="disclosure-bar">
-        <button id={buttonId} type="button" className="disclosure-toggle" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
-          <motion.span className="disclosure-chevron" aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={reducedMotion ? { duration: 0 } : space}>
-            <ChevronIcon />
-          </motion.span>
-          {title}
-          {meta}
-        </button>
-        {trailing}
-      </div>
-      <motion.div
-        id={panelId}
-        role="region"
-        aria-labelledby={buttonId}
-        className="disclosure-clip"
-        initial={false}
-        animate={open ? 'open' : 'closed'}
-        variants={{
-          open: { height: 'auto', opacity: 1 },
-          closed: { height: 0, opacity: 0 },
-        }}
-        transition={reducedMotion ? { duration: 0 } : { height: space, opacity: { duration: 0.18, ease } }}
-        style={{ overflow: clip ? 'hidden' : 'visible' }}
-        onAnimationStart={() => setClip(true)}
-        onAnimationComplete={() => { if (open) setClip(false) }}
-        {...(open ? {} : { inert: true })}
-      >
-        <div className="disclosure-body">{children}</div>
-      </motion.div>
-    </section>
-  )
-}
-
-function Composer({ value, sending, compact, onChange, onKeyDown, onSend }: {
-  value: string
-  sending: boolean
-  compact: boolean
-  onChange: (value: string) => void
-  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
-  onSend: () => void
-}) {
-  const areaRef = useRef<HTMLTextAreaElement>(null)
-  const [multiline, setMultiline] = useState(false)
-  useLayoutEffect(() => {
-    const area = areaRef.current
-    if (!area) return
-    const styles = getComputedStyle(area)
-    const line = Number.parseFloat(styles.lineHeight) || 24
-    const pad = (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0)
-    const single = line + pad
-    const cap = compact ? 148 : 132
-    area.style.height = '0px'
-    const next = Math.min(Math.max(area.scrollHeight, single), cap)
-    area.style.height = `${next}px`
-    setMultiline(next > single + 2)
-  }, [value, compact])
-  return (
-    <div className={multiline ? 'composer is-multiline' : 'composer'}>
-      <textarea
-        ref={areaRef}
-        rows={1}
-        data-composer="true"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder="Ask the saved agent a test question…"
-        aria-label="Test message"
-      />
-      <motion.button className="send-button" type="button" onClick={onSend} disabled={!value.trim() || sending} whileTap={{ scale: 0.94 }} aria-label="Send message">
-        <ArrowUpIcon />
-      </motion.button>
-    </div>
-  )
-}
-
-function WorkspaceDivider({ width, min, max, settling, onChange, onReset, onTogglePreset }: {
-  width: number
-  min: number
-  max: number
-  settling: boolean
-  onChange: (width: number) => void
-  onReset: () => void
-  onTogglePreset: () => void
-}) {
-  const drag = useRef<{ pointerId: number; startX: number; startWidth: number; moved: boolean } | null>(null)
-  const applyBounds = (next: number) => onChange(clamp(Math.round(next), min, max))
-  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const active = drag.current
-    if (!active || active.pointerId !== event.pointerId) return
-    drag.current = null
-    document.body.classList.remove('is-resizing')
-    try { event.currentTarget.releasePointerCapture(event.pointerId) } catch { /* already released */ }
-    if (!active.moved) onTogglePreset()
-  }
-  return (
-    <div
-      className="workspace-divider"
-      role="separator"
-      aria-orientation="vertical"
-      aria-controls="refine-panel tester-canvas"
-      aria-valuemin={min}
-      aria-valuemax={max}
-      aria-valuenow={width}
-      aria-valuetext={`${width} pixels`}
-      aria-label="Resize refinement panel"
-      tabIndex={0}
-      onPointerDown={(event) => {
-        if (event.button !== 0) return
-        if ((event.target as HTMLElement).closest('button')) return
-        drag.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width, moved: false }
-        document.body.classList.add('is-resizing')
-        event.currentTarget.setPointerCapture(event.pointerId)
-      }}
-      onPointerMove={(event) => {
-        const active = drag.current
-        if (!active || active.pointerId !== event.pointerId) return
-        const delta = event.clientX - active.startX
-        if (Math.abs(delta) > 3) active.moved = true
-        if (active.moved) applyBounds(active.startWidth + delta)
-      }}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onDoubleClick={(event) => { event.preventDefault(); onReset() }}
-      onKeyDown={(event) => {
-        if (event.key === 'ArrowLeft') { event.preventDefault(); applyBounds(width - 16) }
-        if (event.key === 'ArrowRight') { event.preventDefault(); applyBounds(width + 16) }
-        if (event.key === 'Home' || event.key === 'Enter') { event.preventDefault(); onReset() }
-      }}
-    >
-      <span className="workspace-divider__line" aria-hidden="true" />
-      <span className={`workspace-divider__grip${settling ? ' is-settling' : ''}`} aria-hidden="true" />
-      <button className="workspace-divider__reset" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onReset() }}>Reset width</button>
-    </div>
-  )
 }
 
 function focusableIn(root: HTMLElement) {
@@ -301,20 +43,14 @@ function focusableIn(root: HTMLElement) {
 function useOverlayChrome(onClose: () => void) {
   const rootRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
-  const closingRef = useRef(false)
   onCloseRef.current = onClose
-  const requestClose = () => {
-    if (closingRef.current) return
-    closingRef.current = true
-    onCloseRef.current()
-  }
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopPropagation()
-        requestClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab' || !rootRef.current) return
@@ -336,945 +72,302 @@ function useOverlayChrome(onClose: () => void) {
       previous?.focus?.()
     }
   }, [])
-  return { rootRef, requestClose }
-}
-// Prototype gate only. This is not production authentication.
-const LOGIN_USERNAME = 'K1Admin'
-const LOGIN_PASSWORD = 'Wasup@123'
-
-const OLD_BASE_PROMPT = `You are the booking assistant for Booklapland.
-
-Answer in two sentences or fewer. Ask one follow-up question when a date, party size or destination is missing.
-
-Never invent availability or pricing. If a fact is not in context, say so and hand off to a human.
-
-Tone: warm, direct, no filler.`
-const OLD_PROMPT_V29 = `You are the booking assistant for Booklapland.
-
-Never invent availability or pricing. If a fact is not in context, say so and hand off to a human.`
-const OLD_PROMPT_V28 = `You are the booking assistant for Booklapland. Help leads plan winter trips and collect their dates, party size and destination.`
-const BASE_PROMPT = `You are the appointment-booking assistant for K1 Katsastus, a Finnish vehicle inspection company.
-
-Ask whether the customer wants to book an inspection and collect the details needed to check availability: registration number, preferred K1 station, preferred date or time window, and contact details when needed.
-
-Use connected workflow results for available appointments and booking outcomes. Do not invent inspection deadlines, prices, available appointments, or booking confirmations.
-
-If a required detail is missing, ask one clear follow-up question. If workflow data is unavailable, say so and hand off to staff.`
-const PROMPT_V29 = `You are the appointment-booking assistant for K1 Katsastus.
-
-Do not invent inspection deadlines, prices, available appointments, or booking confirmations. Use connected workflow results before confirming anything.`
-const PROMPT_V28 = `You are the appointment-booking assistant for K1 Katsastus. Help customers prepare for vehicle inspection and collect appointment preferences.`
-const LEGACY_SAMPLE_NAME = 'Bas' + 'hir'
-const OLD_OPENER = `Hi ${LEGACY_SAMPLE_NAME} — ready to plan your trip?`
-const OLD_VARIABLE_OPENER = 'Hi {{first_name}} — ready to plan your trip?'
-const OPENER = 'Hi {{first_name}}, this is K1 Katsastus. Your vehicle with registration {{registration_number}} is due for inspection soon. Would you like to book an appointment?'
-const REPLIES = [
-  'I can help with that. Which K1 station and date or time window would you prefer?',
-  'Please share the registration number first so the live workflow can check the right vehicle record.',
-  'This prototype cannot confirm prices or appointment availability. In production I would wait for the connected workflow result before confirming.',
-  'Using the sample due-soon record for ABC-123, I can ask for your preferred station and time before checking appointments.',
-]
-const OLD_REPLIES = [
-  'I can check that. Which destination are you thinking of, and are the dates flexible?',
-  'The winter package covers accommodation, transfers and two guided activities. Would you prefer December or January dates?',
-  "I don't have live pricing for that week. I’ll pass this to a colleague who can confirm it today.",
-  'Two adults, five nights, late December. Shall I hold that while you check with your travel companion?',
-]
-
-function uid(prefix: string) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-function migrateDefaultPrompt(value: string) {
-  if (value === OLD_BASE_PROMPT) return BASE_PROMPT
-  if (value === OLD_PROMPT_V29) return PROMPT_V29
-  if (value === OLD_PROMPT_V28) return PROMPT_V28
-  if (value.startsWith(`${OLD_BASE_PROMPT}\n\nAdditional guidance:`)) return value.replace(OLD_BASE_PROMPT, BASE_PROMPT)
-  if (value.startsWith(`${OLD_PROMPT_V29}\n\nAdditional guidance:`)) return value.replace(OLD_PROMPT_V29, PROMPT_V29)
-  if (value.startsWith(`${OLD_PROMPT_V28}\n\nAdditional guidance:`)) return value.replace(OLD_PROMPT_V28, PROMPT_V28)
-  return value
-}
-
-function migrateDefaultOpener(value: string) {
-  if (value === OLD_OPENER || value === OLD_VARIABLE_OPENER) return OPENER
-  if (value === `Hello ${LEGACY_SAMPLE_NAME}, I can help plan a winter trip.`) {
-    return 'Hi {{first_name}}, this is K1 Katsastus. I can help book a vehicle inspection for {{registration_number}}.'
-  }
-  return value
-}
-
-function migrateDefaultMessage(value: string) {
-  if (value === renderWithSampleData(OLD_OPENER) || value === renderWithSampleData(OLD_VARIABLE_OPENER)) return renderWithSampleData(OPENER)
-  const oldReplyIndex = OLD_REPLIES.indexOf(value)
-  return oldReplyIndex >= 0 ? REPLIES[oldReplyIndex] : value
-}
-
-function formatStamp(value: string | Date) {
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
-}
-
-function makeAgent(): AgentDraft {
-  return {
-    locked: false,
-    savedLocked: false,
-    conversationId: uid('thread'),
-    testingVersionId: null,
-    savedBase: BASE_PROMPT,
-    savedAdditional: '',
-    savedOpener: OPENER,
-    draftBase: BASE_PROMPT,
-    draftAdditional: '',
-    draftOpener: OPENER,
-    versions: [
-      { id: 'v30', meta: '21 Sep, 14:02 · Shorter answers', prompt: BASE_PROMPT, opener: OPENER, sample: true },
-      { id: 'v29', meta: '20 Sep, 09:41 · Handoff rule', prompt: PROMPT_V29, opener: OPENER, sample: true },
-      { id: 'v28', meta: '18 Sep, 16:20 · Initial context', prompt: PROMPT_V28, opener: 'Hi {{first_name}}, this is K1 Katsastus. I can help book a vehicle inspection for {{registration_number}}.', sample: true },
-    ],
-    activeVersion: 'v30',
-    messages: starterMessages(OPENER, uid('msg')),
-    previousTest: null,
-    replyIndex: 0,
-  }
-}
-
-function versionNumber(id: string) {
-  const numeric = Number(id.replace(/^v/, ''))
-  return Number.isFinite(numeric) ? numeric : 0
-}
-
-function normalizeAgent(raw: Partial<AgentDraft> & { savedPrompt?: string; draftPrompt?: string } | undefined): AgentDraft {
-  const fresh = makeAgent()
-  if (!raw) return fresh
-  const savedBase = migrateDefaultPrompt(raw.savedBase ?? raw.savedPrompt ?? fresh.savedBase)
-  const draftBase = migrateDefaultPrompt(raw.draftBase ?? raw.draftPrompt ?? savedBase)
-  const savedOpener = migrateDefaultOpener(raw.savedOpener ?? fresh.savedOpener)
-  const draftOpener = migrateDefaultOpener(raw.draftOpener ?? savedOpener)
-  const versions = (raw.versions?.length ? raw.versions : fresh.versions).map((version) => ({
-    ...version,
-    prompt: migrateDefaultPrompt(version.prompt),
-    opener: typeof version.opener === 'string' ? migrateDefaultOpener(version.opener) : version.opener,
-  }))
-  return {
-    ...fresh,
-    ...raw,
-    locked: Boolean(raw.locked),
-    savedLocked: typeof raw.savedLocked === 'boolean' ? raw.savedLocked : Boolean(raw.locked),
-    conversationId: raw.conversationId || fresh.conversationId,
-    testingVersionId: raw.testingVersionId ?? null,
-    savedBase,
-    savedAdditional: raw.savedAdditional ?? '',
-    savedOpener,
-    draftBase,
-    draftAdditional: raw.draftAdditional ?? raw.savedAdditional ?? '',
-    draftOpener,
-    versions,
-    activeVersion: raw.activeVersion || versions[0]?.id || fresh.activeVersion,
-    messages: (raw.messages ?? fresh.messages).map((message) => ({ ...message, text: migrateDefaultMessage(message.text) })),
-    previousTest: raw.previousTest
-      ? { ...raw.previousTest, messages: raw.previousTest.messages.map((message) => ({ ...message, text: migrateDefaultMessage(message.text) })) }
-      : null,
-    replyIndex: raw.replyIndex ?? 0,
-  }
-}
-
-function initialState(): AppState {
-  return {
-    authed: false,
-    username: '',
-    password: '',
-    showPassword: false,
-    signingIn: false,
-    loginError: null,
-    agent: makeAgent(),
-    historyOpen: false,
-    historyLimited: false,
-    selectedVersionId: 'v30',
-    masterOpen: false,
-    openerOpen: false,
-    refineOpen: false,
-    accountOpen: false,
-    instructionDraft: '',
-    saving: false,
-    saveError: null,
-    pendingSaveId: null,
-    feedback: 'idle',
-    composer: '',
-    sending: false,
-    pendingResponseId: null,
-    testError: null,
-    retryingTest: false,
-    dialog: null,
-    sheet: null,
-    copiedMessageId: null,
-    toast: null,
-    versionConfirmed: false,
-  }
-}
-
-function loadInitialState(): AppState {
-  if (typeof window === 'undefined') return initialState()
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY)
-    if (!saved) return initialState()
-    const parsed = JSON.parse(saved) as Partial<AppState> & { instances?: { Original?: AgentDraft & { savedPrompt?: string; draftPrompt?: string } } }
-    const fresh = initialState()
-    return {
-      ...fresh,
-      authed: Boolean(parsed.authed),
-      username: typeof parsed.username === 'string' ? parsed.username : '',
-      agent: normalizeAgent(parsed.agent ?? parsed.instances?.Original),
-      selectedVersionId: parsed.selectedVersionId || fresh.selectedVersionId,
-      instructionDraft: typeof parsed.instructionDraft === 'string' ? parsed.instructionDraft : '',
-      composer: typeof parsed.composer === 'string' ? parsed.composer : '',
-    }
-  } catch {
-    return initialState()
-  }
-}
-
-function versionFromRecord(record: AgentBuilderVersionRecord, label: string): PromptVersion {
-  return {
-    id: `v${record.versionNumber}`,
-    meta: `${formatStamp(record.createdAt)} · ${label}`,
-    prompt: record.masterPrompt,
-    opener: record.openingMessage ?? '',
-    additionalInformation: record.additionalInformation ?? '',
-  }
-}
-
-function changesOf(state: AppState) {
-  const agent = state.agent
-  return hasMeaningfulChanges({
-    instructionDraft: state.instructionDraft,
-    draftBase: agent.draftBase,
-    savedBase: agent.savedBase,
-    draftOpener: agent.draftOpener,
-    savedOpener: agent.savedOpener,
-    draftAdditional: agent.draftAdditional,
-    savedAdditional: agent.savedAdditional,
-    locked: agent.locked,
-    savedLocked: agent.savedLocked,
-  })
-}
-
-function focusVisibleComposer() {
-  const nodes = document.querySelectorAll<HTMLTextAreaElement>('[data-composer="true"]')
-  const visible = [...nodes].find((node) => node.getClientRects().length > 0)
-  visible?.focus()
-}
-
-function focusVisibleTester() {
-  const nodes = document.querySelectorAll<HTMLElement>('[data-tester-heading="true"]')
-  const visible = [...nodes].find((node) => node.getClientRects().length > 0)
-  visible?.focus()
-}
-
-function focusAfterSave() {
-  if (window.matchMedia('(min-width: 900px)').matches) focusVisibleComposer()
-  else focusVisibleTester()
+  return rootRef
 }
 
 function App() {
-  const [state, setState] = useState<AppState>(() => loadInitialState())
-  const [refineWidth, setRefineWidth] = useState(REFINE_DEFAULT)
-  const [widthSettling, setWidthSettling] = useState(false)
-  const [extraOpen, setExtraOpen] = useState(true)
-  const [previousTestOpen, setPreviousTestOpen] = useState(false)
-  const narrow = useNarrowWorkspace()
-  const reducedMotion = useReducedMotion()
-  const agent = state.agent
-  const dirty = changesOf(state)
-  const selectedVersion = agent.versions.find((version) => version.id === state.selectedVersionId) ?? agent.versions[0]
-  const isolatedTester = getAgentBuilderBackendMode() === 'n8n'
+  const { mobile, compactLaptop } = useViewport()
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [refineOpen, setRefineOpen] = useState(false)
+  const [instructionsOpen, setInstructionsOpen] = useState(false)
+  const [openerOpen, setOpenerOpen] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [saved, setSaved] = useState<AgentConfig>({ instructions: '', opener: '' })
+  const [draft, setDraft] = useState<AgentConfig>({ instructions: '', opener: '' })
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [conversationId, setConversationId] = useState(() => uid('thread'))
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [composer, setComposer] = useState('')
+  const [sending, setSending] = useState(false)
+  const [pendingResponseId, setPendingResponseId] = useState<string | null>(null)
+  const [replyError, setReplyError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const accountRef = useRef<HTMLDivElement>(null)
-  const refineCloseRef = useRef<HTMLButtonElement>(null)
-  const focusedOnce = useRef(false)
-  const settleAnim = useRef<{ stop: () => void } | null>(null)
-  const refineMax = typeof window === 'undefined' ? 720 : Math.max(REFINE_MIN, Math.round(window.innerWidth * 0.62))
-  const settleWidth = (next: number) => {
-    settleAnim.current?.stop()
-    if (reducedMotion || next === refineWidth) {
-      setRefineWidth(next)
-      setWidthSettling(false)
-      return
-    }
-    setWidthSettling(true)
-    settleAnim.current = animate(refineWidth, next, {
-      duration: 0.22,
-      ease,
-      onUpdate: (value) => setRefineWidth(Math.round(value)),
-      onComplete: () => setWidthSettling(false),
-    })
-  }
-  useEffect(() => () => settleAnim.current?.stop(), [])
+  const savedToast = useRef<number>(0)
+  const conversationIdRef = useRef(conversationId)
+  const pendingRef = useRef<string | null>(null)
+  conversationIdRef.current = conversationId
+  const dirty = draft.instructions !== saved.instructions || draft.opener !== saved.opener
 
   useEffect(() => {
-    if (!state.refineOpen) return
-    const previous = document.activeElement as HTMLElement | null
-    refineCloseRef.current?.focus()
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setState((prev) => {
-          if (prev.dialog || prev.sheet) return prev
-          return { ...prev, refineOpen: false }
-        })
-        return
-      }
-      if (event.key !== 'Tab' || state.dialog || state.sheet) return
-      const root = document.querySelector<HTMLElement>('.refine-sheet')
-      if (!root) return
-      const nodes = focusableIn(root)
-      if (nodes.length === 0) return
-      const first = nodes[0]
-      const last = nodes[nodes.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      previous?.focus?.()
-    }
-  }, [state.refineOpen, state.dialog, state.sheet])
+    if (mobile || compactLaptop) setSidebarOpen(false)
+  }, [mobile, compactLaptop])
 
   useEffect(() => {
-    const persisted = {
-      authed: state.authed,
-      username: state.username,
-      agent: state.agent,
-      selectedVersionId: state.selectedVersionId,
-      instructionDraft: state.instructionDraft,
-      composer: state.composer,
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted))
-  }, [state.authed, state.username, state.agent, state.selectedVersionId, state.instructionDraft, state.composer])
+    if (!mobile) setRefineOpen(false)
+  }, [mobile])
 
   useEffect(() => {
-    if (!state.authed || focusedOnce.current) return
-    focusedOnce.current = true
-    if (window.matchMedia('(min-width: 900px)').matches) focusVisibleComposer()
-  }, [state.authed])
-
-  useEffect(() => {
-    if (!state.authed) return
     let cancelled = false
-    void loadAgentBuilderConfig()
-      .then((snapshot) => {
-        if (cancelled || !snapshot) return
-        const remoteVersions = (snapshot.versions.length ? snapshot.versions : [snapshot.activeVersion]).map((version, index) => (
-          versionFromRecord(version, version.isActive || index === 0 ? 'Active config' : 'Saved config')
-        ))
-        setState((prev) => {
-          if (prev.saving || prev.pendingSaveId || prev.feedback === 'ready') return prev
-          const current = prev.agent
-          const localDirty = hasMeaningfulChanges({
-            instructionDraft: prev.instructionDraft,
-            draftBase: current.draftBase,
-            savedBase: current.savedBase,
-            draftOpener: current.draftOpener,
-            savedOpener: current.savedOpener,
-            draftAdditional: current.draftAdditional,
-            savedAdditional: current.savedAdditional,
-            locked: current.locked,
-            savedLocked: current.savedLocked,
-          })
-          const active = versionFromRecord(snapshot.activeVersion, 'Active config')
-          const versions = (remoteVersions.length ? remoteVersions : [active]).sort((a, b) => versionNumber(b.id) - versionNumber(a.id))
-          const savedBase = snapshot.activeVersion.masterPrompt
-          const savedAdditional = snapshot.activeVersion.additionalInformation ?? ''
-          const savedOpener = snapshot.activeVersion.openingMessage ?? ''
-          return {
-            ...prev,
-            historyLimited: versions.length <= 1,
-            selectedVersionId: active.id,
-            agent: {
-              ...current,
-              locked: snapshot.locked,
-              savedLocked: snapshot.locked,
-              savedBase,
-              savedAdditional,
-              savedOpener,
-              draftBase: localDirty ? current.draftBase : savedBase,
-              draftAdditional: localDirty ? current.draftAdditional : savedAdditional,
-              draftOpener: localDirty ? current.draftOpener : savedOpener,
-              activeVersion: active.id,
-              versions,
-              testingVersionId: prev.versionConfirmed ? current.testingVersionId : null,
-            },
-          }
-        })
-      })
-      .catch(() => {
-        if (cancelled) return
-        setState((prev) => ({ ...prev, toast: 'Could not load saved config. Using this device’s copy.' }))
-        window.setTimeout(() => setState((prev) => ({ ...prev, toast: null })), 2200)
-      })
+    void service.loadConfig().then((config) => {
+      if (cancelled) return
+      setSaved(config)
+      setDraft(config)
+      setConversationId(uid('thread'))
+      setMessages(conversationFromOpener(config.opener, uid('msg')))
+      setLoading(false)
+    })
     return () => {
       cancelled = true
     }
-  }, [state.authed])
+  }, [])
 
   useEffect(() => {
-    if (!state.accountOpen) return
-    const close = (event: MouseEvent) => {
-      if (!accountRef.current?.contains(event.target as Node)) setState((prev) => ({ ...prev, accountOpen: false }))
+    if (!accountOpen) return
+    const onPointer = (event: MouseEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setState((prev) => ({ ...prev, accountOpen: false }))
+      if (event.key === 'Escape') setAccountOpen(false)
     }
-    document.addEventListener('mousedown', close)
+    document.addEventListener('mousedown', onPointer)
     document.addEventListener('keydown', onKey)
     return () => {
-      document.removeEventListener('mousedown', close)
+      document.removeEventListener('mousedown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [state.accountOpen])
+  }, [accountOpen])
 
-  const patchAgent = (patch: Partial<AgentDraft>, extra?: Partial<AppState>) => {
-    setState((prev) => ({
-      ...prev,
-      ...extra,
-      agent: { ...prev.agent, ...patch },
-    }))
+  const showToast = (value: string) => {
+    setToast(value)
+    window.setTimeout(() => setToast(null), 2200)
   }
 
-  const signIn = (event?: FormEvent) => {
-    event?.preventDefault()
-    const username = state.username.trim()
-    if (!username || !state.password.trim()) {
-      setState((prev) => ({ ...prev, loginError: 'Enter a username and password to open the workspace.' }))
-      return
-    }
-    if (username !== LOGIN_USERNAME || state.password !== LOGIN_PASSWORD) {
-      setState((prev) => ({ ...prev, loginError: 'Incorrect username or password.', password: '' }))
-      return
-    }
-    setState((prev) => ({ ...prev, signingIn: true, loginError: null }))
-    window.setTimeout(() => {
-      setState((prev) => ({ ...prev, authed: true, signingIn: false, refineOpen: false }))
-    }, 520)
+  const updateDraft = (patch: Partial<AgentConfig>) => {
+    setDraft((prev) => ({ ...prev, ...patch }))
+    setSaveStatus('idle')
+    setSaveError(null)
   }
 
-  const signOut = () => {
-    if (dirty) {
-      setState((prev) => ({ ...prev, dialog: { kind: 'sign-out' }, accountOpen: false }))
-      return
-    }
-    setState((prev) => ({ ...prev, authed: false, accountOpen: false, historyOpen: false, refineOpen: false, dialog: null, sheet: null }))
+  const discard = () => {
+    setDraft(saved)
+    setSaveStatus('idle')
+    setSaveError(null)
   }
 
-  const runSave = (snapshot: SaveSnapshot, startTest: boolean) => {
-    if (state.saving) return
-    if (!startTest && !dirty && snapshot.locked === agent.locked) return
-    if (startTest && !dirty) return
-    const saveRequestId = uid('save')
-    setState((prev) => ({ ...prev, saving: true, saveError: null, pendingSaveId: saveRequestId, dialog: null, feedback: 'idle' }))
-    const nextNumber = Math.max(0, ...agent.versions.map((version) => versionNumber(version.id))) + 1
-    void saveAgentBuilderConfig({
-      tenantKey: getK1TenantKey(),
-      displayName: 'K1 Katsastus',
-      masterPrompt: snapshot.base,
-      openingMessage: snapshot.opener,
-      additionalInformation: snapshot.additional,
-      locked: snapshot.locked,
-      versionNumber: nextNumber,
-      versionId: `v${nextNumber}`,
-    }).then((saved) => {
-      let started: { conversationId: string; messages: ChatMessage[] } | null = null
-      let testFailed = false
-      if (startTest) {
-        try {
-          started = beginFreshTest(snapshot.opener, uid)
-        } catch {
-          testFailed = true
-        }
-      }
-      const version = versionFromRecord({ ...saved, openingMessage: snapshot.opener, additionalInformation: snapshot.additional, masterPrompt: snapshot.base }, startTest ? 'Saved config' : 'Locked base prompt')
-      setState((prev) => {
-        if (prev.pendingSaveId !== saveRequestId) return prev
-        const applied = applySavedConfig({
-          agent: prev.agent,
-          snapshot,
-          version,
-          current: {
-            draftBase: prev.agent.draftBase,
-            draftOpener: prev.agent.draftOpener,
-            draftAdditional: prev.agent.draftAdditional,
-            instructionDraft: prev.instructionDraft,
-            locked: prev.agent.locked,
-          },
-          started,
-        })
-        return {
-          ...prev,
-          saving: false,
-          saveError: null,
-          pendingSaveId: null,
-          instructionDraft: applied.instructionDraft,
-          agent: startTest && !testFailed ? { ...applied.agent, replyIndex: prev.agent.replyIndex } : applied.agent,
-          selectedVersionId: version.id,
-          feedback: testFailed ? 'idle' : startTest ? 'ready' : 'locked',
-          testError: testFailed ? `${version.id} saved. Could not start a new test.` : null,
-          versionConfirmed: false,
-          refineOpen: startTest && !testFailed ? false : prev.refineOpen,
-          sending: startTest && !testFailed ? false : prev.sending,
-          pendingResponseId: startTest && !testFailed ? null : prev.pendingResponseId,
-        }
-      })
-      if (startTest && !testFailed) window.setTimeout(focusAfterSave, 0)
+  const save = () => {
+    if (!dirty || saveStatus === 'saving') return
+    setSaveStatus('saving')
+    setSaveError(null)
+    void service.saveConfig(draft).then((next) => {
+      setSaved(next)
+      setDraft(next)
+      setSaveStatus('saved')
+      window.clearTimeout(savedToast.current)
+      savedToast.current = window.setTimeout(() => setSaveStatus('idle'), 1600)
     }).catch(() => {
-      setState((prev) => (
-        prev.pendingSaveId === saveRequestId
-          ? { ...prev, saving: false, pendingSaveId: null, saveError: 'Could not save. Your changes are still here.' }
-          : prev
-      ))
+      setSaveStatus('error')
+      setSaveError('Could not save. Your draft is still here.')
     })
   }
 
-  const saveAndTest = () => {
-    if (state.saving || !dirty) return
-    runSave(captureSaveSnapshot({
-      draftBase: agent.draftBase,
-      draftOpener: agent.draftOpener,
-      draftAdditional: agent.draftAdditional,
-      instructionDraft: state.instructionDraft,
-      locked: agent.locked,
-    }), true)
-  }
-
-  const saveAndLock = () => {
-    if (state.saving) return
-    runSave(captureSaveSnapshot({
-      draftBase: agent.draftBase,
-      draftOpener: agent.draftOpener,
-      draftAdditional: agent.draftAdditional,
-      instructionDraft: state.instructionDraft,
-      locked: agent.locked,
-      persistLocked: true,
-    }), false)
-  }
-
-  const requestLock = () => {
-    if (dirty) {
-      setState((prev) => ({ ...prev, dialog: { kind: 'save-lock' } }))
-      return
-    }
-    saveAndLock()
-  }
-
-  const unlock = () => {
-    patchAgent({ locked: false })
-  }
-
-  const retryTest = () => {
-    if (state.retryingTest || state.saving) return
-    setState((prev) => ({ ...prev, retryingTest: true }))
-    try {
-      const started = beginFreshTest(agent.savedOpener, uid)
-      setState((prev) => ({
-        ...prev,
-        retryingTest: false,
-        testError: null,
-        feedback: 'ready',
-        versionConfirmed: false,
-        refineOpen: false,
-        sending: false,
-        pendingResponseId: null,
-        agent: applyFreshTest(prev.agent, started),
-      }))
-      window.setTimeout(focusAfterSave, 0)
-    } catch {
-      setState((prev) => ({ ...prev, retryingTest: false }))
-    }
-  }
+  const acceptReply = (responseRequestId: string, threadId: string) => shouldAcceptTestReply({
+    responseRequestId,
+    pendingResponseId: pendingRef.current,
+    responseConversationId: threadId,
+    currentConversationId: conversationIdRef.current,
+  })
 
   const newTest = () => {
-    const started = beginFreshTest(agent.savedOpener, uid)
-    setState((prev) => ({
-      ...prev,
-      testError: null,
-      feedback: prev.feedback === 'ready' ? 'idle' : prev.feedback,
-      versionConfirmed: false,
-      sending: false,
-      pendingResponseId: null,
-      agent: applyFreshTest(prev.agent, started),
-    }))
-    window.setTimeout(focusAfterSave, 0)
-  }
-
-  const performRestore = (versionId: string) => {
-    setState((prev) => {
-      const version = prev.agent.versions.find((item) => item.id === versionId)
-      if (!version) return prev
-      const plan = restorePlan(version, prev.agent.savedBase, prev.agent.locked)
-      if (!plan.ok) return { ...prev, toast: 'Unlock the base prompt before restoring a version that changes it.' }
-      const notes = [
-        typeof version.additionalInformation === 'string' ? null : 'Additional instructions were not in this version and were left unchanged.',
-        typeof version.opener === 'string' ? null : 'The opening message was not in this version and was left unchanged.',
-        `${version.id} is in the draft. Save & test to use it.`,
-      ].filter(Boolean)
-      return {
-        ...prev,
-        historyOpen: false,
-        dialog: null,
-        selectedVersionId: versionId,
-        masterOpen: true,
-        openerOpen: typeof version.opener === 'string',
-        refineOpen: window.matchMedia('(max-width: 899px)').matches,
-        sheet: window.matchMedia('(max-width: 899px)').matches && plan.base !== prev.agent.draftBase
-          ? { kind: 'prompt', title: 'Master prompt', value: plan.base, readOnly: false }
-          : window.matchMedia('(max-width: 899px)').matches && plan.opener !== undefined && plan.opener !== prev.agent.draftOpener
-            ? { kind: 'opener', title: 'Opening message', value: plan.opener, readOnly: false }
-            : null,
-        toast: notes.join(' '),
-        agent: {
-          ...prev.agent,
-          draftBase: plan.base,
-          ...(plan.opener !== undefined ? { draftOpener: plan.opener } : {}),
-          ...(plan.additional !== undefined ? { draftAdditional: plan.additional } : {}),
-        },
-      }
-    })
-    window.setTimeout(() => setState((prev) => ({ ...prev, toast: null })), 2800)
-  }
-
-  const restoreVersion = (versionId: string) => {
-    const version = agent.versions.find((item) => item.id === versionId)
-    if (!version) return
-    const plan = restorePlan(version, agent.savedBase, agent.locked)
-    if (!plan.ok) {
-      setState((prev) => ({ ...prev, masterOpen: true, refineOpen: true, toast: 'Unlock the base prompt before restoring a version that changes it.' }))
-      window.setTimeout(() => setState((prev) => ({ ...prev, toast: null })), 2400)
-      return
-    }
-    if (dirty) {
-      setState((prev) => ({ ...prev, dialog: { kind: 'restore', versionId } }))
-      return
-    }
-    performRestore(versionId)
+    const nextId = uid('thread')
+    pendingRef.current = null
+    setConversationId(nextId)
+    setMessages(conversationFromOpener(saved.opener, uid('msg')))
+    setComposer('')
+    setSending(false)
+    setPendingResponseId(null)
+    setReplyError(null)
   }
 
   const sendMessage = () => {
-    const text = state.composer.trim()
-    if (!text || state.sending) return
+    const text = composer.trim()
+    if (!text || sending) return
     const userMessage: ChatMessage = { id: uid('msg'), role: 'user', text }
     const responseRequestId = uid('reply')
-    const conversationId = agent.conversationId
-    const reply = REPLIES[agent.replyIndex % REPLIES.length]
-    const history = [...agent.messages, userMessage]
-    setState((prev) => ({
-      ...prev,
-      composer: '',
-      sending: true,
-      pendingResponseId: responseRequestId,
-      feedback: prev.feedback === 'ready' ? 'idle' : prev.feedback,
-      agent: { ...prev.agent, messages: history, replyIndex: prev.agent.replyIndex + 1 },
-    }))
-    void testAgentBuilderMessage({
-      tenantKey: getK1TenantKey(),
-      masterPrompt: agent.savedBase,
-      additionalInformation: agent.savedAdditional,
+    const threadId = conversationId
+    const history = [...messages, userMessage]
+    pendingRef.current = responseRequestId
+    setComposer('')
+    setSending(true)
+    setPendingResponseId(responseRequestId)
+    setReplyError(null)
+    setMessages(history)
+    void service.sendTestMessage({
+      conversationId: threadId,
       messages: history,
-    }, reply).then((result) => {
-      setState((prev) => {
-        if (!shouldAcceptTestReply({
-          responseRequestId,
-          pendingResponseId: prev.pendingResponseId,
-          responseConversationId: conversationId,
-          currentConversationId: prev.agent.conversationId,
-        })) return prev
-        const confirmedVersion = Number(result.versionNumber)
-        const testingVersionId = Number.isInteger(confirmedVersion) && confirmedVersion > 0
-          ? `v${confirmedVersion}`
-          : null
-        return {
-          ...prev,
-          sending: false,
-          pendingResponseId: null,
-          versionConfirmed: testingVersionId != null,
-          agent: {
-            ...prev.agent,
-            testingVersionId,
-            messages: [...prev.agent.messages, { id: uid('msg'), role: 'agent', text: result.reply, mocked: result.mode === 'demo' }],
-          },
-        }
-      })
+      instructions: saved.instructions,
+    }).then((result) => {
+      if (!acceptReply(responseRequestId, threadId)) return
+      pendingRef.current = null
+      setSending(false)
+      setPendingResponseId(null)
+      setReplyError(null)
+      setMessages((prev) => [...prev, { id: uid('msg'), role: 'agent', text: result.reply, mocked: true }])
     }).catch(() => {
-      setState((prev) => {
-        if (!shouldAcceptTestReply({
-          responseRequestId,
-          pendingResponseId: prev.pendingResponseId,
-          responseConversationId: conversationId,
-          currentConversationId: prev.agent.conversationId,
-        })) return prev
-        return { ...prev, sending: false, pendingResponseId: null, toast: 'Test reply failed. Your message is still in the thread.' }
-      })
-      window.setTimeout(() => setState((prev) => ({ ...prev, toast: null })), 2200)
+      if (!acceptReply(responseRequestId, threadId)) return
+      pendingRef.current = null
+      setSending(false)
+      setPendingResponseId(null)
+      setReplyError('Mocked reply failed. Your message is still in the thread.')
     })
   }
 
-  const onComposerKey = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      sendMessage()
-    }
+  const retryReply = () => {
+    if (sending) return
+    if (![...messages].reverse().find((message) => message.role === 'user')) return
+    const responseRequestId = uid('reply')
+    const threadId = conversationId
+    pendingRef.current = responseRequestId
+    setSending(true)
+    setPendingResponseId(responseRequestId)
+    setReplyError(null)
+    void service.sendTestMessage({
+      conversationId: threadId,
+      messages,
+      instructions: saved.instructions,
+    }).then((result) => {
+      if (!acceptReply(responseRequestId, threadId)) return
+      pendingRef.current = null
+      setSending(false)
+      setPendingResponseId(null)
+      setMessages((prev) => [...prev, { id: uid('msg'), role: 'agent', text: result.reply, mocked: true }])
+    }).catch(() => {
+      if (!acceptReply(responseRequestId, threadId)) return
+      pendingRef.current = null
+      setSending(false)
+      setPendingResponseId(null)
+      setReplyError('Mocked reply failed. Your message is still in the thread.')
+    })
   }
 
-  const copyMessage = async (message: ChatMessage) => {
-    try {
-      await navigator.clipboard.writeText(message.text)
-      setState((prev) => ({ ...prev, copiedMessageId: message.id }))
-      window.setTimeout(() => setState((prev) => ({ ...prev, copiedMessageId: null })), 1200)
-    } catch {
-      setState((prev) => ({ ...prev, toast: 'Could not copy in this browser.' }))
-      window.setTimeout(() => setState((prev) => ({ ...prev, toast: null })), 1800)
-    }
-  }
-
-  const useLastQuestion = () => {
-    const question = lastCustomerQuestion(agent.previousTest?.messages ?? [])
-    if (!question) return
-    if (state.composer.trim()) {
-      setState((prev) => ({ ...prev, dialog: { kind: 'use-last-question' } }))
-      return
-    }
-    setState((prev) => ({ ...prev, composer: question }))
-    window.setTimeout(focusVisibleComposer, 0)
-  }
-
-  const dialogContent = useMemo(() => {
-    const dialog = state.dialog
-    if (!dialog) return null
-    if (dialog.kind === 'discard') {
-      return {
-        title: 'Discard unsaved changes?',
-        body: 'Additional information, opening message, and base-prompt edits that are not saved will be reverted. The current test is unchanged.',
-        confirm: 'Discard changes',
-      }
-    }
-    if (dialog.kind === 'save-lock') {
-      return {
-        title: 'Save changes before locking?',
-        body: 'Locking stops direct editing of the base master prompt. Additional information, testing, and version history stay available. Save and lock stores the current edits as a new version, then locks the base.',
-        confirm: 'Save and lock',
-      }
-    }
-    if (dialog.kind === 'sign-out') {
-      return {
-        title: 'Sign out with unsaved changes?',
-        body: 'These edits have not been saved as a new version. Cancel to keep working, or sign out without saving.',
-        confirm: 'Sign out',
-      }
-    }
-    if (dialog.kind === 'use-last-question') {
-      return {
-        title: 'Replace the typed message?',
-        body: 'Use last question replaces the text already in the composer. It is not sent until you send it.',
-        confirm: 'Replace message',
-      }
-    }
-    const version = agent.versions.find((item) => item.id === dialog.versionId)
-    return {
-      title: 'Replace the current draft?',
-      body: version
-        ? `Restoring loads ${versionScope(version)} into the draft for review. It does not become the saved agent until you Save & test. Unsaved edits will be replaced.`
-        : 'Restoring loads this version into the draft. It is not saved until you Save & test.',
-      confirm: 'Restore to draft',
-    }
-  }, [agent.versions, state.dialog])
-
-  const confirmDialog = () => {
-    const dialog = state.dialog
-    if (!dialog) return
-    if (dialog.kind === 'discard') {
-      setState((prev) => ({
-        ...prev,
-        dialog: null,
-        saveError: null,
-        instructionDraft: '',
-        agent: {
-          ...prev.agent,
-          draftBase: prev.agent.savedBase,
-          draftOpener: prev.agent.savedOpener,
-          draftAdditional: prev.agent.savedAdditional,
-          locked: prev.agent.savedLocked,
-        },
-      }))
-    }
-    if (dialog.kind === 'save-lock') saveAndLock()
-    if (dialog.kind === 'sign-out') setState((prev) => ({ ...prev, authed: false, historyOpen: false, dialog: null, sheet: null, refineOpen: false, accountOpen: false }))
-    if (dialog.kind === 'restore') performRestore(dialog.versionId)
-    if (dialog.kind === 'use-last-question') {
-      const question = lastCustomerQuestion(agent.previousTest?.messages ?? [])
-      setState((prev) => ({ ...prev, dialog: null, composer: question || prev.composer }))
-      window.setTimeout(focusVisibleComposer, 0)
-    }
-  }
-
-  const statusText = state.saving
-    ? 'Saving…'
-    : state.saveError
-      ? state.saveError
-      : dirty
-        ? 'Not saved yet.'
-        : state.testError
-          ? state.testError
-          : state.feedback === 'ready'
-            ? 'Saved. New test ready.'
-            : 'Saved'
-
-  const contextLabel = isolatedTester && agent.testingVersionId
-    ? `Testing ${agent.testingVersionId}`
-    : `Last saved version: ${agent.activeVersion}`
-
-  if (!state.authed) {
-    return <AuthScreen state={state} setState={setState} signIn={signIn} />
-  }
-
-  const refinement = (
-    <RefinementPanel
-      state={state}
+  const inspector = (
+    <Inspector
+      draft={draft}
       dirty={dirty}
-      extraOpen={extraOpen}
-      statusText={statusText}
-      setState={setState}
-      onSaveAndTest={saveAndTest}
-      onDiscard={() => setState((prev) => ({ ...prev, dialog: { kind: 'discard' } }))}
-      onToggleExtra={() => setExtraOpen((open) => !open)}
-      onLock={requestLock}
-      onUnlock={unlock}
+      saveStatus={saveStatus}
+      saveError={saveError}
+      openerOpen={openerOpen}
+      openerDirty={draft.opener !== saved.opener}
+      loading={loading}
+      onToggleOpener={() => setOpenerOpen((open) => !open)}
+      onChange={updateDraft}
+      onExpand={() => setInstructionsOpen(true)}
+      onSave={save}
+      onDiscard={discard}
+    />
+  )
+
+  const tester = (
+    <Tester
+      messages={messages}
+      composer={composer}
+      sending={sending}
+      replyError={replyError}
+      dirty={dirty}
+      loading={loading}
+      mobile={mobile}
+      onComposer={setComposer}
+      onSend={sendMessage}
+      onRetry={retryReply}
+      onNewTest={newTest}
     />
   )
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-left">
-          <Brand />
-          <span className="divider" />
-          <div className="agent-lockup">
-            <span className="agent-avatar">K</span>
-            <span className="agent-name">K1 Katsastus assistant</span>
-          </div>
-        </div>
-        <div className="topbar-right">
-          <button className="secondary-button history-trigger" onClick={() => setState((prev) => ({ ...prev, historyOpen: true, selectedVersionId: prev.agent.activeVersion, accountOpen: false }))}>
-            <HistoryIcon /><span>Versions</span>
-          </button>
-          <div className="account-menu" ref={accountRef}>
-            <button className="account-button" aria-haspopup="menu" aria-expanded={state.accountOpen} onClick={() => setState((prev) => ({ ...prev, accountOpen: !prev.accountOpen }))}>
-              <span>K</span>Account
+    <div className={`app${mobile ? ' is-mobile' : ''}${sidebarOpen ? ' sidebar-open' : ' sidebar-collapsed'}`}>
+      <a className="skip-link" href="#playground">Skip to playground</a>
+      <p className="prototype-banner">Development prototype · replies are mocked · nothing is sent to customers</p>
+      {!mobile && (
+        <Sidebar
+          open={sidebarOpen}
+          onToggle={() => setSidebarOpen((open) => !open)}
+        />
+      )}
+      <div className="app-main">
+        <header className="app-header">
+          {mobile && (
+            <button className="icon-button" type="button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+              <MenuIcon />
             </button>
-            {state.accountOpen && (
-              <div className="account-popover" role="menu">
-                <button role="menuitem" onClick={signOut}>Sign out</button>
-              </div>
-            )}
+          )}
+          <div className="agent-lockup">
+            <span className="agent-avatar" aria-hidden="true">K</span>
+            <div className="agent-copy">
+              <strong>K1 Katsastus</strong>
+              <em>Agent tester</em>
+            </div>
           </div>
-        </div>
-      </header>
-
-      <main
-        className={`workspace${narrow ? ' is-narrow' : ''}${widthSettling ? ' is-settling' : ''}`}
-        style={narrow ? undefined : { ['--refine-w' as string]: `${refineWidth}px` }}
-      >
-        {!narrow && <section id="refine-panel" className="refine-panel">{refinement}</section>}
-        {!narrow && (
-          <WorkspaceDivider
-            width={refineWidth}
-            min={REFINE_MIN}
-            max={refineMax}
-            settling={widthSettling}
-            onChange={(next) => {
-              settleAnim.current?.stop()
-              setWidthSettling(false)
-              setRefineWidth(next)
-            }}
-            onReset={() => settleWidth(REFINE_DEFAULT)}
-            onTogglePreset={() => settleWidth(refineWidth > REFINE_DEFAULT + 24 ? REFINE_DEFAULT : Math.round((REFINE_MIN + refineMax) / 2))}
-          />
-        )}
-        <section id="tester-canvas" className="playground-panel">
-          <Tester
-            compact={narrow}
-            previousTestOpen={previousTestOpen}
-            state={state}
-            dirty={dirty}
-            contextLabel={contextLabel}
-            isolatedTester={isolatedTester}
-            setState={setState}
-            onNewTest={newTest}
-            onRetryTest={retryTest}
-            onSend={sendMessage}
-            onComposerKey={onComposerKey}
-            onCopy={copyMessage}
-            onUseLastQuestion={useLastQuestion}
-            onTogglePreviousTest={() => setPreviousTestOpen((open) => !open)}
-            onRefine={() => setState((prev) => ({ ...prev, refineOpen: true }))}
-          />
-        </section>
-      </main>
-
-      {state.refineOpen && narrow && (
-        <RefineSheet closeRef={refineCloseRef} onClose={() => setState((prev) => ({ ...prev, refineOpen: false }))}>
-          {refinement}
-        </RefineSheet>
-      )}
-
-      {state.historyOpen && selectedVersion && (
-        <VersionHistory
-          versions={agent.versions}
-          activeVersion={agent.activeVersion}
-          selectedVersion={selectedVersion}
-          historyLimited={state.historyLimited}
-          onClose={() => setState((prev) => ({ ...prev, historyOpen: false }))}
-          onSelect={(versionId) => setState((prev) => ({ ...prev, selectedVersionId: versionId }))}
-          onRestore={restoreVersion}
-        />
-      )}
-
-      {state.dialog && dialogContent && (
-        <ConfirmDialog
-          title={dialogContent.title}
-          body={dialogContent.body}
-          confirmLabel={dialogContent.confirm}
-          loading={state.saving}
-          onCancel={() => setState((prev) => ({ ...prev, dialog: null }))}
-          onConfirm={confirmDialog}
-        />
-      )}
-
-      {state.sheet && (
-        <FieldSheet
-          sheet={state.sheet}
-          locked={agent.locked}
-          onChange={(value) => setState((prev) => ({ ...prev, sheet: prev.sheet ? { ...prev.sheet, value } : null }))}
-          onCancel={() => setState((prev) => ({ ...prev, sheet: null }))}
-          onDone={() => {
-            if (!state.sheet || state.sheet.readOnly) {
-              setState((prev) => ({ ...prev, sheet: null }))
-              return
-            }
-            const sheet = state.sheet
-            patchAgent(sheet.kind === 'opener' ? { draftOpener: sheet.value } : { draftBase: sheet.value }, { sheet: null })
-          }}
-          onUnlock={() => setState((prev) => ({
-            ...prev,
-            agent: { ...prev.agent, locked: false },
-            sheet: prev.sheet?.kind === 'prompt' ? { ...prev.sheet, readOnly: false } : prev.sheet,
-          }))}
-        />
-      )}
+          {mobile ? (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => setRefineOpen(true)}
+              aria-label={dirty ? 'Refine agent, unsaved changes' : 'Refine agent'}
+            >
+              Refine
+              {dirty && <i className="pending-dot" aria-hidden="true" />}
+            </button>
+          ) : (
+            <div className="header-account" ref={accountRef}>
+              <button className="account-button" type="button" aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}>
+                <span>D</span>Demo
+              </button>
+              {accountOpen && <AccountMenu onFailSave={() => { service.failNextSave(); setAccountOpen(false); showToast('The next Save will fail.') }} onFailReply={() => { service.failNextReply(); setAccountOpen(false); showToast('The next reply will fail.') }} />}
+            </div>
+          )}
+        </header>
+        <main id="playground" className="playground">
+          {!mobile && inspector}
+          <section className="canvas" aria-label="Agent tester canvas">
+            {tester}
+          </section>
+        </main>
+      </div>
 
       <AnimatePresence>
-        {state.toast && (
-          <motion.div className="toast" role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2, ease }}>
-            {state.toast}
+        {mobile && sidebarOpen && (
+          <MobileNav
+            onClose={() => setSidebarOpen(false)}
+            onFailSave={() => { service.failNextSave(); setSidebarOpen(false); showToast('The next Save will fail.') }}
+            onFailReply={() => { service.failNextReply(); setSidebarOpen(false); showToast('The next reply will fail.') }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {mobile && refineOpen && (
+          <RefineOverlay onClose={() => setRefineOpen(false)}>
+            {inspector}
+          </RefineOverlay>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {instructionsOpen && (
+          <InstructionsDialog
+            value={draft.instructions}
+            onChange={(instructions) => updateDraft({ instructions })}
+            onClose={() => setInstructionsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div className="toast" role="status" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={fade}>
+            {toast}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1282,286 +375,438 @@ function App() {
   )
 }
 
-function AuthScreen({ state, setState, signIn }: {
-  state: AppState
-  setState: Dispatch<SetStateAction<AppState>>
-  signIn: (event?: FormEvent) => void
-}) {
-  return (
-    <main className="auth-shell">
-      <header className="auth-header"><Brand /></header>
-      <motion.form className="auth-card" onSubmit={signIn} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease }}>
-        <div className="auth-copy">
-          <p className="microcopy">K1 Katsastus assistant</p>
-          <h1>Welcome back</h1>
-          <p>Test the saved agent, describe what it should do differently, then save and try again.</p>
-        </div>
-        <label className="field">
-          <span>Username</span>
-          <input value={state.username} autoComplete="username" onChange={(event) => setState((prev) => ({ ...prev, username: event.target.value }))} placeholder="username" />
-        </label>
-        <label className="field">
-          <span>Password</span>
-          <span className="password-field">
-            <input value={state.password} autoComplete="current-password" onChange={(event) => setState((prev) => ({ ...prev, password: event.target.value }))} type={state.showPassword ? 'text' : 'password'} placeholder="password" />
-            <button type="button" onClick={() => setState((prev) => ({ ...prev, showPassword: !prev.showPassword }))}>{state.showPassword ? 'Hide' : 'Show'}</button>
-          </span>
-        </label>
-        <AnimatePresence>
-          {state.loginError && <motion.div className="inline-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{state.loginError}</motion.div>}
-        </AnimatePresence>
-        <motion.button className="primary-button auth-button" type="submit" disabled={state.signingIn} whileTap={{ scale: 0.985 }}>
-          {state.signingIn && <Spinner />}
-          {state.signingIn ? 'Opening agent' : 'Continue'}
-        </motion.button>
-      </motion.form>
-    </main>
-  )
-}
-
-function RefinementPanel({ state, dirty, extraOpen, statusText, setState, onSaveAndTest, onDiscard, onToggleExtra, onLock, onUnlock }: {
-  state: AppState
-  dirty: boolean
-  extraOpen: boolean
-  statusText: string
-  setState: Dispatch<SetStateAction<AppState>>
-  onSaveAndTest: () => void
-  onDiscard: () => void
-  onToggleExtra: () => void
-  onLock: () => void
-  onUnlock: () => void
-}) {
-  const agent = state.agent
-  const additionalPreview = agent.draftAdditional.trim()
-  const openerPreview = renderWithSampleData(agent.draftOpener).trim()
-  const openerDirty = agent.draftOpener !== agent.savedOpener
-
-  return (
-    <div className="refine-content">
-      <div className="refine-body">
-      <section className="refine-block">
-        <div className="field-header">
-          <div>
-            <h2>Additional information</h2>
-            <p>Tell the agent what to do differently.</p>
-          </div>
-        </div>
-        <textarea
-          className="instruction-input"
-          aria-label="Additional information"
-          value={state.instructionDraft}
-          onChange={(event) => setState((prev) => ({ ...prev, instructionDraft: event.target.value, saveError: null }))}
-          placeholder="Describe what the agent should know or do differently…"
-        />
-        <p className="example-hint">Example: Saturday bookings are Monday to Friday only.</p>
-      </section>
-
-      <Accordion
-        id="master-prompt"
-        title={<span>Master prompt</span>}
-        meta={<em>{agent.locked ? 'Locked' : 'Unlocked'}</em>}
-        open={state.masterOpen}
-        onToggle={() => setState((prev) => ({ ...prev, masterOpen: !prev.masterOpen }))}
-        trailing={agent.locked
-          ? <button type="button" className="secondary-button" onClick={onUnlock}>Unlock full editor</button>
-          : <button type="button" className="secondary-button" onClick={onLock} disabled={state.saving}><LockIcon />Lock base prompt</button>}
-      >
-        <Accordion
-          id="saved-extra"
-          title={<span>{agent.draftAdditional === agent.savedAdditional ? 'Saved additional instructions' : 'Additional instructions in this draft'}</span>}
-          open={extraOpen}
-          onToggle={onToggleExtra}
-        >
-          <div className="saved-extra">
-            {additionalPreview ? <pre>{agent.draftAdditional.trim()}</pre> : <p>None saved yet.</p>}
-            <p>The tester appends these after the base prompt. Older instructions stay until you edit them here.</p>
-          </div>
-        </Accordion>
-        <div className="field-header">
-          <h3>{agent.locked ? 'Base prompt preview' : 'Base prompt'}</h3>
-          <span className="char-count">{agent.draftBase.length.toLocaleString()} chars</span>
-        </div>
-        {agent.locked ? (
-          <pre className="prompt-preview">{agent.draftBase}</pre>
-        ) : (
-          <textarea className="prompt-input" aria-label="Base master prompt" value={agent.draftBase} onChange={(event) => setState((prev) => ({ ...prev, agent: { ...prev.agent, draftBase: event.target.value }, saveError: null }))} />
-        )}
-        <button type="button" className="secondary-button mobile-editor-link" onClick={() => setState((prev) => ({ ...prev, sheet: { kind: 'prompt', title: 'Master prompt', value: agent.draftBase, readOnly: agent.locked } }))}>
-          {agent.locked ? 'Open read-only prompt' : 'Open full editor'}
-        </button>
-      </Accordion>
-
-      <Accordion
-        id="opening-message"
-        title={<span>Opening message</span>}
-        open={state.openerOpen}
-        onToggle={() => setState((prev) => ({ ...prev, openerOpen: !prev.openerOpen }))}
-      >
-        <textarea className="opener-input" aria-label="Opening message" value={agent.draftOpener} onChange={(event) => setState((prev) => ({ ...prev, agent: { ...prev.agent, draftOpener: event.target.value }, saveError: null }))} />
-        <div className="opening-preview">
-          <span>{openerDirty ? 'Draft preview' : 'Saved preview'}</span>
-          <small>Sample data: first_name = Rasmus · registration_number = ABC-123</small>
-          {openerPreview ? <p>{openerPreview}</p> : <p className="empty-preview">No opening message. A new test starts when the first customer message is sent.</p>}
-        </div>
-        <button type="button" className="secondary-button mobile-editor-link" onClick={() => setState((prev) => ({ ...prev, sheet: { kind: 'opener', title: 'Opening message', value: agent.draftOpener, readOnly: false } }))}>
-          Edit in full screen
-        </button>
-      </Accordion>
-      </div>
-      <div className="savebar">
-        {(dirty || state.saving || state.saveError) && (
-          <div className="savebar-actions">
-            {dirty && (
-              <button className="secondary-button" type="button" onClick={onDiscard} disabled={state.saving}>Discard</button>
-            )}
-            <button className="primary-button save-test-button" type="button" onClick={onSaveAndTest} disabled={!dirty || state.saving}>
-              {state.saving && <Spinner />}
-              {state.saving ? 'Saving…' : state.saveError ? 'Retry save' : 'Save & test'}
-            </button>
-          </div>
-        )}
-        <p className={`save-state ${state.saveError ? 'error' : state.saving ? 'saving' : dirty ? 'draft' : 'saved'}`} role="status"><span />{statusText}</p>
-        {dirty && !state.saving && !state.saveError && <p className="save-help">Saves a new version and starts a fresh test.</p>}
-      </div>
-    </div>
-  )
-}
-
-function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, previousTestOpen, setState, onNewTest, onRetryTest, onSend, onComposerKey, onCopy, onUseLastQuestion, onTogglePreviousTest, onRefine }: {
-  state: AppState
-  dirty: boolean
-  contextLabel: string
-  isolatedTester: boolean
-  compact?: boolean
-  previousTestOpen: boolean
-  setState: Dispatch<SetStateAction<AppState>>
-  onNewTest: () => void
-  onRetryTest: () => void
-  onSend: () => void
-  onComposerKey: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
-  onCopy: (message: ChatMessage) => void
-  onUseLastQuestion: () => void
-  onTogglePreviousTest: () => void
-  onRefine: () => void
+function Sidebar({ open, onToggle }: {
+  open: boolean
+  onToggle: () => void
 }) {
   const reducedMotion = useReducedMotion()
-  const agent = state.agent
-  const previousQuestion = lastCustomerQuestion(agent.previousTest?.messages ?? [])
-  const ready = state.feedback === 'ready' && !dirty && !state.testError
-  const usesSample = agent.messages.some((message) => message.sample)
-
   return (
-    <div className={`playground-content${compact ? ' compact' : ''}`}>
-      <div className="context-row">
-        <span className="tester-title" tabIndex={-1} data-tester-heading="true">
-          <span className="tester-k" aria-hidden="true">K</span>
-          <span className="tester-meta">
-            <strong>Agent tester</strong>
-            <em>{contextLabel}</em>
-          </span>
-        </span>
-        <span className="tester-actions">
-          {compact && (
-            <button className="secondary-button" type="button" onClick={onRefine} aria-label={dirty ? 'Refine agent, unsaved changes' : 'Refine agent'}>
-              Refine agent
-              {dirty && <i className="pending-dot" aria-hidden="true" />}
-            </button>
-          )}
-          <button className="secondary-button" type="button" onClick={onNewTest} aria-label="Start a new test">New test</button>
-        </span>
-      </div>
-      {usesSample && <p className="sample-note">Sample customer: Rasmus · ABC-123</p>}
-      {dirty && <div className="draft-banner">Unsaved refinements are not included in this test.</div>}
-      {ready && <div className="success-banner" role="status"><span><i className="dot" />{agent.testingVersionId && isolatedTester ? `${agent.testingVersionId} saved · Ready to test.` : `${agent.activeVersion} saved · Ready to test.`}</span></div>}
-      {state.testError && (
-        <div className="error-banner" role="status">
-          <span>{state.testError}</span>
-          <button className="secondary-button" type="button" onClick={onRetryTest} disabled={state.retryingTest}>{state.retryingTest ? 'Retrying…' : 'Retry test'}</button>
-        </div>
-      )}
-      <div className="messages" aria-live="polite">
-        {agent.previousTest && (
-          <Accordion id="previous-test" title={<span>Previous test</span>} open={previousTestOpen} onToggle={onTogglePreviousTest}>
-            <div className="previous-log">
-              {agent.previousTest.messages.map((message) => (
-                <p key={message.id} className={message.role}>{message.text}</p>
-              ))}
-            </div>
-            {previousQuestion && <button type="button" className="secondary-button" onClick={onUseLastQuestion}>Use last question</button>}
-          </Accordion>
-        )}
-        {agent.messages.length === 0 && (
-          <div className="empty-thread">
-            <strong>No opening message is saved.</strong>
-            <span>Send a test message to start the thread.</span>
+    <motion.aside
+      className="sidebar"
+      aria-label="Workspace"
+      initial={false}
+      animate={{ width: open ? 256 : 48 }}
+      transition={reducedMotion ? { duration: 0 } : space}
+    >
+      <div className="sidebar-top">
+        {open && (
+          <div className="brand" title="wasup">
+            <span>w</span>
+            <strong>wasup</strong>
           </div>
         )}
-        <AnimatePresence initial={false}>
-          {agent.messages.map((message) => (
-            <motion.article
-              key={message.id}
-              className={`message ${message.role}`}
-              initial={reducedMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: reducedMotion ? 0.01 : 0.2, ease }}
-            >
-              <div>{message.text}</div>
-              {message.mocked && <span className="mock-tag">Mocked</span>}
-              {message.role === 'agent' && (
-                <button className="message-action" type="button" onClick={() => onCopy(message)} aria-label={state.copiedMessageId === message.id ? 'Copied' : 'Copy reply'}><CopyIcon />{state.copiedMessageId === message.id ? 'Copied' : 'Copy'}</button>
-              )}
-            </motion.article>
-          ))}
-        </AnimatePresence>
-        {state.sending && <TypingDots />}
+        <button className="icon-button" type="button" onClick={onToggle} aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}>
+          {open ? <CollapseIcon /> : <ExpandIcon />}
+        </button>
       </div>
+      <nav className="sidebar-nav">
+        <NavItem id="playground" active label="Playground" open={open} />
+        <NavItem id="activity" label="Activity" open={open} unavailable />
+        <NavItem id="leads" label="Leads" open={open} unavailable />
+      </nav>
+      <div className="sidebar-foot">
+        <div className="account-button sidebar-account" aria-hidden="true">
+          <span>D</span>
+          {open && <em>Demo</em>}
+        </div>
+      </div>
+    </motion.aside>
+  )
+}
+
+function NavItem({ id, label, active, unavailable, open }: {
+  id: NavId
+  label: string
+  active?: boolean
+  unavailable?: boolean
+  open: boolean
+}) {
+  return (
+    <button
+      type="button"
+      className={`nav-item${active ? ' is-active' : ''}${unavailable ? ' is-unavailable' : ''}`}
+      aria-current={active ? 'page' : undefined}
+      aria-disabled={unavailable || undefined}
+      title={unavailable ? `${label} is not available in this milestone` : label}
+      onClick={unavailable ? undefined : undefined}
+    >
+      <NavIcon id={id} />
+      {open && <span>{label}</span>}
+      {open && unavailable && <small>Unavailable</small>}
+    </button>
+  )
+}
+
+function AccountMenu({ onFailSave, onFailReply }: { onFailSave: () => void; onFailReply: () => void }) {
+  return (
+    <div className="account-popover" role="menu">
+      <p>Development controls. These do not change production authentication.</p>
+      <button type="button" role="menuitem" onClick={onFailSave}>Fail next save</button>
+      <button type="button" role="menuitem" onClick={onFailReply}>Fail next reply</button>
+    </div>
+  )
+}
+
+function MobileNav({ onClose, onFailSave, onFailReply }: {
+  onClose: () => void
+  onFailSave: () => void
+  onFailReply: () => void
+}) {
+  const reducedMotion = useReducedMotion()
+  const rootRef = useOverlayChrome(onClose)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
+  useEffect(() => { closeRef.current?.focus() }, [])
+  useLayoutEffect(() => {
+    const backdrop = backdropRef.current
+    const panel = panelRef.current
+    if (!backdrop || !panel || reducedMotion) return
+    animate(backdrop, { opacity: [0, 1] }, fade)
+    animate(panel, { transform: ['translateX(-16px)', 'translateX(0px)'] }, sheetMotion)
+  }, [reducedMotion])
+  return (
+    <div ref={rootRef} className="mobile-nav" role="presentation">
+      <div ref={backdropRef} className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
+      <aside
+        ref={panelRef}
+        className="mobile-nav-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mobile-nav-title"
+      >
+        <header>
+          <div className="brand"><span>w</span><strong id="mobile-nav-title">wasup</strong></div>
+          <button ref={closeRef} className="icon-button" type="button" onClick={onClose} aria-label="Close navigation"><CloseIcon /></button>
+        </header>
+        <nav>
+          <NavItem id="playground" active label="Playground" open />
+          <NavItem id="activity" label="Activity" open unavailable />
+          <NavItem id="leads" label="Leads" open unavailable />
+        </nav>
+        <div className="mobile-nav-foot">
+          <p>Demo session · no sign-in gate</p>
+          <button type="button" className="secondary-button" onClick={onFailSave}>Fail next save</button>
+          <button type="button" className="secondary-button" onClick={onFailReply}>Fail next reply</button>
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function Inspector({ draft, dirty, saveStatus, saveError, openerOpen, openerDirty, loading, onToggleOpener, onChange, onExpand, onSave, onDiscard }: {
+  draft: AgentConfig
+  dirty: boolean
+  saveStatus: SaveStatus
+  saveError: string | null
+  openerOpen: boolean
+  openerDirty: boolean
+  loading: boolean
+  onToggleOpener: () => void
+  onChange: (patch: Partial<AgentConfig>) => void
+  onExpand: () => void
+  onSave: () => void
+  onDiscard: () => void
+}) {
+  const showBar = dirty || saveStatus === 'saving' || saveStatus === 'error'
+  const preview = openerPreview(draft.opener)
+  return (
+    <section className="inspector" aria-label="Agent configuration">
+      {showBar && (
+        <div className="savebar">
+          <p className={`save-copy ${saveStatus === 'error' ? 'is-error' : saveStatus === 'saving' ? 'is-saving' : 'is-draft'}`} role="status">
+            {saveStatus === 'saving' ? 'Saving…' : saveError ?? 'You have unsaved changes.'}
+          </p>
+          <div className="savebar-actions">
+            <button className="secondary-button" type="button" onClick={onDiscard} disabled={saveStatus === 'saving' || !dirty}>Discard</button>
+            <button className="primary-button" type="button" onClick={onSave} disabled={saveStatus === 'saving' || !dirty}>
+              {saveStatus === 'saving' && <Spinner />}
+              {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Retry save' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+      {saveStatus === 'saved' && !dirty && (
+        <p className="save-copy is-saved" role="status">Saved</p>
+      )}
+      {loading ? (
+        <div className="inspector-skeleton" aria-busy="true">
+          <span /><span /><span />
+        </div>
+      ) : (
+        <div className="inspector-body">
+          <div className="field-block">
+            <div className="field-head">
+              <div>
+                <h2>Instructions</h2>
+                <p>How the saved agent should behave.</p>
+              </div>
+              <button className="icon-button" type="button" onClick={onExpand} aria-label="Expand instructions">
+                <ExpandDialogIcon />
+              </button>
+            </div>
+            <textarea
+              className="instructions-input"
+              aria-label="Instructions"
+              value={draft.instructions}
+              onChange={(event) => onChange({ instructions: event.target.value })}
+            />
+          </div>
+          <Accordion id="opening-message" title="Opening message" open={openerOpen} onToggle={onToggleOpener}>
+            <textarea
+              className="opener-input"
+              aria-label="Opening message"
+              value={draft.opener}
+              onChange={(event) => onChange({ opener: event.target.value })}
+            />
+            <div className="opener-preview">
+              <span>{openerDirty ? 'Draft preview' : 'Saved preview'}</span>
+              <small>Sample data: first_name = Rasmus · registration_number = ABC-123</small>
+              {preview ? <p>{preview}</p> : <p className="empty-preview">No opening message. A new test waits for the first customer message.</p>}
+            </div>
+          </Accordion>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Tester({ messages, composer, sending, replyError, dirty, loading, mobile, onComposer, onSend, onRetry, onNewTest }: {
+  messages: ChatMessage[]
+  composer: string
+  sending: boolean
+  replyError: string | null
+  dirty: boolean
+  loading: boolean
+  mobile: boolean
+  onComposer: (value: string) => void
+  onSend: () => void
+  onRetry: () => void
+  onNewTest: () => void
+}) {
+  const reducedMotion = useReducedMotion()
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      onSend()
+    }
+  }
+  return (
+    <div className={`tester${mobile ? ' is-mobile' : ''}`}>
+      <header className="tester-head">
+        <div>
+          <strong>Agent tester</strong>
+          <em>K1 Katsastus · mocked replies</em>
+        </div>
+        <div className="tester-actions">
+          <button className="secondary-button" type="button" onClick={onNewTest}>New test</button>
+        </div>
+      </header>
+      {dirty && <p className="draft-note">Unsaved edits are not used in this test until you Save.</p>}
+      {loading ? (
+        <div className="tester-skeleton" aria-busy="true"><span /><span /><span /></div>
+      ) : (
+        <div className="messages" aria-live="polite">
+          {messages.length === 0 && (
+            <div className="empty-thread">
+              <strong>No opening message is saved.</strong>
+              <span>Send a test message to start the thread.</span>
+            </div>
+          )}
+          <AnimatePresence initial={false}>
+            {messages.map((message) => (
+              <motion.article
+                key={message.id}
+                className={`message ${message.role}`}
+                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.18, ease }}
+              >
+                <p>{message.text}</p>
+                {message.mocked && <span className="mock-tag">Mocked</span>}
+              </motion.article>
+            ))}
+          </AnimatePresence>
+          {sending && <div className="typing" aria-label="Waiting for mocked reply"><span /><span /><span /></div>}
+        </div>
+      )}
+      {replyError && (
+        <div className="reply-error" role="status">
+          <span>{replyError}</span>
+          <button className="secondary-button" type="button" onClick={onRetry} disabled={sending}>Retry reply</button>
+        </div>
+      )}
       <div className="composer-wrap">
-        <Composer
-          value={state.composer}
-          sending={state.sending}
-          compact={compact}
-          onChange={(value) => setState((prev) => ({ ...prev, composer: value }))}
-          onKeyDown={onComposerKey}
-          onSend={onSend}
-        />
-        <p>{isolatedTester
-          ? 'Last saved version only. Nothing is sent to customers.'
-          : 'Mocked replies. Nothing is sent to customers.'}
-        </p>
+        <Composer value={composer} sending={sending} onChange={onComposer} onKeyDown={onKeyDown} onSend={onSend} />
+        <p>Mocked replies. Nothing is sent to customers, WhatsApp, or email.</p>
       </div>
     </div>
   )
 }
 
-function RefineSheet({ children, closeRef, onClose }: {
+function Composer({ value, sending, onChange, onKeyDown, onSend }: {
+  value: string
+  sending: boolean
+  onChange: (value: string) => void
+  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
+  onSend: () => void
+}) {
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+  const [multiline, setMultiline] = useState(false)
+  useLayoutEffect(() => {
+    const area = areaRef.current
+    if (!area) return
+    const styles = getComputedStyle(area)
+    const line = Number.parseFloat(styles.lineHeight) || 24
+    const pad = (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0)
+    const single = line + pad
+    area.style.height = '0px'
+    const next = Math.min(Math.max(area.scrollHeight, single), 148)
+    area.style.height = `${next}px`
+    setMultiline(next > single + 2)
+  }, [value])
+  return (
+    <div className={multiline ? 'composer is-multiline' : 'composer'}>
+      <textarea
+        ref={areaRef}
+        rows={1}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="Ask the saved agent a test question…"
+        aria-label="Test message"
+      />
+      <button className="send-button" type="button" onClick={onSend} disabled={!value.trim() || sending} aria-label="Send message">
+        <ArrowUpIcon />
+      </button>
+    </div>
+  )
+}
+
+function Accordion({ id, title, open, onToggle, children }: {
+  id: string
+  title: string
+  open: boolean
+  onToggle: () => void
   children: ReactNode
-  closeRef: { current: HTMLButtonElement | null }
+}) {
+  const reducedMotion = useReducedMotion()
+  const [clip, setClip] = useState(!open)
+  const buttonId = `${id}-toggle`
+  const panelId = `${id}-panel`
+  useEffect(() => {
+    if (open) return
+    setClip(true)
+    const panel = document.getElementById(panelId)
+    const toggle = document.getElementById(buttonId)
+    if (panel && toggle && panel.contains(document.activeElement)) toggle.focus()
+  }, [open, buttonId, panelId])
+  return (
+    <section className={`accordion${open ? ' is-open' : ''}`}>
+      <button id={buttonId} type="button" className="accordion-toggle" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
+        <motion.span className="accordion-chevron" aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={reducedMotion ? { duration: 0 } : space}>
+          <ChevronIcon />
+        </motion.span>
+        {title}
+      </button>
+      <motion.div
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
+        className="accordion-clip"
+        initial={false}
+        animate={open ? 'open' : 'closed'}
+        variants={{
+          open: { height: 'auto', opacity: 1 },
+          closed: { height: 0, opacity: 0 },
+        }}
+        transition={reducedMotion ? { duration: 0 } : { height: space, opacity: { duration: 0.18, ease } }}
+        style={{ overflow: clip ? 'hidden' : 'visible' }}
+        onAnimationStart={() => setClip(true)}
+        onAnimationComplete={() => { if (open) setClip(false) }}
+        {...(open ? {} : { inert: true })}
+      >
+        <div className="accordion-body">{children}</div>
+      </motion.div>
+    </section>
+  )
+}
+
+function InstructionsDialog({ value, onChange, onClose }: {
+  value: string
+  onChange: (value: string) => void
   onClose: () => void
 }) {
-  const { leaving, startLeave, reduced } = useLeaveMotion(onClose)
-  const { setBackdrop, setPanel } = useOverlayEntrance('y', leaving, reduced)
-  const { rootRef, requestClose } = useOverlayChrome(startLeave)
-  useEffect(() => { closeRef.current?.focus() }, [closeRef])
+  const reducedMotion = useReducedMotion()
+  const rootRef = useOverlayChrome(onClose)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { areaRef.current?.focus() }, [])
   return (
-    <div
-      ref={rootRef}
-      className="refine-sheet mobile-only"
-      role="presentation"
-      data-overlay="refine"
-      data-leaving={leaving ? 'true' : 'false'}
-      style={leaving ? { pointerEvents: 'none' } : undefined}
-    >
-      <div ref={setBackdrop} className="refine-sheet__backdrop" aria-hidden="true" />
+    <motion.div ref={rootRef} className="dialog-root" initial={{ opacity: 1 }} animate={{ opacity: 1 }} exit={{ opacity: 1 }}>
+      <motion.div
+        className="overlay-backdrop"
+        aria-hidden="true"
+        onClick={onClose}
+        initial="hidden"
+        animate="shown"
+        exit="hidden"
+        variants={backdropVariants}
+        transition={reducedMotion ? { duration: 0 } : fade}
+      />
+      <motion.div
+        className="instructions-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="instructions-title"
+        initial="hidden"
+        animate="shown"
+        exit="hidden"
+        variants={dialogVariants}
+        transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease }}
+      >
+        <header>
+          <h2 id="instructions-title">Instructions</h2>
+          <button ref={closeRef} className="icon-button" type="button" onClick={onClose} aria-label="Close instructions"><CloseIcon /></button>
+        </header>
+        <textarea ref={areaRef} aria-label="Instructions" value={value} onChange={(event) => onChange(event.target.value)} />
+        <footer>
+          <span>Edits stay in the draft until you Save.</span>
+          <button className="primary-button" type="button" onClick={onClose}>Done</button>
+        </footer>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function RefineOverlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const reducedMotion = useReducedMotion()
+  const rootRef = useOverlayChrome(onClose)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { closeRef.current?.focus() }, [])
+  useLayoutEffect(() => {
+    const backdrop = backdropRef.current
+    const panel = panelRef.current
+    if (!backdrop || !panel) return
+    if (reducedMotion) return
+    animate(backdrop, { opacity: [0, 1] }, fade)
+    animate(panel, { transform: ['translateY(16px)', 'translateY(0px)'] }, sheetMotion)
+  }, [reducedMotion])
+  return (
+    <div ref={rootRef} className="refine-overlay">
+      <div ref={backdropRef} className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
       <div
-        ref={setPanel}
-        className="refine-sheet__panel"
+        ref={panelRef}
+        className="refine-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="refine-title"
       >
-        <header className="refine-sheet__bar">
+        <header>
           <h2 id="refine-title">Refine agent</h2>
-          <button ref={closeRef} className="secondary-button" type="button" onClick={requestClose}>Close</button>
+          <button ref={closeRef} className="secondary-button" type="button" onClick={onClose}>Done</button>
         </header>
         {children}
       </div>
@@ -1569,163 +814,8 @@ function RefineSheet({ children, closeRef, onClose }: {
   )
 }
 
-function VersionHistory({ versions, activeVersion, selectedVersion, historyLimited, onClose, onSelect, onRestore }: {
-  versions: PromptVersion[]
-  activeVersion: string
-  selectedVersion: PromptVersion
-  historyLimited: boolean
-  onClose: () => void
-  onSelect: (versionId: string) => void
-  onRestore: (versionId: string) => void
-}) {
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const narrow = useNarrowWorkspace()
-  const { leaving, startLeave, reduced } = useLeaveMotion(onClose)
-  const { setBackdrop, setPanel, isArmed } = useOverlayEntrance(narrow ? 'y' : 'x', leaving, reduced)
-  const { rootRef, requestClose } = useOverlayChrome(startLeave)
-  useEffect(() => { closeRef.current?.focus() }, [])
-  return (
-    <div
-      ref={rootRef}
-      className="overlay"
-      data-overlay="versions"
-      data-leaving={leaving ? 'true' : 'false'}
-      style={leaving ? { pointerEvents: 'none' } : undefined}
-    >
-      <div
-        ref={setBackdrop}
-        className="overlay-backdrop"
-        aria-hidden="true"
-        onClick={() => { if (isArmed()) requestClose() }}
-      />
-      <aside
-        ref={setPanel}
-        className="history-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="versions-title"
-      >
-        <header>
-          <h2 id="versions-title">Versions</h2>
-          <button ref={closeRef} className="icon-button" type="button" onClick={requestClose} aria-label="Close versions"><CloseIcon /></button>
-        </header>
-        {historyLimited && <p className="history-note">Only the current saved version is available. Older versions appear here when they can be loaded.</p>}
-        <div className="version-list">
-          {versions.map((version) => (
-            <button key={version.id} type="button" className={version.id === selectedVersion.id ? 'version-row active' : 'version-row'} onClick={() => onSelect(version.id)}>
-              <span><strong>{version.id}</strong><em>{version.id === activeVersion ? version.meta : version.meta.replace(' · Active config', '')}</em></span>
-              {version.id === activeVersion ? <small>Active</small> : <small>View</small>}
-            </button>
-          ))}
-        </div>
-        <section className="version-preview">
-          <p>Read-only preview. Selecting a version does not change the saved agent.</p>
-          <p>{versionScope(selectedVersion)}</p>
-          {typeof selectedVersion.opener === 'string' ? (
-            <div className="version-opener"><span>Opening message</span><p>{renderWithSampleData(selectedVersion.opener) || 'Empty opening message.'}</p></div>
-          ) : (
-            <div className="version-opener muted"><span>Opening message</span><p>Not stored on this version. Restoring it leaves the current opening message unchanged.</p></div>
-          )}
-          {typeof selectedVersion.additionalInformation === 'string' ? (
-            <div className="version-opener"><span>Additional instructions</span><p>{selectedVersion.additionalInformation.trim() || 'None on this version.'}</p></div>
-          ) : (
-            <div className="version-opener muted"><span>Additional instructions</span><p>Not stored separately. The base prompt is shown as it was saved. Restoring it does not change current additional instructions.</p></div>
-          )}
-          <pre>{selectedVersion.prompt}</pre>
-        </section>
-        <footer>
-          <button className="secondary-button" type="button" onClick={requestClose}>Close</button>
-          <button className="primary-button" type="button" onClick={() => onRestore(selectedVersion.id)}>Restore {selectedVersion.id}</button>
-        </footer>
-      </aside>
-    </div>
-  )
-}
-
-function ConfirmDialog({ title, body, confirmLabel, loading, onCancel, onConfirm }: {
-  title: string
-  body: string
-  confirmLabel: string
-  loading: boolean
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  const cancelRef = useRef<HTMLButtonElement>(null)
-  const { rootRef, requestClose } = useOverlayChrome(onCancel)
-  useEffect(() => { cancelRef.current?.focus() }, [])
-  return (
-    <motion.div
-      ref={rootRef}
-      className="modal-backdrop"
-      tabIndex={-1}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      onClick={(event) => { if (event.target === event.currentTarget) requestClose() }}
-      onKeyDown={(event) => { if (event.key === 'Escape') requestClose() }}
-    >
-      <motion.div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-body" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.2, ease }}>
-        <h2 id="dialog-title">{title}</h2>
-        <p id="dialog-body">{body}</p>
-        <div>
-          <button className="secondary-button" type="button" ref={cancelRef} onClick={requestClose}>Cancel</button>
-          <button className="primary-button" type="button" onClick={onConfirm} disabled={loading}>{loading && <Spinner />}{confirmLabel}</button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
-function FieldSheet({ sheet, locked, onChange, onCancel, onDone, onUnlock }: {
-  sheet: SheetState
-  locked: boolean
-  onChange: (value: string) => void
-  onCancel: () => void
-  onDone: () => void
-  onUnlock: () => void
-}) {
-  const openerPreview = sheet.kind === 'opener' ? renderWithSampleData(sheet.value).trim() : ''
-  const cancelRef = useRef<HTMLButtonElement>(null)
-  const { rootRef, requestClose } = useOverlayChrome(onCancel)
-  useEffect(() => { cancelRef.current?.focus() }, [])
-  return (
-    <motion.div ref={rootRef} className="field-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2, ease }}>
-      <header>
-        <button ref={cancelRef} type="button" onClick={requestClose}>Cancel</button>
-        <h2 id="sheet-title">{sheet.title}</h2>
-        <button type="button" onClick={onDone}>{sheet.readOnly ? 'Close' : 'Done'}</button>
-      </header>
-      {sheet.kind === 'opener' && (
-        <div className="sheet-preview">
-          <span>Draft preview · sample data</span>
-          <small>first_name = Rasmus · registration_number = ABC-123</small>
-          {openerPreview ? <p>{openerPreview}</p> : <p className="empty-preview">No opening message. A new test starts when the first customer message is sent.</p>}
-        </div>
-      )}
-      {sheet.kind === 'prompt' && locked && (
-        <div className="sheet-lock-row">
-          <span>The base prompt is locked. Additional information stays editable from Refine agent.</span>
-          <button type="button" className="secondary-button" onClick={onUnlock}>Unlock full editor</button>
-        </div>
-      )}
-      <textarea aria-label={sheet.title} value={sheet.value} readOnly={sheet.readOnly} onChange={(event) => onChange(event.target.value)} />
-      <footer>
-        <span>{sheet.readOnly ? 'Read-only preview.' : sheet.kind === 'opener' ? 'Done keeps this opening message in the draft.' : 'Done keeps this base prompt in the draft.'}</span>
-        <span>{sheet.value.length.toLocaleString()} chars</span>
-      </footer>
-    </motion.div>
-  )
-}
-
-function Brand() {
-  return <div className="brand"><span>w</span><strong>wasup</strong></div>
-}
-
 function Spinner() {
   return <span className="spinner" aria-hidden="true" />
-}
-
-function TypingDots() {
-  return <motion.div className="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><span /><span /><span /></motion.div>
 }
 
 function Svg(props: SVGProps<SVGSVGElement>) {
@@ -1733,10 +823,20 @@ function Svg(props: SVGProps<SVGSVGElement>) {
 }
 
 function ChevronIcon() { return <Svg><path d="M4 6.25 8 10l4-3.75" /></Svg> }
-function HistoryIcon() { return <Svg><circle cx="8" cy="8" r="5.4" /><path d="M8 5v3.1l2.2 1.3" /></Svg> }
-function LockIcon() { return <Svg><rect x="3.6" y="7" width="8.8" height="6.2" rx="1.6" /><path d="M5.8 7V5.3a2.2 2.2 0 0 1 4.4 0V7" /></Svg> }
-function CopyIcon() { return <Svg><rect x="5.4" y="5.4" width="7" height="7" rx="1.5" /><path d="M10.2 5.4v-.8a1.1 1.1 0 0 0-1.1-1.1H4.6a1.1 1.1 0 0 0-1.1 1.1v4.5a1.1 1.1 0 0 0 1.1 1.1h.8" /></Svg> }
 function CloseIcon() { return <Svg><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></Svg> }
 function ArrowUpIcon() { return <Svg><path d="M8 13V4M8 4 4.4 7.6M8 4l3.6 3.6" /></Svg> }
+function MenuIcon() { return <Svg><path d="M3 4.5h10M3 8h10M3 11.5h10" /></Svg> }
+function CollapseIcon() { return <Svg><path d="M10.5 3.5 6 8l4.5 4.5M6 3.5v9" /></Svg> }
+function ExpandIcon() { return <Svg><path d="M5.5 3.5 10 8 5.5 12.5M10 3.5v9" /></Svg> }
+function ExpandDialogIcon() { return <Svg><path d="M6 3.5H3.5V6M10 3.5h2.5V6M6 12.5H3.5V10M10 12.5h2.5V10" /></Svg> }
+function PlaygroundIcon() { return <Svg><path d="M4 4.2h8v7.6H4zM6.2 12.6h3.6" /></Svg> }
+function ActivityIcon() { return <Svg><path d="M3.2 10.8 6 7.4l2.2 2.4 4.6-5.6" /></Svg> }
+function LeadsIcon() { return <Svg><circle cx="6.2" cy="6" r="2" /><path d="M3.4 12.4c.4-2 1.8-3 2.8-3s2.4 1 2.8 3M10.4 6.2a2 2 0 1 1 0 3.4" /></Svg> }
+
+function NavIcon({ id }: { id: NavId }) {
+  if (id === 'activity') return <ActivityIcon />
+  if (id === 'leads') return <LeadsIcon />
+  return <PlaygroundIcon />
+}
 
 export default App
