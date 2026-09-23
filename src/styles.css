@@ -88,7 +88,7 @@ svg path, svg circle, svg rect { stroke: currentColor; stroke-width: 1.5; fill: 
 .menu-label { padding: 7px 10px 5px; color: var(--ink-4); font-size: 11.5px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
 
 .workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--refine-w, 420px) 12px minmax(0, 1fr); background: var(--canvas); }
-.workspace.is-settling { transition: grid-template-columns 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+.workspace.is-settling .workspace-divider__grip { background: var(--ink); }
 .workspace.is-narrow { display: flex; flex-direction: column; }
 .workspace-divider { position: relative; width: 12px; min-width: 12px; align-self: stretch; display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; user-select: none; }
 .workspace-divider__line { position: absolute; inset: 0 auto; left: 50%; width: 1px; transform: translateX(-50%); background: var(--line); }
@@ -214,8 +214,10 @@ body.is-resizing, body.is-resizing * { cursor: col-resize !important; user-selec
 .mobile-tabs button { min-height: 68px; padding: 10px 0 max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--ink-4); font-size: 12px; font-weight: 560; }
 .mobile-tabs button.active { color: var(--ink); }
 
-.overlay, .modal-backdrop { position: fixed; inset: 0; background: rgba(20,20,18,.22); z-index: 80; display: flex; justify-content: flex-end; }
-.history-drawer { width: min(480px, 100vw); height: 100%; background: var(--surface); border-left: 1px solid var(--line-strong); box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
+.overlay, .modal-backdrop { position: fixed; inset: 0; z-index: 80; display: flex; justify-content: flex-end; }
+.modal-backdrop { background: rgba(20,20,18,.22); }
+.overlay-backdrop, .refine-sheet__backdrop { position: absolute; inset: 0; background: rgba(20,20,18,.22); }
+.history-drawer { position: relative; z-index: 1; width: min(480px, 100vw); height: 100%; background: var(--surface); border-left: 1px solid var(--line-strong); box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
 .history-drawer header { flex: none; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 22px; border-bottom: 1px solid var(--line); }
 .history-drawer h2, .confirm-dialog h2, .field-sheet h2 { margin: 0; font-size: 16px; letter-spacing: -0.01em; }
 .icon-button { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--sunken); color: var(--ink-2); }
@@ -265,9 +267,8 @@ body.is-resizing, body.is-resizing * { cursor: col-resize !important; user-selec
 .refine-content { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .refine-body { flex: 1; min-height: 0; overflow: auto; }
 .disclosure-chevron { display: inline-flex; width: 16px; height: 16px; flex: none; }
-.disclosure-clip { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms cubic-bezier(0.4, 0, 0.2, 1); }
-.disclosure.open .disclosure-clip { grid-template-rows: 1fr; opacity: 1; }
-.disclosure-clip > .disclosure-body { overflow: hidden; min-height: 0; }
+.disclosure-clip { display: block; }
+.disclosure-clip > .disclosure-body { min-height: 0; }
 .refine-block { display: grid; gap: 10px; padding: 16px 20px 14px; }
 .refine-block h2, .disclosure-toggle span { letter-spacing: -0.02em; }
 .refine-block h2 { margin: 0 0 4px; font-size: 14.5px; font-weight: 610; }
@@ -287,11 +288,11 @@ body.is-resizing, body.is-resizing * { cursor: col-resize !important; user-selec
 .disclosure.open > .disclosure-clip > .disclosure-body { padding: 0 20px 18px; }
 .disclosure .disclosure { border-top: 0; border: 1px solid var(--line); border-radius: 10px; background: #fbfbfa; }
 .disclosure .disclosure .disclosure-bar { min-height: 44px; padding: 4px 8px; }
-.disclosure .disclosure .disclosure-body { padding: 0 12px 12px; }
+.disclosure .disclosure.open > .disclosure-clip > .disclosure-body { padding: 0 12px 12px; }
 .messages .disclosure { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fbfbfa; }
 .messages .disclosure-bar { min-height: 40px; padding: 4px 8px; }
 .messages .disclosure-toggle { min-height: 36px; font-size: 13px; font-weight: 560; color: var(--ink-3); }
-.messages .disclosure-body { padding: 0 10px 10px; }
+.messages .disclosure.open > .disclosure-clip > .disclosure-body { padding: 0 10px 10px; }
 .disclosure-body .prompt-input { min-height: 180px; flex: none; }
 .disclosure-body h3 { margin: 0; font-size: 14px; }
 .saved-extra, .prompt-preview { display: grid; gap: 8px; }
@@ -338,8 +339,8 @@ body.is-resizing, body.is-resizing * { cursor: col-resize !important; user-selec
   .playground-panel { min-height: 0; flex: 1; padding: 0; place-items: stretch; }
   .playground-content.compact { flex: 1; width: 100%; height: auto; max-height: none; min-height: 0; margin: 0; padding-bottom: 0; border: 0; border-radius: 0; box-shadow: none; background: #fafaf8; }
   .mobile-editor-link { display: inline-flex; justify-self: start; }
-  .refine-sheet.mobile-only { position: fixed; inset: 0; z-index: 70; display: flex; align-items: stretch; background: rgba(20,20,18,.22); }
-  .refine-sheet__panel { width: 100%; height: 100dvh; max-height: 100dvh; overflow: auto; background: var(--surface); border-radius: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .refine-sheet.mobile-only { position: fixed; inset: 0; z-index: 70; display: flex; align-items: stretch; background: transparent; }
+  .refine-sheet__panel { position: relative; z-index: 1; width: 100%; height: 100dvh; max-height: 100dvh; overflow: auto; background: var(--surface); border-radius: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .refine-sheet__bar { position: sticky; top: 0; z-index: 2; min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); }
   .refine-sheet__bar .secondary-button { min-height: 44px; }
   .refine-sheet__bar h2 { margin: 0; font-size: 16px; }

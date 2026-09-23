@@ -1,5 +1,6 @@
+import { animate } from 'motion'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Dispatch, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction, SVGProps, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Dispatch, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction, SVGProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getAgentBuilderBackendMode, getK1TenantKey, loadAgentBuilderConfig, saveAgentBuilderConfig, testAgentBuilderMessage, type AgentBuilderVersionRecord } from './lib/agentBuilderService'
 import {
   applyFreshTest,
@@ -69,7 +70,11 @@ type AppState = {
 
 const STORAGE_KEY = 'wasup-agent-builder-v1'
 const ease = [0.4, 0, 0.2, 1] as const
+const arrive = [0.16, 1, 0.3, 1] as const
 const space = { duration: 0.22, ease }
+const fade = { duration: 0.2, ease }
+const slideIn = { duration: 0.28, ease: arrive }
+const slideOut = { duration: 0.22, ease }
 const REFINE_DEFAULT = 420
 const REFINE_MIN = 320
 
@@ -89,6 +94,47 @@ function useNarrowWorkspace() {
   return narrow
 }
 
+function useLeaveMotion(onGone: () => void, ms = 220) {
+  const reducedMotion = useReducedMotion()
+  const [leaving, setLeaving] = useState(false)
+  const startLeave = () => {
+    if (leaving) return
+    if (reducedMotion) {
+      onGone()
+      return
+    }
+    setLeaving(true)
+    window.setTimeout(onGone, ms)
+  }
+  return { leaving, startLeave, reduced: !!reducedMotion }
+}
+
+function useOverlayEntrance(axis: 'x' | 'y', leaving: boolean, reduced: boolean) {
+  const backdropRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
+  const armedRef = useRef(false)
+  const setBackdrop = useCallback((node: HTMLDivElement | null) => { backdropRef.current = node }, [])
+  const setPanel = useCallback((node: HTMLElement | null) => { panelRef.current = node }, [])
+  useLayoutEffect(() => {
+    const backdrop = backdropRef.current
+    const panel = panelRef.current
+    if (!backdrop || !panel) return
+    armedRef.current = false
+    const arm = window.setTimeout(() => { armedRef.current = true }, 240)
+    if (reduced) {
+      backdrop.style.opacity = leaving ? '0' : '1'
+      panel.style.transform = leaving ? (axis === 'y' ? 'translateY(100%)' : 'translateX(100%)') : 'none'
+      return () => window.clearTimeout(arm)
+    }
+    const hidden = axis === 'y' ? 'translateY(100%)' : 'translateX(100%)'
+    const shown = 'translateX(0%) translateY(0%)'
+    animate(backdrop, { opacity: leaving ? [1, 0] : [0, 1] }, fade)
+    animate(panel, { transform: leaving ? [shown, hidden] : [hidden, shown] }, leaving ? slideOut : slideIn)
+    return () => window.clearTimeout(arm)
+  }, [axis, leaving, reduced])
+  return { setBackdrop, setPanel, isArmed: () => armedRef.current }
+}
+
 function Accordion({ id, title, open, onToggle, meta, trailing, children }: {
   id: string
   title: ReactNode
@@ -99,16 +145,18 @@ function Accordion({ id, title, open, onToggle, meta, trailing, children }: {
   children: ReactNode
 }) {
   const reducedMotion = useReducedMotion()
+  const [clip, setClip] = useState(!open)
   const buttonId = `${id}-toggle`
   const panelId = `${id}-panel`
   useEffect(() => {
     if (open) return
+    setClip(true)
     const panel = document.getElementById(panelId)
     const toggle = document.getElementById(buttonId)
     if (panel && toggle && panel.contains(document.activeElement)) toggle.focus()
   }, [open, buttonId, panelId])
   return (
-    <section className={`disclosure ${open ? 'open' : ''}`}>
+    <section className={`disclosure${open ? ' open' : ''}`} data-disclosure={id}>
       <div className="disclosure-bar">
         <button id={buttonId} type="button" className="disclosure-toggle" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
           <motion.span className="disclosure-chevron" aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={reducedMotion ? { duration: 0 } : space}>
@@ -119,15 +167,25 @@ function Accordion({ id, title, open, onToggle, meta, trailing, children }: {
         </button>
         {trailing}
       </div>
-      <div
+      <motion.div
         id={panelId}
         role="region"
         aria-labelledby={buttonId}
         className="disclosure-clip"
+        initial={false}
+        animate={open ? 'open' : 'closed'}
+        variants={{
+          open: { height: 'auto', opacity: 1 },
+          closed: { height: 0, opacity: 0 },
+        }}
+        transition={reducedMotion ? { duration: 0 } : { height: space, opacity: { duration: 0.18, ease } }}
+        style={{ overflow: clip ? 'hidden' : 'visible' }}
+        onAnimationStart={() => setClip(true)}
+        onAnimationComplete={() => { if (open) setClip(false) }}
         {...(open ? {} : { inert: true })}
       >
         <div className="disclosure-body">{children}</div>
-      </div>
+      </motion.div>
     </section>
   )
 }
@@ -531,15 +589,24 @@ function App() {
   const accountRef = useRef<HTMLDivElement>(null)
   const refineCloseRef = useRef<HTMLButtonElement>(null)
   const focusedOnce = useRef(false)
-  const settleTimer = useRef<number | null>(null)
+  const settleAnim = useRef<{ stop: () => void } | null>(null)
   const refineMax = typeof window === 'undefined' ? 720 : Math.max(REFINE_MIN, Math.round(window.innerWidth * 0.62))
-  const settleWidth = (next: number, immediate = false) => {
-    setRefineWidth(next)
-    if (immediate || reducedMotion) return
+  const settleWidth = (next: number) => {
+    settleAnim.current?.stop()
+    if (reducedMotion || next === refineWidth) {
+      setRefineWidth(next)
+      setWidthSettling(false)
+      return
+    }
     setWidthSettling(true)
-    if (settleTimer.current) window.clearTimeout(settleTimer.current)
-    settleTimer.current = window.setTimeout(() => setWidthSettling(false), 220)
+    settleAnim.current = animate(refineWidth, next, {
+      duration: 0.22,
+      ease,
+      onUpdate: (value) => setRefineWidth(Math.round(value)),
+      onComplete: () => setWidthSettling(false),
+    })
   }
+  useEffect(() => () => settleAnim.current?.stop(), [])
 
   useEffect(() => {
     if (!state.refineOpen) return
@@ -1123,7 +1190,11 @@ function App() {
             min={REFINE_MIN}
             max={refineMax}
             settling={widthSettling}
-            onChange={(next) => { setWidthSettling(false); setRefineWidth(next) }}
+            onChange={(next) => {
+              settleAnim.current?.stop()
+              setWidthSettling(false)
+              setRefineWidth(next)
+            }}
             onReset={() => settleWidth(REFINE_DEFAULT)}
             onTogglePreset={() => settleWidth(refineWidth > REFINE_DEFAULT + 24 ? REFINE_DEFAULT : Math.round((REFINE_MIN + refineMax) / 2))}
           />
@@ -1150,7 +1221,7 @@ function App() {
       </main>
 
       {state.refineOpen && narrow && (
-        <RefineSheet closeRef={refineCloseRef} reducedMotion={!!reducedMotion} onClose={() => setState((prev) => ({ ...prev, refineOpen: false }))}>
+        <RefineSheet closeRef={refineCloseRef} onClose={() => setState((prev) => ({ ...prev, refineOpen: false }))}>
           {refinement}
         </RefineSheet>
       )}
@@ -1462,47 +1533,39 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, p
   )
 }
 
-function RefineSheet({ children, closeRef, reducedMotion, onClose }: {
+function RefineSheet({ children, closeRef, onClose }: {
   children: ReactNode
   closeRef: { current: HTMLButtonElement | null }
-  reducedMotion: boolean
   onClose: () => void
 }) {
-  const [leaving, setLeaving] = useState(false)
-  const startClose = () => {
-    if (leaving) return
-    if (reducedMotion) { onClose(); return }
-    setLeaving(true)
-    window.setTimeout(onClose, 220)
-  }
-  const { rootRef, requestClose } = useOverlayChrome(startClose)
+  const { leaving, startLeave, reduced } = useLeaveMotion(onClose)
+  const { setBackdrop, setPanel } = useOverlayEntrance('y', leaving, reduced)
+  const { rootRef, requestClose } = useOverlayChrome(startLeave)
   useEffect(() => { closeRef.current?.focus() }, [closeRef])
   return (
-    <motion.div
+    <div
       ref={rootRef}
       className="refine-sheet mobile-only"
       role="presentation"
-      initial={reducedMotion ? false : { opacity: 0 }}
-      animate={{ opacity: leaving ? 0 : 1 }}
-      transition={space}
+      data-overlay="refine"
+      data-leaving={leaving ? 'true' : 'false'}
       style={leaving ? { pointerEvents: 'none' } : undefined}
     >
-      <motion.div
+      <div ref={setBackdrop} className="refine-sheet__backdrop" aria-hidden="true" />
+      <div
+        ref={setPanel}
         className="refine-sheet__panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="refine-title"
-        initial={reducedMotion ? false : { y: 16 }}
-        animate={{ y: leaving ? 16 : 0 }}
-        transition={space}
       >
         <header className="refine-sheet__bar">
           <h2 id="refine-title">Refine agent</h2>
           <button ref={closeRef} className="secondary-button" type="button" onClick={requestClose}>Close</button>
         </header>
         {children}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
 
@@ -1516,25 +1579,32 @@ function VersionHistory({ versions, activeVersion, selectedVersion, historyLimit
   onRestore: (versionId: string) => void
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
-  const [leaving, setLeaving] = useState(false)
-  const startClose = () => {
-    if (leaving) return
-    setLeaving(true)
-    window.setTimeout(onClose, 220)
-  }
-  const { rootRef, requestClose } = useOverlayChrome(startClose)
+  const narrow = useNarrowWorkspace()
+  const { leaving, startLeave, reduced } = useLeaveMotion(onClose)
+  const { setBackdrop, setPanel, isArmed } = useOverlayEntrance(narrow ? 'y' : 'x', leaving, reduced)
+  const { rootRef, requestClose } = useOverlayChrome(startLeave)
   useEffect(() => { closeRef.current?.focus() }, [])
   return (
-    <motion.div
+    <div
       ref={rootRef}
       className="overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: leaving ? 0 : 1 }}
-      transition={{ duration: 0.2, ease }}
+      data-overlay="versions"
+      data-leaving={leaving ? 'true' : 'false'}
       style={leaving ? { pointerEvents: 'none' } : undefined}
-      onClick={(event) => { if (event.target === event.currentTarget) requestClose() }}
     >
-      <motion.aside className="history-drawer" role="dialog" aria-modal="true" aria-labelledby="versions-title" initial={{ x: '100%' }} animate={{ x: leaving ? '100%' : 0 }} transition={{ duration: 0.22, ease }}>
+      <div
+        ref={setBackdrop}
+        className="overlay-backdrop"
+        aria-hidden="true"
+        onClick={() => { if (isArmed()) requestClose() }}
+      />
+      <aside
+        ref={setPanel}
+        className="history-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="versions-title"
+      >
         <header>
           <h2 id="versions-title">Versions</h2>
           <button ref={closeRef} className="icon-button" type="button" onClick={requestClose} aria-label="Close versions"><CloseIcon /></button>
@@ -1567,8 +1637,8 @@ function VersionHistory({ versions, activeVersion, selectedVersion, historyLimit
           <button className="secondary-button" type="button" onClick={requestClose}>Close</button>
           <button className="primary-button" type="button" onClick={() => onRestore(selectedVersion.id)}>Restore {selectedVersion.id}</button>
         </footer>
-      </motion.aside>
-    </motion.div>
+      </aside>
+    </div>
   )
 }
 
