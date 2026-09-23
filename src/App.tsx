@@ -9,12 +9,14 @@ import {
   type AgentConfig,
   type PlaygroundService,
 } from './lib/playgroundService'
-import { backdropVariants, dialogVariants, ease, fade, sheetMotion, space } from './lib/motion'
+import { ease, fade, sheetMotion, space } from './lib/motion'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type NavId = 'playground' | 'activity' | 'leads'
+type LocalTab = 'overview' | 'display'
 
 const service: PlaygroundService = createMockPlaygroundService()
+const SUGGESTIONS = ['Book an inspection', 'Which station is nearest?', 'What documents do I need?']
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
@@ -79,7 +81,9 @@ function App() {
   const { mobile, compactLaptop } = useViewport()
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [versionsOpen, setVersionsOpen] = useState(false)
   const [refineOpen, setRefineOpen] = useState(false)
+  const [tab, setTab] = useState<LocalTab>('overview')
   const [instructionsOpen, setInstructionsOpen] = useState(false)
   const [openerOpen, setOpenerOpen] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -91,15 +95,16 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [composer, setComposer] = useState('')
   const [sending, setSending] = useState(false)
-  const [pendingResponseId, setPendingResponseId] = useState<string | null>(null)
   const [replyError, setReplyError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const accountRef = useRef<HTMLDivElement>(null)
+  const versionsRef = useRef<HTMLDivElement>(null)
   const savedToast = useRef<number>(0)
   const conversationIdRef = useRef(conversationId)
   const pendingRef = useRef<string | null>(null)
   conversationIdRef.current = conversationId
   const dirty = draft.instructions !== saved.instructions || draft.opener !== saved.opener
+  const hasUserTurn = messages.some((message) => message.role === 'user')
 
   useEffect(() => {
     if (mobile || compactLaptop) setSidebarOpen(false)
@@ -125,12 +130,16 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!accountOpen) return
+    if (!accountOpen && !versionsOpen) return
     const onPointer = (event: MouseEvent) => {
-      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
+      if (accountOpen && !accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
+      if (versionsOpen && !versionsRef.current?.contains(event.target as Node)) setVersionsOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setAccountOpen(false)
+      if (event.key === 'Escape') {
+        setAccountOpen(false)
+        setVersionsOpen(false)
+      }
     }
     document.addEventListener('mousedown', onPointer)
     document.addEventListener('keydown', onKey)
@@ -138,12 +147,7 @@ function App() {
       document.removeEventListener('mousedown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [accountOpen])
-
-  const showToast = (value: string) => {
-    setToast(value)
-    window.setTimeout(() => setToast(null), 2200)
-  }
+  }, [accountOpen, versionsOpen])
 
   const updateDraft = (patch: Partial<AgentConfig>) => {
     setDraft((prev) => ({ ...prev, ...patch }))
@@ -187,12 +191,11 @@ function App() {
     setMessages(conversationFromOpener(saved.opener, uid('msg')))
     setComposer('')
     setSending(false)
-    setPendingResponseId(null)
     setReplyError(null)
   }
 
-  const sendMessage = () => {
-    const text = composer.trim()
+  const sendText = (raw: string) => {
+    const text = raw.trim()
     if (!text || sending) return
     const userMessage: ChatMessage = { id: uid('msg'), role: 'user', text }
     const responseRequestId = uid('reply')
@@ -201,7 +204,6 @@ function App() {
     pendingRef.current = responseRequestId
     setComposer('')
     setSending(true)
-    setPendingResponseId(responseRequestId)
     setReplyError(null)
     setMessages(history)
     void service.sendTestMessage({
@@ -212,26 +214,21 @@ function App() {
       if (!acceptReply(responseRequestId, threadId)) return
       pendingRef.current = null
       setSending(false)
-      setPendingResponseId(null)
-      setReplyError(null)
       setMessages((prev) => [...prev, { id: uid('msg'), role: 'agent', text: result.reply, mocked: true }])
     }).catch(() => {
       if (!acceptReply(responseRequestId, threadId)) return
       pendingRef.current = null
       setSending(false)
-      setPendingResponseId(null)
       setReplyError('Mocked reply failed. Your message is still in the thread.')
     })
   }
 
   const retryReply = () => {
-    if (sending) return
-    if (![...messages].reverse().find((message) => message.role === 'user')) return
+    if (sending || !messages.some((message) => message.role === 'user')) return
     const responseRequestId = uid('reply')
     const threadId = conversationId
     pendingRef.current = responseRequestId
     setSending(true)
-    setPendingResponseId(responseRequestId)
     setReplyError(null)
     void service.sendTestMessage({
       conversationId: threadId,
@@ -241,26 +238,25 @@ function App() {
       if (!acceptReply(responseRequestId, threadId)) return
       pendingRef.current = null
       setSending(false)
-      setPendingResponseId(null)
       setMessages((prev) => [...prev, { id: uid('msg'), role: 'agent', text: result.reply, mocked: true }])
     }).catch(() => {
       if (!acceptReply(responseRequestId, threadId)) return
       pendingRef.current = null
       setSending(false)
-      setPendingResponseId(null)
       setReplyError('Mocked reply failed. Your message is still in the thread.')
     })
   }
 
   const inspector = (
     <Inspector
+      tab={tab}
       draft={draft}
       dirty={dirty}
       saveStatus={saveStatus}
       saveError={saveError}
       openerOpen={openerOpen}
-      openerDirty={draft.opener !== saved.opener}
       loading={loading}
+      onTab={setTab}
       onToggleOpener={() => setOpenerOpen((open) => !open)}
       onChange={updateDraft}
       onExpand={() => setInstructionsOpen(true)}
@@ -275,11 +271,12 @@ function App() {
       composer={composer}
       sending={sending}
       replyError={replyError}
-      dirty={dirty}
       loading={loading}
       mobile={mobile}
+      showSuggestions={!hasUserTurn}
       onComposer={setComposer}
-      onSend={sendMessage}
+      onSend={() => sendText(composer)}
+      onSuggest={sendText}
       onRetry={retryReply}
       onNewTest={newTest}
     />
@@ -288,12 +285,8 @@ function App() {
   return (
     <div className={`app${mobile ? ' is-mobile' : ''}${sidebarOpen ? ' sidebar-open' : ' sidebar-collapsed'}`}>
       <a className="skip-link" href="#playground">Skip to playground</a>
-      <p className="prototype-banner">Development prototype · replies are mocked · nothing is sent to customers</p>
       {!mobile && (
-        <Sidebar
-          open={sidebarOpen}
-          onToggle={() => setSidebarOpen((open) => !open)}
-        />
+        <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((open) => !open)} />
       )}
       <div className="app-main">
         <header className="app-header">
@@ -302,36 +295,46 @@ function App() {
               <MenuIcon />
             </button>
           )}
-          <div className="agent-lockup">
-            <span className="agent-avatar" aria-hidden="true">K</span>
-            <div className="agent-copy">
-              <strong>K1 Katsastus</strong>
-              <em>Agent tester</em>
+          <div className="header-agent">
+            <strong>K1 Katsastus</strong>
+          </div>
+          <div className="header-actions">
+            {mobile && (
+              <button className="header-quiet" type="button" onClick={() => setRefineOpen(true)}>
+                Refine
+                {dirty && <i className="pending-dot" aria-hidden="true" />}
+              </button>
+            )}
+            <div className="header-menu" ref={versionsRef}>
+              <button className="header-quiet" type="button" aria-expanded={versionsOpen} onClick={() => setVersionsOpen((open) => !open)}>
+                Versions
+              </button>
+              {versionsOpen && (
+                <div className="quiet-popover" role="menu">
+                  <p>Current saved configuration</p>
+                  <button type="button" role="menuitem" disabled>Active</button>
+                </div>
+              )}
+            </div>
+            <div className="header-menu" ref={accountRef}>
+              <button className="account-button" type="button" aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}>
+                <span>D</span>
+                Demo
+              </button>
+              {accountOpen && (
+                <div className="quiet-popover" role="menu">
+                  <p>Development session. Replies are mocked.</p>
+                  <button type="button" role="menuitem" onClick={() => { service.failNextSave(); setAccountOpen(false); setToast('The next Save will fail.') }}>Fail next save</button>
+                  <button type="button" role="menuitem" onClick={() => { service.failNextReply(); setAccountOpen(false); setToast('The next reply will fail.') }}>Fail next reply</button>
+                </div>
+              )}
             </div>
           </div>
-          {mobile ? (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => setRefineOpen(true)}
-              aria-label={dirty ? 'Refine agent, unsaved changes' : 'Refine agent'}
-            >
-              Refine
-              {dirty && <i className="pending-dot" aria-hidden="true" />}
-            </button>
-          ) : (
-            <div className="header-account" ref={accountRef}>
-              <button className="account-button" type="button" aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}>
-                <span>D</span>Demo
-              </button>
-              {accountOpen && <AccountMenu onFailSave={() => { service.failNextSave(); setAccountOpen(false); showToast('The next Save will fail.') }} onFailReply={() => { service.failNextReply(); setAccountOpen(false); showToast('The next reply will fail.') }} />}
-            </div>
-          )}
         </header>
         <main id="playground" className="playground">
           {!mobile && inspector}
           <section className="canvas" aria-label="Agent tester canvas">
-            {tester}
+            {loading ? <div className="canvas-skeleton" aria-busy="true"><span /><span /><span /></div> : tester}
           </section>
         </main>
       </div>
@@ -340,33 +343,29 @@ function App() {
         {mobile && sidebarOpen && (
           <MobileNav
             onClose={() => setSidebarOpen(false)}
-            onFailSave={() => { service.failNextSave(); setSidebarOpen(false); showToast('The next Save will fail.') }}
-            onFailReply={() => { service.failNextReply(); setSidebarOpen(false); showToast('The next reply will fail.') }}
+            onFailSave={() => { service.failNextSave(); setSidebarOpen(false); setToast('The next Save will fail.') }}
+            onFailReply={() => { service.failNextReply(); setSidebarOpen(false); setToast('The next reply will fail.') }}
           />
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {mobile && refineOpen && (
-          <RefineOverlay onClose={() => setRefineOpen(false)}>
-            {inspector}
-          </RefineOverlay>
-        )}
-      </AnimatePresence>
+      {mobile && refineOpen && (
+        <RefineOverlay onClose={() => setRefineOpen(false)}>
+          {inspector}
+        </RefineOverlay>
+      )}
 
-      <AnimatePresence>
-        {instructionsOpen && (
-          <InstructionsDialog
-            value={draft.instructions}
-            onChange={(instructions) => updateDraft({ instructions })}
-            onClose={() => setInstructionsOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+      {instructionsOpen && (
+        <InstructionsDialog
+          value={draft.instructions}
+          onChange={(instructions) => updateDraft({ instructions })}
+          onClose={() => setInstructionsOpen(false)}
+        />
+      )}
 
       <AnimatePresence>
         {toast && (
-          <motion.div className="toast" role="status" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={fade}>
+          <motion.div className="toast" role="status" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={fade}>
             {toast}
           </motion.div>
         )}
@@ -375,42 +374,33 @@ function App() {
   )
 }
 
-function Sidebar({ open, onToggle }: {
-  open: boolean
-  onToggle: () => void
-}) {
-  const reducedMotion = useReducedMotion()
+function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
-    <motion.aside
+    <aside
       className="sidebar"
       aria-label="Workspace"
-      initial={false}
-      animate={{ width: open ? 256 : 48 }}
-      transition={reducedMotion ? { duration: 0 } : space}
     >
       <div className="sidebar-top">
-        {open && (
-          <div className="brand" title="wasup">
-            <span>w</span>
-            <strong>wasup</strong>
-          </div>
-        )}
+        {open && <div className="brand"><span>w</span><strong>wasup</strong></div>}
         <button className="icon-button" type="button" onClick={onToggle} aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}>
           {open ? <CollapseIcon /> : <ExpandIcon />}
         </button>
       </div>
+      {open && (
+        <div className="sidebar-agent">
+          <span className="agent-avatar" aria-hidden="true">K</span>
+          <div>
+            <strong>K1 Katsastus</strong>
+            <em>Workspace</em>
+          </div>
+        </div>
+      )}
       <nav className="sidebar-nav">
-        <NavItem id="playground" active label="Playground" open={open} />
+        <NavItem id="playground" label="Playground" open={open} active />
         <NavItem id="activity" label="Activity" open={open} unavailable />
         <NavItem id="leads" label="Leads" open={open} unavailable />
       </nav>
-      <div className="sidebar-foot">
-        <div className="account-button sidebar-account" aria-hidden="true">
-          <span>D</span>
-          {open && <em>Demo</em>}
-        </div>
-      </div>
-    </motion.aside>
+    </aside>
   )
 }
 
@@ -428,22 +418,10 @@ function NavItem({ id, label, active, unavailable, open }: {
       aria-current={active ? 'page' : undefined}
       aria-disabled={unavailable || undefined}
       title={unavailable ? `${label} is not available in this milestone` : label}
-      onClick={unavailable ? undefined : undefined}
     >
       <NavIcon id={id} />
       {open && <span>{label}</span>}
-      {open && unavailable && <small>Unavailable</small>}
     </button>
-  )
-}
-
-function AccountMenu({ onFailSave, onFailReply }: { onFailSave: () => void; onFailReply: () => void }) {
-  return (
-    <div className="account-popover" role="menu">
-      <p>Development controls. These do not change production authentication.</p>
-      <button type="button" role="menuitem" onClick={onFailSave}>Fail next save</button>
-      <button type="button" role="menuitem" onClick={onFailReply}>Fail next reply</button>
-    </div>
   )
 }
 
@@ -468,119 +446,124 @@ function MobileNav({ onClose, onFailSave, onFailReply }: {
   return (
     <div ref={rootRef} className="mobile-nav" role="presentation">
       <div ref={backdropRef} className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
-      <aside
-        ref={panelRef}
-        className="mobile-nav-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mobile-nav-title"
-      >
+      <aside ref={panelRef} className="mobile-nav-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title">
         <header>
           <div className="brand"><span>w</span><strong id="mobile-nav-title">wasup</strong></div>
           <button ref={closeRef} className="icon-button" type="button" onClick={onClose} aria-label="Close navigation"><CloseIcon /></button>
         </header>
         <nav>
-          <NavItem id="playground" active label="Playground" open />
+          <NavItem id="playground" label="Playground" open active />
           <NavItem id="activity" label="Activity" open unavailable />
           <NavItem id="leads" label="Leads" open unavailable />
         </nav>
         <div className="mobile-nav-foot">
-          <p>Demo session · no sign-in gate</p>
-          <button type="button" className="secondary-button" onClick={onFailSave}>Fail next save</button>
-          <button type="button" className="secondary-button" onClick={onFailReply}>Fail next reply</button>
+          <p>Demo</p>
+          <button type="button" className="ghost-button" onClick={onFailSave}>Fail next save</button>
+          <button type="button" className="ghost-button" onClick={onFailReply}>Fail next reply</button>
         </div>
       </aside>
     </div>
   )
 }
 
-function Inspector({ draft, dirty, saveStatus, saveError, openerOpen, openerDirty, loading, onToggleOpener, onChange, onExpand, onSave, onDiscard }: {
+function Inspector({ tab, draft, dirty, saveStatus, saveError, openerOpen, loading, onTab, onToggleOpener, onChange, onExpand, onSave, onDiscard }: {
+  tab: LocalTab
   draft: AgentConfig
   dirty: boolean
   saveStatus: SaveStatus
   saveError: string | null
   openerOpen: boolean
-  openerDirty: boolean
   loading: boolean
+  onTab: (tab: LocalTab) => void
   onToggleOpener: () => void
   onChange: (patch: Partial<AgentConfig>) => void
   onExpand: () => void
   onSave: () => void
   onDiscard: () => void
 }) {
-  const showBar = dirty || saveStatus === 'saving' || saveStatus === 'error'
   const preview = openerPreview(draft.opener)
   return (
     <section className="inspector" aria-label="Agent configuration">
-      {showBar && (
-        <div className="savebar">
-          <p className={`save-copy ${saveStatus === 'error' ? 'is-error' : saveStatus === 'saving' ? 'is-saving' : 'is-draft'}`} role="status">
-            {saveStatus === 'saving' ? 'Saving…' : saveError ?? 'You have unsaved changes.'}
-          </p>
-          <div className="savebar-actions">
-            <button className="secondary-button" type="button" onClick={onDiscard} disabled={saveStatus === 'saving' || !dirty}>Discard</button>
-            <button className="primary-button" type="button" onClick={onSave} disabled={saveStatus === 'saving' || !dirty}>
-              {saveStatus === 'saving' && <Spinner />}
-              {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Retry save' : 'Save'}
-            </button>
-          </div>
-        </div>
-      )}
-      {saveStatus === 'saved' && !dirty && (
-        <p className="save-copy is-saved" role="status">Saved</p>
-      )}
-      {loading ? (
-        <div className="inspector-skeleton" aria-busy="true">
-          <span /><span /><span />
-        </div>
-      ) : (
-        <div className="inspector-body">
+      <div className="local-tabs" role="tablist" aria-label="Playground sections">
+        <button type="button" role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'is-active' : ''} onClick={() => onTab('overview')}>Overview</button>
+        <button type="button" role="tab" aria-selected={tab === 'display'} className={tab === 'display' ? 'is-active' : ''} onClick={() => onTab('display')}>Display</button>
+      </div>
+      <div className="inspector-body">
+        {loading ? (
+          <div className="inspector-skeleton" aria-busy="true"><span /><span /><span /></div>
+        ) : tab === 'overview' ? (
           <div className="field-block">
-            <div className="field-head">
-              <div>
-                <h2>Instructions</h2>
-                <p>How the saved agent should behave.</p>
-              </div>
-              <button className="icon-button" type="button" onClick={onExpand} aria-label="Expand instructions">
-                <ExpandDialogIcon />
-              </button>
+            <div className="field-label-row">
+              <h2>Instructions</h2>
             </div>
-            <textarea
-              className="instructions-input"
-              aria-label="Instructions"
-              value={draft.instructions}
-              onChange={(event) => onChange({ instructions: event.target.value })}
-            />
+            <p className="field-help">These instructions apply to this agent.</p>
+            <div className="editor-shell">
+              <div className="editor-toolbar">
+                <button className="icon-button toolbar-expand" type="button" onClick={onExpand} aria-label="Expand instructions">
+                  <ExpandDialogIcon />
+                </button>
+              </div>
+              <textarea
+                className="instructions-input"
+                aria-label="Instructions"
+                value={draft.instructions}
+                onChange={(event) => onChange({ instructions: event.target.value })}
+              />
+            </div>
           </div>
+        ) : (
           <Accordion id="opening-message" title="Opening message" open={openerOpen} onToggle={onToggleOpener}>
-            <textarea
-              className="opener-input"
-              aria-label="Opening message"
-              value={draft.opener}
-              onChange={(event) => onChange({ opener: event.target.value })}
-            />
+            <label className="stack-field">
+              <span>Message template</span>
+              <textarea
+                className="opener-input"
+                aria-label="Opening message"
+                value={draft.opener}
+                onChange={(event) => onChange({ opener: event.target.value })}
+              />
+            </label>
             <div className="opener-preview">
-              <span>{openerDirty ? 'Draft preview' : 'Saved preview'}</span>
-              <small>Sample data: first_name = Rasmus · registration_number = ABC-123</small>
-              {preview ? <p>{preview}</p> : <p className="empty-preview">No opening message. A new test waits for the first customer message.</p>}
+              <span>Sample preview</span>
+              <small>first_name = Rasmus · registration_number = ABC-123</small>
+              {preview ? <p>{preview}</p> : <p className="empty-preview">No opening message is saved.</p>}
             </div>
           </Accordion>
+        )}
+      </div>
+      <footer className="savebar">
+        <p className={`save-copy${saveStatus === 'error' ? ' is-error' : dirty ? ' is-draft' : saveStatus === 'saved' ? ' is-saved' : ''}`} role="status">
+          {saveStatus === 'saving'
+            ? 'Saving…'
+            : saveError
+              ? saveError
+              : dirty
+                ? 'You have unsaved changes.'
+                : saveStatus === 'saved'
+                  ? 'Saved'
+                  : ''}
+        </p>
+        <div className="savebar-actions">
+          <button className="ghost-button" type="button" onClick={onDiscard} disabled={!dirty || saveStatus === 'saving'}>Discard</button>
+          <button className="primary-button" type="button" onClick={onSave} disabled={!dirty || saveStatus === 'saving'}>
+            {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Retry save' : 'Save'}
+          </button>
         </div>
-      )}
+      </footer>
     </section>
   )
 }
 
-function Tester({ messages, composer, sending, replyError, dirty, loading, mobile, onComposer, onSend, onRetry, onNewTest }: {
+function Tester({ messages, composer, sending, replyError, loading, mobile, showSuggestions, onComposer, onSend, onSuggest, onRetry, onNewTest }: {
   messages: ChatMessage[]
   composer: string
   sending: boolean
   replyError: string | null
-  dirty: boolean
   loading: boolean
   mobile: boolean
+  showSuggestions: boolean
   onComposer: (value: string) => void
   onSend: () => void
+  onSuggest: (value: string) => void
   onRetry: () => void
   onNewTest: () => void
 }) {
@@ -592,54 +575,42 @@ function Tester({ messages, composer, sending, replyError, dirty, loading, mobil
     }
   }
   return (
-    <div className={`tester${mobile ? ' is-mobile' : ''}`}>
+    <div className={`tester${mobile ? ' is-mobile' : ''}`} aria-label="Agent tester">
       <header className="tester-head">
-        <div>
-          <strong>Agent tester</strong>
-          <em>K1 Katsastus · mocked replies</em>
+        <div className="tester-identity">
+          <span className="tester-mark" aria-hidden="true">K</span>
+          <strong>K1 Katsastus</strong>
         </div>
-        <div className="tester-actions">
-          <button className="secondary-button" type="button" onClick={onNewTest}>New test</button>
-        </div>
+        <button className="tester-reset" type="button" onClick={onNewTest} aria-label="New test" disabled={sending}>
+          <ResetIcon />
+        </button>
       </header>
-      {dirty && <p className="draft-note">Unsaved edits are not used in this test until you Save.</p>}
-      {loading ? (
-        <div className="tester-skeleton" aria-busy="true"><span /><span /><span /></div>
-      ) : (
-        <div className="messages" aria-live="polite">
-          {messages.length === 0 && (
-            <div className="empty-thread">
-              <strong>No opening message is saved.</strong>
-              <span>Send a test message to start the thread.</span>
-            </div>
-          )}
-          <AnimatePresence initial={false}>
-            {messages.map((message) => (
-              <motion.article
-                key={message.id}
-                className={`message ${message.role}`}
-                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: reducedMotion ? 0 : 0.18, ease }}
-              >
-                <p>{message.text}</p>
-                {message.mocked && <span className="mock-tag">Mocked</span>}
-              </motion.article>
-            ))}
-          </AnimatePresence>
-          {sending && <div className="typing" aria-label="Waiting for mocked reply"><span /><span /><span /></div>}
+      <div className="messages" aria-live="polite">
+        {loading && <div className="tester-skeleton" aria-busy="true"><span /><span /></div>}
+        {messages.map((message) => (
+          <article key={message.id} className={`message ${message.role}`}>
+            <p>{message.text}</p>
+            {message.mocked && <span className="mock-tag">Mocked</span>}
+          </article>
+        ))}
+        {sending && <div className="typing" aria-label="Waiting for mocked reply"><span /><span /><span /></div>}
+      </div>
+      {showSuggestions && !sending && (
+        <div className="chips">
+          {SUGGESTIONS.map((suggestion) => (
+            <button key={suggestion} type="button" onClick={() => onSuggest(suggestion)}>{suggestion}</button>
+          ))}
         </div>
       )}
       {replyError && (
         <div className="reply-error" role="status">
           <span>{replyError}</span>
-          <button className="secondary-button" type="button" onClick={onRetry} disabled={sending}>Retry reply</button>
+          <button type="button" onClick={onRetry} disabled={sending}>Retry</button>
         </div>
       )}
-      <div className="composer-wrap">
-        <Composer value={composer} sending={sending} onChange={onComposer} onKeyDown={onKeyDown} onSend={onSend} />
-        <p>Mocked replies. Nothing is sent to customers, WhatsApp, or email.</p>
-      </div>
+      <p className="tester-credit">Agent tester</p>
+      <Composer value={composer} sending={sending} onChange={onComposer} onKeyDown={onKeyDown} onSend={onSend} />
+      {!reducedMotion && null}
     </div>
   )
 }
@@ -652,28 +623,25 @@ function Composer({ value, sending, onChange, onKeyDown, onSend }: {
   onSend: () => void
 }) {
   const areaRef = useRef<HTMLTextAreaElement>(null)
-  const [multiline, setMultiline] = useState(false)
   useLayoutEffect(() => {
     const area = areaRef.current
     if (!area) return
     const styles = getComputedStyle(area)
-    const line = Number.parseFloat(styles.lineHeight) || 24
+    const line = Number.parseFloat(styles.lineHeight) || 20
     const pad = (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0)
     const single = line + pad
     area.style.height = '0px'
-    const next = Math.min(Math.max(area.scrollHeight, single), 148)
-    area.style.height = `${next}px`
-    setMultiline(next > single + 2)
+    area.style.height = `${Math.min(Math.max(area.scrollHeight, single), 96)}px`
   }, [value])
   return (
-    <div className={multiline ? 'composer is-multiline' : 'composer'}>
+    <div className="composer">
       <textarea
         ref={areaRef}
         rows={1}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Ask the saved agent a test question…"
+        placeholder="Message…"
         aria-label="Test message"
       />
       <button className="send-button" type="button" onClick={onSend} disabled={!value.trim() || sending} aria-label="Send message">
@@ -694,32 +662,21 @@ function Accordion({ id, title, open, onToggle, children }: {
   const [clip, setClip] = useState(!open)
   const buttonId = `${id}-toggle`
   const panelId = `${id}-panel`
-  useEffect(() => {
-    if (open) return
-    setClip(true)
-    const panel = document.getElementById(panelId)
-    const toggle = document.getElementById(buttonId)
-    if (panel && toggle && panel.contains(document.activeElement)) toggle.focus()
-  }, [open, buttonId, panelId])
   return (
     <section className={`accordion${open ? ' is-open' : ''}`}>
       <button id={buttonId} type="button" className="accordion-toggle" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
+        {title}
         <motion.span className="accordion-chevron" aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={reducedMotion ? { duration: 0 } : space}>
           <ChevronIcon />
         </motion.span>
-        {title}
       </button>
       <motion.div
         id={panelId}
         role="region"
         aria-labelledby={buttonId}
-        className="accordion-clip"
         initial={false}
         animate={open ? 'open' : 'closed'}
-        variants={{
-          open: { height: 'auto', opacity: 1 },
-          closed: { height: 0, opacity: 0 },
-        }}
+        variants={{ open: { height: 'auto', opacity: 1 }, closed: { height: 0, opacity: 0 } }}
         transition={reducedMotion ? { duration: 0 } : { height: space, opacity: { duration: 0.18, ease } }}
         style={{ overflow: clip ? 'hidden' : 'visible' }}
         onAnimationStart={() => setClip(true)}
@@ -739,41 +696,25 @@ function InstructionsDialog({ value, onChange, onClose }: {
 }) {
   const reducedMotion = useReducedMotion()
   const rootRef = useOverlayChrome(onClose)
-  const closeRef = useRef<HTMLButtonElement>(null)
   const areaRef = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { areaRef.current?.focus() }, [])
   return (
-    <motion.div ref={rootRef} className="dialog-root" initial={{ opacity: 1 }} animate={{ opacity: 1 }} exit={{ opacity: 1 }}>
-      <motion.div
-        className="overlay-backdrop"
-        aria-hidden="true"
-        onClick={onClose}
-        initial="hidden"
-        animate="shown"
-        exit="hidden"
-        variants={backdropVariants}
-        transition={reducedMotion ? { duration: 0 } : fade}
-      />
+    <motion.div className="dialog-root" ref={rootRef} initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={reducedMotion ? { duration: 0 } : fade}>
+      <div className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
       <motion.div
         className="instructions-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="instructions-title"
-        initial="hidden"
-        animate="shown"
-        exit="hidden"
-        variants={dialogVariants}
+        initial={reducedMotion ? false : { scale: 0.95 }}
+        animate={{ scale: 1 }}
         transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease }}
       >
         <header>
           <h2 id="instructions-title">Instructions</h2>
-          <button ref={closeRef} className="icon-button" type="button" onClick={onClose} aria-label="Close instructions"><CloseIcon /></button>
+          <button className="icon-button" type="button" onClick={onClose} aria-label="Close instructions"><CloseIcon /></button>
         </header>
         <textarea ref={areaRef} aria-label="Instructions" value={value} onChange={(event) => onChange(event.target.value)} />
-        <footer>
-          <span>Edits stay in the draft until you Save.</span>
-          <button className="primary-button" type="button" onClick={onClose}>Done</button>
-        </footer>
       </motion.div>
     </motion.div>
   )
@@ -789,33 +730,22 @@ function RefineOverlay({ children, onClose }: { children: ReactNode; onClose: ()
   useLayoutEffect(() => {
     const backdrop = backdropRef.current
     const panel = panelRef.current
-    if (!backdrop || !panel) return
-    if (reducedMotion) return
+    if (!backdrop || !panel || reducedMotion) return
     animate(backdrop, { opacity: [0, 1] }, fade)
     animate(panel, { transform: ['translateY(16px)', 'translateY(0px)'] }, sheetMotion)
   }, [reducedMotion])
   return (
     <div ref={rootRef} className="refine-overlay">
       <div ref={backdropRef} className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
-      <div
-        ref={panelRef}
-        className="refine-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="refine-title"
-      >
+      <div ref={panelRef} className="refine-panel" role="dialog" aria-modal="true" aria-labelledby="refine-title">
         <header>
-          <h2 id="refine-title">Refine agent</h2>
-          <button ref={closeRef} className="secondary-button" type="button" onClick={onClose}>Done</button>
+          <h2 id="refine-title">Refine</h2>
+          <button ref={closeRef} className="ghost-button" type="button" onClick={onClose}>Done</button>
         </header>
         {children}
       </div>
     </div>
   )
-}
-
-function Spinner() {
-  return <span className="spinner" aria-hidden="true" />
 }
 
 function Svg(props: SVGProps<SVGSVGElement>) {
@@ -826,12 +756,13 @@ function ChevronIcon() { return <Svg><path d="M4 6.25 8 10l4-3.75" /></Svg> }
 function CloseIcon() { return <Svg><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></Svg> }
 function ArrowUpIcon() { return <Svg><path d="M8 13V4M8 4 4.4 7.6M8 4l3.6 3.6" /></Svg> }
 function MenuIcon() { return <Svg><path d="M3 4.5h10M3 8h10M3 11.5h10" /></Svg> }
-function CollapseIcon() { return <Svg><path d="M10.5 3.5 6 8l4.5 4.5M6 3.5v9" /></Svg> }
-function ExpandIcon() { return <Svg><path d="M5.5 3.5 10 8 5.5 12.5M10 3.5v9" /></Svg> }
+function CollapseIcon() { return <Svg><path d="M10.5 3.5 6 8l4.5 4.5" /></Svg> }
+function ExpandIcon() { return <Svg><path d="M5.5 3.5 10 8 5.5 12.5" /></Svg> }
 function ExpandDialogIcon() { return <Svg><path d="M6 3.5H3.5V6M10 3.5h2.5V6M6 12.5H3.5V10M10 12.5h2.5V10" /></Svg> }
-function PlaygroundIcon() { return <Svg><path d="M4 4.2h8v7.6H4zM6.2 12.6h3.6" /></Svg> }
+function ResetIcon() { return <Svg><path d="M12.2 8A4.2 4.2 0 1 1 8 3.8h1.4M9.4 2.4 11.2 3.8 9.4 5.2" /></Svg> }
+function PlaygroundIcon() { return <Svg><path d="M4.2 3.6 12 8 4.2 12.4z" /></Svg> }
 function ActivityIcon() { return <Svg><path d="M3.2 10.8 6 7.4l2.2 2.4 4.6-5.6" /></Svg> }
-function LeadsIcon() { return <Svg><circle cx="6.2" cy="6" r="2" /><path d="M3.4 12.4c.4-2 1.8-3 2.8-3s2.4 1 2.8 3M10.4 6.2a2 2 0 1 1 0 3.4" /></Svg> }
+function LeadsIcon() { return <Svg><circle cx="6.2" cy="6" r="2" /><path d="M3.4 12.4c.4-2 1.8-3 2.8-3s2.4 1 2.8 3" /></Svg> }
 
 function NavIcon({ id }: { id: NavId }) {
   if (id === 'activity') return <ActivityIcon />
