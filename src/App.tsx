@@ -145,12 +145,15 @@ function Composer({ value, sending, compact, onChange, onKeyDown, onSend }: {
   useLayoutEffect(() => {
     const area = areaRef.current
     if (!area) return
+    const styles = getComputedStyle(area)
+    const line = Number.parseFloat(styles.lineHeight) || 24
+    const pad = (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0)
+    const single = line + pad
+    const cap = compact ? 148 : 132
     area.style.height = '0px'
-    const cap = compact ? 132 : 120
-    const next = Math.min(Math.max(area.scrollHeight, 24), cap)
+    const next = Math.min(Math.max(area.scrollHeight, single), cap)
     area.style.height = `${next}px`
-    const line = Number.parseFloat(getComputedStyle(area).lineHeight) || 24
-    setMultiline(area.scrollHeight > line + 3)
+    setMultiline(next > single + 2)
   }, [value, compact])
   return (
     <div className={multiline ? 'composer is-multiline' : 'composer'}>
@@ -516,7 +519,6 @@ function focusAfterSave() {
 function App() {
   const [state, setState] = useState<AppState>(() => loadInitialState())
   const [refineWidth, setRefineWidth] = useState(REFINE_DEFAULT)
-  const [testerExpanded, setTesterExpanded] = useState(false)
   const [widthSettling, setWidthSettling] = useState(false)
   const [extraOpen, setExtraOpen] = useState(true)
   const [previousTestOpen, setPreviousTestOpen] = useState(false)
@@ -1129,7 +1131,6 @@ function App() {
         <section id="tester-canvas" className="playground-panel">
           <Tester
             compact={narrow}
-            expanded={!narrow && testerExpanded}
             previousTestOpen={previousTestOpen}
             state={state}
             dirty={dirty}
@@ -1143,7 +1144,6 @@ function App() {
             onCopy={copyMessage}
             onUseLastQuestion={useLastQuestion}
             onTogglePreviousTest={() => setPreviousTestOpen((open) => !open)}
-            onToggleExpanded={() => setTesterExpanded((open) => !open)}
             onRefine={() => setState((prev) => ({ ...prev, refineOpen: true }))}
           />
         </section>
@@ -1356,13 +1356,12 @@ function RefinementPanel({ state, dirty, extraOpen, statusText, setState, onSave
   )
 }
 
-function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, expanded = false, previousTestOpen, setState, onNewTest, onRetryTest, onSend, onComposerKey, onCopy, onUseLastQuestion, onTogglePreviousTest, onToggleExpanded, onRefine }: {
+function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, previousTestOpen, setState, onNewTest, onRetryTest, onSend, onComposerKey, onCopy, onUseLastQuestion, onTogglePreviousTest, onRefine }: {
   state: AppState
   dirty: boolean
   contextLabel: string
   isolatedTester: boolean
   compact?: boolean
-  expanded?: boolean
   previousTestOpen: boolean
   setState: Dispatch<SetStateAction<AppState>>
   onNewTest: () => void
@@ -1372,28 +1371,16 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, e
   onCopy: (message: ChatMessage) => void
   onUseLastQuestion: () => void
   onTogglePreviousTest: () => void
-  onToggleExpanded: () => void
   onRefine: () => void
 }) {
   const reducedMotion = useReducedMotion()
-  const [layoutLive, setLayoutLive] = useState(false)
-  useEffect(() => {
-    if (compact || reducedMotion) return
-    setLayoutLive(true)
-    const timer = window.setTimeout(() => setLayoutLive(false), 240)
-    return () => window.clearTimeout(timer)
-  }, [expanded, compact, reducedMotion])
   const agent = state.agent
   const previousQuestion = lastCustomerQuestion(agent.previousTest?.messages ?? [])
   const ready = state.feedback === 'ready' && !dirty && !state.testError
   const usesSample = agent.messages.some((message) => message.sample)
 
   return (
-    <motion.div
-      className={`playground-content${compact ? ' compact' : ''}${expanded ? ' is-expanded' : ''}`}
-      layout={layoutLive}
-      transition={space}
-    >
+    <div className={`playground-content${compact ? ' compact' : ''}`}>
       <div className="context-row">
         <span className="tester-title" tabIndex={-1} data-tester-heading="true">
           <span className="tester-k" aria-hidden="true">K</span>
@@ -1407,11 +1394,6 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, e
             <button className="secondary-button" type="button" onClick={onRefine} aria-label={dirty ? 'Refine agent, unsaved changes' : 'Refine agent'}>
               Refine agent
               {dirty && <i className="pending-dot" aria-hidden="true" />}
-            </button>
-          )}
-          {!compact && (
-            <button className="secondary-button" type="button" onClick={onToggleExpanded} aria-pressed={expanded}>
-              {expanded ? 'Restore tester' : 'Expand tester'}
             </button>
           )}
           <button className="secondary-button" type="button" onClick={onNewTest} aria-label="Start a new test">New test</button>
@@ -1476,7 +1458,7 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, e
           : 'Mocked replies. Nothing is sent to customers.'}
         </p>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
