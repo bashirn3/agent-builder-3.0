@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Dispatch, FormEvent, KeyboardEvent as ReactKeyboardEvent, SetStateAction, SVGProps, useEffect, useMemo, useRef, useState } from 'react'
+import { Dispatch, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction, SVGProps, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getAgentBuilderBackendMode, getK1TenantKey, loadAgentBuilderConfig, saveAgentBuilderConfig, testAgentBuilderMessage, type AgentBuilderVersionRecord } from './lib/agentBuilderService'
 import {
   applyFreshTest,
@@ -49,7 +49,6 @@ type AppState = {
   masterOpen: boolean
   openerOpen: boolean
   refineOpen: boolean
-  panelExpanded: boolean
   accountOpen: boolean
   instructionDraft: string
   saving: boolean
@@ -70,6 +69,168 @@ type AppState = {
 
 const STORAGE_KEY = 'wasup-agent-builder-v1'
 const ease = [0.4, 0, 0.2, 1] as const
+const space = { duration: 0.22, ease }
+const REFINE_DEFAULT = 420
+const REFINE_MIN = 320
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function useNarrowWorkspace() {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 899px)').matches)
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 899px)')
+    const sync = () => setNarrow(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+  return narrow
+}
+
+function Accordion({ id, title, open, onToggle, meta, trailing, children }: {
+  id: string
+  title: ReactNode
+  open: boolean
+  onToggle: () => void
+  meta?: ReactNode
+  trailing?: ReactNode
+  children: ReactNode
+}) {
+  const reducedMotion = useReducedMotion()
+  const buttonId = `${id}-toggle`
+  const panelId = `${id}-panel`
+  useEffect(() => {
+    if (open) return
+    const panel = document.getElementById(panelId)
+    const toggle = document.getElementById(buttonId)
+    if (panel && toggle && panel.contains(document.activeElement)) toggle.focus()
+  }, [open, buttonId, panelId])
+  return (
+    <section className={`disclosure ${open ? 'open' : ''}`}>
+      <div className="disclosure-bar">
+        <button id={buttonId} type="button" className="disclosure-toggle" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
+          <motion.span className="disclosure-chevron" aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={reducedMotion ? { duration: 0 } : space}>
+            <ChevronIcon />
+          </motion.span>
+          {title}
+          {meta}
+        </button>
+        {trailing}
+      </div>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
+        className="disclosure-clip"
+        {...(open ? {} : { inert: true })}
+      >
+        <div className="disclosure-body">{children}</div>
+      </div>
+    </section>
+  )
+}
+
+function Composer({ value, sending, compact, onChange, onKeyDown, onSend }: {
+  value: string
+  sending: boolean
+  compact: boolean
+  onChange: (value: string) => void
+  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
+  onSend: () => void
+}) {
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+  const [multiline, setMultiline] = useState(false)
+  useLayoutEffect(() => {
+    const area = areaRef.current
+    if (!area) return
+    area.style.height = '0px'
+    const cap = compact ? 132 : 120
+    const next = Math.min(Math.max(area.scrollHeight, 24), cap)
+    area.style.height = `${next}px`
+    const line = Number.parseFloat(getComputedStyle(area).lineHeight) || 24
+    setMultiline(area.scrollHeight > line + 3)
+  }, [value, compact])
+  return (
+    <div className={multiline ? 'composer is-multiline' : 'composer'}>
+      <textarea
+        ref={areaRef}
+        rows={1}
+        data-composer="true"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="Ask the saved agent a test question…"
+        aria-label="Test message"
+      />
+      <motion.button className="send-button" type="button" onClick={onSend} disabled={!value.trim() || sending} whileTap={{ scale: 0.94 }} aria-label="Send message">
+        <ArrowUpIcon />
+      </motion.button>
+    </div>
+  )
+}
+
+function WorkspaceDivider({ width, min, max, settling, onChange, onReset, onTogglePreset }: {
+  width: number
+  min: number
+  max: number
+  settling: boolean
+  onChange: (width: number) => void
+  onReset: () => void
+  onTogglePreset: () => void
+}) {
+  const drag = useRef<{ pointerId: number; startX: number; startWidth: number; moved: boolean } | null>(null)
+  const applyBounds = (next: number) => onChange(clamp(Math.round(next), min, max))
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = drag.current
+    if (!active || active.pointerId !== event.pointerId) return
+    drag.current = null
+    document.body.classList.remove('is-resizing')
+    try { event.currentTarget.releasePointerCapture(event.pointerId) } catch { /* already released */ }
+    if (!active.moved) onTogglePreset()
+  }
+  return (
+    <div
+      className="workspace-divider"
+      role="separator"
+      aria-orientation="vertical"
+      aria-controls="refine-panel tester-canvas"
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={width}
+      aria-valuetext={`${width} pixels`}
+      aria-label="Resize refinement panel"
+      tabIndex={0}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return
+        if ((event.target as HTMLElement).closest('button')) return
+        drag.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width, moved: false }
+        document.body.classList.add('is-resizing')
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }}
+      onPointerMove={(event) => {
+        const active = drag.current
+        if (!active || active.pointerId !== event.pointerId) return
+        const delta = event.clientX - active.startX
+        if (Math.abs(delta) > 3) active.moved = true
+        if (active.moved) applyBounds(active.startWidth + delta)
+      }}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onDoubleClick={(event) => { event.preventDefault(); onReset() }}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowLeft') { event.preventDefault(); applyBounds(width - 16) }
+        if (event.key === 'ArrowRight') { event.preventDefault(); applyBounds(width + 16) }
+        if (event.key === 'Home' || event.key === 'Enter') { event.preventDefault(); onReset() }
+      }}
+    >
+      <span className="workspace-divider__line" aria-hidden="true" />
+      <span className={`workspace-divider__grip${settling ? ' is-settling' : ''}`} aria-hidden="true" />
+      <button className="workspace-divider__reset" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onReset() }}>Reset width</button>
+    </div>
+  )
+}
 
 function focusableIn(root: HTMLElement) {
   return [...root.querySelectorAll<HTMLElement>('button, [href], textarea, input, select')]
@@ -270,7 +431,6 @@ function initialState(): AppState {
     masterOpen: false,
     openerOpen: false,
     refineOpen: false,
-    panelExpanded: false,
     accountOpen: false,
     instructionDraft: '',
     saving: false,
@@ -355,6 +515,13 @@ function focusAfterSave() {
 
 function App() {
   const [state, setState] = useState<AppState>(() => loadInitialState())
+  const [refineWidth, setRefineWidth] = useState(REFINE_DEFAULT)
+  const [testerExpanded, setTesterExpanded] = useState(false)
+  const [widthSettling, setWidthSettling] = useState(false)
+  const [extraOpen, setExtraOpen] = useState(true)
+  const [previousTestOpen, setPreviousTestOpen] = useState(false)
+  const narrow = useNarrowWorkspace()
+  const reducedMotion = useReducedMotion()
   const agent = state.agent
   const dirty = changesOf(state)
   const selectedVersion = agent.versions.find((version) => version.id === state.selectedVersionId) ?? agent.versions[0]
@@ -362,6 +529,15 @@ function App() {
   const accountRef = useRef<HTMLDivElement>(null)
   const refineCloseRef = useRef<HTMLButtonElement>(null)
   const focusedOnce = useRef(false)
+  const settleTimer = useRef<number | null>(null)
+  const refineMax = typeof window === 'undefined' ? 720 : Math.max(REFINE_MIN, Math.round(window.innerWidth * 0.62))
+  const settleWidth = (next: number, immediate = false) => {
+    setRefineWidth(next)
+    if (immediate || reducedMotion) return
+    setWidthSettling(true)
+    if (settleTimer.current) window.clearTimeout(settleTimer.current)
+    settleTimer.current = window.setTimeout(() => setWidthSettling(false), 220)
+  }
 
   useEffect(() => {
     if (!state.refineOpen) return
@@ -895,11 +1071,12 @@ function App() {
     <RefinementPanel
       state={state}
       dirty={dirty}
+      extraOpen={extraOpen}
       statusText={statusText}
       setState={setState}
       onSaveAndTest={saveAndTest}
       onDiscard={() => setState((prev) => ({ ...prev, dialog: { kind: 'discard' } }))}
-      onTogglePanel={() => setState((prev) => ({ ...prev, panelExpanded: !prev.panelExpanded }))}
+      onToggleExtra={() => setExtraOpen((open) => !open)}
       onLock={requestLock}
       onUnlock={unlock}
     />
@@ -933,27 +1110,27 @@ function App() {
         </div>
       </header>
 
-      <main className={state.panelExpanded ? 'workspace workspace--expanded' : 'workspace'}>
-        <section className="refine-panel desktop-pane">{refinement}</section>
-        <section className="playground-panel desktop-pane">
-          <Tester
-            state={state}
-            dirty={dirty}
-            contextLabel={contextLabel}
-            isolatedTester={isolatedTester}
-            setState={setState}
-            onNewTest={newTest}
-            onRetryTest={retryTest}
-            onSend={sendMessage}
-            onComposerKey={onComposerKey}
-            onCopy={copyMessage}
-            onUseLastQuestion={useLastQuestion}
-            onRefine={() => setState((prev) => ({ ...prev, refineOpen: true }))}
+      <main
+        className={`workspace${narrow ? ' is-narrow' : ''}${widthSettling ? ' is-settling' : ''}`}
+        style={narrow ? undefined : { ['--refine-w' as string]: `${refineWidth}px` }}
+      >
+        {!narrow && <section id="refine-panel" className="refine-panel">{refinement}</section>}
+        {!narrow && (
+          <WorkspaceDivider
+            width={refineWidth}
+            min={REFINE_MIN}
+            max={refineMax}
+            settling={widthSettling}
+            onChange={(next) => { setWidthSettling(false); setRefineWidth(next) }}
+            onReset={() => settleWidth(REFINE_DEFAULT)}
+            onTogglePreset={() => settleWidth(refineWidth > REFINE_DEFAULT + 24 ? REFINE_DEFAULT : Math.round((REFINE_MIN + refineMax) / 2))}
           />
-        </section>
-        <section className="mobile-shell">
+        )}
+        <section id="tester-canvas" className="playground-panel">
           <Tester
-            compact
+            compact={narrow}
+            expanded={!narrow && testerExpanded}
+            previousTestOpen={previousTestOpen}
             state={state}
             dirty={dirty}
             contextLabel={contextLabel}
@@ -965,21 +1142,17 @@ function App() {
             onComposerKey={onComposerKey}
             onCopy={copyMessage}
             onUseLastQuestion={useLastQuestion}
+            onTogglePreviousTest={() => setPreviousTestOpen((open) => !open)}
+            onToggleExpanded={() => setTesterExpanded((open) => !open)}
             onRefine={() => setState((prev) => ({ ...prev, refineOpen: true }))}
           />
         </section>
       </main>
 
-      {state.refineOpen && (
-        <div className="refine-sheet mobile-only" role="presentation">
-          <div className="refine-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="refine-title">
-            <header className="refine-sheet__bar">
-              <h2 id="refine-title">Refine agent</h2>
-              <button ref={refineCloseRef} className="secondary-button" type="button" onClick={() => setState((prev) => ({ ...prev, refineOpen: false }))}>Close</button>
-            </header>
-            {refinement}
-          </div>
-        </div>
+      {state.refineOpen && narrow && (
+        <RefineSheet closeRef={refineCloseRef} reducedMotion={!!reducedMotion} onClose={() => setState((prev) => ({ ...prev, refineOpen: false }))}>
+          {refinement}
+        </RefineSheet>
       )}
 
       {state.historyOpen && selectedVersion && (
@@ -1075,14 +1248,15 @@ function AuthScreen({ state, setState, signIn }: {
   )
 }
 
-function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, onDiscard, onTogglePanel, onLock, onUnlock }: {
+function RefinementPanel({ state, dirty, extraOpen, statusText, setState, onSaveAndTest, onDiscard, onToggleExtra, onLock, onUnlock }: {
   state: AppState
   dirty: boolean
+  extraOpen: boolean
   statusText: string
   setState: Dispatch<SetStateAction<AppState>>
   onSaveAndTest: () => void
   onDiscard: () => void
-  onTogglePanel: () => void
+  onToggleExtra: () => void
   onLock: () => void
   onUnlock: () => void
 }) {
@@ -1100,9 +1274,6 @@ function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, on
             <h2>Additional information</h2>
             <p>Tell the agent what to do differently.</p>
           </div>
-          <button className="secondary-button refine-expand" type="button" onClick={onTogglePanel}>
-            {state.panelExpanded ? 'Collapse panel' : 'Expand panel'}
-          </button>
         </div>
         <textarea
           className="instruction-input"
@@ -1114,61 +1285,57 @@ function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, on
         <p className="example-hint">Example: Saturday bookings are Monday to Friday only.</p>
       </section>
 
-      <section className={`disclosure ${state.masterOpen ? 'open' : ''}`}>
-        <div className="disclosure-bar">
-          <button type="button" className="disclosure-toggle" aria-expanded={state.masterOpen} onClick={() => setState((prev) => ({ ...prev, masterOpen: !prev.masterOpen }))}>
-            <ChevronIcon />
-            <span>Master prompt</span>
-            <em>{agent.locked ? 'Locked' : 'Unlocked'}</em>
-          </button>
-          {agent.locked
-            ? <button type="button" className="secondary-button" onClick={onUnlock}>Unlock full editor</button>
-            : <button type="button" className="secondary-button" onClick={onLock} disabled={state.saving}><LockIcon />Lock base prompt</button>}
-        </div>
-        {state.masterOpen && (
-          <div className="disclosure-body">
-            <div className="saved-extra">
-              <span>{agent.draftAdditional === agent.savedAdditional ? 'Saved additional instructions' : 'Additional instructions in this draft'}</span>
-              {additionalPreview ? <pre>{agent.draftAdditional.trim()}</pre> : <p>None saved yet.</p>}
-              <p>The tester appends these after the base prompt. Older instructions stay until you edit them here.</p>
-            </div>
-            <div className="field-header">
-              <h3>{agent.locked ? 'Base prompt preview' : 'Base prompt'}</h3>
-              <span className="char-count">{agent.draftBase.length.toLocaleString()} chars</span>
-            </div>
-            {agent.locked ? (
-              <pre className="prompt-preview">{agent.draftBase}</pre>
-            ) : (
-              <textarea className="prompt-input" aria-label="Base master prompt" value={agent.draftBase} onChange={(event) => setState((prev) => ({ ...prev, agent: { ...prev.agent, draftBase: event.target.value }, saveError: null }))} />
-            )}
-            <button type="button" className="secondary-button mobile-editor-link" onClick={() => setState((prev) => ({ ...prev, sheet: { kind: 'prompt', title: 'Master prompt', value: agent.draftBase, readOnly: agent.locked } }))}>
-              {agent.locked ? 'Open read-only prompt' : 'Open full editor'}
-            </button>
+      <Accordion
+        id="master-prompt"
+        title={<span>Master prompt</span>}
+        meta={<em>{agent.locked ? 'Locked' : 'Unlocked'}</em>}
+        open={state.masterOpen}
+        onToggle={() => setState((prev) => ({ ...prev, masterOpen: !prev.masterOpen }))}
+        trailing={agent.locked
+          ? <button type="button" className="secondary-button" onClick={onUnlock}>Unlock full editor</button>
+          : <button type="button" className="secondary-button" onClick={onLock} disabled={state.saving}><LockIcon />Lock base prompt</button>}
+      >
+        <Accordion
+          id="saved-extra"
+          title={<span>{agent.draftAdditional === agent.savedAdditional ? 'Saved additional instructions' : 'Additional instructions in this draft'}</span>}
+          open={extraOpen}
+          onToggle={onToggleExtra}
+        >
+          <div className="saved-extra">
+            {additionalPreview ? <pre>{agent.draftAdditional.trim()}</pre> : <p>None saved yet.</p>}
+            <p>The tester appends these after the base prompt. Older instructions stay until you edit them here.</p>
           </div>
+        </Accordion>
+        <div className="field-header">
+          <h3>{agent.locked ? 'Base prompt preview' : 'Base prompt'}</h3>
+          <span className="char-count">{agent.draftBase.length.toLocaleString()} chars</span>
+        </div>
+        {agent.locked ? (
+          <pre className="prompt-preview">{agent.draftBase}</pre>
+        ) : (
+          <textarea className="prompt-input" aria-label="Base master prompt" value={agent.draftBase} onChange={(event) => setState((prev) => ({ ...prev, agent: { ...prev.agent, draftBase: event.target.value }, saveError: null }))} />
         )}
-      </section>
+        <button type="button" className="secondary-button mobile-editor-link" onClick={() => setState((prev) => ({ ...prev, sheet: { kind: 'prompt', title: 'Master prompt', value: agent.draftBase, readOnly: agent.locked } }))}>
+          {agent.locked ? 'Open read-only prompt' : 'Open full editor'}
+        </button>
+      </Accordion>
 
-      <section className={`disclosure ${state.openerOpen ? 'open' : ''}`}>
-        <div className="disclosure-bar">
-          <button type="button" className="disclosure-toggle" aria-expanded={state.openerOpen} onClick={() => setState((prev) => ({ ...prev, openerOpen: !prev.openerOpen }))}>
-            <ChevronIcon />
-            <span>Opening message</span>
-          </button>
+      <Accordion
+        id="opening-message"
+        title={<span>Opening message</span>}
+        open={state.openerOpen}
+        onToggle={() => setState((prev) => ({ ...prev, openerOpen: !prev.openerOpen }))}
+      >
+        <textarea className="opener-input" aria-label="Opening message" value={agent.draftOpener} onChange={(event) => setState((prev) => ({ ...prev, agent: { ...prev.agent, draftOpener: event.target.value }, saveError: null }))} />
+        <div className="opening-preview">
+          <span>{openerDirty ? 'Draft preview' : 'Saved preview'}</span>
+          <small>Sample data: first_name = Rasmus · registration_number = ABC-123</small>
+          {openerPreview ? <p>{openerPreview}</p> : <p className="empty-preview">No opening message. A new test starts when the first customer message is sent.</p>}
         </div>
-        {state.openerOpen && (
-          <div className="disclosure-body">
-            <textarea className="opener-input" aria-label="Opening message" value={agent.draftOpener} onChange={(event) => setState((prev) => ({ ...prev, agent: { ...prev.agent, draftOpener: event.target.value }, saveError: null }))} />
-            <div className="opening-preview">
-              <span>{openerDirty ? 'Draft preview' : 'Saved preview'}</span>
-              <small>Sample data: first_name = Rasmus · registration_number = ABC-123</small>
-              {openerPreview ? <p>{openerPreview}</p> : <p className="empty-preview">No opening message. A new test starts when the first customer message is sent.</p>}
-            </div>
-            <button type="button" className="secondary-button mobile-editor-link" onClick={() => setState((prev) => ({ ...prev, sheet: { kind: 'opener', title: 'Opening message', value: agent.draftOpener, readOnly: false } }))}>
-              Edit in full screen
-            </button>
-          </div>
-        )}
-      </section>
+        <button type="button" className="secondary-button mobile-editor-link" onClick={() => setState((prev) => ({ ...prev, sheet: { kind: 'opener', title: 'Opening message', value: agent.draftOpener, readOnly: false } }))}>
+          Edit in full screen
+        </button>
+      </Accordion>
       </div>
       <div className="savebar">
         {(dirty || state.saving || state.saveError) && (
@@ -1189,12 +1356,14 @@ function RefinementPanel({ state, dirty, statusText, setState, onSaveAndTest, on
   )
 }
 
-function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, setState, onNewTest, onRetryTest, onSend, onComposerKey, onCopy, onUseLastQuestion, onRefine }: {
+function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, expanded = false, previousTestOpen, setState, onNewTest, onRetryTest, onSend, onComposerKey, onCopy, onUseLastQuestion, onTogglePreviousTest, onToggleExpanded, onRefine }: {
   state: AppState
   dirty: boolean
   contextLabel: string
   isolatedTester: boolean
   compact?: boolean
+  expanded?: boolean
+  previousTestOpen: boolean
   setState: Dispatch<SetStateAction<AppState>>
   onNewTest: () => void
   onRetryTest: () => void
@@ -1202,16 +1371,29 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
   onComposerKey: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
   onCopy: (message: ChatMessage) => void
   onUseLastQuestion: () => void
+  onTogglePreviousTest: () => void
+  onToggleExpanded: () => void
   onRefine: () => void
 }) {
   const reducedMotion = useReducedMotion()
+  const [layoutLive, setLayoutLive] = useState(false)
+  useEffect(() => {
+    if (compact || reducedMotion) return
+    setLayoutLive(true)
+    const timer = window.setTimeout(() => setLayoutLive(false), 240)
+    return () => window.clearTimeout(timer)
+  }, [expanded, compact, reducedMotion])
   const agent = state.agent
   const previousQuestion = lastCustomerQuestion(agent.previousTest?.messages ?? [])
   const ready = state.feedback === 'ready' && !dirty && !state.testError
   const usesSample = agent.messages.some((message) => message.sample)
 
   return (
-    <div className={`playground-content ${compact ? 'compact' : ''}`}>
+    <motion.div
+      className={`playground-content${compact ? ' compact' : ''}${expanded ? ' is-expanded' : ''}`}
+      layout={layoutLive}
+      transition={space}
+    >
       <div className="context-row">
         <span className="tester-title" tabIndex={-1} data-tester-heading="true">
           <span className="tester-k" aria-hidden="true">K</span>
@@ -1225,6 +1407,11 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
             <button className="secondary-button" type="button" onClick={onRefine} aria-label={dirty ? 'Refine agent, unsaved changes' : 'Refine agent'}>
               Refine agent
               {dirty && <i className="pending-dot" aria-hidden="true" />}
+            </button>
+          )}
+          {!compact && (
+            <button className="secondary-button" type="button" onClick={onToggleExpanded} aria-pressed={expanded}>
+              {expanded ? 'Restore tester' : 'Expand tester'}
             </button>
           )}
           <button className="secondary-button" type="button" onClick={onNewTest} aria-label="Start a new test">New test</button>
@@ -1241,15 +1428,14 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
       )}
       <div className="messages" aria-live="polite">
         {agent.previousTest && (
-          <details className="previous-test">
-            <summary>Previous test</summary>
+          <Accordion id="previous-test" title={<span>Previous test</span>} open={previousTestOpen} onToggle={onTogglePreviousTest}>
             <div className="previous-log">
               {agent.previousTest.messages.map((message) => (
                 <p key={message.id} className={message.role}>{message.text}</p>
               ))}
             </div>
             {previousQuestion && <button type="button" className="secondary-button" onClick={onUseLastQuestion}>Use last question</button>}
-          </details>
+          </Accordion>
         )}
         {agent.messages.length === 0 && (
           <div className="empty-thread">
@@ -1277,25 +1463,64 @@ function Tester({ state, dirty, contextLabel, isolatedTester, compact = false, s
         {state.sending && <TypingDots />}
       </div>
       <div className="composer-wrap">
-        <div className="composer">
-          <textarea
-            data-composer="true"
-            value={state.composer}
-            onChange={(event) => setState((prev) => ({ ...prev, composer: event.target.value }))}
-            onKeyDown={onComposerKey}
-            placeholder="Ask the saved agent a test question…"
-            aria-label="Test message"
-          />
-          <motion.button className="send-button" type="button" onClick={onSend} disabled={!state.composer.trim() || state.sending} whileTap={{ scale: 0.94 }} aria-label="Send message">
-            <ArrowUpIcon />
-          </motion.button>
-        </div>
+        <Composer
+          value={state.composer}
+          sending={state.sending}
+          compact={compact}
+          onChange={(value) => setState((prev) => ({ ...prev, composer: value }))}
+          onKeyDown={onComposerKey}
+          onSend={onSend}
+        />
         <p>{isolatedTester
           ? 'Last saved version only. Nothing is sent to customers.'
           : 'Mocked replies. Nothing is sent to customers.'}
         </p>
       </div>
-    </div>
+    </motion.div>
+  )
+}
+
+function RefineSheet({ children, closeRef, reducedMotion, onClose }: {
+  children: ReactNode
+  closeRef: { current: HTMLButtonElement | null }
+  reducedMotion: boolean
+  onClose: () => void
+}) {
+  const [leaving, setLeaving] = useState(false)
+  const startClose = () => {
+    if (leaving) return
+    if (reducedMotion) { onClose(); return }
+    setLeaving(true)
+    window.setTimeout(onClose, 220)
+  }
+  const { rootRef, requestClose } = useOverlayChrome(startClose)
+  useEffect(() => { closeRef.current?.focus() }, [closeRef])
+  return (
+    <motion.div
+      ref={rootRef}
+      className="refine-sheet mobile-only"
+      role="presentation"
+      initial={reducedMotion ? false : { opacity: 0 }}
+      animate={{ opacity: leaving ? 0 : 1 }}
+      transition={space}
+      style={leaving ? { pointerEvents: 'none' } : undefined}
+    >
+      <motion.div
+        className="refine-sheet__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="refine-title"
+        initial={reducedMotion ? false : { y: 16 }}
+        animate={{ y: leaving ? 16 : 0 }}
+        transition={space}
+      >
+        <header className="refine-sheet__bar">
+          <h2 id="refine-title">Refine agent</h2>
+          <button ref={closeRef} className="secondary-button" type="button" onClick={requestClose}>Close</button>
+        </header>
+        {children}
+      </motion.div>
+    </motion.div>
   )
 }
 
