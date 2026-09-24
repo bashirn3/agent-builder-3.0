@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { addEntry, type QnaEntry } from './qna'
-import { loadConfig, openerPreview, sameDraft, saveConfig, sendTest, type AgentConfig, type Draft } from './agentConfig'
+import { describeError, loadConfig, openerPreview, sameDraft, saveConfig, sendTest, type AgentConfig, type Draft } from './agentConfig'
 
 export type TestMessage = {
   id: string
@@ -46,7 +46,7 @@ export function usePlayground(notify: Notify) {
         setVersionId(next.versions.find((item) => item.active)?.id ?? next.versions[0]?.id ?? null)
         setMessages((current) => (current.some((message) => message.role === 'user') ? current : openerMessage(next.opener)))
       })
-      .catch((error: Error) => { if (!cancelled) setLoadError(error.message) })
+      .catch((error: Error) => { if (!cancelled) setLoadError(describeError(error)) })
     return () => { cancelled = true }
   }, [])
 
@@ -91,7 +91,7 @@ export function usePlayground(notify: Notify) {
       setVersionId(next.versions[0]?.id ?? null)
       notify({ title: 'Success', body: 'Your changes are saved.' })
     } catch (error) {
-      notify({ tone: 'error', title: 'Save failed', body: `Nothing was saved (${(error as Error).message}). Your draft is still here.` })
+      notify({ tone: 'error', title: 'Save failed', body: `Nothing was saved (${describeError(error)}). Your draft is still here.` })
     } finally {
       setSaving(false)
     }
@@ -120,7 +120,7 @@ export function usePlayground(notify: Notify) {
       setMessages((list) => [...list, { id: uid('msg'), role: 'agent', text: result.reply, at: Date.now(), demo: result.mode === 'demo', feedback: null }])
     } catch (error) {
       if (thread !== threadRef.current) return
-      setTestError(`The test reply failed (${(error as Error).message}).`)
+      setTestError(`The test reply failed (${describeError(error)}).`)
     } finally {
       if (thread === threadRef.current) setPending(false)
     }

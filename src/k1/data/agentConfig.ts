@@ -1,5 +1,4 @@
 import {
-  getAgentBuilderBackendMode,
   getK1TenantKey,
   loadAgentBuilderConfig,
   saveAgentBuilderConfig,
@@ -29,14 +28,6 @@ export type AgentConfig = {
 }
 
 export type Draft = Pick<AgentConfig, 'locked' | 'masterPrompt' | 'additional' | 'opener'>
-
-export const backendMode = getAgentBuilderBackendMode()
-
-export const backendLabel = {
-  n8n: 'Connected to the K1 agent-builder workflow (n8n)',
-  supabase: 'Connected to the K1 agent-builder store (Supabase)',
-  local: 'Local browser storage — no backend configured',
-}[backendMode]
 
 function toVersion(record: AgentBuilderVersionRecord): AgentVersion {
   return {
@@ -95,7 +86,7 @@ export async function saveConfig(config: AgentConfig, draft: Draft): Promise<Age
 const DEMO_REPLIES = [
   'Thanks. Which K1 station would suit you, and do you prefer a morning or an afternoon?',
   'I can help with that. Could you confirm the registration number so I check the right vehicle?',
-  'In this demo mode I cannot check live availability. With the workflow connected I would look up free times before confirming anything.',
+  'In this demo mode I cannot check live availability. Once connected, I would look up free times before confirming anything.',
 ]
 let demoIndex = 0
 
@@ -108,6 +99,12 @@ export async function sendTest(draft: Draft, history: Array<{ role: 'agent' | 'u
     messages: history,
   }, fallback)
   return result
+}
+
+export function describeError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  const status = /_failed:(\d+)$/.exec(message)
+  return status ? `server error ${status[1]}` : message.replace(/n8n[_\s-]*/gi, '')
 }
 
 export function openerPreview(opener: string) {

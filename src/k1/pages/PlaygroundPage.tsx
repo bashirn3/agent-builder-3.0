@@ -7,7 +7,6 @@ import {
 import { ease } from '../../lib/motion'
 
 const easeInOut = [0.4, 0, 0.2, 1] as const
-import { backendLabel, backendMode } from '../data/agentConfig'
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { K1Mark } from '../shell/Shell'
 import { Select, Skeleton, Spinner } from '../ui/controls'
@@ -258,8 +257,6 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
           )}
         </div>
 
-      <p className="k1-inspector__source">{backendLabel}</p>
-
       <AnimatePresence>
         {dirty && (
           <motion.div
@@ -488,7 +485,7 @@ export function PlaygroundPage({ store, compact, onRevise }: { store: Playground
     return (
       <div className="k1-state">
         <h1 className="k1-page-title">Playground</h1>
-        <p>The agent configuration could not be loaded ({store.loadError}). {backendMode === 'n8n' ? 'The n8n agent-builder workflow did not respond.' : ''}</p>
+        <p>The agent configuration could not be loaded ({store.loadError}).</p>
         <button type="button" className="k1-btn k1-btn--outline" onClick={store.reload}>Try again</button>
       </div>
     )

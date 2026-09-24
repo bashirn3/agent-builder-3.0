@@ -1,6 +1,6 @@
 export type QnaEntry = { id: string; title: string; question: string; answer: string }
 
-// Q&A lives inside the existing "additional information" field so the n8n test and
+// Q&A lives inside the existing "additional information" field so the test and
 // production prompts receive it without a schema change. Text above the marker is
 // kept verbatim as free-form notes.
 export const QNA_MARKER = '## Q&A — answer these questions exactly as written'
