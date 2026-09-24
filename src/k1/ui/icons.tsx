@@ -9,7 +9,7 @@ import {
   TextItalicIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon,  WhatsappIcon, BookOpen01Icon,
   Clock01Icon,
 } from '@hugeicons/core-free-icons'
-import { Check as LucideCheck, ChevronsUpDown as LucideUpDown, Eye as LucideEye, EyeOff as LucideEyeOff, MoreHorizontal as LucideMore, Search as LucideSearch, X as LucideX } from 'lucide-react'
+import { Check as LucideCheck, ChevronsUpDown as LucideUpDown, Eye as LucideEye, EyeOff as LucideEyeOff, MoreHorizontal as LucideMore, Pencil as PencilLucide, Plus as PlusLucide, Search as LucideSearch, Trash2 as Trash2Lucide, X as LucideX } from 'lucide-react'
 
 type IconProps = { size?: number; strokeWidth?: number; className?: string; style?: CSSProperties }
 
@@ -32,6 +32,9 @@ export const ArrowUp = huge(ArrowUp02Icon, 2)
 export const Bold = huge(TextBoldIcon)
 export const Book = huge(BookOpen01Icon)
 export const CalendarDays = huge(Calendar03Icon)
+export const Plus = lucide(PlusLucide)
+export const Pencil = lucide(PencilLucide)
+export const Trash = lucide(Trash2Lucide)
 export const Check = lucide(LucideCheck, 2)
 export const ChevronDown = huge(ArrowDown01Icon)
 export const ChevronLeft = huge(ArrowLeft01Icon)

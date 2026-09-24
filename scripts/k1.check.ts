@@ -9,6 +9,7 @@ import {
   toCsv,
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
+import { addEntry, parseAdditional, serializeAdditional } from '../src/k1/data/qna.ts'
 import { href, parse } from '../src/k1/routes.ts'
 
 function assert(condition: boolean, message: string) {
@@ -65,5 +66,16 @@ assert(bold.value.startsWith('**Role**') && bold.start === 2 && bold.end === 6, 
 const italic = applyFormat(text, 5, 9, 'italic')
 assert(italic.value === 'Role\n_Tone_\nRules' && italic.start === 6 && italic.end === 10, 'italic wraps the selection in underscores')
 assert(applyFormat('Role\nTone\n', 0, 5, 'bullet').value === '- Role\nTone\n', 'a selection ending at a line break does not format the next line')
+
+const legacy = 'Seeded notes.\n- Be brief.'
+const once = addEntry(legacy, { title: 'Saturday', question: 'Open on Saturday?', answer: 'No, Monday to Friday.\nCall us for help.' })
+const parsed = parseAdditional(once)
+assert(parsed.notes === legacy, 'Q&A keeps free-text notes above the block')
+assert(parsed.entries.length === 1 && parsed.entries[0].answer === 'No, Monday to Friday.\nCall us for help.', 'Q&A answers keep line breaks')
+const twice = addEntry(once, { title: '', question: 'Price?', answer: 'From 59 €.' })
+assert(parseAdditional(twice).entries[1].title === 'Price?', 'an empty title falls back to the question')
+assert(serializeAdditional(parsed.notes, parseAdditional(twice).entries) === twice, 'Q&A serialization is stable')
+assert(serializeAdditional('', []) === '' && parseAdditional('').entries.length === 0, 'empty Q&A round-trips to an empty field')
+assert(parseAdditional(serializeAdditional(legacy, [])).notes === legacy, 'removing every entry leaves only notes')
 
 console.log('k1 checks passed')

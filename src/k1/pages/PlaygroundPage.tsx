@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
-  ArrowUp, Bold, ChevronDown, ChevronRight, FileText, Heading, List, ListOrdered, Lock, LockOpen,
+  ArrowUp, Bold, ChevronDown, ChevronRight, Heading, MessagesSquare, List, ListOrdered, Lock, LockOpen,
   Italic, Maximize2, RefreshCw, RotateCcw, ThumbsDown, ThumbsUp,
 } from '../ui/icons'
 import { ease } from '../../lib/motion'
@@ -11,10 +11,12 @@ import { backendLabel, backendMode } from '../data/agentConfig'
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { K1Mark } from '../shell/Shell'
 import { Select, Skeleton, Spinner } from '../ui/controls'
-import { applyFormat, stripPrefix, type Format } from '../ui/format'
+import { applyFormat, type Format } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
 import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
+import { OpenerField, QnaSheet, type ReviseTarget } from './Improve'
+import { parseAdditional } from '../data/qna'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -149,10 +151,10 @@ function Accordion({ title, defaultOpen = false, children }: { title: string; de
   )
 }
 
-function summarise(text: string) {
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean)
-  if (!lines.length) return { title: 'None added', meta: 'Add rules that sit on top of the base prompt' }
-  return { title: stripPrefix(lines[0]), meta: `${lines.length} line${lines.length === 1 ? '' : 's'}` }
+function summariseQna(text: string) {
+  const { entries } = parseAdditional(text)
+  if (!entries.length) return { title: 'No answers yet', meta: 'Use “Revise answer” on a test reply to add one' }
+  return { title: `${entries.length} answer${entries.length === 1 ? '' : 's'}`, meta: entries.map((entry) => entry.title).join(' · ') }
 }
 
 type PanelTab = 'overview' | 'display'
@@ -162,9 +164,9 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   const [ownTab, setTab] = useState<PanelTab>('overview')
   const tab = controlledTab ?? ownTab
   const [expanded, setExpanded] = useState(false)
-  const [extraOpen, setExtraOpen] = useState(false)
+  const [qnaOpen, setQnaOpen] = useState(false)
   const ids = {
-    master: useId(), expanded: useId(), additional: useId(), opener: useId(),
+    master: useId(), expanded: useId(),
     lockLabel: useId(), lockNote: useId(), instructions: useId(),
   }
   if (!config || !draft) return null
@@ -176,7 +178,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
       group: version.active ? 'Active configuration' : 'Saved versions',
     }))
     : [{ value: 'default', label: 'Default K1 instructions', group: 'Not saved yet' }]
-  const extra = summarise(draft.additional)
+  const qna = summariseQna(draft.additional)
   const editPrompt = (masterPrompt: string) => store.edit({ masterPrompt })
 
   return (
@@ -230,18 +232,18 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
                 </div>
                 <p className="k1-hint" id={ids.lockNote}>
                   {draft.locked
-                    ? 'The base prompt is read-only. Additional instructions and the opening message stay editable.'
+                    ? 'The base prompt is read-only. Q&A and the initial message stay editable.'
                     : 'Anyone editing this agent can change the base prompt. Lock it once it is approved.'}
                 </p>
               </section>
 
               <section className="k1-inspector__section">
-                <h2 className="k1-section-title">Additional instructions</h2>
-                <button type="button" className="k1-rowcard" aria-haspopup="dialog" onClick={() => setExtraOpen(true)}>
-                  <span className="k1-rowcard__icon"><FileText size={15} strokeWidth={1.75} /></span>
+                <h2 className="k1-section-title">Q&amp;A</h2>
+                <button type="button" className="k1-rowcard" aria-haspopup="dialog" onClick={() => setQnaOpen(true)}>
+                  <span className="k1-rowcard__icon"><MessagesSquare size={15} strokeWidth={1.75} /></span>
                   <span className="k1-rowcard__text">
-                    <strong>{extra.title}</strong>
-                    <small>{extra.meta}</small>
+                    <strong>{qna.title}</strong>
+                    <small>{qna.meta}</small>
                   </span>
                   <ChevronRight size={16} strokeWidth={1.75} className="k1-rowcard__chevron" />
                 </button>
@@ -250,15 +252,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
           ) : (
             <div className="k1-accordions">
               <Accordion title="Content" defaultOpen>
-                <label className="k1-label" htmlFor={ids.opener}>Initial message</label>
-                <textarea
-                  id={ids.opener}
-                  className="k1-textarea"
-                  rows={5}
-                  value={draft.opener}
-                  onChange={(event) => store.edit({ opener: event.target.value })}
-                />
-                <p className="k1-hint">The first message a customer sees. {'{{first_name}}'} and {'{{registration_number}}'} show as Rasmus and ABC-123 in the test chat.</p>
+                <OpenerField value={draft.opener} onChange={(opener) => store.edit({ opener })} />
               </Accordion>
             </div>
           )}
@@ -300,28 +294,12 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
         {draft.locked && <p className="k1-hint k1-dialog__note">The base prompt is locked. Close this and switch off “Lock base prompt” to edit.</p>}
       </Dialog>
 
-      <Dialog open={extraOpen} title="Additional instructions" width={560} onClose={() => setExtraOpen(false)}>
-        <div className="k1-form-stack">
-          <p className="k1-hint">Short, specific rules added on top of the base prompt, for example opening hours or what to do when a station is full.</p>
-          <textarea
-            id={ids.additional}
-            aria-label="Additional instructions"
-            className="k1-textarea"
-            rows={8}
-            value={draft.additional}
-            placeholder="e.g. If the customer asks for Saturday, explain the station is open Monday to Friday."
-            onChange={(event) => store.edit({ additional: event.target.value })}
-          />
-        </div>
-        <div className="k1-dialog__foot">
-          <button type="button" className="k1-btn k1-btn--primary" onClick={() => setExtraOpen(false)}>Done</button>
-        </div>
-      </Dialog>
+      <QnaSheet open={qnaOpen} additional={draft.additional} onChange={(additional) => store.edit({ additional })} onClose={() => setQnaOpen(false)} />
     </div>
   )
 }
 
-function Bubble({ message, onRate }: { message: TestMessage; onRate: (value: 'up' | 'down') => void }) {
+function Bubble({ message, onRate, onRevise }: { message: TestMessage; onRate: (value: 'up' | 'down') => void; onRevise?: () => void }) {
   const agent = message.role === 'agent'
   return (
     <motion.div
@@ -341,13 +319,16 @@ function Bubble({ message, onRate }: { message: TestMessage; onRate: (value: 'up
           <button type="button" aria-label="Bad reply" aria-pressed={message.feedback === 'down'} className={message.feedback === 'down' ? 'is-on' : undefined} onClick={() => onRate('down')}>
             <ThumbsDown size={13} strokeWidth={1.75} />
           </button>
+          {onRevise && (message.revised
+            ? <span className="k1-chip k1-chip--done">Answer revised</span>
+            : <button type="button" className="k1-chip-btn" onClick={onRevise}>Revise answer</button>)}
         </div>
       )}
     </motion.div>
   )
 }
 
-function Tester({ store }: { store: PlaygroundStore }) {
+function Tester({ store, onRevise }: { store: PlaygroundStore; onRevise: (target: ReviseTarget) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -367,6 +348,13 @@ function Tester({ store }: { store: PlaygroundStore }) {
     const node = scrollRef.current
     if (!node) return
     setAtBottom(node.scrollHeight - node.scrollTop - node.clientHeight < 24)
+  }
+
+  const reviseFor = (message: TestMessage, index: number) => {
+    if (message.role !== 'agent' || message.opener) return undefined
+    const question = store.messages.slice(0, index).reverse().find((item) => item.role === 'user')
+    if (!question) return undefined
+    return () => onRevise({ question: question.text, answer: message.text, messageId: message.id })
   }
 
   const onKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -398,8 +386,8 @@ function Tester({ store }: { store: PlaygroundStore }) {
         </button>
       </header>
       <div className="k1-tester__thread" ref={scrollRef} onScroll={onScroll} aria-live="polite" aria-label="Test conversation">
-        {store.messages.map((message) => (
-          <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} />
+        {store.messages.map((message, index) => (
+          <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} onRevise={reviseFor(message, index)} />
         ))}
         <AnimatePresence>
           {store.pending && (
@@ -483,7 +471,7 @@ function InspectorSkeleton({ showTitle = true }: { showTitle?: boolean }) {
           </div>
         </section>
         <section className="k1-inspector__section">
-          <h2 className="k1-section-title">Additional instructions</h2>
+          <h2 className="k1-section-title">Q&amp;A</h2>
           <div className="k1-skel-card k1-skel-card--row"><Skeleton width={30} height={30} /><span className="k1-skel-card__lines"><Skeleton height={12} width="60%" /><Skeleton height={10} width="30%" /></span></div>
         </section>
       </div>
@@ -493,7 +481,7 @@ function InspectorSkeleton({ showTitle = true }: { showTitle?: boolean }) {
 
 type MobileTab = PanelTab | 'preview'
 
-export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; compact: boolean }) {
+export function PlaygroundPage({ store, compact, onRevise }: { store: PlaygroundStore; compact: boolean; onRevise: (target: ReviseTarget) => void }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>('overview')
 
   if (store.loadError) {
@@ -521,7 +509,7 @@ export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; com
           options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }, { value: 'preview', label: 'Preview' }]}
         />
         {mobileTab === 'preview' ? (
-          <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} />}</div>
+          <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} onRevise={onRevise} />}</div>
         ) : (
           <div className="k1-inspector k1-inspector--sheet">
             {loading ? <InspectorSkeleton showTitle={false} /> : <Inspector store={store} showTitle={false} tab={mobileTab} />}
@@ -539,7 +527,7 @@ export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; com
   return (
     <div className="k1-playground">
       <aside className="k1-inspector">{loading ? <InspectorSkeleton /> : <Inspector store={store} />}</aside>
-      <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} />}</div>
+      <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} onRevise={onRevise} />}</div>
     </div>
   )
 }

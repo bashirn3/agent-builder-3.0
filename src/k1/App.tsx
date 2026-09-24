@@ -6,6 +6,7 @@ import { ActivityPage } from './pages/ActivityPage'
 import { AuthPage } from './pages/AuthPage'
 import { DeployPage } from './pages/DeployPage'
 import { LeadsPage } from './pages/LeadsPage'
+import { ImproveSheet, type ReviseTarget } from './pages/Improve'
 import { PlaygroundPage } from './pages/PlaygroundPage'
 import { go, previewSession, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
@@ -17,6 +18,7 @@ function Workspace({ compact }: { compact: boolean }) {
   const { toasts, push, dismiss } = useToasts()
   const playground = usePlayground(push)
   const [filters, setFilters] = useState<ActivityFilters>(EMPTY_FILTERS)
+  const [revise, setRevise] = useState<ReviseTarget | null>(null)
 
   const titles: Record<string, string> = { playground: 'Playground', chats: 'Chat logs', leads: 'Leads', deploy: 'Deploy' }
   useEffect(() => {
@@ -24,14 +26,24 @@ function Workspace({ compact }: { compact: boolean }) {
   }, [route.page])
 
   let page = null
-  if (route.page === 'playground') page = <PlaygroundPage store={playground} compact={compact} />
-  else if (route.page === 'chats') page = <ActivityPage id={route.id} compact={compact} filters={filters} onFilters={setFilters} notify={push} />
+  if (route.page === 'playground') page = <PlaygroundPage store={playground} compact={compact} onRevise={setRevise} />
+  else if (route.page === 'chats') page = <ActivityPage id={route.id} compact={compact} filters={filters} onFilters={setFilters} notify={push} onRevise={(question, answer) => setRevise({ question, answer })} />
   else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} />
   else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} />
 
   return (
     <>
       <Shell route={route} compact={compact}>{page}</Shell>
+      <ImproveSheet
+        target={revise}
+        disabled={!playground.draft}
+        onClose={() => setRevise(null)}
+        onSubmit={(entry, target) => {
+          playground.addAnswer(entry, target.messageId)
+          setRevise(null)
+          push({ title: 'Answer added to Q&A', body: 'The test chat uses it now. Save to agent to use it with customers.' })
+        }}
+      />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
   )

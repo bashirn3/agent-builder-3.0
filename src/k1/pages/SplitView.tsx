@@ -178,14 +178,22 @@ export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, on
   )
 }
 
-export function Thread({ messages }: { messages: ThreadMessage[] }) {
+export function Thread({ messages, onRevise }: { messages: ThreadMessage[]; onRevise?: (question: string, answer: string) => void }) {
   return (
     <div className="k1-thread">
-      {messages.map((message) => (
-        <div key={message.id} className={`k1-msg k1-msg--${message.role} k1-msg--wide`}>
-          <div className="k1-msg__bubble">{message.text}</div>
-        </div>
-      ))}
+      {messages.map((message, index) => {
+        const question = message.role === 'agent' ? messages.slice(0, index).reverse().find((item) => item.role === 'user') : undefined
+        return (
+          <div key={message.id} className={`k1-msg k1-msg--${message.role} k1-msg--wide`}>
+            <div className="k1-msg__bubble">{message.text}</div>
+            {onRevise && question && (
+              <div className="k1-msg__meta">
+                <button type="button" className="k1-chip-btn" onClick={() => onRevise(question.text, message.text)}>Revise answer</button>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

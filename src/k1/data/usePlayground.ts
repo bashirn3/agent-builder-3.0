@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { addEntry, type QnaEntry } from './qna'
 import { loadConfig, openerPreview, sameDraft, saveConfig, sendTest, type AgentConfig, type Draft } from './agentConfig'
 
 export type TestMessage = {
@@ -9,6 +10,7 @@ export type TestMessage = {
   opener?: boolean
   demo?: boolean
   feedback?: 'up' | 'down' | null
+  revised?: boolean
 }
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
@@ -134,10 +136,15 @@ export function usePlayground(notify: Notify) {
     message.id === id ? { ...message, feedback: message.feedback === value ? null : value } : message
   )))
 
+  const addAnswer = (entry: Omit<QnaEntry, 'id'>, messageId?: string) => {
+    setDraft((current) => (current ? { ...current, additional: addEntry(current.additional, entry) } : current))
+    if (messageId) setMessages((list) => list.map((message) => (message.id === messageId ? { ...message, revised: true } : message)))
+  }
+
   return {
     config, loadError, reload: load, draft, dirty, saving, versionId,
     edit, discard, save, loadVersion,
-    messages, pending, testError, composer, setComposer, send, retry, resetConversation, rate,
+    messages, pending, testError, composer, setComposer, send, retry, resetConversation, rate, addAnswer,
   }
 }
 

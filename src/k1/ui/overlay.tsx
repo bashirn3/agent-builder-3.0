@@ -6,6 +6,8 @@ import { ease, fade, sheetMotion } from '../../lib/motion'
 
 // Tailwind's animate-in/out default to CSS `ease` (Chatbase dialogs, popovers).
 const cssEase = [0.25, 0.1, 0.25, 1] as const
+// shadcn Sheet: ease-in-out, 500ms in / 300ms out (Chatbase "Improve answer").
+const sheetEase = [0.4, 0, 0.2, 1] as const
 
 const LayerContext = createContext<HTMLElement | null>(null)
 
@@ -139,6 +141,7 @@ type DrawerProps = {
   label: string
   onClose: () => void
   children: ReactNode
+  className?: string
 }
 
 export function Drawer(props: DrawerProps) {
@@ -147,7 +150,7 @@ export function Drawer(props: DrawerProps) {
   return createPortal(<AnimatePresence>{props.open && <DrawerSurface key="drawer" {...props} />}</AnimatePresence>, layer)
 }
 
-function DrawerSurface({ side, label, onClose, children }: DrawerProps) {
+function DrawerSurface({ side, label, onClose, children, className }: DrawerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useFocusTrap(rootRef, onClose)
   const reduce = useReducedMotion()
@@ -165,14 +168,14 @@ function DrawerSurface({ side, label, onClose, children }: DrawerProps) {
       />
       <motion.div
         ref={rootRef}
-        className={`k1-drawer k1-drawer--${side}`}
+        className={`k1-drawer k1-drawer--${side}${className ? ` ${className}` : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={label}
         initial={reduce ? { opacity: 0 } : hidden}
         animate={{ x: 0, y: 0, opacity: 1 }}
-        exit={reduce ? { opacity: 0 } : hidden}
-        transition={{ ...sheetMotion, duration: 0.28 }}
+        exit={reduce ? { opacity: 0 } : { ...hidden, transition: side === 'right' ? { duration: 0.3, ease: sheetEase } : { ...sheetMotion, duration: 0.28 } }}
+        transition={side === 'right' ? { duration: 0.5, ease: sheetEase } : { ...sheetMotion, duration: 0.28 }}
       >
         {children}
       </motion.div>

@@ -93,12 +93,13 @@ function Chips({ filters, onChange }: { filters: ActivityFilters; onChange: (fil
   )
 }
 
-export function ActivityPage({ id, compact, filters, onFilters, notify }: {
+export function ActivityPage({ id, compact, filters, onFilters, notify, onRevise }: {
   id: string | null
   compact: boolean
   filters: ActivityFilters
   onFilters: (filters: ActivityFilters) => void
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
+  onRevise?: (question: string, answer: string) => void
 }) {
   const [items, setItems] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
@@ -198,7 +199,7 @@ export function ActivityPage({ id, compact, filters, onFilters, notify }: {
         },
       ]}
     >
-      {tab === 'chat' ? <Thread messages={selected.messages} /> : (
+      {tab === 'chat' ? <Thread messages={selected.messages} onRevise={onRevise} /> : (
         <Facts rows={[
           ['Customer', selected.customer ?? 'Internal test'],
           ['Registration', selected.registration ?? '—'],
