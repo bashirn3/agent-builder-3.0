@@ -1,22 +1,66 @@
-import { animate } from 'motion'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { KeyboardEvent as ReactKeyboardEvent, ReactNode, SVGProps, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { KeyboardEvent as ReactKeyboardEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { shouldAcceptTestReply, type ChatMessage } from './lib/refinement'
 import {
   conversationFromOpener,
   createMockPlaygroundService,
+  DEFAULT_MODEL,
+  MODELS,
   openerPreview,
   type AgentConfig,
   type PlaygroundService,
 } from './lib/playgroundService'
-import { ease, fade, sheetMotion, space } from './lib/motion'
+import { endDemoSession, hasDemoSession, parseHash, startDemoSession, writeHash, type Route } from './lib/hashRoute'
+import { fade } from './lib/motion'
+import { ActivityPage } from './pages/ActivityPage'
+import { AuthPage } from './pages/AuthPage'
+import {
+  ActivityIcon,
+  ArrowUpIcon,
+  BoltIcon,
+  ChartIcon,
+  ChatIcon,
+  ChevronIcon,
+  BackIcon,
+  ChatFabIcon,
+  CloseIcon,
+  DotsIcon,
+  ExpandDialogIcon,
+  GearIcon,
+  LeadsIcon,
+  MenuIcon,
+  MicIcon,
+  PeopleIcon,
+  PlaygroundIcon,
+  RefreshIcon,
+  ResetIcon,
+  RocketIcon,
+  SearchIcon,
+  SourceIcon,
+} from './ui/icons'
+import { Dialog, Drawer } from './ui/overlays'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type NavId = 'playground' | 'activity' | 'leads'
-type LocalTab = 'overview' | 'display'
+type NavId = 'playground' | 'activity' | 'compare'
 
 const service: PlaygroundService = createMockPlaygroundService()
-const SUGGESTIONS = ['Book an inspection', 'Which station is nearest?', 'What documents do I need?']
+const PRESETS = [
+  { id: 'base', label: 'Base Instructions' },
+  { id: 'support', label: 'Customer support agent' },
+  { id: 'custom', label: 'Custom prompt' },
+]
+
+const SUPPORT_PRESET = `You are the customer-support assistant for K1 Katsastus.
+
+Help with inspection questions, required documents, and booking handoff. Do not invent prices, deadlines, or confirmed appointments.`
+
+type ComparePane = {
+  id: string
+  model: string
+  composer: string
+  messages: ChatMessage[]
+  sending: boolean
+}
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
@@ -30,65 +74,32 @@ function useViewport() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  return {
-    width,
-    mobile: width < 900,
-    compactLaptop: width >= 900 && width < 1280,
-  }
+  return { width, mobile: width < 900, compactLaptop: width >= 900 && width < 1280 }
 }
 
-function focusableIn(root: HTMLElement) {
-  return [...root.querySelectorAll<HTMLElement>('button, [href], textarea, input, select')]
-    .filter((node) => !node.hasAttribute('disabled') && node.tabIndex !== -1)
-}
-
-function useOverlayChrome(onClose: () => void) {
-  const rootRef = useRef<HTMLDivElement>(null)
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        event.stopPropagation()
-        onCloseRef.current()
-        return
-      }
-      if (event.key !== 'Tab' || !rootRef.current) return
-      const nodes = focusableIn(rootRef.current)
-      if (nodes.length === 0) return
-      const first = nodes[0]
-      const last = nodes[nodes.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey, true)
-    return () => {
-      document.removeEventListener('keydown', onKey, true)
-      previous?.focus?.()
-    }
-  }, [])
-  return rootRef
+function emptyConfig(): AgentConfig {
+  return { instructions: '', opener: '', model: DEFAULT_MODEL }
 }
 
 function App() {
   const { mobile, compactLaptop } = useViewport()
+  const [route, setRoute] = useState<Route>(() => {
+    const next = parseHash(typeof window === 'undefined' ? '' : window.location.hash)
+    if (typeof window !== 'undefined' && !hasDemoSession() && next.page !== 'auth') {
+      return { ...next, page: 'auth', authMode: 'signup' }
+    }
+    return next
+  })
+  const [authed, setAuthed] = useState(() => typeof window !== 'undefined' && hasDemoSession())
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280)
+  const [activityOpen, setActivityOpen] = useState(() => typeof window !== 'undefined' && parseHash(window.location.hash).page === 'activity')
   const [accountOpen, setAccountOpen] = useState(false)
-  const [versionsOpen, setVersionsOpen] = useState(false)
-  const [refineOpen, setRefineOpen] = useState(false)
-  const [tab, setTab] = useState<LocalTab>('overview')
-  const [instructionsOpen, setInstructionsOpen] = useState(false)
-  const [openerOpen, setOpenerOpen] = useState(true)
+  const [modelOpen, setModelOpen] = useState(false)
+  const [presetOpen, setPresetOpen] = useState(false)
+  const [preset, setPreset] = useState('base')
   const [loading, setLoading] = useState(true)
-  const [saved, setSaved] = useState<AgentConfig>({ instructions: '', opener: '' })
-  const [draft, setDraft] = useState<AgentConfig>({ instructions: '', opener: '' })
+  const [saved, setSaved] = useState<AgentConfig>(emptyConfig)
+  const [draft, setDraft] = useState<AgentConfig>(emptyConfig)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [conversationId, setConversationId] = useState(() => uid('thread'))
@@ -97,22 +108,42 @@ function App() {
   const [sending, setSending] = useState(false)
   const [replyError, setReplyError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [compareSync, setCompareSync] = useState(true)
+  const [comparePanes, setComparePanes] = useState<ComparePane[]>([])
   const accountRef = useRef<HTMLDivElement>(null)
-  const versionsRef = useRef<HTMLDivElement>(null)
   const savedToast = useRef<number>(0)
   const conversationIdRef = useRef(conversationId)
   const pendingRef = useRef<string | null>(null)
   conversationIdRef.current = conversationId
-  const dirty = draft.instructions !== saved.instructions || draft.opener !== saved.opener
-  const hasUserTurn = messages.some((message) => message.role === 'user')
+  const dirty = draft.instructions !== saved.instructions || draft.opener !== saved.opener || draft.model !== saved.model
+
+  const go = (next: Route) => {
+    setRoute(next)
+    writeHash(next)
+  }
 
   useEffect(() => {
-    if (mobile || compactLaptop) setSidebarOpen(false)
+    const onHash = () => {
+      const next = parseHash(window.location.hash)
+      if (!hasDemoSession() && next.page !== 'auth') {
+        writeHash({ ...next, page: 'auth', authMode: 'signup' })
+        setRoute(parseHash('#/signup'))
+        return
+      }
+      setRoute(next)
+    }
+    onHash()
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  useEffect(() => {
+    setSidebarOpen(!(mobile || compactLaptop))
   }, [mobile, compactLaptop])
 
   useEffect(() => {
-    if (!mobile) setRefineOpen(false)
-  }, [mobile])
+    setActivityOpen(route.page === 'activity')
+  }, [route.page])
 
   useEffect(() => {
     let cancelled = false
@@ -122,24 +153,22 @@ function App() {
       setDraft(config)
       setConversationId(uid('thread'))
       setMessages(conversationFromOpener(config.opener, uid('msg')))
+      setComparePanes([
+        { id: 'pane-a', model: config.model, composer: '', messages: conversationFromOpener(config.opener, uid('msg')), sending: false },
+        { id: 'pane-b', model: 'Claude 4.5 Haiku', composer: '', messages: conversationFromOpener(config.opener, uid('msg')), sending: false },
+      ])
       setLoading(false)
     })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
-    if (!accountOpen && !versionsOpen) return
+    if (!accountOpen) return
     const onPointer = (event: MouseEvent) => {
-      if (accountOpen && !accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
-      if (versionsOpen && !versionsRef.current?.contains(event.target as Node)) setVersionsOpen(false)
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setAccountOpen(false)
-        setVersionsOpen(false)
-      }
+      if (event.key === 'Escape') setAccountOpen(false)
     }
     document.addEventListener('mousedown', onPointer)
     document.addEventListener('keydown', onKey)
@@ -147,7 +176,7 @@ function App() {
       document.removeEventListener('mousedown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [accountOpen, versionsOpen])
+  }, [accountOpen])
 
   const updateDraft = (patch: Partial<AgentConfig>) => {
     setDraft((prev) => ({ ...prev, ...patch }))
@@ -169,8 +198,12 @@ function App() {
       setSaved(next)
       setDraft(next)
       setSaveStatus('saved')
+      setToast('Success. Your changes are saved.')
       window.clearTimeout(savedToast.current)
-      savedToast.current = window.setTimeout(() => setSaveStatus('idle'), 1600)
+      savedToast.current = window.setTimeout(() => {
+        setSaveStatus('idle')
+        setToast(null)
+      }, 1600)
     }).catch(() => {
       setSaveStatus('error')
       setSaveError('Could not save. Your draft is still here.')
@@ -247,21 +280,81 @@ function App() {
     })
   }
 
+  const sendCompare = (paneId: string, raw?: string) => {
+    const pane = comparePanes.find((item) => item.id === paneId)
+    if (!pane) return
+    const text = (raw ?? pane.composer).trim()
+    if (!text || pane.sending) return
+    const targets = compareSync ? comparePanes : [pane]
+    targets.forEach((target) => {
+      const userMessage: ChatMessage = { id: uid('msg'), role: 'user', text }
+      const history = [...target.messages, userMessage]
+      setComparePanes((prev) => prev.map((item) => item.id === target.id
+        ? { ...item, composer: '', messages: history, sending: true }
+        : item))
+      void service.sendTestMessage({
+        conversationId: target.id,
+        messages: history,
+        instructions: saved.instructions,
+      }).then((result) => {
+        setComparePanes((prev) => prev.map((item) => item.id === target.id
+          ? { ...item, sending: false, messages: [...item.messages, { id: uid('msg'), role: 'agent', text: result.reply, mocked: true }] }
+          : item))
+      }).catch(() => {
+        setComparePanes((prev) => prev.map((item) => item.id === target.id ? { ...item, sending: false } : item))
+        setToast('Mocked compare reply failed.')
+      })
+    })
+  }
+
+  const applyPreset = (id: string) => {
+    setPreset(id)
+    setPresetOpen(false)
+    if (id === 'support') updateDraft({ instructions: SUPPORT_PRESET })
+    if (id === 'base') updateDraft({ instructions: saved.instructions.includes('K1 Katsastus') ? saved.instructions : draft.instructions })
+  }
+
+  const enterDemo = () => {
+    startDemoSession()
+    setAuthed(true)
+    go({ ...route, page: 'playground', authMode: 'signup', conversationId: null, editor: false, filter: false })
+  }
+
+  const signOut = () => {
+    endDemoSession()
+    setAuthed(false)
+    setAccountOpen(false)
+    go({ ...route, page: 'auth', authMode: 'signin', conversationId: null, editor: false, filter: false })
+  }
+
+  if (!authed || route.page === 'auth') {
+    return (
+      <AuthPage
+        mode={route.authMode}
+        onMode={(authMode) => go({ ...route, page: 'auth', authMode })}
+        onEnter={enterDemo}
+      />
+    )
+  }
+
   const inspector = (
     <Inspector
-      tab={tab}
       draft={draft}
       dirty={dirty}
       saveStatus={saveStatus}
       saveError={saveError}
-      openerOpen={openerOpen}
       loading={loading}
-      onTab={setTab}
-      onToggleOpener={() => setOpenerOpen((open) => !open)}
+      modelOpen={modelOpen}
+      presetOpen={presetOpen}
+      preset={preset}
       onChange={updateDraft}
-      onExpand={() => setInstructionsOpen(true)}
+      onExpand={() => go({ ...route, page: 'playground', editor: true })}
       onSave={save}
       onDiscard={discard}
+      onCompare={() => go({ ...route, page: 'compare' })}
+      onModelOpen={setModelOpen}
+      onPresetOpen={setPresetOpen}
+      onPreset={applyPreset}
     />
   )
 
@@ -273,95 +366,167 @@ function App() {
       replyError={replyError}
       loading={loading}
       mobile={mobile}
-      showSuggestions={!hasUserTurn}
       onComposer={setComposer}
       onSend={() => sendText(composer)}
-      onSuggest={sendText}
       onRetry={retryReply}
       onNewTest={newTest}
     />
   )
 
   return (
-    <div className={`app${mobile ? ' is-mobile' : ''}${sidebarOpen ? ' sidebar-open' : ' sidebar-collapsed'}`}>
-      <a className="skip-link" href="#playground">Skip to playground</a>
-      {!mobile && (
-        <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((open) => !open)} />
-      )}
-      <div className="app-main">
-        <header className="app-header">
-          {mobile && (
-            <button className="icon-button" type="button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
-              <MenuIcon />
+    <div className={`app${mobile ? ' is-mobile' : ''}`}>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <header className="app-header">
+        {mobile || compactLaptop ? (
+          <button className="icon-button" type="button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+            <MenuIcon />
+          </button>
+        ) : (
+          <div className="brand"><span>w</span><strong>wasup</strong></div>
+        )}
+        <div className="header-crumb">
+          <span>Demo</span>
+          <span>K1 Katsastus</span>
+        </div>
+        <div className="header-actions">
+          {mobile && route.page === 'playground' && (
+            <button className="header-quiet" type="button" onClick={() => go({ ...route, editor: true })}>
+              Configure
+              {dirty && <i className="pending-dot" aria-hidden="true" />}
             </button>
           )}
-          <div className="header-agent">
-            <strong>K1 Katsastus</strong>
-          </div>
-          <div className="header-actions">
-            {mobile && (
-              <button className="header-quiet" type="button" onClick={() => setRefineOpen(true)}>
-                Refine
-                {dirty && <i className="pending-dot" aria-hidden="true" />}
-              </button>
+          <div className="header-menu" ref={accountRef}>
+            <button className="account-button" type="button" aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}>
+              <span>D</span>
+              Demo
+            </button>
+            {accountOpen && (
+              <div className="quiet-popover" role="menu">
+                <p>Development session. Replies are mocked.</p>
+                <button type="button" role="menuitem" onClick={() => { service.failNextSave(); setAccountOpen(false); setToast('The next Save will fail.') }}>Fail next save</button>
+                <button type="button" role="menuitem" onClick={() => { service.failNextReply(); setAccountOpen(false); setToast('The next reply will fail.') }}>Fail next reply</button>
+                <button type="button" role="menuitem" onClick={signOut}>Sign out</button>
+              </div>
             )}
-            <div className="header-menu" ref={versionsRef}>
-              <button className="header-quiet" type="button" aria-expanded={versionsOpen} onClick={() => setVersionsOpen((open) => !open)}>
-                Versions
-              </button>
-              {versionsOpen && (
-                <div className="quiet-popover" role="menu">
-                  <p>Current saved configuration</p>
-                  <button type="button" role="menuitem" disabled>Active</button>
-                </div>
-              )}
-            </div>
-            <div className="header-menu" ref={accountRef}>
-              <button className="account-button" type="button" aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}>
-                <span>D</span>
-                Demo
-              </button>
-              {accountOpen && (
-                <div className="quiet-popover" role="menu">
-                  <p>Development session. Replies are mocked.</p>
-                  <button type="button" role="menuitem" onClick={() => { service.failNextSave(); setAccountOpen(false); setToast('The next Save will fail.') }}>Fail next save</button>
-                  <button type="button" role="menuitem" onClick={() => { service.failNextReply(); setAccountOpen(false); setToast('The next reply will fail.') }}>Fail next reply</button>
-                </div>
-              )}
-            </div>
           </div>
-        </header>
-        <main id="playground" className="playground">
-          {!mobile && inspector}
-          <section className="canvas" aria-label="Agent tester canvas">
-            {loading ? <div className="canvas-skeleton" aria-busy="true"><span /><span /><span /></div> : tester}
-          </section>
+        </div>
+      </header>
+      {!mobile && !compactLaptop && (
+        <Sidebar
+          open
+          page={route.page}
+          activityOpen={activityOpen}
+          onActivityToggle={() => setActivityOpen((open) => !open)}
+          onGo={(page) => {
+            if (page === 'activity') setActivityOpen(true)
+            go({ ...route, page, conversationId: page === 'activity' ? route.conversationId : null, editor: false, filter: false })
+          }}
+        />
+      )}
+      <div className="app-main">
+        <main id="main" className="workspace">
+          {route.page === 'activity' && (
+            <ActivityPage
+              conversationId={route.conversationId}
+              filterOpen={route.filter}
+              mobile={mobile}
+              onOpen={(id) => go({ ...route, page: 'activity', conversationId: id, filter: false })}
+              onFilter={(open) => go({ ...route, page: 'activity', filter: open })}
+            />
+          )}
+          {route.page === 'compare' && (
+            <CompareView
+              panes={comparePanes}
+              sync={compareSync}
+              mobile={mobile}
+              onBack={() => go({ ...route, page: 'playground' })}
+              onSync={setCompareSync}
+              onComposer={(id, value) => setComparePanes((prev) => prev.map((pane) => {
+                if (compareSync) return { ...pane, composer: value }
+                return pane.id === id ? { ...pane, composer: value } : pane
+              }))}
+              onModel={(id, model) => setComparePanes((prev) => prev.map((pane) => pane.id === id ? { ...pane, model } : pane))}
+              onSend={sendCompare}
+              onReset={() => setComparePanes((prev) => prev.map((pane) => ({
+                ...pane,
+                composer: '',
+                sending: false,
+                messages: conversationFromOpener(saved.opener, uid('msg')),
+              })))}
+            />
+          )}
+          {route.page === 'playground' && (
+            <div className="playground">
+              {!mobile && inspector}
+              <section className="canvas" aria-label="Agent tester canvas">
+                {loading ? <div className="canvas-skeleton" aria-busy="true"><span /><span /><span /></div> : tester}
+              </section>
+            </div>
+          )}
         </main>
       </div>
 
-      <AnimatePresence>
-        {mobile && sidebarOpen && (
-          <MobileNav
-            onClose={() => setSidebarOpen(false)}
-            onFailSave={() => { service.failNextSave(); setSidebarOpen(false); setToast('The next Save will fail.') }}
-            onFailReply={() => { service.failNextReply(); setSidebarOpen(false); setToast('The next reply will fail.') }}
+      <Drawer open={(mobile || compactLaptop) && sidebarOpen} side="left" labelledBy="mobile-nav-title" onClose={() => setSidebarOpen(false)}>
+        <div className="mobile-nav-panel">
+          <header>
+            <div className="brand"><span>w</span><strong id="mobile-nav-title">wasup</strong></div>
+            <button className="icon-button" type="button" onClick={() => setSidebarOpen(false)} aria-label="Close navigation"><CloseIcon /></button>
+          </header>
+          <SidebarNav
+            open
+            page={route.page}
+            activityOpen={activityOpen}
+            onActivityToggle={() => setActivityOpen((open) => !open)}
+            onGo={(page) => {
+              setSidebarOpen(false)
+              go({ ...route, page, conversationId: page === 'activity' ? route.conversationId : null, editor: false, filter: false })
+            }}
           />
-        )}
-      </AnimatePresence>
+        </div>
+      </Drawer>
 
-      {mobile && refineOpen && (
-        <RefineOverlay onClose={() => setRefineOpen(false)}>
+      <Drawer
+        open={mobile && route.page === 'playground' && route.editor}
+        side="bottom"
+        labelledBy="refine-title"
+        onClose={() => go({ ...route, editor: false })}
+      >
+        <div className="refine-panel">
+          <header>
+            <h2 id="refine-title">Configure</h2>
+            <button className="ghost-button" type="button" onClick={() => go({ ...route, editor: false })}>Done</button>
+          </header>
           {inspector}
-        </RefineOverlay>
-      )}
+        </div>
+      </Drawer>
 
-      {instructionsOpen && (
-        <InstructionsDialog
+      <Dialog
+        open={!mobile && route.page === 'playground' && route.editor}
+        title="Instructions"
+        labelledBy="instructions-title"
+        wide
+        onClose={() => go({ ...route, editor: false })}
+      >
+        <textarea
+          className="dialog-editor"
+          aria-label="Instructions"
           value={draft.instructions}
-          onChange={(instructions) => updateDraft({ instructions })}
-          onClose={() => setInstructionsOpen(false)}
+          onChange={(event) => updateDraft({ instructions: event.target.value })}
         />
-      )}
+        <label className="stack-field dialog-opener">
+          <span>Opening message</span>
+          <textarea
+            className="opener-input"
+            aria-label="Opening message"
+            value={draft.opener}
+            onChange={(event) => updateDraft({ opener: event.target.value })}
+          />
+          <small>first_name = Rasmus · registration_number = ABC-123</small>
+          <p>{openerPreview(draft.opener)}</p>
+        </label>
+      </Dialog>
+
+      <span className="chat-fab" aria-hidden="true"><ChatFabIcon /></span>
 
       <AnimatePresence>
         {toast && (
@@ -374,135 +539,223 @@ function App() {
   )
 }
 
-function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+function Sidebar({
+  open,
+  page,
+  activityOpen,
+  onActivityToggle,
+  onGo,
+}: {
+  open: boolean
+  page: Route['page']
+  activityOpen: boolean
+  onActivityToggle: () => void
+  onGo: (page: NavId) => void
+}) {
   return (
-    <aside
-      className="sidebar"
-      aria-label="Workspace"
-    >
-      <div className="sidebar-top">
-        {open && <div className="brand"><span>w</span><strong>wasup</strong></div>}
-        <button className="icon-button" type="button" onClick={onToggle} aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}>
-          {open ? <CollapseIcon /> : <ExpandIcon />}
-        </button>
-      </div>
-      {open && (
-        <div className="sidebar-agent">
-          <span className="agent-avatar" aria-hidden="true">K</span>
-          <div>
-            <strong>K1 Katsastus</strong>
-            <em>Workspace</em>
-          </div>
-        </div>
-      )}
-      <nav className="sidebar-nav">
-        <NavItem id="playground" label="Playground" open={open} active />
-        <NavItem id="activity" label="Activity" open={open} unavailable />
-        <NavItem id="leads" label="Leads" open={open} unavailable />
-      </nav>
+    <aside className="sidebar" aria-label="Workspace">
+      <SidebarNav open={open} page={page} activityOpen={activityOpen} onActivityToggle={onActivityToggle} onGo={onGo} />
     </aside>
   )
 }
 
-function NavItem({ id, label, active, unavailable, open }: {
-  id: NavId
+function SidebarNav({
+  open,
+  page,
+  activityOpen,
+  onActivityToggle,
+  onGo,
+}: {
+  open: boolean
+  page: Route['page']
+  activityOpen: boolean
+  onActivityToggle: () => void
+  onGo: (page: NavId) => void
+}) {
+  return (
+    <nav className="sidebar-nav">
+      <NavButton active={page === 'playground' || page === 'compare'} label="Playground" open={open} onClick={() => onGo('playground')}>
+        <PlaygroundIcon />
+      </NavButton>
+      <div className="nav-group">
+        <button type="button" className="nav-item" onClick={onActivityToggle} aria-expanded={activityOpen}>
+          <ActivityIcon />
+          {open && <span>Activity</span>}
+          {open && <motion.i className="nav-chevron" aria-hidden="true" animate={{ rotate: activityOpen ? 180 : 0 }}><ChevronIcon /></motion.i>}
+        </button>
+        <AnimatePresence initial={false}>
+          {open && activityOpen && (
+            <motion.div
+              className="nav-sub"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <button type="button" className={page === 'activity' ? 'is-active' : ''} onClick={() => onGo('activity')}>
+                <ChatIcon /> Chat logs
+              </button>
+              <button type="button" className="is-unavailable" title="Leads has no Figma frames in this file" disabled>
+                <LeadsIcon /> Leads
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <NavButton label="Analytics" open={open} unavailable />
+      <NavButton label="Data sources" open={open} unavailable />
+      <NavButton label="Actions" open={open} unavailable />
+      <NavButton label="Contacts" open={open} unavailable />
+      <NavButton label="Deploy" open={open} unavailable />
+      <NavButton label="Settings" open={open} unavailable />
+    </nav>
+  )
+}
+
+function NavButton({
+  label,
+  open,
+  active,
+  unavailable,
+  onClick,
+  children,
+}: {
   label: string
+  open: boolean
   active?: boolean
   unavailable?: boolean
-  open: boolean
+  onClick?: () => void
+  children?: ReactNode
 }) {
+  const icon = children ?? (
+    label === 'Analytics' ? <ChartIcon />
+      : label === 'Data sources' ? <SourceIcon />
+        : label === 'Actions' ? <BoltIcon />
+          : label === 'Contacts' ? <PeopleIcon />
+            : label === 'Deploy' ? <RocketIcon />
+              : label === 'Settings' ? <GearIcon />
+                : <PlaygroundIcon />
+  )
   return (
     <button
       type="button"
       className={`nav-item${active ? ' is-active' : ''}${unavailable ? ' is-unavailable' : ''}`}
       aria-current={active ? 'page' : undefined}
       aria-disabled={unavailable || undefined}
-      title={unavailable ? `${label} is not available in this milestone` : label}
+      title={unavailable ? `${label} is not in this Figma file` : label}
+      onClick={unavailable ? undefined : onClick}
     >
-      <NavIcon id={id} />
+      {icon}
       {open && <span>{label}</span>}
     </button>
   )
 }
 
-function MobileNav({ onClose, onFailSave, onFailReply }: {
-  onClose: () => void
-  onFailSave: () => void
-  onFailReply: () => void
-}) {
-  const reducedMotion = useReducedMotion()
-  const rootRef = useOverlayChrome(onClose)
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLElement>(null)
-  useEffect(() => { closeRef.current?.focus() }, [])
-  useLayoutEffect(() => {
-    const backdrop = backdropRef.current
-    const panel = panelRef.current
-    if (!backdrop || !panel || reducedMotion) return
-    animate(backdrop, { opacity: [0, 1] }, fade)
-    animate(panel, { transform: ['translateX(-16px)', 'translateX(0px)'] }, sheetMotion)
-  }, [reducedMotion])
-  return (
-    <div ref={rootRef} className="mobile-nav" role="presentation">
-      <div ref={backdropRef} className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
-      <aside ref={panelRef} className="mobile-nav-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title">
-        <header>
-          <div className="brand"><span>w</span><strong id="mobile-nav-title">wasup</strong></div>
-          <button ref={closeRef} className="icon-button" type="button" onClick={onClose} aria-label="Close navigation"><CloseIcon /></button>
-        </header>
-        <nav>
-          <NavItem id="playground" label="Playground" open active />
-          <NavItem id="activity" label="Activity" open unavailable />
-          <NavItem id="leads" label="Leads" open unavailable />
-        </nav>
-        <div className="mobile-nav-foot">
-          <p>Demo</p>
-          <button type="button" className="ghost-button" onClick={onFailSave}>Fail next save</button>
-          <button type="button" className="ghost-button" onClick={onFailReply}>Fail next reply</button>
-        </div>
-      </aside>
-    </div>
-  )
-}
-
-function Inspector({ tab, draft, dirty, saveStatus, saveError, openerOpen, loading, onTab, onToggleOpener, onChange, onExpand, onSave, onDiscard }: {
-  tab: LocalTab
+function Inspector({
+  draft,
+  dirty,
+  saveStatus,
+  saveError,
+  loading,
+  modelOpen,
+  presetOpen,
+  preset,
+  onChange,
+  onExpand,
+  onSave,
+  onDiscard,
+  onCompare,
+  onModelOpen,
+  onPresetOpen,
+  onPreset,
+}: {
   draft: AgentConfig
   dirty: boolean
   saveStatus: SaveStatus
   saveError: string | null
-  openerOpen: boolean
   loading: boolean
-  onTab: (tab: LocalTab) => void
-  onToggleOpener: () => void
+  modelOpen: boolean
+  presetOpen: boolean
+  preset: string
   onChange: (patch: Partial<AgentConfig>) => void
   onExpand: () => void
   onSave: () => void
   onDiscard: () => void
+  onCompare: () => void
+  onModelOpen: (open: boolean) => void
+  onPresetOpen: (open: boolean) => void
+  onPreset: (id: string) => void
 }) {
-  const preview = openerPreview(draft.opener)
   return (
     <section className="inspector" aria-label="Agent configuration">
-      <div className="local-tabs" role="tablist" aria-label="Playground sections">
-        <button type="button" role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'is-active' : ''} onClick={() => onTab('overview')}>Overview</button>
-        <button type="button" role="tab" aria-selected={tab === 'display'} className={tab === 'display' ? 'is-active' : ''} onClick={() => onTab('display')}>Display</button>
-      </div>
       <div className="inspector-body">
+        <h1>Playground</h1>
         {loading ? (
           <div className="inspector-skeleton" aria-busy="true"><span /><span /><span /></div>
-        ) : tab === 'overview' ? (
-          <div className="field-block">
-            <div className="field-label-row">
-              <h2>Instructions</h2>
+        ) : (
+          <>
+            <div className="status-card">
+              <strong><i /> Trained</strong>
+              <span>Last trained 3 days ago</span>
             </div>
-            <p className="field-help">These instructions apply to this agent.</p>
-            <div className="editor-shell">
-              <div className="editor-toolbar">
-                <button className="icon-button toolbar-expand" type="button" onClick={onExpand} aria-label="Expand instructions">
+            <div className="compare-row">
+              <span>Compare AI models</span>
+              <button className="ghost-button" type="button" onClick={onCompare}>Compare</button>
+            </div>
+            <div className="field-block">
+              <h2>Model</h2>
+              <button type="button" className="select-row" onClick={() => onModelOpen(!modelOpen)} aria-expanded={modelOpen}>
+                <span>{draft.model}</span>
+                <ChevronIcon />
+              </button>
+              {modelOpen && (
+                <div className="menu-card" role="listbox">
+                  <div className="menu-search"><SearchIcon /><span>Search models</span></div>
+                  {MODELS.map((model) => (
+                    <button
+                      key={model.id}
+                      type="button"
+                      role="option"
+                      aria-selected={draft.model === model.id}
+                      onClick={() => { onChange({ model: model.id }); onModelOpen(false) }}
+                    >
+                      <em>{model.group}</em>
+                      {model.id}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="field-block">
+              <h2>AI Actions</h2>
+              <div className="select-row is-static">
+                <span>1 Action Enabled</span>
+                <ChevronIcon />
+              </div>
+            </div>
+            <div className="field-block">
+              <div className="field-label-row">
+                <h2>Instructions (System prompt)</h2>
+                <button className="icon-button" type="button" onClick={onExpand} aria-label="Expand instructions">
                   <ExpandDialogIcon />
                 </button>
               </div>
+              <div className="preset-row">
+                <button type="button" className="select-row" onClick={() => onPresetOpen(!presetOpen)} aria-expanded={presetOpen}>
+                  <span>{PRESETS.find((item) => item.id === preset)?.label}</span>
+                  <ChevronIcon />
+                </button>
+                <button className="icon-button" type="button" aria-label="Refresh preset" onClick={() => onPreset(preset)}>
+                  <RefreshIcon />
+                </button>
+              </div>
+              {presetOpen && (
+                <div className="menu-card">
+                  {PRESETS.map((item) => (
+                    <button key={item.id} type="button" onClick={() => onPreset(item.id)}>{item.label}</button>
+                  ))}
+                </div>
+              )}
               <textarea
                 className="instructions-input"
                 aria-label="Instructions"
@@ -510,64 +763,49 @@ function Inspector({ tab, draft, dirty, saveStatus, saveError, openerOpen, loadi
                 onChange={(event) => onChange({ instructions: event.target.value })}
               />
             </div>
-          </div>
-        ) : (
-          <Accordion id="opening-message" title="Opening message" open={openerOpen} onToggle={onToggleOpener}>
-            <label className="stack-field">
-              <span>Message template</span>
-              <textarea
-                className="opener-input"
-                aria-label="Opening message"
-                value={draft.opener}
-                onChange={(event) => onChange({ opener: event.target.value })}
-              />
-            </label>
-            <div className="opener-preview">
-              <span>Sample preview</span>
-              <small>first_name = Rasmus · registration_number = ABC-123</small>
-              {preview ? <p>{preview}</p> : <p className="empty-preview">No opening message is saved.</p>}
-            </div>
-          </Accordion>
+          </>
         )}
       </div>
-      <footer className="savebar">
-        <p className={`save-copy${saveStatus === 'error' ? ' is-error' : dirty ? ' is-draft' : saveStatus === 'saved' ? ' is-saved' : ''}`} role="status">
-          {saveStatus === 'saving'
-            ? 'Saving…'
-            : saveError
-              ? saveError
-              : dirty
-                ? 'You have unsaved changes.'
-                : saveStatus === 'saved'
-                  ? 'Saved'
-                  : ''}
-        </p>
-        <div className="savebar-actions">
-          <button className="ghost-button" type="button" onClick={onDiscard} disabled={!dirty || saveStatus === 'saving'}>Discard</button>
-          <button className="primary-button" type="button" onClick={onSave} disabled={!dirty || saveStatus === 'saving'}>
-            {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Retry save' : 'Save'}
-          </button>
-        </div>
-      </footer>
+      {(dirty || saveStatus === 'saving' || saveError) && (
+        <footer className="savebar">
+          <p className={`save-copy${saveError ? ' is-error' : ' is-draft'}`} role="status">
+            {saveStatus === 'saving' ? 'Saving…' : saveError ?? 'You have unsaved changes. Do you wish to save them?'}
+          </p>
+          <div className="savebar-actions">
+            <button className="ghost-button" type="button" onClick={onDiscard} disabled={saveStatus === 'saving'}>Discard</button>
+            <button className="primary-button" type="button" onClick={onSave} disabled={saveStatus === 'saving'}>
+              {saveStatus === 'saving' ? 'Saving…' : saveError ? 'Retry save' : 'Save to agent'}
+            </button>
+          </div>
+        </footer>
+      )}
     </section>
   )
 }
 
-function Tester({ messages, composer, sending, replyError, loading, mobile, showSuggestions, onComposer, onSend, onSuggest, onRetry, onNewTest }: {
+function Tester({
+  messages,
+  composer,
+  sending,
+  replyError,
+  loading,
+  mobile,
+  onComposer,
+  onSend,
+  onRetry,
+  onNewTest,
+}: {
   messages: ChatMessage[]
   composer: string
   sending: boolean
   replyError: string | null
   loading: boolean
   mobile: boolean
-  showSuggestions: boolean
   onComposer: (value: string) => void
   onSend: () => void
-  onSuggest: (value: string) => void
   onRetry: () => void
   onNewTest: () => void
 }) {
-  const reducedMotion = useReducedMotion()
   const onKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
@@ -595,27 +833,25 @@ function Tester({ messages, composer, sending, replyError, loading, mobile, show
         ))}
         {sending && <div className="typing" aria-label="Waiting for mocked reply"><span /><span /><span /></div>}
       </div>
-      {showSuggestions && !sending && (
-        <div className="chips">
-          {SUGGESTIONS.map((suggestion) => (
-            <button key={suggestion} type="button" onClick={() => onSuggest(suggestion)}>{suggestion}</button>
-          ))}
-        </div>
-      )}
       {replyError && (
         <div className="reply-error" role="status">
           <span>{replyError}</span>
           <button type="button" onClick={onRetry} disabled={sending}>Retry</button>
         </div>
       )}
-      <p className="tester-credit">Agent tester</p>
+      <p className="tester-credit">Powered by Wasup</p>
       <Composer value={composer} sending={sending} onChange={onComposer} onKeyDown={onKeyDown} onSend={onSend} />
-      {!reducedMotion && null}
     </div>
   )
 }
 
-function Composer({ value, sending, onChange, onKeyDown, onSend }: {
+function Composer({
+  value,
+  sending,
+  onChange,
+  onKeyDown,
+  onSend,
+}: {
   value: string
   sending: boolean
   onChange: (value: string) => void
@@ -644,6 +880,9 @@ function Composer({ value, sending, onChange, onKeyDown, onSend }: {
         placeholder="Message…"
         aria-label="Test message"
       />
+      <button className="icon-button composer-mic" type="button" tabIndex={-1} aria-hidden="true">
+        <MicIcon />
+      </button>
       <button className="send-button" type="button" onClick={onSend} disabled={!value.trim() || sending} aria-label="Send message">
         <ArrowUpIcon />
       </button>
@@ -651,123 +890,89 @@ function Composer({ value, sending, onChange, onKeyDown, onSend }: {
   )
 }
 
-function Accordion({ id, title, open, onToggle, children }: {
-  id: string
-  title: string
-  open: boolean
-  onToggle: () => void
-  children: ReactNode
+function CompareView({
+  panes,
+  sync,
+  mobile,
+  onBack,
+  onSync,
+  onComposer,
+  onModel,
+  onSend,
+  onReset,
+}: {
+  panes: ComparePane[]
+  sync: boolean
+  mobile: boolean
+  onBack: () => void
+  onSync: (value: boolean) => void
+  onComposer: (id: string, value: string) => void
+  onModel: (id: string, model: string) => void
+  onSend: (id: string) => void
+  onReset: () => void
 }) {
   const reducedMotion = useReducedMotion()
-  const [clip, setClip] = useState(!open)
-  const buttonId = `${id}-toggle`
-  const panelId = `${id}-panel`
   return (
-    <section className={`accordion${open ? ' is-open' : ''}`}>
-      <button id={buttonId} type="button" className="accordion-toggle" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
-        {title}
-        <motion.span className="accordion-chevron" aria-hidden="true" animate={{ rotate: open ? 180 : 0 }} transition={reducedMotion ? { duration: 0 } : space}>
-          <ChevronIcon />
-        </motion.span>
-      </button>
-      <motion.div
-        id={panelId}
-        role="region"
-        aria-labelledby={buttonId}
-        initial={false}
-        animate={open ? 'open' : 'closed'}
-        variants={{ open: { height: 'auto', opacity: 1 }, closed: { height: 0, opacity: 0 } }}
-        transition={reducedMotion ? { duration: 0 } : { height: space, opacity: { duration: 0.18, ease } }}
-        style={{ overflow: clip ? 'hidden' : 'visible' }}
-        onAnimationStart={() => setClip(true)}
-        onAnimationComplete={() => { if (open) setClip(false) }}
-        {...(open ? {} : { inert: true })}
-      >
-        <div className="accordion-body">{children}</div>
-      </motion.div>
-    </section>
-  )
-}
-
-function InstructionsDialog({ value, onChange, onClose }: {
-  value: string
-  onChange: (value: string) => void
-  onClose: () => void
-}) {
-  const reducedMotion = useReducedMotion()
-  const rootRef = useOverlayChrome(onClose)
-  const areaRef = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => { areaRef.current?.focus() }, [])
-  return (
-    <motion.div className="dialog-root" ref={rootRef} initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={reducedMotion ? { duration: 0 } : fade}>
-      <div className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
-      <motion.div
-        className="instructions-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="instructions-title"
-        initial={reducedMotion ? false : { scale: 0.95 }}
-        animate={{ scale: 1 }}
-        transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease }}
-      >
-        <header>
-          <h2 id="instructions-title">Instructions</h2>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close instructions"><CloseIcon /></button>
-        </header>
-        <textarea ref={areaRef} aria-label="Instructions" value={value} onChange={(event) => onChange(event.target.value)} />
-      </motion.div>
-    </motion.div>
-  )
-}
-
-function RefineOverlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  const reducedMotion = useReducedMotion()
-  const rootRef = useOverlayChrome(onClose)
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { closeRef.current?.focus() }, [])
-  useLayoutEffect(() => {
-    const backdrop = backdropRef.current
-    const panel = panelRef.current
-    if (!backdrop || !panel || reducedMotion) return
-    animate(backdrop, { opacity: [0, 1] }, fade)
-    animate(panel, { transform: ['translateY(16px)', 'translateY(0px)'] }, sheetMotion)
-  }, [reducedMotion])
-  return (
-    <div ref={rootRef} className="refine-overlay">
-      <div ref={backdropRef} className="overlay-backdrop" aria-hidden="true" onClick={onClose} />
-      <div ref={panelRef} className="refine-panel" role="dialog" aria-modal="true" aria-labelledby="refine-title">
-        <header>
-          <h2 id="refine-title">Refine</h2>
-          <button ref={closeRef} className="ghost-button" type="button" onClick={onClose}>Done</button>
-        </header>
-        {children}
+    <div className={`compare${mobile ? ' is-mobile' : ''}`}>
+      <header className="compare-head">
+        <div>
+          <button className="compare-back" type="button" onClick={onBack}>
+            <BackIcon /> Back to Playground
+          </button>
+          <h1>Compare</h1>
+        </div>
+        <div className="compare-actions">
+          <button className="ghost-button" type="button" onClick={onReset}>Clear all chats</button>
+          <button className="ghost-button" type="button" onClick={onReset}>Reset</button>
+          <button className="primary-button" type="button" onClick={() => {}}>Add an instance</button>
+        </div>
+      </header>
+      <p className="visually-hidden">Side-by-side labels only. Both panes use the same mocked playground replies.</p>
+      <div className="compare-grid">
+        {panes.map((pane) => (
+          <section key={pane.id} className="compare-pane">
+            <header>
+              <label>
+                <span className="visually-hidden">Model</span>
+                <select value={pane.model} onChange={(event) => onModel(pane.id, event.target.value)}>
+                  {MODELS.map((model) => <option key={model.id} value={model.id}>{model.id}</option>)}
+                </select>
+              </label>
+              <div className="compare-pane-tools">
+                <label className="sync-toggle">
+                  <span>Sync</span>
+                  <input type="checkbox" checked={sync} onChange={(event) => onSync(event.target.checked)} />
+                </label>
+                <span className="icon-button" aria-hidden="true"><DotsIcon /></span>
+              </div>
+            </header>
+            <div className="messages">
+              {pane.messages.map((message) => (
+                <article key={message.id} className={`message ${message.role}`}>
+                  <p>{message.text}</p>
+                  {message.mocked && <span className="mock-tag">Mocked</span>}
+                </article>
+              ))}
+              {pane.sending && <div className="typing" aria-label="Waiting for mocked reply"><span /><span /><span /></div>}
+            </div>
+            <Composer
+              value={pane.composer}
+              sending={pane.sending}
+              onChange={(value) => onComposer(pane.id, value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  onSend(pane.id)
+                }
+              }}
+              onSend={() => onSend(pane.id)}
+            />
+          </section>
+        ))}
       </div>
+      {!reducedMotion && null}
     </div>
   )
-}
-
-function Svg(props: SVGProps<SVGSVGElement>) {
-  return <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" {...props} />
-}
-
-function ChevronIcon() { return <Svg><path d="M4 6.25 8 10l4-3.75" /></Svg> }
-function CloseIcon() { return <Svg><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></Svg> }
-function ArrowUpIcon() { return <Svg><path d="M8 13V4M8 4 4.4 7.6M8 4l3.6 3.6" /></Svg> }
-function MenuIcon() { return <Svg><path d="M3 4.5h10M3 8h10M3 11.5h10" /></Svg> }
-function CollapseIcon() { return <Svg><path d="M10.5 3.5 6 8l4.5 4.5" /></Svg> }
-function ExpandIcon() { return <Svg><path d="M5.5 3.5 10 8 5.5 12.5" /></Svg> }
-function ExpandDialogIcon() { return <Svg><path d="M6 3.5H3.5V6M10 3.5h2.5V6M6 12.5H3.5V10M10 12.5h2.5V10" /></Svg> }
-function ResetIcon() { return <Svg><path d="M12.2 8A4.2 4.2 0 1 1 8 3.8h1.4M9.4 2.4 11.2 3.8 9.4 5.2" /></Svg> }
-function PlaygroundIcon() { return <Svg><path d="M4.2 3.6 12 8 4.2 12.4z" /></Svg> }
-function ActivityIcon() { return <Svg><path d="M3.2 10.8 6 7.4l2.2 2.4 4.6-5.6" /></Svg> }
-function LeadsIcon() { return <Svg><circle cx="6.2" cy="6" r="2" /><path d="M3.4 12.4c.4-2 1.8-3 2.8-3s2.4 1 2.8 3" /></Svg> }
-
-function NavIcon({ id }: { id: NavId }) {
-  if (id === 'activity') return <ActivityIcon />
-  if (id === 'leads') return <LeadsIcon />
-  return <PlaygroundIcon />
 }
 
 export default App

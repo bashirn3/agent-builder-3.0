@@ -1,0 +1,50 @@
+{
+  "flow_name": "Setting up a playground",
+  "flow_id": "52947e76-b30a-4f91-8832-f424a32b744b",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/52947e76-b30a-4f91-8832-f424a32b744b",
+  "actions": ["Chatting & Sending Messages", "Giving Feedback", "Setting Up"],
+  "reported_screen_count": 15,
+  "returned_screen_count": 15,
+  "positions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "b8a8262b-bd97-48ef-9062-8bdbe0775b1b",
+    "d1700c28-1cd6-4b67-a9ff-3499feabb9c5",
+    "684403d5-e539-49c5-b554-e28d382734cc",
+    "f68fb0a4-3309-4cc3-b904-dc9cb724943a",
+    "0f247934-8493-4cfd-bf62-c8456895ac60",
+    "9543d80a-ccd3-424b-ad70-4fa089d6ab99",
+    "ad5b033b-28a2-49c7-86bf-79db406649a0",
+    "c1aaa276-ad9c-4c64-8dab-b5d546186d28",
+    "164c77bd-f9dc-4f57-b511-cc7107cdc070",
+    "6ae9a069-07ff-4407-9148-384cd2e3ee8a",
+    "d684d184-9acb-46cd-ac39-8d33c4dd724c",
+    "a8885312-d9cb-4e12-8a4e-c92dc9ac9bd0",
+    "d32557c2-eb20-4a80-b63b-ce70d134879f",
+    "9ae2b438-a596-430c-8130-40d3e9f3abf6",
+    "cb6931d8-f2ee-4618-a75e-db03cae94459"
+  ],
+  "shared_screen_ids": {
+    "b8a8262b-bd97-48ef-9062-8bdbe0775b1b": ["Onboarding position 20"],
+    "6ae9a069-07ff-4407-9148-384cd2e3ee8a": ["Comparing AI models position 1", "Account settings position 1", "Activity position 1"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": [
+    "images/01.png", "images/02.png", "images/03.png", "images/04.png", "images/05.png",
+    "images/06.png", "images/07.png", "images/08.png", "images/09.png", "images/10.png",
+    "images/11.png", "images/12.png", "images/13.png", "images/14.png", "images/15.png"
+  ],
+  "contact_sheets": [
+    "contact-sheet-01.png",
+    "contact-sheet-02.png",
+    "contact-sheet-03.png"
+  ],
+  "downloaded": 15,
+  "visually_inspected": 15,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}

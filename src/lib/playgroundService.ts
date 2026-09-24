@@ -3,7 +3,15 @@ import { renderWithSampleData, starterMessages, type ChatMessage } from './refin
 export type AgentConfig = {
   instructions: string
   opener: string
+  model: string
 }
+
+export const DEFAULT_MODEL = 'GPT-5'
+
+export const MODELS = [
+  { id: 'GPT-5', group: 'OpenAI' },
+  { id: 'Claude 4.5 Haiku', group: 'Anthropic' },
+] as const
 
 export type PlaygroundService = {
   loadConfig: () => Promise<AgentConfig>
@@ -42,6 +50,7 @@ export function createMockPlaygroundService(): PlaygroundService {
   let saved: AgentConfig = {
     instructions: DEFAULT_INSTRUCTIONS,
     opener: DEFAULT_OPENER,
+    model: DEFAULT_MODEL,
   }
   let replyIndex = 0
   let failSave = false
@@ -61,6 +70,7 @@ export function createMockPlaygroundService(): PlaygroundService {
       saved = {
         instructions: draft.instructions,
         opener: draft.opener,
+        model: draft.model,
       }
       return { ...saved }
     },

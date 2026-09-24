@@ -1,0 +1,32 @@
+{
+  "flow_name": "Comparing AI models",
+  "flow_id": "7eb8b73f-350a-40fb-9527-8b16fedd97c8",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/7eb8b73f-350a-40fb-9527-8b16fedd97c8",
+  "actions": [],
+  "reported_screen_count": 4,
+  "returned_screen_count": 4,
+  "positions": [1, 2, 3, 4],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "6ae9a069-07ff-4407-9148-384cd2e3ee8a",
+    "78548a27-8ee6-48cc-92cb-886a5824d6fb",
+    "218e17de-51f8-4ba2-94e8-8c790c9e5162",
+    "fa79d27e-f521-4410-a6a0-87aa921b6319"
+  ],
+  "shared_screen_ids": {
+    "6ae9a069-07ff-4407-9148-384cd2e3ee8a": ["Setting up a playground position 10"],
+    "78548a27-8ee6-48cc-92cb-886a5824d6fb": ["Setting up an agent position 1", "Recording a prompt position 1"],
+    "218e17de-51f8-4ba2-94e8-8c790c9e5162": ["Recording a prompt position 3"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png", "images/03.png", "images/04.png"],
+  "contact_sheets": ["contact-sheet-01.png"],
+  "downloaded": 4,
+  "visually_inspected": 4,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}
