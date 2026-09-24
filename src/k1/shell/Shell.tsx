@@ -1,27 +1,20 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ChevronDown, History, LogOut, MenuIcon, Play, Rocket, X } from '../ui/icons'
+import { ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, X } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { go, href, previewSession, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
 
-export function K1Mark({ size = 24 }: { size?: number }) {
-  return (
-    <svg className="k1-mark" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <rect width="24" height="24" rx="6" fill="currentColor" />
-      <path d="M6.6 6.8h2.2v4.1l3.5-4.1h2.6l-3.6 4.1 3.8 6.3h-2.6l-2.7-4.6-1 1.1v3.5H6.6z" fill="#fff" />
-      <path d="M16.2 8.9l1.9-2.1h1.5v10.4h-2.1V9.6l-1.3 1.2z" fill="#fff" />
-    </svg>
-  )
+export function BrandLogo({ height = 22 }: { height?: number }) {
+  return <img className="k1-brand-logo" src="/brand/a-katsastus-logo.jpg" alt="A-Katsastus" height={height} width={Math.round(height * 1024 / 279)} />
 }
 
 function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () => void }) {
   return (
     <header className="k1-header k1-header--mobile">
-      <a className="k1-header__brand" href={href({ page: 'playground' })} aria-label="K1 Katsastus playground">
-        <K1Mark />
-        <span>K1 Katsastus</span>
+      <a className="k1-header__brand" href={href({ page: 'playground' })} aria-label="A-Katsastus playground">
+        <BrandLogo />
       </a>
       <button
         type="button"
@@ -40,8 +33,8 @@ function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () =>
 export function Header() {
   return (
     <header className="k1-header">
-      <a className="k1-header__home" href={href({ page: 'playground' })} aria-label="K1 Katsastus playground">
-        <K1Mark />
+      <a className="k1-header__home" href={href({ page: 'playground' })} aria-label="A-Katsastus playground">
+        <BrandLogo />
       </a>
       <nav className="k1-crumbs" aria-label="Workspace">
         <span className="k1-crumbs__sep" aria-hidden="true">/</span>
@@ -88,6 +81,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
   const [activityOpen, setActivityOpen] = useState(true)
   const link = (to: Route, active: boolean, children: ReactNode, sub = false) => (
     <a
+      key={href(to)}
       href={href(to)}
       className={`k1-nav__item${sub ? ' k1-nav__item--sub' : ''}${active ? ' is-active' : ''}`}
       aria-current={active ? 'page' : undefined}
@@ -98,7 +92,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
   )
   return (
     <nav className="k1-nav" aria-label="Main">
-      {link({ page: 'playground' }, route.page === 'playground' || route.page === 'compare', <><Play className="k1-nav__play" />Playground</>)}
+      {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />Playground</>)}
       <button
         type="button"
         className={`k1-nav__item${inActivity && !activityOpen ? ' is-active' : ''}`}
@@ -117,6 +111,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
           {activityChildren.map((child) => link(child.to, route.page === child.key, child.label, true))}
         </div>
       </Collapse>
+      {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />Compare</>)}
       {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />Deploy</>)}
     </nav>
   )

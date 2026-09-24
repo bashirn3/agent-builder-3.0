@@ -353,7 +353,8 @@ body { overscroll-behavior: none; }
   box-shadow: var(--k1-shadow-sm);
 }
 .k1-tester__head { flex: none; height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; box-shadow: 0 6px 10px -10px rgba(9, 9, 11, 0.25); position: relative; z-index: 1; }
-.k1-tester__avatar { width: 26px; height: 26px; border-radius: 999px; overflow: hidden; display: grid; place-items: center; background: var(--k1-ink); }
+.k1-tester__avatar { width: 26px; height: 26px; border-radius: 999px; overflow: hidden; display: grid; place-items: center; background: #fff; box-shadow: inset 0 0 0 1px var(--k1-line); }
+.k1-tester__avatar img { width: 22px; height: 22px; object-fit: contain; }
 .k1-tester__avatar .k1-mark { width: 26px; height: 26px; }
 .k1-tester__head h2 { font-size: 14px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .k1-tester__reset { margin-left: auto; }
@@ -728,13 +729,6 @@ body { overscroll-behavior: none; }
 .k1-token:hover { background: var(--k1-line-soft); color: var(--k1-ink); }
 .k1-token:focus-visible { outline: none; box-shadow: var(--k1-focus); }
 
-/* Playground status cards: Chatbase "Trained" + "Compare AI models" */
-.k1-status-cards { display: grid; gap: 8px; margin-bottom: 18px; }
-.k1-status-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: #fafafa; color: inherit; text-decoration: none; transition: background-color 150ms var(--k1-ease); }
-.k1-status-card--row { align-items: center; justify-content: space-between; background: var(--k1-surface); padding: 10px 10px 10px 14px; }
-.k1-status-card__text { display: grid; gap: 2px; min-width: 0; }
-.k1-status-card__text strong { font-size: 14px; font-weight: 500; color: var(--k1-ink); }
-.k1-status-card__text small { font-size: 12px; color: var(--k1-muted); }
 
 /* Compare: Chatbase Playground → Compare, one independent chat per version */
 .k1-compare { display: flex; flex-direction: column; gap: 12px; min-height: 0; height: 100%; padding: 24px 32px 24px; background: var(--k1-bg); overflow: hidden; }
@@ -837,3 +831,26 @@ body { overscroll-behavior: none; }
   .k1-page__actions { width: 100%; }
   .k1-page__actions .k1-btn { flex: 1 1 auto; }
 }
+
+/* Brand */
+.k1-brand-logo { display: block; width: auto; mix-blend-mode: multiply; user-select: none; }
+
+/* Instructions editor: markdown styled in place (CodeMirror) */
+.k1-editor__input.k1-editor__cm { padding: 0; overflow: hidden; cursor: text; }
+.k1-editor__cm .cm-editor { height: 100%; }
+.k1-editor.is-readonly .k1-editor__cm .cm-content { color: var(--k1-ink-2); }
+
+/* Leads in the Muster shape */
+.k1-tag--danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.k1-table__station, .k1-lead__station, .k1-lead-card__station { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.k1-table tbody tr.is-closed th, .k1-table tbody tr.is-closed td { color: var(--k1-muted); }
+.k1-lead-card.is-closed strong { color: var(--k1-para); }
+.k1-lead__closed { margin-bottom: 16px; padding: 10px 12px; border: 1px solid #fecaca; border-radius: var(--k1-r-md); background: #fef2f2; font-size: 13px; color: #b91c1c; }
+
+/* Opener languages and legacy placeholders */
+.k1-opener-lang { display: grid; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid var(--k1-line-soft); }
+.k1-opener-lang .k1-segmented { width: 100%; }
+.k1-opener__warn { font-size: 12px; line-height: 1.5; color: #9a3412; }
+.k1-tester__context .k1-tag { flex: none; }
+.k1-token { white-space: nowrap; }
+.k1-opener__tokens { flex-wrap: wrap; }

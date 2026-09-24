@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { describeError, openerPreview, personalize, SAMPLE_LEAD, sendTest, type TestLead, type TestTarget } from './agentConfig'
+import { describeError, localized, openerPreview, personalize, SAMPLE_LEAD, sendTest, type TestLead, type TestTarget } from './agentConfig'
 import { newId, recordReminder, setFeedback, type ChatSource, type ReminderKind } from './builderApi'
 
 export type TestMessage = {
@@ -15,33 +15,34 @@ export type TestMessage = {
   serverId?: string | null
 }
 
-function openerMessages(opener: string, lead: TestLead): TestMessage[] {
-  const text = openerPreview(opener, lead)
+function openerMessages(target: TestTarget | null, lead: TestLead): TestMessage[] {
+  const used = target ? localized(target, lead) : null
+  const text = used ? openerPreview(used.opener, lead, used.lang) : ''
   return text ? [{ id: newId(), role: 'agent', text, at: Date.now(), opener: true }] : []
 }
 
 export function useTestChat(target: TestTarget | null, source: ChatSource, lead: TestLead = SAMPLE_LEAD) {
-  const [messages, setMessages] = useState<TestMessage[]>(() => openerMessages(target?.opener ?? '', lead))
+  const [messages, setMessages] = useState<TestMessage[]>(() => openerMessages(target, lead))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [composer, setComposer] = useState('')
   const conversationRef = useRef(newId())
-  const targetKey = `${target ? (target.isDraft ? 'draft' : target.versionId) : 'none'}:${lead.name}:${lead.registration}`
+  const targetKey = `${target ? (target.isDraft ? 'draft' : target.versionId) : 'none'}:${lead.plateNumber}:${lead.language}`
 
   const hasUserMessages = messages.some((message) => message.role === 'user')
 
   // The opener tracks edits until the conversation starts.
   useEffect(() => {
     if (!target || hasUserMessages) return
-    setMessages(openerMessages(target.opener, lead))
-  }, [target?.opener, targetKey])
+    setMessages(openerMessages(target, lead))
+  }, [target?.opener, JSON.stringify(target?.translations ?? null), targetKey])
 
   const reset = () => {
     conversationRef.current = newId()
     setPending(false)
     setError(null)
     setComposer('')
-    setMessages(openerMessages(target?.opener ?? '', lead))
+    setMessages(openerMessages(target, lead))
   }
 
   // Switching version starts a fresh conversation for that version.
@@ -83,10 +84,11 @@ export function useTestChat(target: TestTarget | null, source: ChatSource, lead:
   }
 
   const sendReminder = (index: number) => {
-    const reminder = target?.reminders[index]
-    if (!target || !reminder?.text.trim() || pending) return
+    const used = target ? localized(target, lead) : null
+    const reminder = used?.reminders[index]
+    if (!target || !used || !reminder?.text.trim() || pending) return
     const kind = `reminder_${index + 1}` as ReminderKind
-    const text = personalize(reminder.text, lead).trim()
+    const text = personalize(reminder.text, lead, used.lang).trim()
     const conversationId = conversationRef.current
     const id = newId()
     setMessages((list) => [...list, { id, role: 'agent', text, at: Date.now(), kind }])
@@ -96,7 +98,7 @@ export function useTestChat(target: TestTarget | null, source: ChatSource, lead:
       versionNumber: target.versionNumber,
       isDraft: target.isDraft,
       source,
-      opener: openerPreview(target.opener, lead),
+      opener: openerPreview(used.opener, lead, used.lang),
       text,
       kind,
     }).catch(() => undefined)

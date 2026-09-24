@@ -4,6 +4,8 @@ import { ease } from '../../lib/motion'
 import { describeError } from '../data/agentConfig'
 import { importLeads } from '../data/builderApi'
 import { FIELD_LABELS, readLeads, type ParseResult } from '../data/csv'
+import { shortStation } from '../data/fixtures'
+import { formatDate } from '../data/language'
 import { Spinner } from '../ui/controls'
 import { Upload } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
@@ -51,7 +53,7 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
       const { inserted, updated } = await importLeads(result.rows)
       notify({
         title: `${inserted + updated} lead${inserted + updated === 1 ? '' : 's'} imported`,
-        body: updated ? `${inserted} new, ${updated} updated because the registration was already in the list.` : 'They are now in Leads and in the test chat lead picker.',
+        body: updated ? `${inserted} new, ${updated} updated because the plate number was already in the list.` : 'They are now in Leads and in the test chat lead picker.',
       })
       onImported()
       reset()
@@ -78,7 +80,7 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
           <span className="k1-dropzone__icon" aria-hidden="true"><Upload size={18} strokeWidth={1.75} /></span>
           <span className="k1-dropzone__text">
             <strong>{file ?? 'Drop a CSV file here, or choose a file'}</strong>
-            <small id={hintId}>Columns: name, email, phone, registration, inspection due date</small>
+            <small id={hintId}>Muster columns: StationName, isClosed, PlateNumber, Product, NextInspectionDateRangeEnd, PhoneNumber, Language, LastInspection, Reason</small>
           </span>
           <input
             ref={inputRef}
@@ -100,23 +102,23 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
                 <p className="k1-upload__summary" role="status">
                   <strong>{ready} lead{ready === 1 ? '' : 's'} ready</strong>
                   {result.skipped.length > 0 && <span> · {result.skipped.length} row{result.skipped.length === 1 ? '' : 's'} skipped</span>}
-                  {result.missing.length > 0 && <span> · no {result.missing.map((field) => FIELD_LABELS[field].toLowerCase()).join(', ')} column</span>}
+                  {result.missing.length > 0 && <span> · missing {result.missing.join(', ')}</span>}
                 </p>
               )}
               {ready > 0 && (
                 <div className="k1-upload__preview">
                   <table className="k1-table">
                     <thead>
-                      <tr>{(['name', 'email', 'phone', 'registration', 'inspection_due'] as const).map((field) => <th key={field} scope="col">{FIELD_LABELS[field]}</th>)}</tr>
+                      <tr>{(['PlateNumber', 'StationName', 'NextInspectionDateRangeEnd', 'Language', 'PhoneNumber'] as const).map((field) => <th key={field} scope="col">{FIELD_LABELS[field]}</th>)}</tr>
                     </thead>
                     <tbody>
                       {result.rows.slice(0, PREVIEW_ROWS).map((row, index) => (
                         <tr key={index}>
-                          <th scope="row">{row.name}</th>
-                          <td>{row.email || '—'}</td>
-                          <td>{row.phone || '—'}</td>
-                          <td>{row.registration}</td>
-                          <td className="k1-table__num">{row.inspection_due || '—'}</td>
+                          <th scope="row">{row.PlateNumber}</th>
+                          <td>{shortStation(row.StationName) || '—'}{row.isClosed && <span className="k1-tag k1-tag--danger k1-table__tag">Closed</span>}</td>
+                          <td className="k1-table__num">{formatDate(row.NextInspectionDateRangeEnd, 'fi') || '—'}</td>
+                          <td>{row.Language || '—'}</td>
+                          <td className="k1-table__num">{row.PhoneNumber || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

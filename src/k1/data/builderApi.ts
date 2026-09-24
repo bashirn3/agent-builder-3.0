@@ -5,18 +5,34 @@ export const remote = Boolean(BASE)
 
 export type Reminder = { text: string; days: number | null }
 
+export type Translation = { opener: string; reminders: Reminder[] }
+export type Translations = Partial<Record<'fi' | 'sv', Translation>>
+
 export type UploadedLead = {
   id: string
-  name: string
-  email: string
-  phone: string
-  registration: string
-  inspectionDue: string | null
-  source: string
+  stationName: string
+  isClosed: boolean
+  plateNumber: string
+  product: string
+  nextInspection: string | null
+  phoneNumber: string
+  language: string
+  lastInspection: string | null
+  reason: string
   createdAt: string
 }
 
-export type LeadRow = { name: string; email: string; phone: string; registration: string; inspection_due: string }
+export type LeadRow = {
+  StationName: string
+  isClosed: boolean
+  PlateNumber: string
+  Product: string
+  NextInspectionDateRangeEnd: string
+  PhoneNumber: string
+  Language: string
+  LastInspection: string
+  Reason: string
+}
 
 export type VersionRecord = {
   id: string
@@ -25,6 +41,7 @@ export type VersionRecord = {
   additionalInformation: string
   openingMessage: string
   reminders?: Reminder[]
+  translations?: Translations
   note: string
   savedBy: string | null
   createdAt: string
@@ -129,6 +146,7 @@ export type SaveInput = {
   openingMessage: string
   additionalInformation: string
   reminders: Reminder[]
+  translations: Translations
   locked: boolean
   note: string
   savedBy: string | null
@@ -293,7 +311,7 @@ export async function saveVersion(input: SaveInput): Promise<void> {
     store.versions = [
       {
         id: newId(), versionNumber: number, masterPrompt: input.masterPrompt,
-        additionalInformation: input.additionalInformation, openingMessage: input.openingMessage, reminders: input.reminders,
+        additionalInformation: input.additionalInformation, openingMessage: input.openingMessage, reminders: input.reminders, translations: input.translations,
         note: input.note, savedBy: input.savedBy, createdAt: new Date().toISOString(), isActive: true,
         thumbsUp: 0, thumbsDown: 0, conversations: 0,
       },
@@ -445,10 +463,14 @@ export async function importLeads(rows: LeadRow[]): Promise<{ inserted: number; 
     let inserted = 0
     let updated = 0
     for (const row of rows) {
-      const existing = leads.find((lead) => registrationKey(lead.registration) === registrationKey(row.registration))
-      const next = { name: row.name, email: row.email, phone: row.phone, registration: row.registration, inspectionDue: row.inspection_due || null }
+      const existing = leads.find((lead) => registrationKey(lead.plateNumber) === registrationKey(row.PlateNumber))
+      const next = {
+        stationName: row.StationName, isClosed: row.isClosed, plateNumber: row.PlateNumber, product: row.Product,
+        nextInspection: row.NextInspectionDateRangeEnd || null, phoneNumber: row.PhoneNumber, language: row.Language,
+        lastInspection: row.LastInspection || null, reason: row.Reason,
+      }
       if (existing) { Object.assign(existing, next); updated += 1 } else {
-        leads.unshift({ id: newId(), source: 'csv', createdAt: new Date().toISOString(), ...next })
+        leads.unshift({ id: newId(), createdAt: new Date().toISOString(), ...next })
         inserted += 1
       }
     }

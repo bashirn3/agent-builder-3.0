@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowUp, Check, Eye, EyeOff } from '../ui/icons'
 import { ease } from '../../lib/motion'
-import { K1Mark } from '../shell/Shell'
+import { BrandLogo } from '../shell/Shell'
 import { Collapse } from '../ui/overlay'
 import { Spinner } from '../ui/controls'
 import { go, href, previewSession } from '../routes'
@@ -154,8 +154,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
   return (
     <div className="k1-auth">
       <a className="k1-auth__brand" href={href({ page: signup ? 'signup' : 'signin' })}>
-        <K1Mark size={22} />
-        <span>K1 Katsastus</span>
+        <BrandLogo height={28} />
       </a>
       <div className="k1-auth__card">
         <section className="k1-auth__form-side">
@@ -269,7 +268,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
           <TypingComposer />
         </section>
       </div>
-      <p className="k1-auth__copy">© 2026 Wasup · K1 Katsastus</p>
+      <p className="k1-auth__copy">© 2026 Wasup · A-Katsastus</p>
 
     </div>
   )

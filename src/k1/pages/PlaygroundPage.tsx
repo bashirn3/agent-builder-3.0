@@ -1,20 +1,22 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
-  ArrowUp, Bold, ChevronDown, ChevronRight, FileText, Heading, List, ListOrdered, Lock, LockOpen,
-  Italic, Maximize2, RefreshCw, RotateCcw, ThumbsDown, ThumbsUp,
+  ArrowUp, ChevronDown, ChevronRight, FileText, Lock, LockOpen, RefreshCw, RotateCcw, ThumbsDown, ThumbsUp,
 } from '../ui/icons'
 import { ease } from '../../lib/motion'
 
 const easeInOut = [0.4, 0, 0.2, 1] as const
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
-import { K1Mark } from '../shell/Shell'
 import { Select, Skeleton, Spinner } from '../ui/controls'
-import { applyFormat, stripPrefix, type Format } from '../ui/format'
+import { stripPrefix } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
 import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
-import { OpenerField, ReminderFields } from './OpenerField'
+import { LanguageTabs, OpenerField, ReminderFields } from './OpenerField'
+import { detectLanguage, LANGUAGES, type Lang } from '../data/language'
+import { localized, normalizeReminders } from '../data/agentConfig'
+import { shortStation } from '../data/fixtures'
+import { PromptEditor } from './PromptEditor'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -30,65 +32,6 @@ export function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, va
     node.style.height = 'auto'
     node.style.height = `${Math.min(node.scrollHeight, max)}px`
   }, [ref, value, max])
-}
-
-const TOOLS: Array<{ kind: Format; label: string; icon: ReactNode } | 'sep'> = [
-  { kind: 'bold', label: 'Bold', icon: <Bold /> },
-  { kind: 'italic', label: 'Italic', icon: <Italic /> },
-  { kind: 'heading', label: 'Heading', icon: <Heading /> },
-  'sep',
-  { kind: 'bullet', label: 'Bulleted list', icon: <List /> },
-  { kind: 'number', label: 'Numbered list', icon: <ListOrdered /> },
-]
-
-function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, size = 'panel', label }: {
-  id: string
-  value: string
-  onChange: (value: string) => void
-  readOnly: boolean
-  describedBy?: string
-  onExpand?: () => void
-  size?: 'panel' | 'dialog'
-  label?: string
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-  const format = (kind: Format) => {
-    const node = ref.current
-    if (!node || readOnly) return
-    const next = applyFormat(value, node.selectionStart, node.selectionEnd, kind)
-    onChange(next.value)
-    requestAnimationFrame(() => {
-      node.focus()
-      node.setSelectionRange(next.start, next.end)
-    })
-  }
-  return (
-    <div className={`k1-editor k1-editor--${size}${readOnly ? ' is-readonly' : ''}`}>
-      <div className="k1-editor__toolbar" role="toolbar" aria-label="Formatting" aria-controls={id}>
-        {TOOLS.map((tool, index) => tool === 'sep' ? <span key={`sep-${index}`} className="k1-editor__sep" aria-hidden="true" /> : (
-          <button key={tool.kind} type="button" className="k1-editor__tool" aria-label={tool.label} title={tool.label} disabled={readOnly} onClick={() => format(tool.kind)}>
-            {tool.icon}
-          </button>
-        ))}
-        {onExpand && (
-          <button type="button" className="k1-editor__tool k1-editor__expand" aria-label="Expand instructions" title="Expand" onClick={onExpand}>
-            <Maximize2 size={14} strokeWidth={1.75} />
-          </button>
-        )}
-      </div>
-      <textarea
-        ref={ref}
-        id={id}
-        aria-label={label}
-        className="k1-editor__input"
-        value={value}
-        readOnly={readOnly}
-        spellCheck
-        aria-describedby={describedBy}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  )
 }
 
 function Switch({ checked, onChange, labelledBy, describedBy }: { checked: boolean; onChange: (next: boolean) => void; labelledBy: string; describedBy?: string }) {
@@ -155,17 +98,6 @@ function summarise(text: string) {
   return { title: stripPrefix(lines[0]), meta: `${lines.length} line${lines.length === 1 ? '' : 's'}` }
 }
 
-function CompareCard() {
-  return (
-    <div className="k1-status-cards">
-      <div className="k1-status-card k1-status-card--row">
-        <span className="k1-status-card__text"><strong>Compare versions</strong></span>
-        <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'compare' })}>Compare</a>
-      </div>
-    </div>
-  )
-}
-
 type PanelTab = 'overview' | 'opener'
 
 function Inspector({ store, showTitle = true, tab: controlledTab }: { store: PlaygroundStore; showTitle?: boolean; tab?: PanelTab }) {
@@ -173,6 +105,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   const [ownTab, setTab] = useState<PanelTab>('overview')
   const tab = controlledTab ?? ownTab
   const [expanded, setExpanded] = useState(false)
+  const [lang, setLang] = useState<Lang>('en')
   const [extraOpen, setExtraOpen] = useState(false)
   const ids = {
     master: useId(), expanded: useId(), additional: useId(),
@@ -209,7 +142,6 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
         >
           {tab === 'overview' ? (
             <>
-              <CompareCard />
               <section className="k1-inspector__section" aria-labelledby={ids.instructions}>
                 <h2 className="k1-section-title" id={ids.instructions}>Instructions</h2>
                 <div className="k1-inspector__row">
@@ -261,13 +193,32 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
             </>
           ) : (
             <div className="k1-accordions">
-              <Accordion title="Content" defaultOpen>
-                <OpenerField value={draft.opener} onChange={(opener) => store.edit({ opener })} />
-              </Accordion>
-              <Accordion title="Reminders" defaultOpen>
-                <p className="k1-hint">Up to two reminders if the customer has not replied, and one after the inspection expires if they have not booked.</p>
-                <ReminderFields reminders={draft.reminders} onChange={(reminders) => store.edit({ reminders })} />
-              </Accordion>
+              <LanguageTabs value={lang} onChange={setLang} />
+              {lang === 'en' ? (
+                <>
+                  <Accordion title="Content" defaultOpen>
+                    <OpenerField value={draft.opener} onChange={(opener) => store.edit({ opener })} />
+                  </Accordion>
+                  <Accordion title="Reminders" defaultOpen>
+                    <p className="k1-hint">Up to two reminders if the customer has not replied, and one after the inspection expires if they have not booked.</p>
+                    <ReminderFields reminders={draft.reminders} onChange={(reminders) => store.edit({ reminders })} />
+                  </Accordion>
+                </>
+              ) : (() => {
+                const translation = draft.translations[lang] ?? { opener: '', reminders: normalizeReminders([]) }
+                const setTranslation = (patch: Partial<typeof translation>) => store.edit({ translations: { ...draft.translations, [lang]: { ...translation, ...patch } } })
+                return (
+                  <>
+                    <Accordion title="Content" defaultOpen>
+                      <OpenerField value={translation.opener} onChange={(opener) => setTranslation({ opener })} fallback />
+                    </Accordion>
+                    <Accordion title="Reminders" defaultOpen>
+                      <p className="k1-hint">Timing follows the English reminders. Leave a reminder empty to send the English one.</p>
+                      <ReminderFields reminders={translation.reminders} onChange={(reminders) => setTranslation({ reminders })} timing={draft.reminders} fallback />
+                    </Accordion>
+                  </>
+                )
+              })()}
             </div>
           )}
         </div>
@@ -402,8 +353,8 @@ function Tester({ store }: { store: PlaygroundStore }) {
   return (
     <div className="k1-tester">
       <header className="k1-tester__head">
-        <span className="k1-tester__avatar"><K1Mark size={24} /></span>
-        <h2>K1 Katsastus booking agent</h2>
+        <span className="k1-tester__avatar"><img src="/brand/k1-katsastus.jpg" alt="" width={26} height={26} /></span>
+        <h2>K1 Katsastus</h2>
         {store.dirty && <span className="k1-badge k1-badge--draft" title="Replies use your unsaved draft">Draft</span>}
         <button
           type="button"
@@ -424,9 +375,19 @@ function Tester({ store }: { store: PlaygroundStore }) {
           className="k1-tester__lead"
           value={store.lead?.id ?? null}
           placeholder="Choose a lead"
-          options={store.leads.map((lead) => ({ value: lead.id, label: `${lead.name} · ${lead.registration}`, group: lead.sample ? 'Sample leads' : 'Uploaded leads' }))}
+          options={store.leads.map((lead) => ({ value: lead.id, label: `${lead.plateNumber} · ${shortStation(lead.stationName) || 'No station'}`, hint: lead.language || undefined, group: lead.sample ? 'Sample leads' : 'Uploaded leads' }))}
           onChange={(id) => store.setLeadId(id)}
         />
+        {store.lead && store.draft && (() => {
+          const used = localized(store.draft, store.lead).lang
+          const wanted = detectLanguage(store.lead.language)
+          const name = (code: Lang) => LANGUAGES.find((language) => language.code === code)?.label
+          return (
+            <span className="k1-tag" title={used === wanted ? 'Opener and reminders are sent in this language' : `No ${name(wanted)} version yet, so English is sent`}>
+              {name(used)}
+            </span>
+          )
+        })()}
       </div>
       <div className="k1-tester__thread" ref={scrollRef} onScroll={onScroll} aria-live="polite" aria-label="Test conversation">
         {store.messages.map((message) => (
@@ -486,7 +447,7 @@ function Tester({ store }: { store: PlaygroundStore }) {
           ))}
         </div>
       )}
-      <p className="k1-tester__powered"><K1Mark size={12} /> Prompt-only test · nothing is sent to customers</p>
+      <p className="k1-tester__powered">Prompt-only test · nothing is sent to customers</p>
       <form className="k1-tester__composer" onSubmit={(event) => { event.preventDefault(); setAtBottom(true); void store.send() }}>
         <textarea
           ref={inputRef}

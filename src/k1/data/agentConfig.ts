@@ -1,4 +1,6 @@
-import { DEFAULT_INSTRUCTIONS, DEFAULT_OPENER } from '../../lib/playgroundService'
+import { DEFAULT_INSTRUCTIONS } from '../../lib/playgroundService'
+import { LEADS } from './fixtures'
+import { detectLanguage, fillTemplate, TRANSLATED, type Lang, type TemplateLead } from './language'
 import {
   loadState,
   remote,
@@ -7,6 +9,8 @@ import {
   type ChatSource,
   type DeployRequest,
   type Reminder,
+  type Translation,
+  type Translations,
   type VersionRecord,
 } from './builderApi'
 import { describeChanges } from './changes'
@@ -20,6 +24,7 @@ export type AgentVersion = {
   additional: string
   opener: string
   reminders: Reminder[]
+  translations: Translations
   note: string
   savedBy: string | null
   createdAt: string
@@ -37,6 +42,7 @@ export type AgentConfig = {
   additional: string
   opener: string
   reminders: Reminder[]
+  translations: Translations
   versions: AgentVersion[]
   liveVersion: AgentVersion | null
   liveSince: string | null
@@ -46,7 +52,7 @@ export type AgentConfig = {
   tracking: boolean
 }
 
-export type Draft = Pick<AgentConfig, 'locked' | 'masterPrompt' | 'additional' | 'opener' | 'reminders'>
+export type Draft = Pick<AgentConfig, 'locked' | 'masterPrompt' | 'additional' | 'opener' | 'reminders' | 'translations'>
 
 export type TestTarget = {
   versionId: string | null
@@ -56,11 +62,14 @@ export type TestTarget = {
   additional: string
   opener: string
   reminders: Reminder[]
+  translations: Translations
 }
 
-export type TestLead = { name: string; registration: string }
+export type TestLead = TemplateLead
 
-export const SAMPLE_LEAD: TestLead = { name: 'Rasmus Virtanen', registration: 'ABC-123' }
+export const SAMPLE_LEAD: TestLead = LEADS[0]
+
+export const K1_DEFAULT_OPENER = 'Hi, this is K1 Katsastus. Your vehicle {{registration_number}} is due for inspection by {{due_date}}. Would you like to book a time at {{station}}?'
 
 export const REMINDER_SLOTS = 3
 
@@ -73,6 +82,28 @@ export function normalizeReminders(value: unknown): Reminder[] {
   })
 }
 
+export function normalizeTranslations(value: unknown): Translations {
+  const source = (value && typeof value === 'object' ? value : {}) as Record<string, Partial<Translation> | undefined>
+  return Object.fromEntries(TRANSLATED.map((code) => [code, {
+    opener: typeof source[code]?.opener === 'string' ? source[code]!.opener! : '',
+    reminders: normalizeReminders(source[code]?.reminders),
+  }])) as Translations
+}
+
+// Picks the lead's language when that version has text, otherwise English.
+export function localized(target: Pick<TestTarget, 'opener' | 'reminders' | 'translations'>, lead: TestLead): { lang: Lang; opener: string; reminders: Reminder[] } {
+  const lang = detectLanguage(lead.language)
+  const translation = lang === 'en' ? undefined : target.translations[lang]
+  return {
+    lang: translation?.opener.trim() ? lang : 'en',
+    opener: translation?.opener.trim() ? translation.opener : target.opener,
+    reminders: target.reminders.map((reminder, index) => {
+      const text = translation?.reminders[index]?.text.trim() ? translation.reminders[index].text : reminder.text
+      return { text, days: reminder.days }
+    }),
+  }
+}
+
 export const backendConnected = remote
 
 function toVersion(record: VersionRecord, liveId: string | null): AgentVersion {
@@ -83,6 +114,7 @@ function toVersion(record: VersionRecord, liveId: string | null): AgentVersion {
     additional: record.additionalInformation ?? '',
     opener: record.openingMessage ?? '',
     reminders: normalizeReminders(record.reminders),
+    translations: normalizeTranslations(record.translations),
     note: record.note ?? '',
     savedBy: record.savedBy ?? null,
     createdAt: record.createdAt,
@@ -103,8 +135,9 @@ export async function loadConfig(): Promise<AgentConfig> {
     locked: state.locked,
     masterPrompt: active?.masterPrompt ?? DEFAULT_INSTRUCTIONS,
     additional: active?.additional ?? '',
-    opener: active?.opener ?? DEFAULT_OPENER,
+    opener: active?.opener ?? K1_DEFAULT_OPENER,
     reminders: active?.reminders ?? normalizeReminders([]),
+    translations: active?.translations ?? normalizeTranslations({}),
     versions,
     liveVersion: versions.find((version) => version.live) ?? null,
     liveSince: state.liveSince,
@@ -115,13 +148,14 @@ export async function loadConfig(): Promise<AgentConfig> {
 }
 
 export async function saveConfig(config: AgentConfig, draft: Draft): Promise<AgentConfig> {
-  const before: Draft = { locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener, reminders: config.reminders }
+  const before: Draft = { locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener, reminders: config.reminders, translations: config.translations }
   await saveVersion({
     displayName: config.displayName,
     masterPrompt: draft.masterPrompt,
     openingMessage: draft.opener,
     additionalInformation: draft.additional,
     reminders: draft.reminders,
+    translations: draft.translations,
     locked: draft.locked,
     note: describeChanges(before, draft) || 'Saved without changes',
     savedBy: null,
@@ -139,6 +173,7 @@ export function draftTarget(config: AgentConfig, draft: Draft): TestTarget {
     additional: draft.additional,
     opener: draft.opener,
     reminders: draft.reminders,
+    translations: draft.translations,
   }
 }
 
@@ -151,6 +186,7 @@ export function versionTarget(version: AgentVersion): TestTarget {
     additional: version.additional,
     opener: version.opener,
     reminders: version.reminders,
+    translations: version.translations,
   }
 }
 
@@ -173,7 +209,7 @@ export async function sendTest(
     versionNumber: target.versionNumber,
     isDraft: target.isDraft,
     source: meta.source,
-    opener: openerPreview(target.opener, meta.lead),
+    opener: (() => { const used = localized(target, meta.lead); return openerPreview(used.opener, meta.lead, used.lang) })(),
     masterPrompt: target.masterPrompt,
     additionalInformation: target.additional,
     history,
@@ -186,19 +222,18 @@ export function describeError(error: unknown) {
   return status ? `server error ${status[1]}` : message.replace(/n8n[_\s-]*/gi, '')
 }
 
-export function personalize(text: string, lead: TestLead = SAMPLE_LEAD) {
-  return text
-    .replace(/{{\s*first[-_\s]?name\s*}}/gi, lead.name.trim().split(/\s+/)[0] || lead.name)
-    .replace(/{{\s*registration[-_\s]?number\s*}}/gi, lead.registration)
+export function personalize(text: string, lead: TestLead = SAMPLE_LEAD, lang?: Lang) {
+  return fillTemplate(text, lead, lang)
 }
 
-export function openerPreview(opener: string, lead: TestLead = SAMPLE_LEAD) {
-  return personalize(opener, lead).trim()
+export function openerPreview(opener: string, lead: TestLead = SAMPLE_LEAD, lang?: Lang) {
+  return personalize(opener, lead, lang).trim()
 }
 
 export function sameDraft(a: Draft, b: Draft) {
   return a.locked === b.locked && a.masterPrompt === b.masterPrompt && a.additional === b.additional && a.opener === b.opener
     && JSON.stringify(a.reminders) === JSON.stringify(b.reminders)
+    && JSON.stringify(a.translations) === JSON.stringify(b.translations)
 }
 
 export function versionLabel(version: Pick<AgentVersion, 'number'> | null, isDraft = false) {

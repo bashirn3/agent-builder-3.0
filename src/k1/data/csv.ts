@@ -1,6 +1,19 @@
-export type LeadField = 'name' | 'email' | 'phone' | 'registration' | 'inspection_due'
+// Columns follow the Muster API record so an exported file can be uploaded again.
+export type LeadField = 'StationName' | 'isClosed' | 'PlateNumber' | 'Product' | 'NextInspectionDateRangeEnd' | 'PhoneNumber' | 'Language' | 'LastInspection' | 'Reason'
 
-export type ParsedLead = { name: string; email: string; phone: string; registration: string; inspection_due: string }
+export const LEAD_FIELDS: LeadField[] = ['StationName', 'isClosed', 'PlateNumber', 'Product', 'NextInspectionDateRangeEnd', 'PhoneNumber', 'Language', 'LastInspection', 'Reason']
+
+export type ParsedLead = {
+  StationName: string
+  isClosed: boolean
+  PlateNumber: string
+  Product: string
+  NextInspectionDateRangeEnd: string
+  PhoneNumber: string
+  Language: string
+  LastInspection: string
+  Reason: string
+}
 
 export type ParseResult = {
   rows: ParsedLead[]
@@ -10,28 +23,37 @@ export type ParseResult = {
 }
 
 export const FIELD_LABELS: Record<LeadField, string> = {
-  name: 'Name',
-  email: 'Email',
-  phone: 'Phone',
-  registration: 'Registration',
-  inspection_due: 'Inspection due',
+  StationName: 'Station',
+  isClosed: 'Station closed',
+  PlateNumber: 'Plate number',
+  Product: 'Product',
+  NextInspectionDateRangeEnd: 'Next inspection by',
+  PhoneNumber: 'Phone',
+  Language: 'Language',
+  LastInspection: 'Last inspection',
+  Reason: 'Reason',
 }
 
 const ALIASES: Record<LeadField, string[]> = {
-  name: ['name', 'full name', 'customer', 'customer name', 'nimi', 'asiakas'],
-  email: ['email', 'e-mail', 'email address', 'sahkoposti', 'sähköposti'],
-  phone: ['phone', 'phone number', 'mobile', 'telephone', 'puhelin', 'puhelinnumero'],
-  registration: ['registration', 'registration number', 'reg', 'reg number', 'plate', 'licence plate', 'license plate', 'rekisteri', 'rekisterinumero', 'rekisteritunnus'],
-  inspection_due: ['inspection due', 'inspection due date', 'due date', 'inspection date', 'expiry', 'expires', 'katsastus', 'seuraava katsastus', 'katsastuspaiva', 'katsastuspäivä'],
+  StationName: ['stationname', 'station name', 'station', 'asema', 'katsastusasema'],
+  isClosed: ['isclosed', 'is closed', 'closed', 'suljettu'],
+  PlateNumber: ['platenumber', 'plate number', 'plate', 'registration', 'registration number', 'rekisteri', 'rekisterinumero', 'rekisteritunnus'],
+  Product: ['product', 'tuote'],
+  NextInspectionDateRangeEnd: ['nextinspectiondaterangeend', 'next inspection', 'next inspection by', 'inspection due', 'due date', 'seuraava katsastus'],
+  PhoneNumber: ['phonenumber', 'phone number', 'phone', 'mobile', 'puhelin', 'puhelinnumero'],
+  Language: ['language', 'kieli', 'språk'],
+  LastInspection: ['lastinspection', 'last inspection', 'last visit', 'date of visit', 'edellinen katsastus'],
+  Reason: ['reason', 'syy'],
 }
 
-const REQUIRED: LeadField[] = ['name', 'registration']
+const REQUIRED: LeadField[] = ['PlateNumber']
 
 const clean = (value: string) => value.toLowerCase().replace(/[_\s]+/g, ' ').trim()
 
 function detectDelimiter(firstLine: string) {
   const counts = [',', ';', '\t'].map((char) => ({ char, count: firstLine.split(char).length - 1 }))
-  return counts.sort((a, b) => b.count - a.count)[0].count > 0 ? counts[0].char : ','
+  counts.sort((a, b) => b.count - a.count)
+  return counts[0].count > 0 ? counts[0].char : ','
 }
 
 export function parseCsv(text: string): string[][] {
@@ -75,32 +97,40 @@ function iso(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
+export function parseClosed(value: string) {
+  return ['1', 'true', 'yes', 'kyllä', 'closed'].includes(value.trim().toLowerCase())
+}
+
 export function readLeads(text: string): ParseResult {
   const table = parseCsv(text)
   if (table.length < 2) return { rows: [], skipped: [], missing: [], error: 'The file has no rows under the header.' }
   const header = table[0].map(clean)
-  const index = Object.fromEntries((Object.keys(ALIASES) as LeadField[]).map((field) => [
-    field,
-    header.findIndex((cell) => ALIASES[field].includes(cell)),
-  ])) as Record<LeadField, number>
-  const missing = (Object.keys(index) as LeadField[]).filter((field) => index[field] < 0)
+  const index = Object.fromEntries(LEAD_FIELDS.map((field) => [field, header.findIndex((cell) => ALIASES[field].includes(cell))])) as Record<LeadField, number>
+  const missing = LEAD_FIELDS.filter((field) => index[field] < 0)
   const missingRequired = REQUIRED.filter((field) => index[field] < 0)
-  if (missingRequired.length) {
-    return { rows: [], skipped: [], missing, error: `The file needs ${missingRequired.map((field) => `a ${FIELD_LABELS[field].toLowerCase()}`).join(' and ')} column.` }
-  }
+  if (missingRequired.length) return { rows: [], skipped: [], missing, error: 'The file needs a PlateNumber column.' }
   const rows: ParsedLead[] = []
   const skipped: ParseResult['skipped'] = []
   table.slice(1).forEach((cells, offset) => {
     const get = (field: LeadField) => (index[field] >= 0 ? (cells[index[field]] ?? '').trim() : '')
     const line = offset + 2
-    const name = get('name')
-    const registration = get('registration')
-    if (!name) { skipped.push({ line, reason: 'no name' }); return }
-    if (!registration) { skipped.push({ line, reason: 'no registration' }); return }
-    const rawDue = get('inspection_due')
-    const due = normalizeDate(rawDue)
-    if (rawDue && !due) { skipped.push({ line, reason: `inspection date “${rawDue}” not recognised` }); return }
-    rows.push({ name, email: get('email'), phone: get('phone'), registration, inspection_due: due })
+    const plate = get('PlateNumber')
+    if (!plate) { skipped.push({ line, reason: 'no plate number' }); return }
+    const dates = { NextInspectionDateRangeEnd: get('NextInspectionDateRangeEnd'), LastInspection: get('LastInspection') }
+    const normalized = { NextInspectionDateRangeEnd: normalizeDate(dates.NextInspectionDateRangeEnd), LastInspection: normalizeDate(dates.LastInspection) }
+    const bad = (Object.keys(dates) as Array<keyof typeof dates>).find((key) => dates[key] && !normalized[key])
+    if (bad) { skipped.push({ line, reason: `${FIELD_LABELS[bad].toLowerCase()} “${dates[bad]}” not recognised` }); return }
+    rows.push({
+      StationName: get('StationName'),
+      isClosed: parseClosed(get('isClosed')),
+      PlateNumber: plate,
+      Product: get('Product'),
+      NextInspectionDateRangeEnd: normalized.NextInspectionDateRangeEnd,
+      PhoneNumber: get('PhoneNumber'),
+      Language: get('Language'),
+      LastInspection: normalized.LastInspection,
+      Reason: get('Reason'),
+    })
   })
   return { rows, skipped, missing, error: rows.length ? null : 'No rows could be imported.' }
 }

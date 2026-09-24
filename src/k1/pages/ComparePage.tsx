@@ -5,9 +5,9 @@ import { draftTarget, versionTarget, type AgentConfig, type TestTarget } from '.
 import { newId } from '../data/builderApi'
 import type { PlaygroundStore } from '../data/usePlayground'
 import { useTestChat } from '../data/useTestChat'
-import { go, href } from '../routes'
+import { go } from '../routes'
 import { Menu, Select, Skeleton, type SelectOption } from '../ui/controls'
-import { ArrowUp, ChevronLeft, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
+import { ArrowUp, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
 import { Bubble, useAutoGrow } from './PlaygroundPage'
 
 const MAX_COLUMNS = 3
@@ -176,7 +176,6 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
     <div className="k1-compare">
       <div className="k1-compare__bar">
         <div>
-          <a className="k1-detail__back" href={href({ page: 'playground' })}><ChevronLeft size={16} strokeWidth={1.75} />Back to Playground</a>
           <h1 className="k1-page-title">Compare</h1>
         </div>
         <div className="k1-compare__actions">
