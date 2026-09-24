@@ -1,12 +1,16 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { ArrowUp, ChevronDown, Lock, LockOpen, RefreshCw, RotateCcw, SlidersHorizontal, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  ArrowUp, Bold, ChevronDown, ChevronRight, FileText, Heading, List, ListOrdered, Lock, LockOpen,
+  Maximize2, RefreshCw, RotateCcw, SlidersHorizontal, ThumbsDown, ThumbsUp,
+} from 'lucide-react'
 import { ease } from '../../lib/motion'
 import { backendLabel, backendMode } from '../data/agentConfig'
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { K1Mark } from '../shell/Shell'
 import { Select, Spinner } from '../ui/controls'
-import { Drawer } from '../ui/overlay'
+import { applyFormat, stripPrefix, type Format } from '../ui/format'
+import { Collapse, Dialog, Drawer } from '../ui/overlay'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -24,9 +28,140 @@ function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: st
   }, [ref, value, max])
 }
 
+const TOOLS: Array<{ kind: Format; label: string; icon: ReactNode }> = [
+  { kind: 'heading', label: 'Heading', icon: <Heading size={15} strokeWidth={1.75} /> },
+  { kind: 'bold', label: 'Bold', icon: <Bold size={15} strokeWidth={1.75} /> },
+  { kind: 'bullet', label: 'Bulleted list', icon: <List size={15} strokeWidth={1.75} /> },
+  { kind: 'number', label: 'Numbered list', icon: <ListOrdered size={15} strokeWidth={1.75} /> },
+]
+
+function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, size = 'panel', label }: {
+  id: string
+  value: string
+  onChange: (value: string) => void
+  readOnly: boolean
+  describedBy?: string
+  onExpand?: () => void
+  size?: 'panel' | 'dialog'
+  label?: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  const format = (kind: Format) => {
+    const node = ref.current
+    if (!node || readOnly) return
+    const next = applyFormat(value, node.selectionStart, node.selectionEnd, kind)
+    onChange(next.value)
+    requestAnimationFrame(() => {
+      node.focus()
+      node.setSelectionRange(next.start, next.end)
+    })
+  }
+  return (
+    <div className={`k1-editor k1-editor--${size}${readOnly ? ' is-readonly' : ''}`}>
+      <div className="k1-editor__toolbar" role="toolbar" aria-label="Formatting" aria-controls={id}>
+        {TOOLS.map((tool) => (
+          <button key={tool.kind} type="button" className="k1-editor__tool" aria-label={tool.label} title={tool.label} disabled={readOnly} onClick={() => format(tool.kind)}>
+            {tool.icon}
+          </button>
+        ))}
+        {onExpand && (
+          <button type="button" className="k1-editor__tool k1-editor__expand" aria-label="Expand instructions" title="Expand" onClick={onExpand}>
+            <Maximize2 size={14} strokeWidth={1.75} />
+          </button>
+        )}
+      </div>
+      <textarea
+        ref={ref}
+        id={id}
+        aria-label={label}
+        className="k1-editor__input"
+        value={value}
+        readOnly={readOnly}
+        spellCheck
+        aria-describedby={describedBy}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  )
+}
+
+function Switch({ checked, onChange, labelledBy, describedBy }: { checked: boolean; onChange: (next: boolean) => void; labelledBy: string; describedBy?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      className={`k1-switch${checked ? ' is-on' : ''}`}
+      onClick={() => onChange(!checked)}
+    >
+      <motion.span className="k1-switch__thumb" layout transition={{ duration: 0.18, ease }} />
+    </button>
+  )
+}
+
+function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: Array<{ value: T; label: string }>; onChange: (value: T) => void; label: string }) {
+  const layoutId = useId()
+  const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    const list = event.currentTarget
+    const index = options.findIndex((option) => option.value === value)
+    const next = options[(index + (event.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length]
+    onChange(next.value)
+    requestAnimationFrame(() => list.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus())
+  }
+  return (
+    <div className="k1-segmented" role="tablist" aria-label={label} onKeyDown={onKey}>
+      {options.map((option) => {
+        const active = option.value === value
+        return (
+          <button key={option.value} type="button" role="tab" aria-selected={active} tabIndex={active ? 0 : -1} className={active ? 'is-active' : undefined} onClick={() => onChange(option.value)}>
+            {active && <motion.span className="k1-segmented__pill" layoutId={layoutId} transition={{ duration: 0.2, ease }} />}
+            <span className="k1-segmented__label">{option.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function Accordion({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const panelId = useId()
+  return (
+    <div className="k1-accordion">
+      <button type="button" className="k1-accordion__trigger" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
+        {title}
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2, ease }} style={{ display: 'inline-flex' }}>
+          <ChevronDown size={16} strokeWidth={1.75} />
+        </motion.span>
+      </button>
+      <Collapse open={open} id={panelId}>
+        <div className="k1-accordion__panel">{children}</div>
+      </Collapse>
+    </div>
+  )
+}
+
+function summarise(text: string) {
+  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean)
+  if (!lines.length) return { title: 'None added', meta: 'Add rules that sit on top of the base prompt' }
+  return { title: stripPrefix(lines[0]), meta: `${lines.length} line${lines.length === 1 ? '' : 's'}` }
+}
+
+type PanelTab = 'overview' | 'display'
+
 function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTitle?: boolean }) {
   const { config, draft, dirty, saving } = store
-  const ids = { master: useId(), additional: useId(), opener: useId(), lockNote: useId() }
+  const [tab, setTab] = useState<PanelTab>('overview')
+  const [expanded, setExpanded] = useState(false)
+  const [extraOpen, setExtraOpen] = useState(false)
+  const ids = {
+    master: useId(), expanded: useId(), additional: useId(), opener: useId(),
+    lockLabel: useId(), lockNote: useId(), instructions: useId(),
+  }
   if (!config || !draft) return null
   const versionOptions = config.versions.length
     ? config.versions.map((version) => ({
@@ -36,69 +171,98 @@ function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTi
       group: version.active ? 'Active configuration' : 'Saved versions',
     }))
     : [{ value: 'default', label: 'Default K1 instructions', group: 'Not saved yet' }]
+  const extra = summarise(draft.additional)
+  const editPrompt = (masterPrompt: string) => store.edit({ masterPrompt })
 
   return (
     <div className="k1-inspector__inner">
       {showTitle && <h1 className="k1-page-title">Playground</h1>}
+      <Segmented<PanelTab>
+        label="Agent settings"
+        value={tab}
+        onChange={setTab}
+        options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }]}
+      />
 
-      <section className="k1-inspector__section">
-        <label className="k1-label" htmlFor={ids.master}>Instructions (System prompt)</label>
-        <div className="k1-inspector__row">
-          <Select
-            label="Prompt version"
-            value={store.versionId ?? 'default'}
-            options={versionOptions}
-            placeholder="Choose a version"
-            onChange={(value) => value !== 'default' && store.loadVersion(value)}
-          />
-          <button type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label="Revert to the saved configuration" title="Revert to saved" disabled={!dirty} onClick={store.discard}>
-            <RotateCcw size={15} strokeWidth={1.75} />
-          </button>
-          <button
-            type="button"
-            className="k1-icon-btn k1-icon-btn--boxed"
-            aria-label={draft.locked ? 'Unlock base prompt' : 'Lock base prompt'}
-            aria-pressed={draft.locked}
-            title={draft.locked ? 'Unlock base prompt' : 'Lock base prompt'}
-            onClick={() => store.edit({ locked: !draft.locked })}
-          >
-            {draft.locked ? <Lock size={15} strokeWidth={1.75} /> : <LockOpen size={15} strokeWidth={1.75} />}
-          </button>
-        </div>
-        <textarea
-          id={ids.master}
-          className="k1-textarea k1-textarea--prompt"
-          value={draft.masterPrompt}
-          readOnly={draft.locked}
-          aria-describedby={draft.locked ? ids.lockNote : undefined}
-          onChange={(event) => store.edit({ masterPrompt: event.target.value })}
-        />
-        {draft.locked && <p className="k1-hint" id={ids.lockNote}>The base prompt is locked. Unlock it to edit; additional instructions and the opening message stay editable.</p>}
-      </section>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          role="tabpanel"
+          aria-label={tab === 'overview' ? 'Overview' : 'Display'}
+          className="k1-inspector__panel"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.14, ease }}
+        >
+          {tab === 'overview' ? (
+            <>
+              <section className="k1-inspector__section" aria-labelledby={ids.instructions}>
+                <h2 className="k1-section-title" id={ids.instructions}>Instructions</h2>
+                <div className="k1-inspector__row">
+                  <Select
+                    label="Instruction version"
+                    value={store.versionId ?? 'default'}
+                    options={versionOptions}
+                    placeholder="Choose a version"
+                    onChange={(value) => value !== 'default' && store.loadVersion(value)}
+                  />
+                  <button type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label="Reset to the saved instructions" title="Reset to saved" disabled={!dirty} onClick={store.discard}>
+                    <RotateCcw size={15} strokeWidth={1.75} />
+                  </button>
+                </div>
+                <PromptEditor
+                  id={ids.master}
+                  label="Base prompt"
+                  value={draft.masterPrompt}
+                  onChange={editPrompt}
+                  readOnly={draft.locked}
+                  describedBy={ids.lockNote}
+                  onExpand={() => setExpanded(true)}
+                />
+                <div className="k1-switch-row">
+                  <span className="k1-switch-row__label" id={ids.lockLabel}>
+                    {draft.locked ? <Lock size={14} strokeWidth={1.75} /> : <LockOpen size={14} strokeWidth={1.75} />}
+                    Lock base prompt
+                  </span>
+                  <Switch checked={draft.locked} onChange={(locked) => store.edit({ locked })} labelledBy={ids.lockLabel} describedBy={ids.lockNote} />
+                </div>
+                <p className="k1-hint" id={ids.lockNote}>
+                  {draft.locked
+                    ? 'The base prompt is read-only. Additional instructions and the opening message stay editable.'
+                    : 'Anyone editing this agent can change the base prompt. Lock it once it is approved.'}
+                </p>
+              </section>
 
-      <section className="k1-inspector__section">
-        <label className="k1-label" htmlFor={ids.additional}>Additional instructions</label>
-        <textarea
-          id={ids.additional}
-          className="k1-textarea"
-          rows={4}
-          value={draft.additional}
-          placeholder="e.g. If the customer asks for Saturday, explain the station is open Monday to Friday."
-          onChange={(event) => store.edit({ additional: event.target.value })}
-        />
-      </section>
-
-      <section className="k1-inspector__section">
-        <label className="k1-label" htmlFor={ids.opener}>Opening message</label>
-        <textarea
-          id={ids.opener}
-          className="k1-textarea"
-          rows={3}
-          value={draft.opener}
-          onChange={(event) => store.edit({ opener: event.target.value })}
-        />
-        <p className="k1-hint">{'{{first_name}}'} and {'{{registration_number}}'} show as Rasmus and ABC-123 in the test chat.</p>
-      </section>
+              <section className="k1-inspector__section">
+                <h2 className="k1-section-title">Additional instructions</h2>
+                <button type="button" className="k1-rowcard" aria-haspopup="dialog" onClick={() => setExtraOpen(true)}>
+                  <span className="k1-rowcard__icon"><FileText size={15} strokeWidth={1.75} /></span>
+                  <span className="k1-rowcard__text">
+                    <strong>{extra.title}</strong>
+                    <small>{extra.meta}</small>
+                  </span>
+                  <ChevronRight size={16} strokeWidth={1.75} className="k1-rowcard__chevron" />
+                </button>
+              </section>
+            </>
+          ) : (
+            <div className="k1-accordions">
+              <Accordion title="Content" defaultOpen>
+                <label className="k1-label" htmlFor={ids.opener}>Initial message</label>
+                <textarea
+                  id={ids.opener}
+                  className="k1-textarea"
+                  rows={5}
+                  value={draft.opener}
+                  onChange={(event) => store.edit({ opener: event.target.value })}
+                />
+                <p className="k1-hint">The first message a customer sees. {'{{first_name}}'} and {'{{registration_number}}'} show as Rasmus and ABC-123 in the test chat.</p>
+              </Accordion>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       <p className="k1-inspector__source">{backendLabel}</p>
 
@@ -123,6 +287,36 @@ function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTi
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={expanded} title="Instructions" width={896} onClose={() => setExpanded(false)}>
+        <PromptEditor
+          id={ids.expanded}
+          label="Base prompt"
+          size="dialog"
+          value={draft.masterPrompt}
+          onChange={editPrompt}
+          readOnly={draft.locked}
+        />
+        {draft.locked && <p className="k1-hint k1-dialog__note">The base prompt is locked. Close this and switch off “Lock base prompt” to edit.</p>}
+      </Dialog>
+
+      <Dialog open={extraOpen} title="Additional instructions" width={560} onClose={() => setExtraOpen(false)}>
+        <div className="k1-form-stack">
+          <p className="k1-hint">Short, specific rules added on top of the base prompt, for example opening hours or what to do when a station is full.</p>
+          <textarea
+            id={ids.additional}
+            aria-label="Additional instructions"
+            className="k1-textarea"
+            rows={8}
+            value={draft.additional}
+            placeholder="e.g. If the customer asks for Saturday, explain the station is open Monday to Friday."
+            onChange={(event) => store.edit({ additional: event.target.value })}
+          />
+        </div>
+        <div className="k1-dialog__foot">
+          <button type="button" className="k1-btn k1-btn--primary" onClick={() => setExtraOpen(false)}>Done</button>
+        </div>
+      </Dialog>
     </div>
   )
 }

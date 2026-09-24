@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ReactNode, useId, useRef, type KeyboardEvent } from 'react'
-import { ArrowLeft, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, Info, MoreHorizontal } from 'lucide-react'
 import { ease } from '../../lib/motion'
 import type { ThreadMessage } from '../data/fixtures'
 import { Menu, type MenuItem } from '../ui/controls'
@@ -185,16 +185,19 @@ export function Thread({ messages }: { messages: ThreadMessage[] }) {
   )
 }
 
-export function Facts({ rows }: { rows: Array<[string, ReactNode]> }) {
+export function Facts({ rows, heading = 'General details' }: { rows: Array<[string, ReactNode]>; heading?: string }) {
   return (
-    <dl className="k1-facts">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
+    <section className="k1-facts">
+      <h3 className="k1-facts__heading"><Info size={14} strokeWidth={1.75} />{heading}</h3>
+      <dl>
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}:</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }
 

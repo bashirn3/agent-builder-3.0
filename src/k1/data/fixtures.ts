@@ -294,6 +294,21 @@ export function filterConversations(list: Conversation[], filters: ActivityFilte
   })
 }
 
+export function filterLeads(list: Lead[], range: { from: string | null; to: string | null }) {
+  return list.filter((lead) => {
+    const day = dayKey(lead.submittedAt)
+    if (range.from && day < range.from) return false
+    if (range.to && day > range.to) return false
+    return true
+  })
+}
+
+export function submittedStamp(iso: string) {
+  const date = new Date(iso)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${dayKey(iso)} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
 }

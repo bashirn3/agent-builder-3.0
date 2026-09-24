@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Popover } from './overlay'
 import { Select } from './controls'
@@ -58,8 +58,10 @@ function Month({ year, month, from, to, hover, today, onPick, onHover }: {
   )
 }
 
-export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date()) }: {
+export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date()), leading, ariaLabel }: {
   id?: string
+  leading?: ReactNode
+  ariaLabel?: string
   from: string | null
   to: string | null
   onChange: (range: { from: string | null; to: string | null }) => void
@@ -109,7 +111,8 @@ export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date
   const label = from ? `${from} – ${to ?? '…'}` : null
   return (
     <>
-      <button ref={anchor} id={id} type="button" className="k1-select" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((next) => !next)}>
+      <button ref={anchor} id={id} type="button" className="k1-select" aria-haspopup="dialog" aria-expanded={open} aria-label={ariaLabel} onClick={() => setOpen((next) => !next)}>
+        {leading}
         <span className={label ? 'k1-select__value' : 'k1-select__placeholder'}>{label ?? 'Select date range'}</span>
       </button>
       <Popover open={open} anchorRef={anchor} onClose={() => { setOpen(false); setHover(null) }} className="k1-cal" role="dialog" label="Choose a date range">

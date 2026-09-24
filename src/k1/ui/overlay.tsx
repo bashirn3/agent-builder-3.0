@@ -132,7 +132,7 @@ function DialogSurface({ title, onClose, children, width = 460, initialFocus }: 
 
 type DrawerProps = {
   open: boolean
-  side: 'left' | 'bottom'
+  side: 'left' | 'right' | 'bottom'
   label: string
   onClose: () => void
   children: ReactNode
@@ -148,7 +148,7 @@ function DrawerSurface({ side, label, onClose, children }: DrawerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useFocusTrap(rootRef, onClose)
   const reduce = useReducedMotion()
-  const hidden = side === 'left' ? { x: '-100%' } : { y: '100%' }
+  const hidden = side === 'left' ? { x: '-100%' } : side === 'right' ? { x: '100%' } : { y: '100%' }
   return (
     <div className={`k1-overlay k1-overlay--${side}`}>
       <motion.div

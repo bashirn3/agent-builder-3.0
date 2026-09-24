@@ -30,6 +30,33 @@ Branch `feat/k1-fresh-frontend`. New app: `index.html` → `src/k1/`. Previous U
 
 Removed from the reference chrome: Analytics, Data sources, Actions, Contacts, Settings, model picker, Compare, AI Actions, "Trained / last trained", plan badge, Getting-started progress, upgrade prompts, header changelog/gift/docs/help icons, mic, and "Show sources".
 
+## Refinements (branch `feat/k1-refinements`, from tag `k1-fresh-v1`)
+
+The Playground inspector and Leads were reworked to follow Chatbase's current flows. The Figma frames show the older Chatbase playground; the newer structure comes from the live audit (`design/chatbase-audit/`) and Mobbin's Chatbase flows. References are in `reference/chatbase/`, results in `result/refinements/`, comparisons in `compare/`.
+
+| Chatbase reference | K1 implementation |
+|---|---|
+| Playground config tabs Overview / Display / Voice / Actions (`playground-overview.png`, `playground-display.png`) | Overview / Display segmented tabs. Voice and Actions are dropped (out of scope). |
+| Overview → Instructions: toolbar editor + expand, "Sync with global instructions" switch row + helper | Instructions: version select + reset (Figma/Mobbin preset row), markdown toolbar (heading, bold, bullets, numbering) + expand, "Lock base prompt" switch row + helper. Locked disables the toolbar and makes both editors read-only. |
+| Expand → "Global instructions" dialog 896 wide (`instructions-expanded.png`) | "Instructions" dialog, 896 wide, same draft as the panel editor. |
+| Data sources / Links row cards that open a panel | "Additional instructions" row card (first line + line count), which opens an editing dialog. |
+| Display → Content accordion holding the initial message | Display → Content (open by default) → "Initial message" (the opening message). |
+| Activity → Leads: full-width table (Name, Email, Phone, Submitted at), date filter, black Export (`leads-table.jpg`) | Same layout, with an added Registration column. Measured against the frame, the Filters label, date field, divider, card top, header and row pitch all match (`compare/leads-table-crop-ref-over-ours.png`). |
+| Chatbase Leads has no detail view | Adaptation: a row or name link opens a right-side drawer (`#/activity/leads/:id`) showing "General details" in Chatbase's details style, the note, and the linked conversation. On mobile the table becomes stacked cards. |
+| Chat logs → Details "General details" (`chatlogs-details.jpg`) | `Facts` restyled: section heading, label on the left, bold value on the right, 42 px rows. Chat logs and the lead drawer both use it. |
+
+Verified with scripted headless runs:
+- Tabs and the new locations of each field.
+- Expand dialog width and its shared draft; focus returns to the Expand button when the dialog closes.
+- Toolbar toggling.
+- Unlock, then discard, restores the locked state.
+- The last-7-days lead filter (4 of 6), and Clear.
+- The drawer deep link, and Escape closing it.
+- Mobile drawer and cards.
+- Save in local mode only, never against the live n8n store: the edited additional instructions show the toast and persist after reload.
+
+`npm run check` covers `applyFormat` and `filterLeads`.
+
 ## Integrations vs fixtures
 
 | Area | Status |
