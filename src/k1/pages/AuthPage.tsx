@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FormEvent, useEffect, useId, useRef, useState } from 'react'
-import { ArrowUp, Check, Eye, EyeOff, MessageSquareMore } from '../ui/icons'
+import { ArrowUp, Check, Eye, EyeOff } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import { K1Mark } from '../shell/Shell'
 import { Collapse } from '../ui/overlay'
@@ -110,7 +110,6 @@ export function AuthPage({ mode }: { mode: Mode }) {
   const [submitting, setSubmitting] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [deferred, setDeferred] = useState<null | 'google' | 'email'>(null)
-  const [greetingOpen, setGreetingOpen] = useState(true)
   const noticeRef = useRef<HTMLDivElement>(null)
   const ids = { email: useId(), password: useId(), confirm: useId(), rules: useId(), error: useId() }
 
@@ -272,31 +271,6 @@ export function AuthPage({ mode }: { mode: Mode }) {
       </div>
       <p className="k1-auth__copy">© 2026 Wasup · K1 Katsastus</p>
 
-      <div className="k1-auth__widget">
-        <AnimatePresence>
-          {greetingOpen && (
-            <motion.div
-              className="k1-auth__greetings"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.2, ease }}
-            >
-              <p>👋 Hi! I am the K1 booking assistant.</p>
-              <p>I can help customers book a vehicle inspection.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <button
-          type="button"
-          className="k1-auth__fab"
-          aria-label={greetingOpen ? 'Hide assistant greeting' : 'Show assistant greeting'}
-          aria-expanded={greetingOpen}
-          onClick={() => setGreetingOpen((open) => !open)}
-        >
-          <MessageSquareMore size={20} strokeWidth={1.75} />
-        </button>
-      </div>
     </div>
   )
 }

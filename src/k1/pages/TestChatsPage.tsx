@@ -162,6 +162,7 @@ function toMessages(chat: TestChat): TestMessage[] {
     text: message.text,
     at: new Date(message.createdAt).getTime(),
     opener: message.isOpener,
+    kind: message.kind ?? null,
     feedback: message.feedback,
     serverId: message.role === 'agent' && !message.isOpener ? message.id : null,
   }))

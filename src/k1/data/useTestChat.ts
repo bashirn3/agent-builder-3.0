@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { describeError, openerPreview, sendTest, type TestTarget } from './agentConfig'
-import { newId, setFeedback, type ChatSource } from './builderApi'
+import { describeError, openerPreview, personalize, SAMPLE_LEAD, sendTest, type TestLead, type TestTarget } from './agentConfig'
+import { newId, recordReminder, setFeedback, type ChatSource, type ReminderKind } from './builderApi'
 
 export type TestMessage = {
   id: string
@@ -8,31 +8,32 @@ export type TestMessage = {
   text: string
   at: number
   opener?: boolean
+  kind?: string | null
   demo?: boolean
   feedback?: 'up' | 'down' | null
   // Id of the stored reply; null when the backend did not record the turn.
   serverId?: string | null
 }
 
-function openerMessages(opener: string): TestMessage[] {
-  const text = openerPreview(opener)
+function openerMessages(opener: string, lead: TestLead): TestMessage[] {
+  const text = openerPreview(opener, lead)
   return text ? [{ id: newId(), role: 'agent', text, at: Date.now(), opener: true }] : []
 }
 
-export function useTestChat(target: TestTarget | null, source: ChatSource) {
-  const [messages, setMessages] = useState<TestMessage[]>(() => openerMessages(target?.opener ?? ''))
+export function useTestChat(target: TestTarget | null, source: ChatSource, lead: TestLead = SAMPLE_LEAD) {
+  const [messages, setMessages] = useState<TestMessage[]>(() => openerMessages(target?.opener ?? '', lead))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [composer, setComposer] = useState('')
   const conversationRef = useRef(newId())
-  const targetKey = target ? `${target.isDraft ? 'draft' : target.versionId}` : 'none'
+  const targetKey = `${target ? (target.isDraft ? 'draft' : target.versionId) : 'none'}:${lead.name}:${lead.registration}`
 
   const hasUserMessages = messages.some((message) => message.role === 'user')
 
   // The opener tracks edits until the conversation starts.
   useEffect(() => {
     if (!target || hasUserMessages) return
-    setMessages(openerMessages(target.opener))
+    setMessages(openerMessages(target.opener, lead))
   }, [target?.opener, targetKey])
 
   const reset = () => {
@@ -40,7 +41,7 @@ export function useTestChat(target: TestTarget | null, source: ChatSource) {
     setPending(false)
     setError(null)
     setComposer('')
-    setMessages(openerMessages(target?.opener ?? ''))
+    setMessages(openerMessages(target?.opener ?? '', lead))
   }
 
   // Switching version starts a fresh conversation for that version.
@@ -62,7 +63,7 @@ export function useTestChat(target: TestTarget | null, source: ChatSource) {
     setPending(true)
     setError(null)
     try {
-      const result = await sendTest(target, history.map(({ role, text: line }) => ({ role, text: line })), { conversationId, source })
+      const result = await sendTest(target, history.map(({ role, text: line }) => ({ role, text: line })), { conversationId, source, lead })
       if (conversationId !== conversationRef.current) return
       setMessages((list) => [...list, {
         id: newId(), role: 'agent', text: result.reply, at: Date.now(), demo: result.demo, feedback: null, serverId: result.messageId,
@@ -81,6 +82,26 @@ export function useTestChat(target: TestTarget | null, source: ChatSource) {
     void send(lastUser.text, messages.filter((message) => message.id !== lastUser.id))
   }
 
+  const sendReminder = (index: number) => {
+    const reminder = target?.reminders[index]
+    if (!target || !reminder?.text.trim() || pending) return
+    const kind = `reminder_${index + 1}` as ReminderKind
+    const text = personalize(reminder.text, lead).trim()
+    const conversationId = conversationRef.current
+    const id = newId()
+    setMessages((list) => [...list, { id, role: 'agent', text, at: Date.now(), kind }])
+    void recordReminder({
+      conversationId,
+      versionId: target.versionId,
+      versionNumber: target.versionNumber,
+      isDraft: target.isDraft,
+      source,
+      opener: openerPreview(target.opener, lead),
+      text,
+      kind,
+    }).catch(() => undefined)
+  }
+
   const rate = (id: string, value: 'up' | 'down') => {
     const target = messages.find((message) => message.id === id)
     if (!target) return
@@ -89,7 +110,7 @@ export function useTestChat(target: TestTarget | null, source: ChatSource) {
     if (target.serverId) void setFeedback(target.serverId, next).catch(() => undefined)
   }
 
-  return { messages, pending, error, composer, setComposer, send, retry, reset, rate, conversationId: conversationRef.current }
+  return { messages, pending, error, composer, setComposer, send, retry, reset, rate, sendReminder, conversationId: conversationRef.current }
 }
 
 export type TestChatStore = ReturnType<typeof useTestChat>

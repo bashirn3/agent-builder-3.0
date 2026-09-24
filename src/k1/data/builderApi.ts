@@ -3,12 +3,28 @@ const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefin
 export const TENANT_KEY = 'k1_katsastus_demo'
 export const remote = Boolean(BASE)
 
+export type Reminder = { text: string; days: number | null }
+
+export type UploadedLead = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  registration: string
+  inspectionDue: string | null
+  source: string
+  createdAt: string
+}
+
+export type LeadRow = { name: string; email: string; phone: string; registration: string; inspection_due: string }
+
 export type VersionRecord = {
   id: string
   versionNumber: number
   masterPrompt: string
   additionalInformation: string
   openingMessage: string
+  reminders?: Reminder[]
   note: string
   savedBy: string | null
   createdAt: string
@@ -70,6 +86,7 @@ export type TestChatMessage = {
   role: 'user' | 'agent'
   text: string
   isOpener: boolean
+  kind?: string | null
   feedback: Feedback
   createdAt: string
 }
@@ -111,6 +128,7 @@ export type SaveInput = {
   masterPrompt: string
   openingMessage: string
   additionalInformation: string
+  reminders: Reminder[]
   locked: boolean
   note: string
   savedBy: string | null
@@ -152,6 +170,7 @@ type LocalStore = {
   locked: boolean
   deployRequests: DeployRequest[]
   chats: Array<TestChat>
+  leads?: UploadedLead[]
 }
 
 const LOCAL_KEY = 'k1-builder-local-v2'
@@ -274,7 +293,7 @@ export async function saveVersion(input: SaveInput): Promise<void> {
     store.versions = [
       {
         id: newId(), versionNumber: number, masterPrompt: input.masterPrompt,
-        additionalInformation: input.additionalInformation, openingMessage: input.openingMessage,
+        additionalInformation: input.additionalInformation, openingMessage: input.openingMessage, reminders: input.reminders,
         note: input.note, savedBy: input.savedBy, createdAt: new Date().toISOString(), isActive: true,
         thumbsUp: 0, thumbsDown: 0, conversations: 0,
       },
@@ -405,4 +424,84 @@ export async function requestDeploy(input: DeployRequestInput): Promise<DeployRe
   })
   if (result.ok === false) throw new Error(result.error ?? 'request_failed')
   return { ...result, deployedAt: null, deployedBy: null }
+}
+
+export const registrationKey = (value: string) => value.toUpperCase().replace(/[\s-]/g, '')
+
+export async function listLeads(): Promise<UploadedLead[]> {
+  if (!remote) {
+    await pause(200)
+    return readLocal().leads ?? []
+  }
+  const { items } = await call<{ items: UploadedLead[] }>(`/leads?tenantKey=${TENANT_KEY}`)
+  return items
+}
+
+export async function importLeads(rows: LeadRow[]): Promise<{ inserted: number; updated: number }> {
+  if (!remote) {
+    await pause(500)
+    const store = readLocal()
+    const leads = store.leads ?? []
+    let inserted = 0
+    let updated = 0
+    for (const row of rows) {
+      const existing = leads.find((lead) => registrationKey(lead.registration) === registrationKey(row.registration))
+      const next = { name: row.name, email: row.email, phone: row.phone, registration: row.registration, inspectionDue: row.inspection_due || null }
+      if (existing) { Object.assign(existing, next); updated += 1 } else {
+        leads.unshift({ id: newId(), source: 'csv', createdAt: new Date().toISOString(), ...next })
+        inserted += 1
+      }
+    }
+    store.leads = leads
+    writeLocal(store)
+    return { inserted, updated }
+  }
+  const result = await call<{ ok: boolean; inserted?: number; updated?: number; error?: string }>('/leads/import', {
+    method: 'POST',
+    body: JSON.stringify({ tenantKey: TENANT_KEY, rows }),
+  })
+  if (!result.ok) throw new Error(result.error ?? 'import_failed')
+  return { inserted: result.inserted ?? 0, updated: result.updated ?? 0 }
+}
+
+export async function requestMuster(requestedBy: string | null): Promise<void> {
+  if (!remote) {
+    await pause(400)
+    return
+  }
+  await call('/muster/request', { method: 'POST', body: JSON.stringify({ tenantKey: TENANT_KEY, requestedBy }) })
+}
+
+export type ReminderKind = 'reminder_1' | 'reminder_2' | 'reminder_3'
+
+export type ReminderInput = Omit<TurnInput, 'masterPrompt' | 'additionalInformation' | 'history'> & { text: string; kind: ReminderKind }
+
+export async function recordReminder(input: ReminderInput): Promise<{ recorded: boolean; messageId: string | null }> {
+  if (!remote) {
+    const store = readLocal()
+    let chat = store.chats.find((item) => item.conversation.id === input.conversationId)
+    const now = new Date().toISOString()
+    if (!chat) {
+      const version = store.versions.find((item) => item.id === input.versionId)
+      chat = {
+        conversation: {
+          id: input.conversationId, versionId: input.versionId, versionNumber: version?.versionNumber ?? input.versionNumber,
+          isDraft: input.isDraft, source: input.source, title: input.text.slice(0, 140), startedBy: null, createdAt: now, updatedAt: now,
+          messageCount: 0, thumbsUp: 0, thumbsDown: 0, lastReply: '',
+        },
+        messages: input.opener ? [{ id: newId(), role: 'agent', text: input.opener, isOpener: true, feedback: null, createdAt: now }] : [],
+      }
+      store.chats.unshift(chat)
+    }
+    const message: TestChatMessage = { id: newId(), role: 'agent', text: input.text, isOpener: false, kind: input.kind, feedback: null, createdAt: new Date().toISOString() }
+    chat.messages.push(message)
+    chat.conversation.updatedAt = message.createdAt
+    writeLocal(store)
+    return { recorded: true, messageId: message.id }
+  }
+  const result = await call<{ recorded: boolean; messageId?: string }>('/chat/reminder', {
+    method: 'POST',
+    body: JSON.stringify({ tenantKey: TENANT_KEY, ...input }),
+  })
+  return { recorded: result.recorded, messageId: result.messageId ?? null }
 }

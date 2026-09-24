@@ -7,7 +7,6 @@ import {
 import { ease } from '../../lib/motion'
 
 const easeInOut = [0.4, 0, 0.2, 1] as const
-import type { AgentConfig } from '../data/agentConfig'
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { K1Mark } from '../shell/Shell'
 import { Select, Skeleton, Spinner } from '../ui/controls'
@@ -15,7 +14,7 @@ import { applyFormat, stripPrefix, type Format } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
 import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
-import { OpenerField } from './OpenerField'
+import { OpenerField, ReminderFields } from './OpenerField'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -156,26 +155,9 @@ function summarise(text: string) {
   return { title: stripPrefix(lines[0]), meta: `${lines.length} line${lines.length === 1 ? '' : 's'}` }
 }
 
-function shortDate(iso: string) {
-  return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' })
-}
-
-function LiveStatus({ config }: { config: AgentConfig }) {
-  const pending = config.deployRequests.find((request) => request.status === 'requested')
+function CompareCard() {
   return (
     <div className="k1-status-cards">
-      <a className="k1-status-card" href={href({ page: 'deploy' })}>
-        <span className={`k1-status-card__dot${config.liveVersion ? ' is-live' : ''}`} aria-hidden="true" />
-        <span className="k1-status-card__text">
-          <strong>{config.liveVersion ? `Live on WhatsApp: v${config.liveVersion.number}` : 'Live version not recorded yet'}</strong>
-          <small>
-            {config.liveVersion && config.liveSince
-              ? `Since ${shortDate(config.liveSince)}${config.liveBy && config.liveBy !== 'initial' ? ` · by ${config.liveBy}` : ''}`
-              : 'It is recorded when Wasup confirms a deployment'}
-          </small>
-          {pending && <small className="k1-status-card__pending">v{pending.versionNumber} requested · waiting for Wasup</small>}
-        </span>
-      </a>
       <div className="k1-status-card k1-status-card--row">
         <span className="k1-status-card__text"><strong>Compare versions</strong></span>
         <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'compare' })}>Compare</a>
@@ -227,7 +209,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
         >
           {tab === 'overview' ? (
             <>
-              <LiveStatus config={config} />
+              <CompareCard />
               <section className="k1-inspector__section" aria-labelledby={ids.instructions}>
                 <h2 className="k1-section-title" id={ids.instructions}>Instructions</h2>
                 <div className="k1-inspector__row">
@@ -281,6 +263,10 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
             <div className="k1-accordions">
               <Accordion title="Content" defaultOpen>
                 <OpenerField value={draft.opener} onChange={(opener) => store.edit({ opener })} />
+              </Accordion>
+              <Accordion title="Reminders" defaultOpen>
+                <p className="k1-hint">Up to two reminders if the customer has not replied, and one after the inspection expires if they have not booked.</p>
+                <ReminderFields reminders={draft.reminders} onChange={(reminders) => store.edit({ reminders })} />
               </Accordion>
             </div>
           )}
@@ -341,8 +327,11 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   )
 }
 
+const REMINDER_LABEL: Record<string, string> = { reminder_1: 'Reminder 1', reminder_2: 'Reminder 2', reminder_3: 'After expiry' }
+
 export function Bubble({ message, onRate }: { message: TestMessage; onRate: (value: 'up' | 'down') => void }) {
   const agent = message.role === 'agent'
+  const reminder = message.kind ? REMINDER_LABEL[message.kind] : null
   return (
     <motion.div
       className={`k1-msg k1-msg--${message.role}`}
@@ -351,7 +340,13 @@ export function Bubble({ message, onRate }: { message: TestMessage; onRate: (val
       transition={{ duration: 0.2, ease }}
     >
       <div className="k1-msg__bubble">{message.text}</div>
-      {agent && !message.opener && (
+      {reminder && (
+        <div className="k1-msg__meta">
+          <span className={`k1-tag${message.kind === 'reminder_3' ? ' k1-tag--pink' : ''}`}>{reminder}</span>
+          <span>{relative(message.at)}</span>
+        </div>
+      )}
+      {agent && !message.opener && !reminder && (
         <div className="k1-msg__meta">
           <span>{relative(message.at)}{message.demo ? ' · demo reply' : ''}</span>
           <span className="k1-msg__rule" aria-hidden="true" />
@@ -366,6 +361,8 @@ export function Bubble({ message, onRate }: { message: TestMessage; onRate: (val
     </motion.div>
   )
 }
+
+const REMINDER_TIMING = ['Sent {days} days after the initial message', 'Sent {days} days after reminder 1', 'Sent {days} days after the inspection expires']
 
 function Tester({ store }: { store: PlaygroundStore }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -398,6 +395,9 @@ function Tester({ store }: { store: PlaygroundStore }) {
   }
 
   const canSend = store.composer.trim().length > 0 && !store.pending && Boolean(store.draft)
+  const reminders = (store.draft?.reminders ?? [])
+    .map((reminder, index) => ({ index, days: reminder.days, text: reminder.text }))
+    .filter((reminder) => reminder.text.trim())
 
   return (
     <div className="k1-tester">
@@ -417,6 +417,17 @@ function Tester({ store }: { store: PlaygroundStore }) {
           </motion.span>
         </button>
       </header>
+      <div className="k1-tester__context">
+        <span id="k1-test-lead">Testing as</span>
+        <Select
+          label="Lead used in the test chat"
+          className="k1-tester__lead"
+          value={store.lead?.id ?? null}
+          placeholder="Choose a lead"
+          options={store.leads.map((lead) => ({ value: lead.id, label: `${lead.name} · ${lead.registration}`, group: lead.sample ? 'Sample leads' : 'Uploaded leads' }))}
+          onChange={(id) => store.setLeadId(id)}
+        />
+      </div>
       <div className="k1-tester__thread" ref={scrollRef} onScroll={onScroll} aria-live="polite" aria-label="Test conversation">
         {store.messages.map((message) => (
           <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} />
@@ -458,6 +469,23 @@ function Tester({ store }: { store: PlaygroundStore }) {
           </motion.button>
         )}
       </AnimatePresence>
+      {reminders.length > 0 && (
+        <div className="k1-tester__skip" role="group" aria-label="Send a reminder into the test chat">
+          <span>Send reminder</span>
+          {reminders.map(({ index, days }) => (
+            <button
+              key={index}
+              type="button"
+              className={`k1-token${index === 2 ? ' k1-token--pink' : ''}`}
+              disabled={store.pending}
+              title={days ? `${REMINDER_TIMING[index].replace('{days}', String(days))}` : undefined}
+              onClick={() => { setAtBottom(true); store.sendReminder(index) }}
+            >
+              {index === 2 ? 'After expiry' : `Reminder ${index + 1}`}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="k1-tester__powered"><K1Mark size={12} /> Prompt-only test · nothing is sent to customers</p>
       <form className="k1-tester__composer" onSubmit={(event) => { event.preventDefault(); setAtBottom(true); void store.send() }}>
         <textarea
