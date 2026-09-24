@@ -391,10 +391,6 @@ svg path, svg circle { stroke: currentColor; stroke-width: 1.5; fill: none; stro
     padding-top: 140px;
   }
 }
-  background:
-    radial-gradient(circle, var(--dot) 1px, transparent 1.2px) 0 0 / 18px 18px,
-    var(--preview);
-}
 .canvas-skeleton,
 .inspector-skeleton,
 .tester-skeleton,
