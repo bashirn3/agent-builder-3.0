@@ -7,6 +7,7 @@ import {
 } from '../../lib/agentBuilderService'
 import { DEFAULT_INSTRUCTIONS, DEFAULT_OPENER } from '../../lib/playgroundService'
 import { renderWithSampleData } from '../../lib/refinement'
+import { matchEntry, parseAdditional } from './qna'
 
 export type AgentVersion = {
   id: string
@@ -91,7 +92,9 @@ const DEMO_REPLIES = [
 let demoIndex = 0
 
 export async function sendTest(draft: Draft, history: Array<{ role: 'agent' | 'user'; text: string }>) {
-  const fallback = DEMO_REPLIES[demoIndex++ % DEMO_REPLIES.length]
+  const lastUser = [...history].reverse().find((message) => message.role === 'user')
+  const matched = lastUser ? matchEntry(parseAdditional(draft.additional).entries, lastUser.text) : null
+  const fallback = matched?.answer ?? DEMO_REPLIES[demoIndex++ % DEMO_REPLIES.length]
   const result = await testAgentBuilderMessage({
     tenantKey: getK1TenantKey(),
     masterPrompt: draft.masterPrompt,

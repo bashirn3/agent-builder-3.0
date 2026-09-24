@@ -14,8 +14,8 @@ import { applyFormat, type Format } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
 import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
-import { OpenerField, QnaSheet, type ReviseTarget } from './Improve'
-import { parseAdditional } from '../data/qna'
+import { OpenerField, type ReviseTarget } from './Improve'
+import { matchEntry, parseAdditional, type QnaEntry } from '../data/qna'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -42,15 +42,16 @@ const TOOLS: Array<{ kind: Format; label: string; icon: ReactNode } | 'sep'> = [
   { kind: 'number', label: 'Numbered list', icon: <ListOrdered /> },
 ]
 
-function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, size = 'panel', label }: {
+export function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, size = 'panel', label, placeholder }: {
   id: string
   value: string
   onChange: (value: string) => void
   readOnly: boolean
   describedBy?: string
   onExpand?: () => void
-  size?: 'panel' | 'dialog'
+  size?: 'panel' | 'dialog' | 'answer'
   label?: string
+  placeholder?: string
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const format = (kind: Format) => {
@@ -83,6 +84,7 @@ function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, si
         aria-label={label}
         className="k1-editor__input"
         value={value}
+        placeholder={placeholder}
         readOnly={readOnly}
         spellCheck
         aria-describedby={describedBy}
@@ -152,7 +154,7 @@ function Accordion({ title, defaultOpen = false, children }: { title: string; de
 
 function summariseQna(text: string) {
   const { entries } = parseAdditional(text)
-  if (!entries.length) return { title: 'No answers yet', meta: 'Use “Revise answer” on a test reply to add one' }
+  if (!entries.length) return { title: 'No answers yet', meta: 'Add exact answers, or use “Revise answer” on a reply' }
   return { title: `${entries.length} answer${entries.length === 1 ? '' : 's'}`, meta: entries.map((entry) => entry.title).join(' · ') }
 }
 
@@ -163,7 +165,6 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   const [ownTab, setTab] = useState<PanelTab>('overview')
   const tab = controlledTab ?? ownTab
   const [expanded, setExpanded] = useState(false)
-  const [qnaOpen, setQnaOpen] = useState(false)
   const ids = {
     master: useId(), expanded: useId(),
     lockLabel: useId(), lockNote: useId(), instructions: useId(),
@@ -238,14 +239,14 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
 
               <section className="k1-inspector__section">
                 <h2 className="k1-section-title">Q&amp;A</h2>
-                <button type="button" className="k1-rowcard" aria-haspopup="dialog" onClick={() => setQnaOpen(true)}>
+                <a className="k1-rowcard" href={href({ page: 'qna' })}>
                   <span className="k1-rowcard__icon"><MessagesSquare size={15} strokeWidth={1.75} /></span>
                   <span className="k1-rowcard__text">
                     <strong>{qna.title}</strong>
                     <small>{qna.meta}</small>
                   </span>
                   <ChevronRight size={16} strokeWidth={1.75} className="k1-rowcard__chevron" />
-                </button>
+                </a>
               </section>
             </>
           ) : (
@@ -291,12 +292,11 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
         {draft.locked && <p className="k1-hint k1-dialog__note">The base prompt is locked. Close this and switch off “Lock base prompt” to edit.</p>}
       </Dialog>
 
-      <QnaSheet open={qnaOpen} additional={draft.additional} onChange={(additional) => store.edit({ additional })} onClose={() => setQnaOpen(false)} />
     </div>
   )
 }
 
-function Bubble({ message, onRate, onRevise }: { message: TestMessage; onRate: (value: 'up' | 'down') => void; onRevise?: () => void }) {
+function Bubble({ message, onRate, onRevise, matched }: { message: TestMessage; onRate: (value: 'up' | 'down') => void; onRevise?: () => void; matched?: QnaEntry | null }) {
   const agent = message.role === 'agent'
   return (
     <motion.div
@@ -316,6 +316,7 @@ function Bubble({ message, onRate, onRevise }: { message: TestMessage; onRate: (
           <button type="button" aria-label="Bad reply" aria-pressed={message.feedback === 'down'} className={message.feedback === 'down' ? 'is-on' : undefined} onClick={() => onRate('down')}>
             <ThumbsDown size={13} strokeWidth={1.75} />
           </button>
+          {matched && <a className="k1-chip-btn k1-chip-btn--match" href={href({ page: 'qna' })} title="This question looks like a saved Q&A">Q&amp;A: {matched.title}</a>}
           {onRevise && (message.revised
             ? <span className="k1-chip k1-chip--done">Answer revised</span>
             : <button type="button" className="k1-chip-btn" onClick={onRevise}>Revise answer</button>)}
@@ -345,6 +346,13 @@ function Tester({ store, onRevise }: { store: PlaygroundStore; onRevise: (target
     const node = scrollRef.current
     if (!node) return
     setAtBottom(node.scrollHeight - node.scrollTop - node.clientHeight < 24)
+  }
+
+  const entries = parseAdditional(store.draft?.additional ?? '').entries
+  const matchedFor = (message: TestMessage, index: number) => {
+    if (message.role !== 'agent' || message.opener) return null
+    const question = store.messages.slice(0, index).reverse().find((item) => item.role === 'user')
+    return question ? matchEntry(entries, question.text) : null
   }
 
   const reviseFor = (message: TestMessage, index: number) => {
@@ -384,7 +392,7 @@ function Tester({ store, onRevise }: { store: PlaygroundStore; onRevise: (target
       </header>
       <div className="k1-tester__thread" ref={scrollRef} onScroll={onScroll} aria-live="polite" aria-label="Test conversation">
         {store.messages.map((message, index) => (
-          <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} onRevise={reviseFor(message, index)} />
+          <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} onRevise={reviseFor(message, index)} matched={matchedFor(message, index)} />
         ))}
         <AnimatePresence>
           {store.pending && (

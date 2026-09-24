@@ -8,6 +8,7 @@ import { DeployPage } from './pages/DeployPage'
 import { LeadsPage } from './pages/LeadsPage'
 import { ImproveSheet, type ReviseTarget } from './pages/Improve'
 import { PlaygroundPage } from './pages/PlaygroundPage'
+import { QnaPage } from './pages/QnaPage'
 import { go, previewSession, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
 import { ToastStack, useToasts } from './ui/controls'
@@ -20,14 +21,15 @@ function Workspace({ compact }: { compact: boolean }) {
   const [filters, setFilters] = useState<ActivityFilters>(EMPTY_FILTERS)
   const [revise, setRevise] = useState<ReviseTarget | null>(null)
 
-  const titles: Record<string, string> = { playground: 'Playground', chats: 'Chat logs', leads: 'Leads', deploy: 'Deploy' }
+  const titles: Record<string, string> = { playground: 'Playground', qna: 'Q&A', chats: 'Chat logs', leads: 'Leads', deploy: 'Deploy' }
   useEffect(() => {
     document.title = `${titles[route.page] ?? 'K1'} · K1 Katsastus`
   }, [route.page])
 
   let page = null
   if (route.page === 'playground') page = <PlaygroundPage store={playground} compact={compact} onRevise={setRevise} />
-  else if (route.page === 'chats') page = <ActivityPage id={route.id} compact={compact} filters={filters} onFilters={setFilters} notify={push} onRevise={(question, answer) => setRevise({ question, answer })} />
+  else if (route.page === 'qna') page = <QnaPage store={playground} />
+  else if (route.page === 'chats') page = <ActivityPage id={route.id} compact={compact} filters={filters} onFilters={setFilters} notify={push} qna={playground.draft?.additional ?? ''} onRevise={(question, answer) => setRevise({ question, answer })} />
   else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} />
   else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} />
 

@@ -4,6 +4,7 @@ export type Route =
   | { page: 'signin' }
   | { page: 'signup' }
   | { page: 'playground' }
+  | { page: 'qna' }
   | { page: 'chats'; id: string | null }
   | { page: 'leads'; id: string | null }
   | { page: 'deploy' }
@@ -22,6 +23,7 @@ export function parse(hash: string): Route {
     case 'signup': return { page: 'signup' }
     case 'signin': return { page: 'signin' }
     case 'playground': return { page: 'playground' }
+    case 'qna': return { page: 'qna' }
     case 'deploy': return { page: 'deploy' }
     case 'activity':
       if (parts[1] === 'leads') return { page: 'leads', id: parts[2] ?? null }

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { parseAdditional, serializeAdditional, type QnaEntry } from '../data/qna'
-import { Pencil, Plus, Trash, X } from '../ui/icons'
+import type { QnaEntry } from '../data/qna'
+import { Plus, X } from '../ui/icons'
 import { Drawer } from '../ui/overlay'
 
 export type ReviseTarget = { question: string; answer: string; messageId?: string }
@@ -40,7 +40,7 @@ export function ImproveSheet({ target, disabled, onClose, onSubmit }: {
 
   const submit = () => {
     if (!target || !expected.trim()) return
-    onSubmit({ title: title.trim() || target.question.slice(0, 80), question: target.question, answer: expected.trim() }, target)
+    onSubmit({ title: title.trim() || target.question.slice(0, 80), questions: [target.question], answer: expected.trim() }, target)
   }
 
   return (
@@ -76,105 +76,6 @@ export function ImproveSheet({ target, disabled, onClose, onSubmit }: {
       <div className="k1-sheet__foot">
         <button type="button" className="k1-btn k1-btn--outline" onClick={onClose}>Cancel</button>
         <button type="button" className="k1-btn k1-btn--primary" disabled={disabled || !expected.trim()} onClick={submit}>Update answer</button>
-      </div>
-    </Drawer>
-  )
-}
-
-type Form = { id: string | null; title: string; question: string; answer: string }
-const EMPTY_FORM: Form = { id: null, title: '', question: '', answer: '' }
-
-function QnaForm({ form, onChange, onCancel, onSave }: { form: Form; onChange: (form: Form) => void; onCancel: () => void; onSave: () => void }) {
-  const ids = { title: useId(), question: useId(), answer: useId() }
-  return (
-    <div className="k1-qna__form">
-      <div className="k1-sheet__field">
-        <label className="k1-label" htmlFor={ids.title}>Title</label>
-        <input id={ids.title} className="k1-input" value={form.title} placeholder="e.g. Saturday opening hours" onChange={(event) => onChange({ ...form, title: event.target.value })} />
-      </div>
-      <div className="k1-sheet__field">
-        <label className="k1-label" htmlFor={ids.question}>Question</label>
-        <input id={ids.question} className="k1-input" value={form.question} placeholder="e.g. Are you open on Saturdays?" onChange={(event) => onChange({ ...form, question: event.target.value })} />
-      </div>
-      <div className="k1-sheet__field">
-        <label className="k1-label" htmlFor={ids.answer}>Answer</label>
-        <textarea id={ids.answer} className="k1-textarea k1-textarea--field" rows={4} value={form.answer} placeholder="Enter your answer" onChange={(event) => onChange({ ...form, answer: event.target.value })} />
-      </div>
-      <div className="k1-qna__form-actions">
-        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={onCancel}>Cancel</button>
-        <button type="button" className="k1-btn k1-btn--primary k1-btn--sm" disabled={!form.question.trim() || !form.answer.trim()} onClick={onSave}>
-          {form.id ? 'Save Q&A' : 'Add Q&A'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export function QnaSheet({ open, additional, onChange, onClose }: {
-  open: boolean
-  additional: string
-  onChange: (additional: string) => void
-  onClose: () => void
-}) {
-  const { notes, entries } = parseAdditional(additional)
-  const [form, setForm] = useState<Form | null>(null)
-  const notesId = useId()
-
-  useEffect(() => { if (!open) setForm(null) }, [open])
-
-  const commit = (nextEntries: QnaEntry[], nextNotes = notes) => onChange(serializeAdditional(nextNotes, nextEntries))
-  const save = () => {
-    if (!form) return
-    const entry = { id: form.id ?? `new-${Date.now()}`, title: form.title, question: form.question, answer: form.answer }
-    commit(form.id ? entries.map((item) => (item.id === form.id ? entry : item)) : [...entries, entry])
-    setForm(null)
-  }
-
-  return (
-    <Drawer open={open} side="right" label="Q&A" onClose={onClose} className="k1-sheet k1-sheet--wide">
-      <SheetHead title="Q&A" description="Predefined answers for key topics. Your agent checks these first." onClose={onClose} />
-      <div className="k1-sheet__body">
-        {form && !form.id ? (
-          <QnaForm form={form} onChange={setForm} onCancel={() => setForm(null)} onSave={save} />
-        ) : (
-          <button type="button" className="k1-btn k1-btn--outline k1-qna__add" onClick={() => setForm(EMPTY_FORM)}>
-            <Plus size={15} />Add Q&amp;A
-          </button>
-        )}
-
-        {entries.length ? (
-          <ul className="k1-qna__list">
-            {entries.map((entry) => (
-              <li key={entry.id} className="k1-qna__item">
-                {form?.id === entry.id ? (
-                  <QnaForm form={form} onChange={setForm} onCancel={() => setForm(null)} onSave={save} />
-                ) : (
-                  <>
-                    <div className="k1-qna__text">
-                      <strong>{entry.title}</strong>
-                      <span className="k1-qna__q">{entry.question}</span>
-                      <p className="k1-qna__a">{entry.answer}</p>
-                    </div>
-                    <div className="k1-qna__actions">
-                      <button type="button" className="k1-icon-btn" aria-label={`Edit ${entry.title}`} onClick={() => setForm({ ...entry })}><Pencil size={14} /></button>
-                      <button type="button" className="k1-icon-btn" aria-label={`Delete ${entry.title}`} onClick={() => commit(entries.filter((item) => item.id !== entry.id))}><Trash size={14} /></button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="k1-qna__empty">No Q&amp;A yet. Add one here, or use “Revise answer” on a reply in the test chat or in Chat logs.</p>
-        )}
-
-        {notes && (
-          <div className="k1-sheet__field k1-qna__notes">
-            <label className="k1-label" htmlFor={notesId}>Other notes</label>
-            <textarea id={notesId} className="k1-textarea k1-textarea--field" rows={4} value={notes} onChange={(event) => commit(entries, event.target.value)} />
-            <p className="k1-hint">Earlier free-text notes. The agent still reads them.</p>
-          </div>
-        )}
       </div>
     </Drawer>
   )

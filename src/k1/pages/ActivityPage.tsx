@@ -17,6 +17,7 @@ import { go, href } from '../routes'
 import { Select } from '../ui/controls'
 import { DateRangeField } from '../ui/DateRange'
 import { Dialog } from '../ui/overlay'
+import { parseAdditional } from '../data/qna'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime, SampleBadge, Thread } from './SplitView'
 
 const OUTCOMES: Outcome[] = ['Booked', 'Needs follow-up', 'Handed to staff', 'No reply']
@@ -93,13 +94,14 @@ function Chips({ filters, onChange }: { filters: ActivityFilters; onChange: (fil
   )
 }
 
-export function ActivityPage({ id, compact, filters, onFilters, notify, onRevise }: {
+export function ActivityPage({ id, compact, filters, onFilters, notify, onRevise, qna = '' }: {
   id: string | null
   compact: boolean
   filters: ActivityFilters
   onFilters: (filters: ActivityFilters) => void
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
   onRevise?: (question: string, answer: string) => void
+  qna?: string
 }) {
   const [items, setItems] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
@@ -199,7 +201,7 @@ export function ActivityPage({ id, compact, filters, onFilters, notify, onRevise
         },
       ]}
     >
-      {tab === 'chat' ? <Thread messages={selected.messages} onRevise={onRevise} /> : (
+      {tab === 'chat' ? <Thread messages={selected.messages} onRevise={onRevise} entries={parseAdditional(qna).entries} /> : (
         <Facts rows={[
           ['Customer', selected.customer ?? 'Internal test'],
           ['Registration', selected.registration ?? '—'],

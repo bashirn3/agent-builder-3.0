@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ChevronDown, History, LogOut, MenuIcon, Play, Rocket, X } from '../ui/icons'
+import { ChevronDown, History, LogOut, MenuIcon, Play, Rocket, X, MessagesSquare } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { go, href, previewSession, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
@@ -99,6 +99,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
   return (
     <nav className="k1-nav" aria-label="Main">
       {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />Playground</>)}
+      {link({ page: 'qna' }, route.page === 'qna', <><MessagesSquare size={16} strokeWidth={1.75} />Q&amp;A</>)}
       <button
         type="button"
         className={`k1-nav__item${inActivity && !activityOpen ? ' is-active' : ''}`}

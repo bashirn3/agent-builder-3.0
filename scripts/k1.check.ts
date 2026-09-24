@@ -9,7 +9,7 @@ import {
   toCsv,
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
-import { addEntry, parseAdditional, serializeAdditional } from '../src/k1/data/qna.ts'
+import { addEntry, matchEntry, parseAdditional, serializeAdditional } from '../src/k1/data/qna.ts'
 import { href, parse } from '../src/k1/routes.ts'
 
 function assert(condition: boolean, message: string) {
@@ -20,6 +20,7 @@ for (const route of [
   { page: 'signin' },
   { page: 'signup' },
   { page: 'playground' },
+  { page: 'qna' },
   { page: 'deploy' },
   { page: 'chats', id: null },
   { page: 'chats', id: 'c-1042' },
@@ -68,12 +69,19 @@ assert(italic.value === 'Role\n_Tone_\nRules' && italic.start === 6 && italic.en
 assert(applyFormat('Role\nTone\n', 0, 5, 'bullet').value === '- Role\nTone\n', 'a selection ending at a line break does not format the next line')
 
 const legacy = 'Seeded notes.\n- Be brief.'
-const once = addEntry(legacy, { title: 'Saturday', question: 'Open on Saturday?', answer: 'No, Monday to Friday.\nCall us for help.' })
+const once = addEntry(legacy, { title: 'Saturday', questions: ['Open on Saturday?', 'Can I come at the weekend?'], answer: 'No, Monday to Friday.\nCall us for help.' })
 const parsed = parseAdditional(once)
 assert(parsed.notes === legacy, 'Q&A keeps free-text notes above the block')
 assert(parsed.entries.length === 1 && parsed.entries[0].answer === 'No, Monday to Friday.\nCall us for help.', 'Q&A answers keep line breaks')
-const twice = addEntry(once, { title: '', question: 'Price?', answer: 'From 59 €.' })
-assert(parseAdditional(twice).entries[1].title === 'Price?', 'an empty title falls back to the question')
+const twice = addEntry(once, { title: '', questions: ['How much does an inspection cost?'], answer: 'From 59 €.' })
+assert(parseAdditional(twice).entries[1].title === 'How much does an inspection cost?', 'an empty title falls back to the first question')
+assert(parsed.entries[0].questions.length === 2, 'one entry keeps several question variations')
+assert(parseAdditional(addEntry('', { title: 'x', questions: ['Line one\nline two'], answer: 'y' })).entries[0].questions[0] === 'Line one line two', 'multi-line questions are stored on one line')
+const saved = parseAdditional(twice).entries
+assert(matchEntry(saved, 'Are you open on Saturday?')?.title === 'Saturday', 'a close rewording matches its Q&A')
+assert(matchEntry([{ id: 'x', title: 'Sat', questions: ['Are you open on Saturdays?'], answer: 'No' }], 'open on saturday?')?.title === 'Sat', 'plural and singular wording match')
+assert(matchEntry(saved, 'how much does the inspection cost')?.title === 'How much does an inspection cost?', 'matching ignores case, punctuation and filler words')
+assert(matchEntry(saved, 'I want to book for Tuesday morning') === null, 'unrelated messages do not match')
 assert(serializeAdditional(parsed.notes, parseAdditional(twice).entries) === twice, 'Q&A serialization is stable')
 assert(serializeAdditional('', []) === '' && parseAdditional('').entries.length === 0, 'empty Q&A round-trips to an empty field')
 assert(parseAdditional(serializeAdditional(legacy, [])).notes === legacy, 'removing every entry leaves only notes')

@@ -3,6 +3,8 @@ import { ReactNode, useId, useRef, type KeyboardEvent } from 'react'
 import { ChevronLeft, Info, MoreHorizontal } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import type { ThreadMessage } from '../data/fixtures'
+import { matchEntry, type QnaEntry } from '../data/qna'
+import { href } from '../routes'
 import { Menu, Skeleton, type MenuItem } from '../ui/controls'
 
 export function relativeTime(iso: string, now = Date.now()) {
@@ -178,16 +180,18 @@ export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, on
   )
 }
 
-export function Thread({ messages, onRevise }: { messages: ThreadMessage[]; onRevise?: (question: string, answer: string) => void }) {
+export function Thread({ messages, onRevise, entries = [] }: { messages: ThreadMessage[]; onRevise?: (question: string, answer: string) => void; entries?: QnaEntry[] }) {
   return (
     <div className="k1-thread">
       {messages.map((message, index) => {
         const question = message.role === 'agent' ? messages.slice(0, index).reverse().find((item) => item.role === 'user') : undefined
+        const matched = question ? matchEntry(entries, question.text) : null
         return (
           <div key={message.id} className={`k1-msg k1-msg--${message.role} k1-msg--wide`}>
             <div className="k1-msg__bubble">{message.text}</div>
             {onRevise && question && (
               <div className="k1-msg__meta">
+                {matched && <a className="k1-chip-btn k1-chip-btn--match" href={href({ page: 'qna' })}>Q&amp;A: {matched.title}</a>}
                 <button type="button" className="k1-chip-btn" onClick={() => onRevise(question.text, message.text)}>Revise answer</button>
               </div>
             )}
