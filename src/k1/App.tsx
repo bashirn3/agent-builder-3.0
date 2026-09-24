@@ -20,7 +20,7 @@ function Workspace({ compact }: { compact: boolean }) {
 
   const titles: Record<string, string> = { playground: 'Playground', compare: 'Compare', chats: 'Test chats', leads: 'Leads', deploy: 'Deploy' }
   useEffect(() => {
-    document.title = `${titles[route.page] ?? 'K1'} · K1 Katsastus`
+    document.title = `${titles[route.page] ?? 'A-Katsastus'} · A-Katsastus`
   }, [route.page])
 
   let page = null

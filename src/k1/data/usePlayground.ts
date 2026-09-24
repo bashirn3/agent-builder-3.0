@@ -8,11 +8,22 @@ export type { TestMessage } from './useTestChat'
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 
-const toDraft = (config: AgentConfig): Draft => ({ locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener, reminders: config.reminders })
+const toDraft = (config: AgentConfig): Draft => ({ locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener, reminders: config.reminders, translations: config.translations })
 
 export type LeadOption = TestLead & { id: string; sample: boolean }
 
-const SAMPLE_OPTIONS: LeadOption[] = LEADS.map((lead) => ({ id: lead.id, name: lead.name, registration: lead.registration, sample: true }))
+// Leads at closed stations must not be contacted, so they are not offered for testing.
+const toOption = (lead: TestLead & { id: string; isClosed: boolean }, sample: boolean): LeadOption => ({
+  id: lead.id,
+  plateNumber: lead.plateNumber,
+  stationName: lead.stationName,
+  nextInspection: lead.nextInspection,
+  lastInspection: lead.lastInspection,
+  language: lead.language,
+  sample,
+})
+
+const SAMPLE_OPTIONS: LeadOption[] = LEADS.filter((lead) => !lead.isClosed).map((lead) => toOption(lead, true))
 
 export function usePlayground(notify: Notify) {
   const [config, setConfig] = useState<AgentConfig | null>(null)
@@ -45,7 +56,7 @@ export function usePlayground(notify: Notify) {
   useEffect(refreshLeads, [refreshLeads])
 
   const leads: LeadOption[] = useMemo(() => [
-    ...uploaded.map((lead) => ({ id: lead.id, name: lead.name, registration: lead.registration, sample: false })),
+    ...uploaded.filter((lead) => !lead.isClosed).map((lead) => toOption(lead, false)),
     ...SAMPLE_OPTIONS,
   ], [uploaded])
   const lead = leads.find((option) => option.id === leadId) ?? leads[0]
@@ -83,7 +94,7 @@ export function usePlayground(notify: Notify) {
       return
     }
     setVersionId(id)
-    setDraft({ ...draft, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener, reminders: version.reminders })
+    setDraft({ ...draft, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener, reminders: version.reminders, translations: version.translations })
   }
 
   const save = async () => {

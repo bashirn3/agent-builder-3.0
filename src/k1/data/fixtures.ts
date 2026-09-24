@@ -28,23 +28,22 @@ export type Conversation = {
   messages: ThreadMessage[]
 }
 
-export type LeadStatus = 'New' | 'Contacted' | 'Booked' | 'Handed to staff'
-
+// Lead fields mirror the Muster API record (StationName, isClosed, PlateNumber, Product,
+// NextInspectionDateRangeEnd, PhoneNumber, Language, LastInspection, Reason).
 export type Lead = {
   id: string
-  name: string
-  registration: string
-  vehicle: string
-  phone: string
-  email: string
-  station: string
-  preferredTime: string
-  status: LeadStatus
-  submittedAt: string
+  stationName: string
+  isClosed: boolean
+  plateNumber: string
+  product: string
+  nextInspection: string | null
+  phoneNumber: string
+  language: string
+  lastInspection: string | null
+  reason: string
+  addedAt: string
+  sample: boolean
   conversationIds: string[]
-  note: string
-  sample?: boolean
-  inspectionDue?: string | null
 }
 
 function thread(id: string, start: string, lines: Array<['agent' | 'user', string, number]>): ThreadMessage[] {
@@ -60,7 +59,7 @@ function thread(id: string, start: string, lines: Array<['agent' | 'user', strin
 export const CONVERSATIONS: Conversation[] = [
   {
     id: 'c-1042',
-    leadId: 'l-virtanen',
+    leadId: 'l-abc123',
     customer: 'Rasmus Virtanen',
     registration: 'ABC-123',
     channel: 'WhatsApp',
@@ -69,7 +68,7 @@ export const CONVERSATIONS: Conversation[] = [
     station: 'K1 Espoo',
     startedAt: '2026-09-23T09:14:00+03:00',
     messages: thread('c-1042', '2026-09-23T09:14:00+03:00', [
-      ['agent', 'Hi Rasmus, this is K1 Katsastus. Your vehicle with registration ABC-123 is due for inspection soon. Would you like to book an appointment?', 0],
+      ['agent', 'Hi, this is K1 Katsastus. Your vehicle with registration ABC-123 is due for inspection soon. Would you like to book an appointment?', 0],
       ['user', 'Yes please. Thursday afternoon would work.', 6],
       ['agent', 'Thanks. Which K1 station suits you best? Once I know the station I can check Thursday afternoon for you.', 6],
       ['user', 'Espoo.', 9],
@@ -80,7 +79,7 @@ export const CONVERSATIONS: Conversation[] = [
   },
   {
     id: 'c-1041',
-    leadId: 'l-korhonen',
+    leadId: 'l-xyz441',
     customer: 'Anna Korhonen',
     registration: 'XYZ-441',
     channel: 'WhatsApp',
@@ -89,14 +88,14 @@ export const CONVERSATIONS: Conversation[] = [
     station: null,
     startedAt: '2026-09-23T08:02:00+03:00',
     messages: thread('c-1041', '2026-09-23T08:02:00+03:00', [
-      ['agent', 'Hi Anna, this is K1 Katsastus. Your vehicle with registration XYZ-441 is due for inspection soon. Would you like to book an appointment?', 0],
+      ['agent', 'Hi, this is K1 Katsastus. Your vehicle with registration XYZ-441 is due for inspection soon. Would you like to book an appointment?', 0],
       ['user', 'Maybe, which station is closest to Leppävaara?', 41],
       ['agent', 'I can suggest stations near Leppävaara. Would you prefer a weekday morning or afternoon, so I can check the right one?', 41],
     ]),
   },
   {
     id: 'c-1039',
-    leadId: 'l-nieminen',
+    leadId: 'l-klm908',
     customer: 'Mikko Nieminen',
     registration: 'KLM-908',
     channel: 'WhatsApp',
@@ -105,7 +104,7 @@ export const CONVERSATIONS: Conversation[] = [
     station: 'K1 Vantaa',
     startedAt: '2026-09-22T16:40:00+03:00',
     messages: thread('c-1039', '2026-09-22T16:40:00+03:00', [
-      ['agent', 'Hi Mikko, this is K1 Katsastus. Your vehicle with registration KLM-908 is due for inspection soon. Would you like to book an appointment?', 0],
+      ['agent', 'Hi, this is K1 Katsastus. Your vehicle with registration KLM-908 is due for inspection soon. Would you like to book an appointment?', 0],
       ['user', 'My van has a tow hitch installed since last inspection, is that a problem?', 18],
       ['agent', 'A change like a new tow hitch may need a modification inspection. I will pass this to our staff so they can confirm what applies to KLM-908.', 18],
       ['user', 'Ok thanks.', 20],
@@ -114,7 +113,7 @@ export const CONVERSATIONS: Conversation[] = [
   },
   {
     id: 'c-1036',
-    leadId: 'l-makinen',
+    leadId: 'l-rty256',
     customer: 'Laura Mäkinen',
     registration: 'RTY-256',
     channel: 'WhatsApp',
@@ -123,7 +122,7 @@ export const CONVERSATIONS: Conversation[] = [
     station: 'K1 Helsinki',
     startedAt: '2026-09-21T11:20:00+03:00',
     messages: thread('c-1036', '2026-09-21T11:20:00+03:00', [
-      ['agent', 'Hi Laura, this is K1 Katsastus. Your vehicle with registration RTY-256 is due for inspection soon. Would you like to book an appointment?', 0],
+      ['agent', 'Hi, this is K1 Katsastus. Your vehicle with registration RTY-256 is due for inspection soon. Would you like to book an appointment?', 0],
       ['user', 'Can I come on Saturday?', 3],
       ['agent', 'This station is open Monday to Friday only. Would a weekday early morning work instead?', 3],
       ['user', 'Monday 8:00 then', 5],
@@ -147,7 +146,7 @@ export const CONVERSATIONS: Conversation[] = [
   },
   {
     id: 'c-1030',
-    leadId: 'l-laine',
+    leadId: 'l-ghf771',
     customer: 'Juha Laine',
     registration: 'GHF-771',
     channel: 'WhatsApp',
@@ -156,12 +155,12 @@ export const CONVERSATIONS: Conversation[] = [
     station: null,
     startedAt: '2026-09-16T10:12:00+03:00',
     messages: thread('c-1030', '2026-09-16T10:12:00+03:00', [
-      ['agent', 'Hi Juha, this is K1 Katsastus. Your vehicle with registration GHF-771 is due for inspection soon. Would you like to book an appointment?', 0],
+      ['agent', 'Hi, this is K1 Katsastus. Your vehicle with registration GHF-771 is due for inspection soon. Would you like to book an appointment?', 0],
     ]),
   },
   {
     id: 'c-1027',
-    leadId: 'l-heikkinen',
+    leadId: 'l-pqe310',
     customer: 'Sanna Heikkinen',
     registration: 'PQE-310',
     channel: 'WhatsApp',
@@ -170,98 +169,22 @@ export const CONVERSATIONS: Conversation[] = [
     station: 'K1 Espoo',
     startedAt: '2026-09-12T13:48:00+03:00',
     messages: thread('c-1027', '2026-09-12T13:48:00+03:00', [
-      ['agent', 'Hi Sanna, this is K1 Katsastus. Your vehicle with registration PQE-310 is due for inspection soon. Would you like to book an appointment?', 0],
+      ['agent', 'Hi, this is K1 Katsastus. Your vehicle with registration PQE-310 is due for inspection soon. Would you like to book an appointment?', 0],
       ['user', 'Not this week, I am travelling. Can you remind me next week?', 55],
       ['agent', 'Of course. I have noted that you would like a reminder next week. You can also reply here any time to book.', 55],
     ]),
   },
 ]
 
+const sampleLead = (id: string, fields: Omit<Lead, 'id' | 'product' | 'sample'>): Lead => ({ id, product: 'D04', sample: true, ...fields })
+
 export const LEADS: Lead[] = [
-  {
-    id: 'l-virtanen',
-    name: 'Rasmus Virtanen',
-    registration: 'ABC-123',
-    vehicle: 'Passenger car',
-    phone: '+358 40 000 0101',
-    email: 'rasmus.virtanen@example.com',
-    station: 'K1 Espoo',
-    preferredTime: 'Thursday afternoon',
-    status: 'Booked',
-    submittedAt: '2026-09-23T09:26:00+03:00',
-    conversationIds: ['c-1042'],
-    note: 'Booked Thu 25 Sep, 14:30.',
-  },
-  {
-    id: 'l-korhonen',
-    name: 'Anna Korhonen',
-    registration: 'XYZ-441',
-    vehicle: 'Passenger car',
-    phone: '+358 40 000 0102',
-    email: 'anna.korhonen@example.com',
-    station: 'Not chosen',
-    preferredTime: 'Weekday',
-    status: 'Contacted',
-    submittedAt: '2026-09-23T08:43:00+03:00',
-    conversationIds: ['c-1041'],
-    note: 'Asked for the station closest to Leppävaara.',
-  },
-  {
-    id: 'l-nieminen',
-    name: 'Mikko Nieminen',
-    registration: 'KLM-908',
-    vehicle: 'Van',
-    phone: '+358 40 000 0103',
-    email: 'mikko.nieminen@example.com',
-    station: 'K1 Vantaa',
-    preferredTime: 'Not given',
-    status: 'Handed to staff',
-    submittedAt: '2026-09-22T17:00:00+03:00',
-    conversationIds: ['c-1039'],
-    note: 'Tow hitch fitted since last inspection — staff to confirm modification inspection.',
-  },
-  {
-    id: 'l-makinen',
-    name: 'Laura Mäkinen',
-    registration: 'RTY-256',
-    vehicle: 'Passenger car',
-    phone: '+358 40 000 0104',
-    email: 'laura.makinen@example.com',
-    station: 'K1 Helsinki',
-    preferredTime: 'Monday 08:00',
-    status: 'Booked',
-    submittedAt: '2026-09-21T11:26:00+03:00',
-    conversationIds: ['c-1036'],
-    note: 'Asked for Saturday; moved to Monday.',
-  },
-  {
-    id: 'l-laine',
-    name: 'Juha Laine',
-    registration: 'GHF-771',
-    vehicle: 'Passenger car',
-    phone: '+358 40 000 0105',
-    email: 'juha.laine@example.com',
-    station: 'Not chosen',
-    preferredTime: 'Not given',
-    status: 'New',
-    submittedAt: '2026-09-16T10:12:00+03:00',
-    conversationIds: ['c-1030'],
-    note: 'No reply to the reminder yet.',
-  },
-  {
-    id: 'l-heikkinen',
-    name: 'Sanna Heikkinen',
-    registration: 'PQE-310',
-    vehicle: 'Passenger car',
-    phone: '+358 40 000 0106',
-    email: 'sanna.heikkinen@example.com',
-    station: 'K1 Espoo',
-    preferredTime: 'Next week',
-    status: 'Contacted',
-    submittedAt: '2026-09-12T14:43:00+03:00',
-    conversationIds: ['c-1027'],
-    note: 'Travelling — asked for a reminder next week.',
-  },
+  sampleLead('l-abc123', { stationName: 'K1 Katsastus Kouvola Kankaanpää', isClosed: false, plateNumber: 'ABC-123', nextInspection: '2026-10-23', phoneNumber: '+358 40 000 0101', language: 'Suomi', lastInspection: '2025-10-23', reason: 'previous visit', addedAt: '2026-09-23T09:26:00+03:00', conversationIds: ['c-1042'] }),
+  sampleLead('l-xyz441', { stationName: 'K1 Katsastus Tampere Lakalaiva', isClosed: false, plateNumber: 'XYZ-441', nextInspection: '2026-10-18', phoneNumber: '+358 40 000 0102', language: 'Suomi', lastInspection: '2024-10-18', reason: 'previous visit', addedAt: '2026-09-23T08:43:00+03:00', conversationIds: ['c-1041'] }),
+  sampleLead('l-klm908', { stationName: 'K1 Katsastus Helsinki Vuosaari', isClosed: false, plateNumber: 'KLM-908', nextInspection: '2026-11-02', phoneNumber: '+358 40 000 0103', language: 'Svenska', lastInspection: '2025-11-02', reason: 'previous visit', addedAt: '2026-09-22T17:00:00+03:00', conversationIds: ['c-1039'] }),
+  sampleLead('l-rty256', { stationName: 'K1 Katsastus Espoo Suomenoja', isClosed: false, plateNumber: 'RTY-256', nextInspection: '2026-10-05', phoneNumber: '+358 40 000 0104', language: 'English', lastInspection: '2025-10-05', reason: 'previous visit', addedAt: '2026-09-21T11:26:00+03:00', conversationIds: ['c-1036'] }),
+  sampleLead('l-ghf771', { stationName: 'K1 Katsastus Imatra Mansikkala', isClosed: true, plateNumber: 'GHF-771', nextInspection: '2026-09-30', phoneNumber: '+358 40 000 0105', language: 'Suomi', lastInspection: '2025-09-30', reason: 'previous visit', addedAt: '2026-09-16T10:12:00+03:00', conversationIds: ['c-1030'] }),
+  sampleLead('l-pqe310', { stationName: 'K1 Katsastus Kouvola Korjala', isClosed: false, plateNumber: 'PQE-310', nextInspection: '2026-10-12', phoneNumber: '+358 40 000 0106', language: 'Suomi', lastInspection: '2025-10-12', reason: 'previous visit', addedAt: '2026-09-12T14:43:00+03:00', conversationIds: ['c-1027'] }),
 ]
 
 export type ActivityFilters = {
@@ -296,13 +219,19 @@ export function filterConversations(list: Conversation[], filters: ActivityFilte
   })
 }
 
+// Filters on the end of the next inspection window.
 export function filterLeads(list: Lead[], range: { from: string | null; to: string | null }) {
   return list.filter((lead) => {
-    const day = dayKey(lead.submittedAt)
-    if (range.from && day < range.from) return false
-    if (range.to && day > range.to) return false
+    if (!range.from) return true
+    if (!lead.nextInspection) return false
+    if (lead.nextInspection < range.from) return false
+    if (range.to && lead.nextInspection > range.to) return false
     return true
   })
+}
+
+export function shortStation(name: string) {
+  return name.replace(/^K1 Katsastus\s+/i, '')
 }
 
 export function submittedStamp(iso: string) {

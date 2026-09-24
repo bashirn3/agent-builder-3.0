@@ -54,7 +54,7 @@ await viewport(plan.width ?? 1440, plan.height ?? 900, plan.scale ?? 4 / 3)
 if (plan.reducedMotion) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
 
 const log = []
-const keyInfo = { Enter: ['Enter', 13, '\r'], Escape: ['Escape', 27], Tab: ['Tab', 9], ArrowDown: ['ArrowDown', 40], ArrowUp: ['ArrowUp', 38], ArrowRight: ['ArrowRight', 39], ArrowLeft: ['ArrowLeft', 37], ' ': [' ', 32, ' '] }
+const keyInfo = { Enter: ['Enter', 13, '\r'], Escape: ['Escape', 27], Tab: ['Tab', 9], ArrowDown: ['ArrowDown', 40], ArrowUp: ['ArrowUp', 38], ArrowRight: ['ArrowRight', 39], ArrowLeft: ['ArrowLeft', 37], End: ['End', 35], ' ': [' ', 32, ' '] }
 try {
   for (const step of plan.steps) {
     if (step.go) {

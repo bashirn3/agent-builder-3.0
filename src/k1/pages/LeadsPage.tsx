@@ -2,7 +2,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Download, Info, MessagesSquare, Upload, X } from '../ui/icons'
 import { ease } from '../../lib/motion'
-import { downloadCsv, filterLeads, fixtureLeads, submittedStamp, toCsv, type Lead } from '../data/fixtures'
+import { downloadCsv, filterLeads, fixtureLeads, shortStation, submittedStamp, toCsv, type Lead } from '../data/fixtures'
+import { formatDate } from '../data/language'
 import { go, href } from '../routes'
 import { Skeleton, Spinner } from '../ui/controls'
 import { listLeads, requestMuster, type UploadedLead } from '../data/builderApi'
@@ -14,72 +15,77 @@ import { Facts, SampleBadge, Thread } from './SplitView'
 
 const MUSTER_KEY = 'k1-muster-requested'
 
+const day = (iso: string | null) => formatDate(iso, 'fi') || '—'
+
+const PRODUCTS: Record<string, string> = { D04: 'Inspection' }
+
 function fromUpload(lead: UploadedLead): Lead {
   return {
     id: lead.id,
-    name: lead.name,
-    registration: lead.registration,
-    vehicle: '',
-    phone: lead.phone,
-    email: lead.email,
-    station: 'Not chosen',
-    preferredTime: '',
-    status: 'New',
-    submittedAt: lead.createdAt,
-    conversationIds: [],
-    note: '',
+    stationName: lead.stationName,
+    isClosed: lead.isClosed,
+    plateNumber: lead.plateNumber,
+    product: lead.product,
+    nextInspection: lead.nextInspection,
+    phoneNumber: lead.phoneNumber,
+    language: lead.language,
+    lastInspection: lead.lastInspection,
+    reason: lead.reason,
+    addedAt: lead.createdAt,
     sample: false,
-    inspectionDue: lead.inspectionDue,
+    conversationIds: [],
   }
 }
 
+function ClosedTag() {
+  return <span className="k1-tag k1-tag--danger" title="Station closed. Do not contact this lead.">Station closed</span>
+}
+
 function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const conversations = lead.sample === false ? [] : fixtureLeads.conversationsFor(lead)
-  const uploaded = lead.sample === false
+  const conversations = lead.sample ? fixtureLeads.conversationsFor(lead) : []
   return (
     <div className="k1-lead">
       <header className="k1-lead__head">
         <div>
-          <h2>{lead.name}</h2>
-          <p>{lead.vehicle ? `${lead.registration} · ${lead.vehicle}` : lead.registration}</p>
+          <h2>{lead.plateNumber}</h2>
+          <p>{lead.stationName || 'No station'}</p>
         </div>
         <button type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label="Close lead" onClick={onClose}>
           <X size={16} strokeWidth={1.75} />
         </button>
       </header>
       <div className="k1-lead__body">
+        {lead.isClosed && <p className="k1-lead__closed" role="note">This station is closed. Do not contact this lead.</p>}
         <Facts
-          heading="General details"
-          rows={uploaded ? [
-            ['Status', <span className="k1-status k1-status--new">New</span>],
-            ['Email', lead.email || '—'],
-            ['Phone', lead.phone || '—'],
-            ['Inspection due', lead.inspectionDue || '—'],
-            ['Uploaded at', submittedStamp(lead.submittedAt)],
-          ] : [
-            ['Status', <span className={`k1-status k1-status--${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span>],
-            ['Email', lead.email],
-            ['Phone', lead.phone],
-            ['Station', lead.station],
-            ['Preferred time', lead.preferredTime],
-            ['Submitted at', submittedStamp(lead.submittedAt)],
+          heading="Lead details"
+          rows={[
+            ['Station', <span className="k1-lead__station">{lead.stationName || '—'}{lead.isClosed && <ClosedTag />}</span>],
+            ['Phone', lead.phoneNumber || '—'],
+            ['Language', lead.language || '—'],
+            ['Next inspection by', day(lead.nextInspection)],
+            ['Last inspection', day(lead.lastInspection)],
+            ['Product', lead.product ? `${lead.product}${PRODUCTS[lead.product] ? ` · ${PRODUCTS[lead.product]}` : ''}` : '—'],
+            ['Reason', lead.reason || '—'],
+            [lead.sample ? 'Added' : 'Uploaded', submittedStamp(lead.addedAt)],
           ]}
         />
-        {lead.note && (
+        {lead.sample && (
           <section className="k1-lead__section">
-            <h3 className="k1-facts__heading"><Info size={14} strokeWidth={1.75} />Note</h3>
-            <p className="k1-lead__note">{lead.note}</p>
+            <h3 className="k1-facts__heading"><MessagesSquare size={14} strokeWidth={1.75} />Conversation</h3>
+            {conversations.length ? conversations.map((conversation) => (
+              <div key={conversation.id} className="k1-lead-thread">
+                <p className="k1-hint">{conversation.channel}</p>
+                <Thread messages={conversation.messages} />
+              </div>
+            )) : <p className="k1-hint">No conversation is linked to this lead.</p>}
           </section>
         )}
-        <section className="k1-lead__section">
-          <h3 className="k1-facts__heading"><MessagesSquare size={14} strokeWidth={1.75} />Conversation</h3>
-          {conversations.length ? conversations.map((conversation) => (
-            <div key={conversation.id} className="k1-lead-thread">
-              <p className="k1-hint">{conversation.channel}</p>
-              <Thread messages={conversation.messages} />
-            </div>
-          )) : <p className="k1-hint">No conversation is linked to this lead.</p>}
-        </section>
+        {!lead.sample && (
+          <section className="k1-lead__section">
+            <h3 className="k1-facts__heading"><Info size={14} strokeWidth={1.75} />Conversation</h3>
+            <p className="k1-hint">No conversation yet.</p>
+          </section>
+        )}
       </div>
     </div>
   )
@@ -101,16 +107,19 @@ export function LeadsPage({ id, compact, notify, onImported }: {
     let live = true
     void Promise.all([fixtureLeads.list(), listLeads().catch(() => [] as UploadedLead[])]).then(([sample, uploaded]) => {
       if (!live) return
-      setItems([...uploaded.map(fromUpload), ...sample.map((lead) => ({ ...lead, sample: true }))])
+      setItems([...uploaded.map(fromUpload), ...sample])
       setLoading(false)
     })
     return () => { live = false }
   }
   useEffect(load, [])
 
-  const hasUploads = items.some((lead) => lead.sample === false)
+  const hasUploads = items.some((lead) => !lead.sample)
   const rows = useMemo(() => filterLeads(items, range), [items, range])
   const selected = id ? items.find((lead) => lead.id === id) ?? null : null
+  const [shown, setShown] = useState<Lead | null>(selected)
+  useEffect(() => { if (selected) setShown(selected) }, [selected])
+  const close = () => go({ page: 'leads', id: null })
 
   const askMuster = async () => {
     setMuster('sending')
@@ -124,26 +133,27 @@ export function LeadsPage({ id, compact, notify, onImported }: {
       notify({ tone: 'error', title: 'Request not sent', body: `Nothing was sent (${describeError(error)}). Try again.` })
     }
   }
-  const [shown, setShown] = useState<Lead | null>(selected)
-  useEffect(() => { if (selected) setShown(selected) }, [selected])
-  const close = () => go({ page: 'leads', id: null })
 
   const exportCsv = () => {
     downloadCsv('k1-leads.csv', toCsv(rows.map((lead) => ({
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      registration: lead.registration,
-      inspection_due: lead.inspectionDue ?? '',
-      submitted_at: submittedStamp(lead.submittedAt),
-      source: lead.sample === false ? 'uploaded' : 'sample',
+      StationName: lead.stationName,
+      isClosed: lead.isClosed ? '1' : '0',
+      PlateNumber: lead.plateNumber,
+      Product: lead.product,
+      NextInspectionDateRangeEnd: lead.nextInspection ?? '',
+      PhoneNumber: lead.phoneNumber,
+      Language: lead.language,
+      LastInspection: lead.lastInspection ?? '',
+      Reason: lead.reason,
     }))))
     notify({ title: 'Export ready', body: `${rows.length} lead${rows.length === 1 ? '' : 's'} downloaded as CSV.` })
   }
 
+  const sampleTag = (lead: Lead) => lead.sample && hasUploads ? <span className="k1-tag k1-table__tag">Sample</span> : null
+
   const empty = (
     <div className="k1-table__empty">
-      <strong>{items.length ? 'No leads in this date range' : 'No leads yet'}</strong>
+      <strong>{items.length ? 'No leads due in this date range' : 'No leads yet'}</strong>
       {items.length > 0 && <button type="button" className="k1-link" onClick={() => setRange({ from: null, to: null })}>Clear the date filter</button>}
     </div>
   )
@@ -162,7 +172,7 @@ export function LeadsPage({ id, compact, notify, onImported }: {
             <DateRangeField
               from={range.from}
               to={range.to}
-              ariaLabel="Filter leads by submitted date"
+              ariaLabel="Filter leads by next inspection date"
               leading={<CalendarDays size={15} strokeWidth={1.75} className="k1-select__lead" />}
               onChange={setRange}
             />
@@ -194,10 +204,10 @@ export function LeadsPage({ id, compact, notify, onImported }: {
             <ul className="k1-lead-cards">
               {rows.map((lead) => (
                 <li key={lead.id}>
-                  <a className="k1-lead-card" href={href({ page: 'leads', id: lead.id })}>
-                    <span className="k1-lead-card__top"><strong>{lead.name}{lead.sample && hasUploads && <span className="k1-tag">Sample</span>}</strong><time>{submittedStamp(lead.submittedAt)}</time></span>
-                    <span>{lead.email}</span>
-                    <span>{lead.phone} · {lead.registration}</span>
+                  <a className={`k1-lead-card${lead.isClosed ? ' is-closed' : ''}`} href={href({ page: 'leads', id: lead.id })}>
+                    <span className="k1-lead-card__top"><strong>{lead.plateNumber}{sampleTag(lead)}</strong><time>{day(lead.nextInspection)}</time></span>
+                    <span className="k1-lead-card__station">{shortStation(lead.stationName) || 'No station'}{lead.isClosed && <ClosedTag />}</span>
+                    <span>{[lead.phoneNumber, lead.language].filter(Boolean).join(' · ')}</span>
                   </a>
                 </li>
               ))}
@@ -207,11 +217,13 @@ export function LeadsPage({ id, compact, notify, onImported }: {
           <table className="k1-table">
             <thead>
               <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
+                <th scope="col">Plate number</th>
+                <th scope="col">Station</th>
+                <th scope="col">Next inspection by</th>
+                <th scope="col">Last inspection</th>
+                <th scope="col">Language</th>
                 <th scope="col">Phone</th>
-                <th scope="col">Registration</th>
-                <th scope="col">Submitted at</th>
+                <th scope="col">Reason</th>
               </tr>
             </thead>
             <tbody>
@@ -219,18 +231,20 @@ export function LeadsPage({ id, compact, notify, onImported }: {
                 {rows.map((lead) => (
                   <motion.tr
                     key={lead.id}
-                    className={lead.id === id ? 'is-selected' : undefined}
+                    className={[lead.id === id && 'is-selected', lead.isClosed && 'is-closed'].filter(Boolean).join(' ') || undefined}
                     onClick={() => go({ page: 'leads', id: lead.id })}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.16, ease }}
                   >
-                    <th scope="row"><a href={href({ page: 'leads', id: lead.id })} onClick={(event) => event.stopPropagation()}>{lead.name}</a>{lead.sample && hasUploads && <span className="k1-tag k1-table__tag">Sample</span>}</th>
-                    <td>{lead.email}</td>
-                    <td>{lead.phone}</td>
-                    <td>{lead.registration}</td>
-                    <td className="k1-table__num">{submittedStamp(lead.submittedAt)}</td>
+                    <th scope="row"><a href={href({ page: 'leads', id: lead.id })} onClick={(event) => event.stopPropagation()}>{lead.plateNumber}</a>{sampleTag(lead)}</th>
+                    <td><span className="k1-table__station">{shortStation(lead.stationName) || '—'}{lead.isClosed && <ClosedTag />}</span></td>
+                    <td className="k1-table__num">{day(lead.nextInspection)}</td>
+                    <td className="k1-table__num">{day(lead.lastInspection)}</td>
+                    <td>{lead.language || '—'}</td>
+                    <td className="k1-table__num">{lead.phoneNumber || '—'}</td>
+                    <td>{lead.reason || '—'}</td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
@@ -241,7 +255,7 @@ export function LeadsPage({ id, compact, notify, onImported }: {
       </div>
 
       <LeadUploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} notify={notify} onImported={() => { load(); onImported() }} />
-      <Drawer open={Boolean(selected)} side="right" label={selected ? `Lead: ${selected.name}` : 'Lead'} onClose={close}>
+      <Drawer open={Boolean(selected)} side="right" label={selected ? `Lead: ${selected.plateNumber}` : 'Lead'} onClose={close}>
         {shown && <LeadDetail lead={selected ?? shown} onClose={close} />}
       </Drawer>
       {id && !loading && !selected && (
