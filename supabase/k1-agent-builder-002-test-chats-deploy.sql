@@ -326,8 +326,8 @@ begin
 end;
 $$;
 
--- Called from the link in Rapid's email once the version is live on WhatsApp.
-create or replace function public.confirm_deploy(p_token text, p_by text default 'Rapid')
+-- Called from the link in Wasup's email once the version is live on WhatsApp.
+create or replace function public.confirm_deploy(p_token text, p_by text default 'Wasup')
 returns table (version_number integer, deployed_at timestamptz, already_deployed boolean)
 language plpgsql
 security invoker

@@ -9,11 +9,11 @@ import { Check, ThumbsDown, ThumbsUp, WhatsApp } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
 
-// Flip once the email step in the Deploy Request workflow sends to Rapid.
+// Flip once the email step in the Deploy Request workflow sends to Wasup.
 const EMAIL_CONNECTED = true
 
 const STATUS_LABEL: Record<DeployRequest['status'], string> = {
-  requested: 'Waiting for Rapid',
+  requested: 'Waiting for Wasup',
   deployed: 'Deployed',
   superseded: 'Replaced by a newer request',
 }
@@ -102,7 +102,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
               {!config ? <Skeleton width={220} height={14} /> : live ? (
                 <p><span className="k1-live-dot" aria-hidden="true" />Live: <strong>v{live.number}</strong>{config.liveSince ? ` since ${shortDate(config.liveSince)}` : ''}</p>
               ) : (
-                <p>The live version is recorded once Rapid confirms a deployment.</p>
+                <p>The live version is recorded once Wasup confirms a deployment.</p>
               )}
             </div>
           </article>
@@ -185,8 +185,8 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                 <span className="k1-deploy__check" aria-hidden="true"><Check size={16} strokeWidth={2.25} /></span>
                 <p>
                   {EMAIL_CONNECTED
-                    ? <>Rapid has been emailed about <strong>v{sent.versionNumber}</strong>. It shows as Deployed here once it is live on WhatsApp.</>
-                    : <>The request for <strong>v{sent.versionNumber}</strong> is saved and shows as Waiting for Rapid. The email to Rapid is not connected yet, so let them know directly.</>}
+                    ? <>Wasup has been emailed about <strong>v{sent.versionNumber}</strong>. It shows as Deployed here once it is live on WhatsApp.</>
+                    : <>The request for <strong>v{sent.versionNumber}</strong> is saved and shows as Waiting for Wasup. The email to Wasup is not connected yet, so let them know directly.</>}
                 </p>
               </div>
               <footer className="k1-dialog__foot">
@@ -214,7 +214,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                 </div>
                 <div className="k1-field">
                   <label htmlFor={ids.notes}>Notes</label>
-                  <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder="Anything Rapid should know before it goes live" onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+                  <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder="Anything Wasup should know before it goes live" onChange={(event) => setForm({ ...form, notes: event.target.value })} />
                 </div>
                 <label className="k1-check" htmlFor={ids.confirm}>
                   <input id={ids.confirm} type="checkbox" checked={form.confirmed} onChange={(event) => setForm({ ...form, confirmed: event.target.checked })} />

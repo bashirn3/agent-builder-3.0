@@ -228,7 +228,7 @@ export async function loadState(): Promise<BuilderState> {
       activeVersionId: store.versions.find((version) => version.isActive)?.id ?? null,
       liveVersionId: store.liveVersionId,
       liveSince: store.liveSince,
-      liveBy: store.liveVersionId ? 'Rapid' : null,
+      liveBy: store.liveVersionId ? 'Wasup' : null,
       versions: withStats(store).sort((a, b) => b.versionNumber - a.versionNumber),
       deployRequests: store.deployRequests,
       tracking: true,
