@@ -6,7 +6,7 @@ import { getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFi
 import { downloadCsv, toCsv } from '../data/fixtures'
 import type { TestMessage } from '../data/useTestChat'
 import { go, href } from '../routes'
-import { Select } from '../ui/controls'
+import { Select, Skeleton } from '../ui/controls'
 import { DateRangeField } from '../ui/DateRange'
 import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, X } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
@@ -182,6 +182,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const [filterOpen, setFilterOpen] = useState(false)
   const [tab, setTab] = useState<'chat' | 'details'>('chat')
   const [selected, setSelected] = useState<TestChat | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [messages, setMessages] = useState<TestMessage[]>([])
   const [query, setQuery] = useState(filters.query)
   const request = useRef(0)
@@ -209,11 +210,15 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   useEffect(() => {
     if (!id) { setSelected(null); return }
     let cancelled = false
-    void getTestChat(id).then((chat) => {
-      if (cancelled) return
-      setSelected(chat)
-      setMessages(chat ? toMessages(chat) : [])
-    })
+    setDetailLoading(true)
+    void getTestChat(id)
+      .then((chat) => {
+        if (cancelled) return
+        setSelected(chat)
+        setMessages(chat ? toMessages(chat) : [])
+      })
+      .catch(() => { if (!cancelled) setSelected(null) })
+      .finally(() => { if (!cancelled) setDetailLoading(false) })
     return () => { cancelled = true }
   }, [id])
 
@@ -307,8 +312,10 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     />
   )
 
-  const conversation = selected?.conversation
-  const detail = conversation ? (
+  const conversation = selected?.conversation?.id === id ? selected.conversation : null
+  const detail = detailLoading && !conversation ? (
+    <div className="k1-detail k1-detail--empty" role="status" aria-label="Loading test chat"><Skeleton width="60%" height={60} radius={20} /></div>
+  ) : conversation ? (
     <DetailPane
       paneKey={conversation.id}
       title={conversation.title || 'Test chat'}
@@ -348,7 +355,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       )}
     </DetailPane>
   ) : (
-    <div className="k1-detail k1-detail--empty"><p>{id && !loading ? 'This test chat was not found.' : 'Select a test chat'}</p></div>
+    <div className="k1-detail k1-detail--empty"><p>{id && !loading && !detailLoading ? 'This test chat was not found.' : 'Select a test chat'}</p></div>
   )
 
   return (
