@@ -12,6 +12,7 @@ import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
 import { matchesFilters, type TestChatSummary } from '../src/k1/data/builderApi.ts'
 import { describeChanges } from '../src/k1/data/changes.ts'
+import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message)
@@ -86,5 +87,16 @@ assert(!matchesFilters(chat({}), { ...none, from: '2026-09-21T00:00:00.000Z' }),
 const base = { locked: false, masterPrompt: 'a', additional: '', opener: 'hi' }
 assert(describeChanges(base, { ...base, masterPrompt: 'b', opener: 'hey' }) === 'Edited base prompt · Changed opener', 'change note lists edits')
 assert(describeChanges(base, { ...base, additional: 'Open Mon–Fri.' }) === 'Edited additional instructions', 'change note mentions additional instructions')
+
+const rem = (texts: string[]) => texts.map((text) => ({ text, days: text ? 3 : null }))
+assert(describeChanges({ ...base, reminders: rem(['', '', '']) }, { ...base, reminders: rem(['Hi again', '', '']) }) === 'Changed reminder 1', 'change note names the changed reminder')
+assert(describeChanges({ ...base, reminders: rem(['a', 'b', '']) }, { ...base, reminders: rem(['a', 'c', 'd']) }) === 'Changed reminders 2, 3', 'change note lists several reminders')
+
+assert(JSON.stringify(parseCsv('a;b\n"x;1";"he said ""hi"""\n')) === JSON.stringify([['a', 'b'], ['x;1', 'he said "hi"']]), 'CSV handles semicolons and quotes')
+assert(normalizeDate('1.10.2026') === '2026-10-01' && normalizeDate('2026-10-01') === '2026-10-01' && normalizeDate('31/02/2026') === '', 'dates: Finnish, ISO, and impossible dates')
+const csv = readLeads('Nimi,Sähköposti,Puhelin,Rekisterinumero,Seuraava katsastus\nAnna Korhonen,anna@x.fi,+358 40,XYZ-441,1.10.2026\n,missing@x.fi,,ABC-1,\nJuha,,,GHF-771,soon\nMikko,,,,\n')
+assert(csv.error === null && csv.rows.length === 1 && csv.rows[0].inspection_due === '2026-10-01', 'Finnish headers map and dates normalise')
+assert(csv.skipped.map((row) => row.reason).join('|') === 'no name|inspection date “soon” not recognised|no registration', 'bad rows are skipped with a reason')
+assert(readLeads('email,phone\na@x.fi,1\n').error === 'The file needs a name and a registration column.', 'missing required columns are explained')
 
 console.log('k1 checks passed')

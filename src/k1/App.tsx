@@ -27,7 +27,7 @@ function Workspace({ compact }: { compact: boolean }) {
   if (route.page === 'playground') page = <PlaygroundPage store={playground} compact={compact} />
   else if (route.page === 'compare') page = <ComparePage store={playground} />
   else if (route.page === 'chats') page = <TestChatsPage id={route.id} compact={compact} config={playground.config} filters={filters} onFilters={setFilters} notify={push} />
-  else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} />
+  else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} onImported={playground.refreshLeads} />
   else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} versionId={route.version} onChanged={() => void playground.refresh()} />
 
   return (

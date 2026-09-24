@@ -41,7 +41,7 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
     if (pick === DRAFT) return store.draft ? draftTarget(config, store.draft) : null
     return version ? versionTarget(version) : null
   }, [pick, version, store.draft, config])
-  const chat = useTestChat(target, 'compare')
+  const chat = useTestChat(target, 'compare', store.lead)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
   useAutoGrow(inputRef, chat.composer)

@@ -1,22 +1,47 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Download, Info, MessagesSquare, X } from '../ui/icons'
+import { CalendarDays, Download, Info, MessagesSquare, Upload, X } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import { downloadCsv, filterLeads, fixtureLeads, submittedStamp, toCsv, type Lead } from '../data/fixtures'
 import { go, href } from '../routes'
-import { Skeleton } from '../ui/controls'
+import { Skeleton, Spinner } from '../ui/controls'
+import { listLeads, requestMuster, type UploadedLead } from '../data/builderApi'
+import { describeError } from '../data/agentConfig'
+import { LeadUploadDialog } from './LeadUpload'
 import { DateRangeField } from '../ui/DateRange'
 import { Drawer } from '../ui/overlay'
 import { Facts, SampleBadge, Thread } from './SplitView'
 
+const MUSTER_KEY = 'k1-muster-requested'
+
+function fromUpload(lead: UploadedLead): Lead {
+  return {
+    id: lead.id,
+    name: lead.name,
+    registration: lead.registration,
+    vehicle: '',
+    phone: lead.phone,
+    email: lead.email,
+    station: 'Not chosen',
+    preferredTime: '',
+    status: 'New',
+    submittedAt: lead.createdAt,
+    conversationIds: [],
+    note: '',
+    sample: false,
+    inspectionDue: lead.inspectionDue,
+  }
+}
+
 function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const conversations = fixtureLeads.conversationsFor(lead)
+  const conversations = lead.sample === false ? [] : fixtureLeads.conversationsFor(lead)
+  const uploaded = lead.sample === false
   return (
     <div className="k1-lead">
       <header className="k1-lead__head">
         <div>
           <h2>{lead.name}</h2>
-          <p>{lead.registration} · {lead.vehicle}</p>
+          <p>{lead.vehicle ? `${lead.registration} · ${lead.vehicle}` : lead.registration}</p>
         </div>
         <button type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label="Close lead" onClick={onClose}>
           <X size={16} strokeWidth={1.75} />
@@ -25,7 +50,13 @@ function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
       <div className="k1-lead__body">
         <Facts
           heading="General details"
-          rows={[
+          rows={uploaded ? [
+            ['Status', <span className="k1-status k1-status--new">New</span>],
+            ['Email', lead.email || '—'],
+            ['Phone', lead.phone || '—'],
+            ['Inspection due', lead.inspectionDue || '—'],
+            ['Uploaded at', submittedStamp(lead.submittedAt)],
+          ] : [
             ['Status', <span className={`k1-status k1-status--${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span>],
             ['Email', lead.email],
             ['Phone', lead.phone],
@@ -54,40 +85,60 @@ function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   )
 }
 
-export function LeadsPage({ id, compact, notify }: {
+export function LeadsPage({ id, compact, notify, onImported }: {
   id: string | null
   compact: boolean
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
+  onImported: () => void
 }) {
   const [items, setItems] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null })
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [muster, setMuster] = useState<'idle' | 'sending' | 'sent'>(() => (sessionStorage.getItem(MUSTER_KEY) ? 'sent' : 'idle'))
 
-  useEffect(() => {
+  const load = () => {
     let live = true
-    void fixtureLeads.list().then((list) => {
+    void Promise.all([fixtureLeads.list(), listLeads().catch(() => [] as UploadedLead[])]).then(([sample, uploaded]) => {
       if (!live) return
-      setItems(list)
+      setItems([...uploaded.map(fromUpload), ...sample.map((lead) => ({ ...lead, sample: true }))])
       setLoading(false)
     })
     return () => { live = false }
-  }, [])
+  }
+  useEffect(load, [])
 
+  const hasUploads = items.some((lead) => lead.sample === false)
   const rows = useMemo(() => filterLeads(items, range), [items, range])
-  const selected = id ? fixtureLeads.get(id) : null
+  const selected = id ? items.find((lead) => lead.id === id) ?? null : null
+
+  const askMuster = async () => {
+    setMuster('sending')
+    try {
+      await requestMuster(null)
+      sessionStorage.setItem(MUSTER_KEY, '1')
+      setMuster('sent')
+      notify({ title: 'Muster API requested', body: 'Wasup has been emailed and will be in touch about connecting it.' })
+    } catch (error) {
+      setMuster('idle')
+      notify({ tone: 'error', title: 'Request not sent', body: `Nothing was sent (${describeError(error)}). Try again.` })
+    }
+  }
   const [shown, setShown] = useState<Lead | null>(selected)
   useEffect(() => { if (selected) setShown(selected) }, [selected])
   const close = () => go({ page: 'leads', id: null })
 
   const exportCsv = () => {
-    downloadCsv('k1-leads-sample.csv', toCsv(rows.map((lead) => ({
+    downloadCsv('k1-leads.csv', toCsv(rows.map((lead) => ({
       name: lead.name,
       email: lead.email,
       phone: lead.phone,
       registration: lead.registration,
+      inspection_due: lead.inspectionDue ?? '',
       submitted_at: submittedStamp(lead.submittedAt),
+      source: lead.sample === false ? 'uploaded' : 'sample',
     }))))
-    notify({ title: 'Export ready', body: `${rows.length} sample lead${rows.length === 1 ? '' : 's'} downloaded as CSV.` })
+    notify({ title: 'Export ready', body: `${rows.length} lead${rows.length === 1 ? '' : 's'} downloaded as CSV.` })
   }
 
   const empty = (
@@ -101,7 +152,7 @@ export function LeadsPage({ id, compact, notify }: {
     <div className="k1-page">
       <header className="k1-page__head">
         <h1 className="k1-page-title">Leads</h1>
-        <SampleBadge />
+        {!hasUploads && <SampleBadge />}
       </header>
 
       <div className="k1-page__filters">
@@ -119,9 +170,17 @@ export function LeadsPage({ id, compact, notify }: {
               <button type="button" className="k1-link k1-link--danger" onClick={() => setRange({ from: null, to: null })}>Clear</button>
             )}
           </div>
-          <button type="button" className="k1-btn k1-btn--primary k1-btn--icon-end" onClick={exportCsv} disabled={!rows.length}>
-            Export<Download size={15} strokeWidth={1.75} />
-          </button>
+          <div className="k1-page__actions">
+            <button type="button" className="k1-btn k1-btn--outline" onClick={() => void askMuster()} disabled={muster !== 'idle'} aria-busy={muster === 'sending'}>
+              {muster === 'sending' && <Spinner />}{muster === 'sent' ? 'Muster API requested' : 'Request Muster API'}
+            </button>
+            <button type="button" className="k1-btn k1-btn--outline k1-btn--icon-end" aria-haspopup="dialog" onClick={() => setUploadOpen(true)}>
+              Upload CSV<Upload size={15} strokeWidth={1.75} />
+            </button>
+            <button type="button" className="k1-btn k1-btn--primary k1-btn--icon-end" onClick={exportCsv} disabled={!rows.length}>
+              Export<Download size={15} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -136,7 +195,7 @@ export function LeadsPage({ id, compact, notify }: {
               {rows.map((lead) => (
                 <li key={lead.id}>
                   <a className="k1-lead-card" href={href({ page: 'leads', id: lead.id })}>
-                    <span className="k1-lead-card__top"><strong>{lead.name}</strong><time>{submittedStamp(lead.submittedAt)}</time></span>
+                    <span className="k1-lead-card__top"><strong>{lead.name}{lead.sample && hasUploads && <span className="k1-tag">Sample</span>}</strong><time>{submittedStamp(lead.submittedAt)}</time></span>
                     <span>{lead.email}</span>
                     <span>{lead.phone} · {lead.registration}</span>
                   </a>
@@ -167,7 +226,7 @@ export function LeadsPage({ id, compact, notify }: {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.16, ease }}
                   >
-                    <th scope="row"><a href={href({ page: 'leads', id: lead.id })} onClick={(event) => event.stopPropagation()}>{lead.name}</a></th>
+                    <th scope="row"><a href={href({ page: 'leads', id: lead.id })} onClick={(event) => event.stopPropagation()}>{lead.name}</a>{lead.sample && hasUploads && <span className="k1-tag k1-table__tag">Sample</span>}</th>
                     <td>{lead.email}</td>
                     <td>{lead.phone}</td>
                     <td>{lead.registration}</td>
@@ -181,6 +240,7 @@ export function LeadsPage({ id, compact, notify }: {
         {!loading && !compact && !rows.length && empty}
       </div>
 
+      <LeadUploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} notify={notify} onImported={() => { load(); onImported() }} />
       <Drawer open={Boolean(selected)} side="right" label={selected ? `Lead: ${selected.name}` : 'Lead'} onClose={close}>
         {shown && <LeadDetail lead={selected ?? shown} onClose={close} />}
       </Drawer>

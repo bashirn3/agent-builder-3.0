@@ -532,7 +532,7 @@ body { overscroll-behavior: none; }
 .k1-deploy__title { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 32px; }
 .k1-deploy__body { padding: 32px 48px 48px; max-width: 1200px; }
 .k1-channels { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 352px)); gap: 16px; }
-.k1-channel { display: flex; flex-direction: column; gap: 16px; min-height: 246px; padding: 20px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: var(--k1-surface); }
+.k1-channel { display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: var(--k1-surface); }
 .k1-channel__top { display: flex; align-items: flex-start; justify-content: space-between; }
 .k1-channel__tile { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--k1-line-soft); border-radius: var(--k1-r-lg); background: #fff; color: #25d366; }
 .k1-channel__text { display: grid; gap: 4px; }
@@ -615,11 +615,6 @@ body { overscroll-behavior: none; }
 @keyframes k1-blink { 50% { opacity: 0; } }
 .k1-auth-composer__send { width: 38px; height: 38px; border-radius: 999px; display: grid; place-items: center; background: var(--k1-ink); color: #fff; flex: none; }
 
-.k1-auth__widget { position: fixed; right: 16px; bottom: 16px; display: grid; justify-items: end; gap: 12px; z-index: 5; }
-.k1-auth__greetings { display: grid; justify-items: end; gap: 10px; margin-right: 10px; }
-.k1-auth__greetings p { padding: 14px 18px; border-radius: 12px; background: var(--k1-surface); border: 1px solid var(--k1-line-soft); box-shadow: var(--k1-shadow-md); font-size: 13px; }
-.k1-auth__fab { width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center; background: #111; color: #fff; box-shadow: var(--k1-shadow-md); }
-.k1-auth__fab:focus-visible { border-radius: 999px; }
 
 
 /* ---------- Chatbase chrome: Geist for header, sidebar, config column ---------- */
@@ -678,7 +673,6 @@ body { overscroll-behavior: none; }
   .k1-auth__card { grid-template-columns: 1fr; height: auto; }
   .k1-auth__art { display: none; }
   .k1-auth__form-side { padding: 28px 20px 32px; }
-  .k1-auth__widget { display: none; }
   .k1-input, .k1-textarea, .k1-select, .k1-tester__composer textarea { font-size: 16px; }
   .k1-input, .k1-select, .k1-btn { min-height: 44px; }
   .k1-btn--sm { min-height: 36px; }
@@ -737,15 +731,10 @@ body { overscroll-behavior: none; }
 /* Playground status cards: Chatbase "Trained" + "Compare AI models" */
 .k1-status-cards { display: grid; gap: 8px; margin-bottom: 18px; }
 .k1-status-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: #fafafa; color: inherit; text-decoration: none; transition: background-color 150ms var(--k1-ease); }
-a.k1-status-card:hover { background: var(--k1-line-soft); }
-a.k1-status-card:focus-visible { outline: none; box-shadow: var(--k1-focus); }
 .k1-status-card--row { align-items: center; justify-content: space-between; background: var(--k1-surface); padding: 10px 10px 10px 14px; }
-.k1-status-card__dot { width: 8px; height: 8px; border-radius: 999px; background: #a1a1aa; margin-top: 6px; flex: none; }
-.k1-status-card__dot.is-live { background: var(--k1-success); box-shadow: 0 0 0 3px rgba(0, 165, 68, .15); }
 .k1-status-card__text { display: grid; gap: 2px; min-width: 0; }
 .k1-status-card__text strong { font-size: 14px; font-weight: 500; color: var(--k1-ink); }
 .k1-status-card__text small { font-size: 12px; color: var(--k1-muted); }
-.k1-status-card__pending { color: #b45309 !important; }
 
 /* Compare: Chatbase Playground → Compare, one independent chat per version */
 .k1-compare { display: flex; flex-direction: column; gap: 12px; min-height: 0; height: 100%; padding: 24px 32px 24px; background: var(--k1-bg); overflow: hidden; }
@@ -802,4 +791,49 @@ a.k1-status-card:focus-visible { outline: none; box-shadow: var(--k1-focus); }
 .k1-version__score svg:nth-of-type(2) { margin-left: 6px; }
 @media (max-width: 900px) {
   .k1-version { flex-direction: column; align-items: stretch; gap: 10px; }
+}
+
+/* Reminders (Opener tab) */
+.k1-opener__label { display: flex; align-items: center; gap: 8px; }
+.k1-reminders { display: grid; gap: 22px; }
+.k1-reminder__timing { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--k1-para); }
+.k1-input.k1-reminder__days { width: 60px; height: 32px; padding: 0 8px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.k1-reminder__days::-webkit-outer-spin-button, .k1-reminder__days::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.k1-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; border: 1px solid var(--k1-line); background: var(--k1-line-soft); font-size: 11px; font-weight: 500; line-height: 1; color: var(--k1-para); }
+.k1-tag--pink { background: #fdf2f8; border-color: #fbcfe8; color: #be185d; }
+
+/* Test chat: lead picker and reminder shortcuts */
+.k1-tester__context { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--k1-line-soft); font-size: 12px; color: var(--k1-muted); }
+.k1-tester__context > span { flex: none; }
+.k1-tester__lead.k1-select { flex: 1; min-width: 0; height: 30px; padding: 0 10px; font-size: 13px; border-color: transparent; background: transparent; box-shadow: none; }
+.k1-tester__lead.k1-select:hover { background: var(--k1-hover); }
+.k1-tester__skip { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; font-size: 12px; color: var(--k1-muted); }
+.k1-tester__skip > span { margin-right: 2px; }
+.k1-token:disabled { opacity: .5; cursor: not-allowed; }
+.k1-token--pink { background: #fdf2f8; border-color: #fbcfe8; color: #be185d; }
+.k1-token--pink:hover:not(:disabled) { background: #fce7f3; color: #9d174d; }
+
+/* Leads: actions and CSV upload */
+.k1-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.k1-page__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.k1-table__tag { margin-left: 8px; vertical-align: 1px; }
+.k1-lead-card__top strong { display: inline-flex; align-items: center; gap: 8px; }
+.k1-dropzone { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px dashed #d4d4d8; border-radius: var(--k1-r-lg); background: #fafafa; cursor: pointer; transition: background-color 150ms var(--k1-ease), border-color 150ms var(--k1-ease); }
+.k1-dropzone:hover, .k1-dropzone.is-dragging { background: var(--k1-line-soft); border-color: #a1a1aa; }
+.k1-dropzone:focus-within { box-shadow: var(--k1-focus); border-color: #9f9fa9; }
+.k1-dropzone__icon { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border: 1px solid var(--k1-line); border-radius: var(--k1-r-md); background: var(--k1-surface); color: var(--k1-para); box-shadow: var(--k1-shadow-xs); }
+.k1-dropzone__text { display: grid; gap: 2px; min-width: 0; }
+.k1-dropzone__text strong { font-size: 14px; font-weight: 500; color: var(--k1-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k1-dropzone__text small { font-size: 12px; color: var(--k1-muted); }
+.k1-upload__result { display: grid; gap: 10px; }
+.k1-upload__summary { font-size: 13px; color: var(--k1-para); }
+.k1-upload__summary strong { color: var(--k1-ink); font-weight: 600; }
+.k1-upload__preview { border: 1px solid var(--k1-line); border-radius: var(--k1-r-md); padding: 0 8px; overflow-x: auto; }
+.k1-upload__preview .k1-table th, .k1-upload__preview .k1-table td { font-size: 13px; }
+.k1-upload__preview .k1-table tbody tr { cursor: default; }
+.k1-upload__preview .k1-hint { padding: 8px; }
+.k1-upload__skipped { margin: 0; padding-left: 18px; font-size: 12px; color: var(--k1-muted); display: grid; gap: 2px; }
+@media (max-width: 900px) {
+  .k1-page__actions { width: 100%; }
+  .k1-page__actions .k1-btn { flex: 1 1 auto; }
 }

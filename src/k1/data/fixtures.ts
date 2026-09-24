@@ -43,6 +43,8 @@ export type Lead = {
   submittedAt: string
   conversationIds: string[]
   note: string
+  sample?: boolean
+  inspectionDue?: string | null
 }
 
 function thread(id: string, start: string, lines: Array<['agent' | 'user', string, number]>): ThreadMessage[] {

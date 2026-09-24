@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, type AgentConfig, type Draft } from './agentConfig'
+import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, type AgentConfig, type Draft, type TestLead } from './agentConfig'
+import { listLeads, type UploadedLead } from './builderApi'
+import { LEADS } from './fixtures'
 import { useTestChat } from './useTestChat'
 
 export type { TestMessage } from './useTestChat'
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 
-const toDraft = (config: AgentConfig): Draft => ({ locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener })
+const toDraft = (config: AgentConfig): Draft => ({ locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener, reminders: config.reminders })
+
+export type LeadOption = TestLead & { id: string; sample: boolean }
+
+const SAMPLE_OPTIONS: LeadOption[] = LEADS.map((lead) => ({ id: lead.id, name: lead.name, registration: lead.registration, sample: true }))
 
 export function usePlayground(notify: Notify) {
   const [config, setConfig] = useState<AgentConfig | null>(null)
@@ -14,6 +20,8 @@ export function usePlayground(notify: Notify) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [versionId, setVersionId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploaded, setUploaded] = useState<UploadedLead[]>([])
+  const [leadId, setLeadId] = useState<string | null>(null)
 
   const load = useCallback(() => {
     let cancelled = false
@@ -31,6 +39,17 @@ export function usePlayground(notify: Notify) {
 
   useEffect(load, [load])
 
+  const refreshLeads = useCallback(() => {
+    void listLeads().then(setUploaded).catch(() => setUploaded([]))
+  }, [])
+  useEffect(refreshLeads, [refreshLeads])
+
+  const leads: LeadOption[] = useMemo(() => [
+    ...uploaded.map((lead) => ({ id: lead.id, name: lead.name, registration: lead.registration, sample: false })),
+    ...SAMPLE_OPTIONS,
+  ], [uploaded])
+  const lead = leads.find((option) => option.id === leadId) ?? leads[0]
+
   const refresh = useCallback(async () => {
     try {
       const next = await loadConfig()
@@ -45,7 +64,7 @@ export function usePlayground(notify: Notify) {
   const dirty = Boolean(draft && saved && !sameDraft(draft, saved))
 
   const target = useMemo(() => (config && draft ? draftTarget(config, draft) : null), [config, draft])
-  const chat = useTestChat(target, 'playground')
+  const chat = useTestChat(target, 'playground', lead)
 
   const edit = (patch: Partial<Draft>) => setDraft((current) => (current ? { ...current, ...patch } : current))
 
@@ -64,7 +83,7 @@ export function usePlayground(notify: Notify) {
       return
     }
     setVersionId(id)
-    setDraft({ ...draft, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener })
+    setDraft({ ...draft, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener, reminders: version.reminders })
   }
 
   const save = async () => {
@@ -95,6 +114,11 @@ export function usePlayground(notify: Notify) {
     retry: chat.retry,
     resetConversation: chat.reset,
     rate: chat.rate,
+    sendReminder: chat.sendReminder,
+    leads,
+    lead,
+    setLeadId,
+    refreshLeads,
   }
 }
 
