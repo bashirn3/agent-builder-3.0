@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { FormEvent, useId, useRef, useState } from 'react'
-import { Check, Copy, MessageCircle } from 'lucide-react'
+import { Check, Copy, WhatsApp } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
 import { Dialog } from '../ui/overlay'
-import { Spinner } from '../ui/controls'
+import { Skeleton, Spinner } from '../ui/controls'
 
 type DeployRequest = {
   id: string
@@ -101,16 +101,26 @@ export function DeployPage({ config, dirty, notify }: {
 
   return (
     <div className="k1-deploy">
-      <h1 className="k1-page-title">Deploy</h1>
-      <p className="k1-deploy__lede">Ask the Wasup team to put the K1 booking agent live on WhatsApp.</p>
-
-      <div className="k1-row-card">
-        <span className="k1-row-card__icon" aria-hidden="true"><MessageCircle size={16} strokeWidth={1.75} /></span>
-        <div className="k1-row-card__text">
-          <strong>WhatsApp</strong>
-          <span>Not deployed from this workspace yet</span>
-        </div>
-        <button type="button" className="k1-btn k1-btn--outline" aria-haspopup="dialog" onClick={openDialog}>Request deployment</button>
+      <header className="k1-deploy__head">
+        <h1 className="k1-deploy__title">Deploy</h1>
+      </header>
+      <div className="k1-deploy__body">
+      <div className="k1-channels">
+        <article className="k1-channel">
+          <div className="k1-channel__top">
+            <span className="k1-channel__tile" aria-hidden="true"><WhatsApp size={26} /></span>
+            {requests.length > 0 && <span className="k1-status k1-status--contacted">Requested</span>}
+          </div>
+          <div className="k1-channel__text">
+            <h2>WhatsApp</h2>
+            <p>Ask the Wasup team to put the K1 booking agent live on your WhatsApp number.</p>
+          </div>
+          <div className="k1-channel__foot">
+            {config
+              ? <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" onClick={openDialog}>Request deployment</button>
+              : <Skeleton width={128} height={36} />}
+          </div>
+        </article>
       </div>
       {dirty && <p className="k1-hint k1-hint--warn">You have unsaved Playground changes. A deployment request always refers to the saved active configuration.</p>}
 
@@ -139,6 +149,7 @@ export function DeployPage({ config, dirty, notify }: {
           </ul>
         ) : <p className="k1-hint">No requests yet.</p>}
       </section>
+      </div>
 
       <Dialog open={open} title={prepared ? 'Request prepared' : 'Request deployment'} onClose={() => setOpen(false)} width={440} initialFocus={prepared ? undefined : nameRef}>
         <AnimatePresence mode="wait" initial={false}>

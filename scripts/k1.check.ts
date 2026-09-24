@@ -62,6 +62,8 @@ assert(applyFormat(bullets.value, 0, bullets.value.length, 'number').value === '
 assert(applyFormat(text, 5, 5, 'heading').value === 'Role\n### Tone\nRules', 'heading applies to the caret line only')
 const bold = applyFormat(text, 0, 4, 'bold')
 assert(bold.value.startsWith('**Role**') && bold.start === 2 && bold.end === 6, 'bold wraps the selection and keeps it selected')
+const italic = applyFormat(text, 5, 9, 'italic')
+assert(italic.value === 'Role\n_Tone_\nRules' && italic.start === 6 && italic.end === 10, 'italic wraps the selection in underscores')
 assert(applyFormat('Role\nTone\n', 0, 5, 'bullet').value === '- Role\nTone\n', 'a selection ending at a line break does not format the next line')
 
 console.log('k1 checks passed')

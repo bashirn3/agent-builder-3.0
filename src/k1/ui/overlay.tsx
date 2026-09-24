@@ -1,8 +1,11 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { createContext, ReactNode, RefObject, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X } from './icons'
 import { ease, fade, sheetMotion } from '../../lib/motion'
+
+// Tailwind's animate-in/out default to CSS `ease` (Chatbase dialogs, popovers).
+const cssEase = [0.25, 0.1, 0.25, 1] as const
 
 const LayerContext = createContext<HTMLElement | null>(null)
 
@@ -106,7 +109,7 @@ function DialogSurface({ title, onClose, children, width = 460, initialFocus }: 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={fade}
+        transition={{ duration: 0.15, ease: cssEase }}
       />
       <motion.div
         ref={rootRef}
@@ -115,10 +118,10 @@ function DialogSurface({ title, onClose, children, width = 460, initialFocus }: 
         aria-modal="true"
         aria-labelledby={titleId}
         style={{ width }}
-        initial={{ opacity: 0, scale: 0.97, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 6 }}
-        transition={{ duration: 0.2, ease }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2, ease: cssEase }}
       >
         <h2 id={titleId} className="k1-dialog__title">{title}</h2>
         <button type="button" className="k1-dialog__close" aria-label="Close" onClick={onClose}>
@@ -279,10 +282,10 @@ function PopoverSurface({ anchorRef, onClose, children, align = 'start', matchWi
         width: matchWidth ? box?.width : undefined,
         transformOrigin: box?.above ? 'bottom left' : 'top left',
       }}
-      initial={{ opacity: 0, scale: 0.97, y: -4 }}
+      initial={{ opacity: 0, scale: 0.95, y: box?.above ? 8 : -8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: -4 }}
-      transition={{ duration: 0.16, ease }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.15, ease: cssEase }}
     >
       {children}
     </motion.div>

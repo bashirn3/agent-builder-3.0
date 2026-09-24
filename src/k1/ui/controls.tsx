@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ReactNode, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { Check, ChevronDown, X } from 'lucide-react'
+import { ReactNode, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { Check, ChevronDown, X } from './icons'
 import { ease } from '../../lib/motion'
 import { Popover } from './overlay'
 
@@ -180,10 +180,10 @@ export function ToastStack({ toasts, onDismiss }: { toasts: ToastMessage[]; onDi
             key={toast.id}
             layout
             className={`k1-toast${toast.tone === 'error' ? ' is-error' : ''}`}
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.2, ease }}
+            initial={{ opacity: 0, y: '-100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '-100%' }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
           >
             <button type="button" className="k1-toast__close" aria-label="Dismiss notification" onClick={() => onDismiss(toast.id)}>
               <X size={10} strokeWidth={2} />
@@ -217,6 +217,16 @@ export function useToasts() {
     window.setTimeout(() => dismiss(id), 4200)
   }
   return { toasts, push, dismiss }
+}
+
+export function Skeleton({ width, height, radius, className, style }: {
+  width?: number | string
+  height: number | string
+  radius?: number | string
+  className?: string
+  style?: CSSProperties
+}) {
+  return <span className={`k1-skel${className ? ` ${className}` : ''}`} style={{ width, height, borderRadius: radius, ...style }} aria-hidden="true" />
 }
 
 export function Spinner({ size = 14 }: { size?: number }) {

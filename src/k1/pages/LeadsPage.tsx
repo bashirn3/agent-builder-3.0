@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Download, Info, MessagesSquare, X } from 'lucide-react'
+import { CalendarDays, Download, Info, MessagesSquare, X } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import { downloadCsv, filterLeads, fixtureLeads, submittedStamp, toCsv, type Lead } from '../data/fixtures'
 import { go, href } from '../routes'
-import { Spinner } from '../ui/controls'
+import { Skeleton } from '../ui/controls'
 import { DateRangeField } from '../ui/DateRange'
 import { Drawer } from '../ui/overlay'
 import { Facts, SampleBadge, Thread } from './SplitView'
@@ -130,7 +130,9 @@ export function LeadsPage({ id, compact, notify }: {
 
       <div className="k1-table-card">
         {loading ? (
-          <div className="k1-table__empty" aria-busy="true"><Spinner size={16} /></div>
+          <div className="k1-table__skeleton" role="status" aria-label="Loading leads">
+            {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} height={48} />)}
+          </div>
         ) : compact ? (
           rows.length ? (
             <ul className="k1-lead-cards">

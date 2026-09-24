@@ -1,5 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/geist'
 import App from './App'
 import './k1.css'
 

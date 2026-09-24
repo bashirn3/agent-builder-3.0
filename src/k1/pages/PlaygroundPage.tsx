@@ -2,15 +2,19 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
   ArrowUp, Bold, ChevronDown, ChevronRight, FileText, Heading, List, ListOrdered, Lock, LockOpen,
-  Maximize2, RefreshCw, RotateCcw, SlidersHorizontal, ThumbsDown, ThumbsUp,
-} from 'lucide-react'
+  Italic, Maximize2, RefreshCw, RotateCcw, ThumbsDown, ThumbsUp,
+} from '../ui/icons'
 import { ease } from '../../lib/motion'
+
+const easeInOut = [0.4, 0, 0.2, 1] as const
 import { backendLabel, backendMode } from '../data/agentConfig'
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { K1Mark } from '../shell/Shell'
-import { Select, Spinner } from '../ui/controls'
+import { Select, Skeleton, Spinner } from '../ui/controls'
 import { applyFormat, stripPrefix, type Format } from '../ui/format'
-import { Collapse, Dialog, Drawer } from '../ui/overlay'
+import { Collapse, Dialog } from '../ui/overlay'
+import { href } from '../routes'
+import { UnderlineTabs } from './SplitView'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -28,11 +32,13 @@ function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: st
   }, [ref, value, max])
 }
 
-const TOOLS: Array<{ kind: Format; label: string; icon: ReactNode }> = [
-  { kind: 'heading', label: 'Heading', icon: <Heading size={15} strokeWidth={1.75} /> },
-  { kind: 'bold', label: 'Bold', icon: <Bold size={15} strokeWidth={1.75} /> },
-  { kind: 'bullet', label: 'Bulleted list', icon: <List size={15} strokeWidth={1.75} /> },
-  { kind: 'number', label: 'Numbered list', icon: <ListOrdered size={15} strokeWidth={1.75} /> },
+const TOOLS: Array<{ kind: Format; label: string; icon: ReactNode } | 'sep'> = [
+  { kind: 'bold', label: 'Bold', icon: <Bold /> },
+  { kind: 'italic', label: 'Italic', icon: <Italic /> },
+  { kind: 'heading', label: 'Heading', icon: <Heading /> },
+  'sep',
+  { kind: 'bullet', label: 'Bulleted list', icon: <List /> },
+  { kind: 'number', label: 'Numbered list', icon: <ListOrdered /> },
 ]
 
 function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, size = 'panel', label }: {
@@ -59,7 +65,7 @@ function PromptEditor({ id, value, onChange, readOnly, describedBy, onExpand, si
   return (
     <div className={`k1-editor k1-editor--${size}${readOnly ? ' is-readonly' : ''}`}>
       <div className="k1-editor__toolbar" role="toolbar" aria-label="Formatting" aria-controls={id}>
-        {TOOLS.map((tool) => (
+        {TOOLS.map((tool, index) => tool === 'sep' ? <span key={`sep-${index}`} className="k1-editor__sep" aria-hidden="true" /> : (
           <button key={tool.kind} type="button" className="k1-editor__tool" aria-label={tool.label} title={tool.label} disabled={readOnly} onClick={() => format(tool.kind)}>
             {tool.icon}
           </button>
@@ -96,13 +102,12 @@ function Switch({ checked, onChange, labelledBy, describedBy }: { checked: boole
       className={`k1-switch${checked ? ' is-on' : ''}`}
       onClick={() => onChange(!checked)}
     >
-      <motion.span className="k1-switch__thumb" layout transition={{ duration: 0.18, ease }} />
+      <span className="k1-switch__thumb" />
     </button>
   )
 }
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: Array<{ value: T; label: string }>; onChange: (value: T) => void; label: string }) {
-  const layoutId = useId()
   const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
@@ -118,8 +123,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
         const active = option.value === value
         return (
           <button key={option.value} type="button" role="tab" aria-selected={active} tabIndex={active ? 0 : -1} className={active ? 'is-active' : undefined} onClick={() => onChange(option.value)}>
-            {active && <motion.span className="k1-segmented__pill" layoutId={layoutId} transition={{ duration: 0.2, ease }} />}
-            <span className="k1-segmented__label">{option.label}</span>
+            {option.label}
           </button>
         )
       })}
@@ -153,9 +157,10 @@ function summarise(text: string) {
 
 type PanelTab = 'overview' | 'display'
 
-function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTitle?: boolean }) {
+function Inspector({ store, showTitle = true, tab: controlledTab }: { store: PlaygroundStore; showTitle?: boolean; tab?: PanelTab }) {
   const { config, draft, dirty, saving } = store
-  const [tab, setTab] = useState<PanelTab>('overview')
+  const [ownTab, setTab] = useState<PanelTab>('overview')
+  const tab = controlledTab ?? ownTab
   const [expanded, setExpanded] = useState(false)
   const [extraOpen, setExtraOpen] = useState(false)
   const ids = {
@@ -177,23 +182,19 @@ function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTi
   return (
     <div className="k1-inspector__inner">
       {showTitle && <h1 className="k1-page-title">Playground</h1>}
-      <Segmented<PanelTab>
-        label="Agent settings"
-        value={tab}
-        onChange={setTab}
-        options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }]}
-      />
+      {!controlledTab && (
+        <Segmented<PanelTab>
+          label="Agent settings"
+          value={tab}
+          onChange={setTab}
+          options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }]}
+        />
+      )}
 
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={tab}
+        <div
           role="tabpanel"
           aria-label={tab === 'overview' ? 'Overview' : 'Display'}
           className="k1-inspector__panel"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.14, ease }}
         >
           {tab === 'overview' ? (
             <>
@@ -261,8 +262,7 @@ function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTi
               </Accordion>
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+        </div>
 
       <p className="k1-inspector__source">{backendLabel}</p>
 
@@ -272,10 +272,10 @@ function Inspector({ store, showTitle = true }: { store: PlaygroundStore; showTi
             className="k1-unsaved"
             role="region"
             aria-label="Unsaved changes"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: '100%' }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ duration: 0.2, ease }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ duration: 0.3, ease: easeInOut }}
           >
             <p>You have unsaved changes. Do you wish to save them?</p>
             <div className="k1-unsaved__actions">
@@ -457,8 +457,44 @@ function Tester({ store }: { store: PlaygroundStore }) {
   )
 }
 
+function TesterSkeleton() {
+  return (
+    <div className="k1-tester k1-tester--skeleton" role="status" aria-label="Loading the test chat">
+      <div className="k1-tester__head"><Skeleton width={26} height={26} radius={999} /><Skeleton width={180} height={14} /></div>
+      <div className="k1-tester__thread">
+        <Skeleton width="72%" height={76} radius={20} />
+      </div>
+      <div className="k1-tester__composer k1-tester__composer--skeleton"><Skeleton width="40%" height={12} /></div>
+    </div>
+  )
+}
+
+function InspectorSkeleton({ showTitle = true }: { showTitle?: boolean }) {
+  return (
+    <div className="k1-inspector__inner" role="status" aria-label="Loading the agent configuration">
+      {showTitle && <h1 className="k1-page-title">Playground</h1>}
+      <Skeleton height={36} radius={10} className="k1-skel--tabs" />
+      <div className="k1-inspector__panel">
+        <section className="k1-inspector__section">
+          <h2 className="k1-section-title">Instructions</h2>
+          <div className="k1-inspector__row"><Skeleton height={40} style={{ flex: 1 }} /><Skeleton width={36} height={36} /></div>
+          <div className="k1-skel-card k1-skel-card--editor">
+            {[92, 78, 86, 64, 90, 70, 82].map((width, index) => <Skeleton key={index} height={12} width={`${width}%`} />)}
+          </div>
+        </section>
+        <section className="k1-inspector__section">
+          <h2 className="k1-section-title">Additional instructions</h2>
+          <div className="k1-skel-card k1-skel-card--row"><Skeleton width={30} height={30} /><span className="k1-skel-card__lines"><Skeleton height={12} width="60%" /><Skeleton height={10} width="30%" /></span></div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
+type MobileTab = PanelTab | 'preview'
+
 export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; compact: boolean }) {
-  const [configOpen, setConfigOpen] = useState(false)
+  const [mobileTab, setMobileTab] = useState<MobileTab>('overview')
 
   if (store.loadError) {
     return (
@@ -469,36 +505,41 @@ export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; com
       </div>
     )
   }
-  if (!store.config) {
-    return <div className="k1-state" aria-busy="true"><Spinner size={18} /><p>Loading the K1 agent configuration…</p></div>
-  }
+  const loading = !store.config
 
   if (compact) {
     return (
       <div className="k1-playground k1-playground--compact">
         <div className="k1-mobilebar">
           <h1 className="k1-page-title">Playground</h1>
-          <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setConfigOpen(true)} aria-haspopup="dialog">
-            <SlidersHorizontal size={14} strokeWidth={1.75} />Instructions{store.dirty ? ' · unsaved' : ''}
-          </button>
+          {store.dirty && <span className="k1-badge k1-badge--draft">Unsaved</span>}
         </div>
-        <div className="k1-canvas"><Tester store={store} /></div>
-        <Drawer open={configOpen} side="bottom" label="Agent instructions" onClose={() => setConfigOpen(false)}>
-          <div className="k1-drawer__grab" aria-hidden="true" />
-          <div className="k1-drawer__bar">
-            <h2>Instructions</h2>
-            <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setConfigOpen(false)}>Done</button>
+        <UnderlineTabs<MobileTab>
+          label="Playground"
+          value={mobileTab}
+          onChange={setMobileTab}
+          options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }, { value: 'preview', label: 'Preview' }]}
+        />
+        {mobileTab === 'preview' ? (
+          <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} />}</div>
+        ) : (
+          <div className="k1-inspector k1-inspector--sheet">
+            {loading ? <InspectorSkeleton showTitle={false} /> : <Inspector store={store} showTitle={false} tab={mobileTab} />}
           </div>
-          <div className="k1-inspector k1-inspector--sheet"><Inspector store={store} showTitle={false} /></div>
-        </Drawer>
+        )}
+        {!store.dirty && (
+          <div className="k1-mobile-deploy">
+            <a className="k1-btn k1-btn--primary k1-btn--block" href={href({ page: 'deploy' })}>Deploy<ChevronRight /></a>
+          </div>
+        )}
       </div>
     )
   }
 
   return (
     <div className="k1-playground">
-      <aside className="k1-inspector"><Inspector store={store} /></aside>
-      <div className="k1-canvas"><Tester store={store} /></div>
+      <aside className="k1-inspector">{loading ? <InspectorSkeleton /> : <Inspector store={store} />}</aside>
+      <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} />}</div>
     </div>
   )
 }

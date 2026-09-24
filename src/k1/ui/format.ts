@@ -1,6 +1,6 @@
-export type Format = 'heading' | 'bold' | 'bullet' | 'number'
+export type Format = 'heading' | 'bold' | 'italic' | 'bullet' | 'number'
 
-const LINE_PREFIX: Record<Exclude<Format, 'bold'>, RegExp> = {
+const LINE_PREFIX: Record<Exclude<Format, 'bold' | 'italic'>, RegExp> = {
   heading: /^### /,
   bullet: /^- /,
   number: /^\d+\. /,
@@ -9,9 +9,10 @@ const LINE_PREFIX: Record<Exclude<Format, 'bold'>, RegExp> = {
 const ANY_PREFIX = /^(### |- |\d+\. )/
 
 export function applyFormat(value: string, start: number, end: number, kind: Format) {
-  if (kind === 'bold') {
+  if (kind === 'bold' || kind === 'italic') {
+    const mark = kind === 'bold' ? '**' : '_'
     const inner = value.slice(start, end)
-    return { value: `${value.slice(0, start)}**${inner}**${value.slice(end)}`, start: start + 2, end: end + 2 }
+    return { value: `${value.slice(0, start)}${mark}${inner}${mark}${value.slice(end)}`, start: start + mark.length, end: end + mark.length }
   }
   const lastSelected = end > start && value[end - 1] === '\n' ? end - 1 : end
   const lineStart = value.lastIndexOf('\n', start - 1) + 1

@@ -1,9 +1,9 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ChevronDown, History, LogOut, Menu as MenuIcon, Play, Rocket } from 'lucide-react'
+import { ChevronDown, History, LogOut, MenuIcon, Play, Rocket, X } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { go, href, previewSession, type Route } from '../routes'
-import { Collapse, Drawer } from '../ui/overlay'
+import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
 
 export function K1Mark({ size = 24 }: { size?: number }) {
@@ -16,14 +16,30 @@ export function K1Mark({ size = 24 }: { size?: number }) {
   )
 }
 
-export function Header({ onOpenNav, compact }: { onOpenNav: () => void; compact: boolean }) {
+function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () => void }) {
+  return (
+    <header className="k1-header k1-header--mobile">
+      <a className="k1-header__brand" href={href({ page: 'playground' })} aria-label="K1 Katsastus playground">
+        <K1Mark />
+        <span>K1 Katsastus</span>
+      </a>
+      <button
+        type="button"
+        className="k1-icon-btn k1-header__toggle"
+        aria-label={navOpen ? 'Close navigation' : 'Open navigation'}
+        aria-expanded={navOpen}
+        aria-controls="k1-mobile-nav"
+        onClick={onToggle}
+      >
+        {navOpen ? <X size={20} /> : <MenuIcon size={20} />}
+      </button>
+    </header>
+  )
+}
+
+export function Header() {
   return (
     <header className="k1-header">
-      {compact && (
-        <button type="button" className="k1-icon-btn k1-header__menu" aria-label="Open navigation" onClick={onOpenNav}>
-          <MenuIcon size={18} strokeWidth={1.75} />
-        </button>
-      )}
       <a className="k1-header__home" href={href({ page: 'playground' })} aria-label="K1 Katsastus playground">
         <K1Mark />
       </a>
@@ -45,7 +61,7 @@ export function Header({ onOpenNav, compact }: { onOpenNav: () => void; compact:
           )}
           items={[{
             label: 'Sign out',
-            icon: <LogOut size={14} strokeWidth={1.75} />,
+            icon: <LogOut />,
             onSelect: () => {
               previewSession.end()
               go({ page: 'signin' })
@@ -82,7 +98,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
   )
   return (
     <nav className="k1-nav" aria-label="Main">
-      {link({ page: 'playground' }, route.page === 'playground', <><Play size={16} strokeWidth={1.75} />Playground</>)}
+      {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />Playground</>)}
       <button
         type="button"
         className={`k1-nav__item${inActivity && !activityOpen ? ' is-active' : ''}`}
@@ -106,22 +122,38 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
   )
 }
 
+function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(panelRef, onClose)
+  return (
+    <div ref={panelRef} id="k1-mobile-nav" className="k1-mobile-nav" role="dialog" aria-modal="true" aria-label="Navigation">
+      <div className="k1-mobile-nav__workspace">
+        <strong>Booking agent</strong>
+        <span>K1 Katsastus <span className="k1-badge">Agent</span></span>
+      </div>
+      <Sidebar route={route} onNavigate={onClose} />
+      <div className="k1-mobile-nav__foot">
+        <span className="k1-avatar" aria-hidden="true">K1</span>
+        <span className="k1-mobile-nav__who">Development preview<small>Clerk sign-in is not connected yet</small></span>
+        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => { previewSession.end(); go({ page: 'signin' }) }}>
+          <LogOut />Sign out
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function Shell({ route, compact, children }: { route: Route; compact: boolean; children: ReactNode }) {
   const [navOpen, setNavOpen] = useState(false)
+  useEffect(() => { if (!compact) setNavOpen(false) }, [compact])
   return (
     <div className="k1-app">
-      <Header compact={compact} onOpenNav={() => setNavOpen(true)} />
+      {compact ? <MobileHeader navOpen={navOpen} onToggle={() => setNavOpen((open) => !open)} /> : <Header />}
       <div className="k1-body">
         {!compact && <aside className="k1-sidebar"><Sidebar route={route} /></aside>}
         <main className="k1-main">{children}</main>
       </div>
-      <Drawer open={compact && navOpen} side="left" label="Navigation" onClose={() => setNavOpen(false)}>
-        <div className="k1-drawer__head">
-          <K1Mark />
-          <span>K1 Katsastus</span>
-        </div>
-        <Sidebar route={route} onNavigate={() => setNavOpen(false)} />
-      </Drawer>
+      {compact && navOpen && <MobileNav route={route} onClose={() => setNavOpen(false)} />}
     </div>
   )
 }

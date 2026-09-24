@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useState } from 'react'
-import { Download, Link2, RefreshCw, SlidersHorizontal, UserRound, X } from 'lucide-react'
+import { Download, Link2, RefreshCw, SlidersHorizontal, UserRound, X } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import {
   activeFilterCount,
@@ -183,6 +183,7 @@ export function ActivityPage({ id, compact, filters, onFilters, notify }: {
       tabs={[{ value: 'chat', label: 'Chat' }, { value: 'details', label: 'Details' }]}
       tab={tab}
       onTab={setTab}
+      backLabel="Back to Chat logs"
       onBack={compact ? () => go({ page: 'chats', id: null }) : undefined}
       menu={[
         ...(selected.leadId ? [{ label: 'Open lead', icon: <UserRound size={14} strokeWidth={1.75} />, onSelect: () => go({ page: 'leads', id: selected.leadId }) }] : []),

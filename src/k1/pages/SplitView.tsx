@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ReactNode, useId, useRef, type KeyboardEvent } from 'react'
-import { ArrowLeft, Info, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, Info, MoreHorizontal } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import type { ThreadMessage } from '../data/fixtures'
-import { Menu, type MenuItem } from '../ui/controls'
+import { Menu, Skeleton, type MenuItem } from '../ui/controls'
 
 export function relativeTime(iso: string, now = Date.now()) {
   const minutes = Math.round((now - new Date(iso).getTime()) / 60_000)
@@ -25,6 +25,19 @@ export function SampleBadge() {
 }
 
 export type ListItem = { id: string; title: string; meta: string; subtitle: string; href: string }
+
+export function ListSkeleton({ rows = 8 }: { rows?: number }) {
+  return (
+    <div className="k1-list__items k1-list__items--skeleton" role="status" aria-label="Loading">
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="k1-skel-row">
+          <span className="k1-skel-row__top"><Skeleton height={14} width="50%" /><Skeleton height={12} width={36} /></span>
+          <Skeleton height={12} width="80%" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function ListPane({ title, badge, actions, chips, items, selectedId, empty, loading }: {
   title: string
@@ -52,20 +65,12 @@ export function ListPane({ title, badge, actions, chips, items, selectedId, empt
         <div className="k1-list__actions">{actions}</div>
       </header>
       {chips}
-      {loading && !items.length ? (
-        <div className="k1-list__empty" aria-busy="true"><p>Loading…</p></div>
+      {loading ? (
+        <ListSkeleton />
       ) : items.length ? (
-        <ul className="k1-list__items" ref={listRef} onKeyDown={onKey} aria-busy={loading || undefined}>
-          <AnimatePresence initial={false}>
-            {items.map((item) => (
-              <motion.li
-                key={item.id}
-                layout="position"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18, ease }}
-              >
+        <ul className="k1-list__items" ref={listRef} onKeyDown={onKey}>
+          {items.map((item) => (
+              <li key={item.id}>
                 <a href={item.href} className={`k1-card${item.id === selectedId ? ' is-selected' : ''}`} aria-current={item.id === selectedId ? 'true' : undefined}>
                   <span className="k1-card__row">
                     <strong>{item.title}</strong>
@@ -73,9 +78,8 @@ export function ListPane({ title, badge, actions, chips, items, selectedId, empt
                   </span>
                   <span className="k1-card__sub">{item.subtitle}</span>
                 </a>
-              </motion.li>
-            ))}
-          </AnimatePresence>
+              </li>
+          ))}
         </ul>
       ) : (
         <div className="k1-list__empty">{empty}</div>
@@ -84,11 +88,12 @@ export function ListPane({ title, badge, actions, chips, items, selectedId, empt
   )
 }
 
-export function Tabs<T extends string>({ tabs, value, onChange, idBase }: {
+export function Tabs<T extends string>({ tabs, value, onChange, idBase, label }: {
   tabs: Array<{ value: T; label: string }>
   value: T
   onChange: (value: T) => void
   idBase: string
+  label?: string
 }) {
   const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = tabs.findIndex((tab) => tab.value === value)
@@ -100,7 +105,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, idBase }: {
     }
   }
   return (
-    <div className="k1-tabs" role="tablist" onKeyDown={onKey}>
+    <div className="k1-tabs" role="tablist" aria-label={label} onKeyDown={onKey}>
       {tabs.map((tab) => (
         <button
           key={tab.value}
@@ -114,15 +119,21 @@ export function Tabs<T extends string>({ tabs, value, onChange, idBase }: {
           onClick={() => onChange(tab.value)}
         >
           {tab.label}
-          {tab.value === value && <motion.span layoutId={`${idBase}-underline`} className="k1-tabs__line" transition={{ duration: 0.2, ease }} />}
+          {tab.value === value && <span className="k1-tabs__line" />}
         </button>
       ))}
     </div>
   )
 }
 
-export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, onBack, children, paneKey }: {
+export function UnderlineTabs<T extends string>({ value, options, onChange, label }: { value: T; options: Array<{ value: T; label: string }>; onChange: (value: T) => void; label: string }) {
+  const idBase = useId().replace(/:/g, '')
+  return <div className="k1-underline-tabs"><Tabs tabs={options} value={value} onChange={onChange} idBase={idBase} label={label} /></div>
+}
+
+export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, onBack, backLabel = 'Back', children, paneKey }: {
   title: string
+  backLabel?: string
   tabs: Array<{ value: T; label: string }>
   tab: T
   onTab: (value: T) => void
@@ -135,12 +146,12 @@ export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, on
   return (
     <section className="k1-detail" aria-label={title}>
       <header className="k1-detail__head">
+        {onBack && (
+          <button type="button" className="k1-detail__back" onClick={onBack}>
+            <ChevronLeft />{backLabel}
+          </button>
+        )}
         <div className="k1-detail__titlebar">
-          {onBack && (
-            <button type="button" className="k1-icon-btn k1-detail__back" aria-label="Back to list" onClick={onBack}>
-              <ArrowLeft size={16} strokeWidth={1.75} />
-            </button>
-          )}
           <h2>{title}</h2>
           <Menu
             label="More actions"
@@ -154,21 +165,15 @@ export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, on
         </div>
         <Tabs tabs={tabs} value={tab} onChange={onTab} idBase={idBase} />
       </header>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={`${paneKey}-${tab}`}
-          id={`${idBase}-panel`}
-          role="tabpanel"
-          aria-labelledby={`${idBase}-tab-${tab}`}
-          className="k1-detail__body"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.14, ease }}
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
+      <div
+        key={`${paneKey}-${tab}`}
+        id={`${idBase}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${idBase}-tab-${tab}`}
+        className="k1-detail__body"
+      >
+        {children}
+      </div>
     </section>
   )
 }

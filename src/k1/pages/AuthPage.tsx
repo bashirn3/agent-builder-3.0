@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FormEvent, useEffect, useId, useRef, useState } from 'react'
-import { ArrowUp, Check, Eye, EyeOff, MessageSquareMore } from 'lucide-react'
+import { ArrowUp, Check, Eye, EyeOff, MessageSquareMore } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import { K1Mark } from '../shell/Shell'
 import { Collapse } from '../ui/overlay'
