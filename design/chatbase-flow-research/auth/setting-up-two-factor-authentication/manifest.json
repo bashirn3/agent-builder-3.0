@@ -1,0 +1,36 @@
+{
+  "flow_name": "Setting up two-factor authentication",
+  "flow_id": "4f646851-8420-4ab1-b51a-59e94fba6136",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/4f646851-8420-4ab1-b51a-59e94fba6136",
+  "actions": ["Setting Up", "Verifying"],
+  "reported_screen_count": 5,
+  "returned_screen_count": 5,
+  "positions": [1, 2, 3, 4, 5],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "22d98409-6111-44bc-af05-8df237cab0a8",
+    "dbbdd1d7-207a-465c-998a-29a609b24a9c",
+    "50896e7e-1c87-4ea8-b2cb-cdd6e92c53d4",
+    "52635aa2-273b-4255-bf2c-7a8614b06430",
+    "0ab936a1-6fe8-4fe4-979f-aff8b1b2f61c"
+  ],
+  "shared_screen_ids": {
+    "22d98409-6111-44bc-af05-8df237cab0a8": ["Account settings position 4", "Deleting account position 1"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png", "images/03.png", "images/04.png", "images/05.png"],
+  "contact_sheets": ["contact-sheet-01.png"],
+  "downloaded": 5,
+  "visually_inspected": 5,
+  "unreadable": 0,
+  "inspection_status": "complete",
+  "sensitive_frames": [
+    "02 (QR + TOTP secret visible — not transcribed)",
+    "03 (TOTP secret + filled digits — not transcribed)",
+    "04 (recovery codes visible — not transcribed)"
+  ]
+}

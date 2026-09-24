@@ -1,0 +1,28 @@
+{
+  "flow_name": "Adding an instance",
+  "flow_id": "4ac37fa2-8665-419a-8457-63c60563e7e3",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/4ac37fa2-8665-419a-8457-63c60563e7e3",
+  "actions": [],
+  "reported_screen_count": 2,
+  "returned_screen_count": 2,
+  "positions": [1, 2],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "5ac07838-b2fc-4025-afb6-45c0012ab7a1",
+    "d04586a4-5e3b-472e-b63b-069e15c7ee7d"
+  ],
+  "shared_screen_ids": {
+    "5ac07838-b2fc-4025-afb6-45c0012ab7a1": ["Setting up an agent position 5", "Moving instances position 1"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png"],
+  "contact_sheets": ["contact-sheet-01.png"],
+  "downloaded": 2,
+  "visually_inspected": 2,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}

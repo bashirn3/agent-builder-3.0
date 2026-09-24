@@ -1,0 +1,33 @@
+{
+  "flow_name": "Reset password",
+  "flow_id": "7eb6d0e3-a45a-47ad-8c5b-ee2578c00a7e",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/7eb6d0e3-a45a-47ad-8c5b-ee2578c00a7e",
+  "actions": ["Resetting Password"],
+  "reported_screen_count": 7,
+  "returned_screen_count": 7,
+  "positions": [1, 2, 3, 4, 5, 6, 7],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "e370cba8-007b-4a51-8896-900086b67f3e",
+    "3d0e09b6-2b38-4c58-bf84-94ac2344d893",
+    "3089bf13-aab7-40d8-adf7-b7d9dc8340b4",
+    "b088b603-11b4-4cd4-8e53-30cf08399785",
+    "2123633d-0401-47cc-a67a-22743da0241a",
+    "e23ddfb0-32f8-4ed3-830c-127bbd8dc7b3",
+    "e1163660-4fe6-49fd-9058-97c2a054a705"
+  ],
+  "shared_screen_ids": {
+    "e370cba8-007b-4a51-8896-900086b67f3e": ["Logging in position 5"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png", "images/03.png", "images/04.png", "images/05.png", "images/06.png", "images/07.png"],
+  "contact_sheets": ["contact-sheet-01.png", "contact-sheet-02.png"],
+  "downloaded": 7,
+  "visually_inspected": 7,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}

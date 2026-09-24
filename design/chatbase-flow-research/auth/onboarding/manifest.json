@@ -1,0 +1,61 @@
+{
+  "flow_name": "Onboarding",
+  "flow_id": "e476c604-a53d-4fe3-a171-b6321a436049",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/e476c604-a53d-4fe3-a171-b6321a436049",
+  "actions": ["Creating Account", "Onboarding"],
+  "reported_screen_count": 20,
+  "returned_screen_count": 20,
+  "positions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "3cfeb1b0-d89a-4b34-8bc8-e677792ba8b6",
+    "1950c842-8de9-4c4e-a45d-ceaffc41d023",
+    "45e21367-0b01-4472-ae48-b50aca136d08",
+    "6f5ef2d1-fc3f-4be4-9e1b-2a492837eb01",
+    "d64d6346-11da-43fb-a102-4716c8fb17d6",
+    "1e455515-a3bf-47cb-be1c-765175e83091",
+    "6f6ce167-aec5-4260-bc37-bcd2414c04b5",
+    "0b886108-f3f4-4b9d-98ad-9897a23448a4",
+    "a72f46fc-e9bf-4f8a-b7dd-bb34b8db4ea2",
+    "4f106772-fa21-4410-a117-7a14910db626",
+    "e6b6c766-ad61-48b3-aedd-f9a6b40bcb40",
+    "fd22051b-6ddd-4b5c-879b-759d2b33bba6",
+    "b26cf72b-8063-4551-9d56-3884cc8be773",
+    "da168eb7-4bed-404e-8bb4-11826391141e",
+    "9afd6b0c-2759-44fd-9306-c66ec3489ce7",
+    "6c22e0e3-47b0-4910-aaf9-b31364015f84",
+    "ceea88d9-0c49-4f75-a5e3-75d397e0a375",
+    "c9f4e75a-8f24-4fad-9cb0-f473e581b65c",
+    "8a74b51d-ea06-476e-b511-6c8a12544cb6",
+    "b8a8262b-bd97-48ef-9062-8bdbe0775b1b"
+  ],
+  "shared_screen_ids": {
+    "b8a8262b-bd97-48ef-9062-8bdbe0775b1b": ["Setting up a playground position 1"]
+  },
+  "segments": {
+    "auth": [1, 2, 3, 4, 5, 6, 7, 8],
+    "first_agent_and_beyond_likely_out_of_scope": [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": [
+    "images/01.png", "images/02.png", "images/03.png", "images/04.png", "images/05.png",
+    "images/06.png", "images/07.png", "images/08.png", "images/09.png", "images/10.png",
+    "images/11.png", "images/12.png", "images/13.png", "images/14.png", "images/15.png",
+    "images/16.png", "images/17.png", "images/18.png", "images/19.png", "images/20.png"
+  ],
+  "contact_sheets": [
+    "contact-sheet-01.png",
+    "contact-sheet-02.png",
+    "contact-sheet-03.png",
+    "contact-sheet-04.png"
+  ],
+  "downloaded": 20,
+  "visually_inspected": 20,
+  "unreadable": 0,
+  "inspection_status": "complete",
+  "sensitive_frames": ["07 (password visibility on — plaintext not transcribed)"]
+}

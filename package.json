@@ -6,9 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check": "node scripts/refinement.check.ts && node scripts/k1.check.ts",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react": "^1.1.10",
+    "lucide-react": "^1.47.0",
     "motion": "^13.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

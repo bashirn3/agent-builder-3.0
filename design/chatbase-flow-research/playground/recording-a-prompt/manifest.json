@@ -1,0 +1,30 @@
+{
+  "flow_name": "Recording a prompt",
+  "flow_id": "b0059d42-0a5f-4c69-bcd9-9e6d17864414",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/b0059d42-0a5f-4c69-bcd9-9e6d17864414",
+  "actions": ["Recording Audio & Video"],
+  "reported_screen_count": 3,
+  "returned_screen_count": 3,
+  "positions": [1, 2, 3],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "78548a27-8ee6-48cc-92cb-886a5824d6fb",
+    "b47a6118-b106-42ee-9e7e-7d52dfa28658",
+    "218e17de-51f8-4ba2-94e8-8c790c9e5162"
+  ],
+  "shared_screen_ids": {
+    "78548a27-8ee6-48cc-92cb-886a5824d6fb": ["Setting up an agent position 1", "Comparing AI models position 2"],
+    "218e17de-51f8-4ba2-94e8-8c790c9e5162": ["Comparing AI models position 3"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png", "images/03.png"],
+  "contact_sheets": ["contact-sheet-01.png"],
+  "downloaded": 3,
+  "visually_inspected": 3,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}

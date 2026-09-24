@@ -1,0 +1,29 @@
+{
+  "flow_name": "Logging out",
+  "flow_id": "2684ff45-1eb1-4cc9-a1b0-bb63a21a57f4",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/2684ff45-1eb1-4cc9-a1b0-bb63a21a57f4",
+  "actions": ["Logging Out"],
+  "reported_screen_count": 2,
+  "returned_screen_count": 2,
+  "positions": [1, 2],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "c0638095-87a3-4588-bbea-f8f4c1563af1",
+    "cf69146f-f96f-41ce-ac78-dba5aac058f0"
+  ],
+  "shared_screen_ids": {
+    "c0638095-87a3-4588-bbea-f8f4c1563af1": ["Account settings position 2"],
+    "cf69146f-f96f-41ce-ac78-dba5aac058f0": ["Logging in position 1"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png"],
+  "contact_sheets": ["contact-sheet-01.png"],
+  "downloaded": 2,
+  "visually_inspected": 2,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}

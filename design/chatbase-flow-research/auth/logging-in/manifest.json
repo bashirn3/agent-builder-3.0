@@ -1,0 +1,36 @@
+{
+  "flow_name": "Logging in",
+  "flow_id": "89e4bd04-fe27-40a9-98ae-bdf64edd7772",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/89e4bd04-fe27-40a9-98ae-bdf64edd7772",
+  "actions": ["Logging In", "Verifying"],
+  "reported_screen_count": 8,
+  "returned_screen_count": 8,
+  "positions": [1, 2, 3, 4, 5, 6, 7, 8],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "cf69146f-f96f-41ce-ac78-dba5aac058f0",
+    "b276a198-6887-48d5-a4a4-2722d786e565",
+    "c2589960-5c7b-48b0-a9e5-3f27e2825726",
+    "8f094db2-17ba-4639-8c66-a28e8d1c98f6",
+    "e370cba8-007b-4a51-8896-900086b67f3e",
+    "0a2ac074-eb51-4253-9071-3f8101ab8ed9",
+    "21e8aa9d-c0f5-478a-a615-25471e1047db",
+    "46f67829-63fe-4bbc-95de-8d3258812837"
+  ],
+  "shared_screen_ids": {
+    "cf69146f-f96f-41ce-ac78-dba5aac058f0": ["Logging out position 2"],
+    "e370cba8-007b-4a51-8896-900086b67f3e": ["Reset password position 1"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png", "images/03.png", "images/04.png", "images/05.png", "images/06.png", "images/07.png", "images/08.png"],
+  "contact_sheets": ["contact-sheet-01.png", "contact-sheet-02.png"],
+  "downloaded": 8,
+  "visually_inspected": 8,
+  "unreadable": 0,
+  "inspection_status": "complete",
+  "sensitive_frames": ["07 (2FA digits visible in capture — not transcribed)"]
+}

@@ -1,0 +1,28 @@
+{
+  "flow_name": "Deleting an instance",
+  "flow_id": "1e2fa305-bdfd-42ff-a739-959813954ad2",
+  "app_name": "Chatbase",
+  "platform": "web",
+  "source_url": "https://mobbin.com/flows/1e2fa305-bdfd-42ff-a739-959813954ad2",
+  "actions": ["Deleting & Removing"],
+  "reported_screen_count": 2,
+  "returned_screen_count": 2,
+  "positions": [1, 2],
+  "position_gaps": [],
+  "duplicate_positions": [],
+  "screen_ids_in_order": [
+    "4161d47e-955b-4f4c-8567-01e99313c58a",
+    "f7b551e2-9cfb-45f6-821e-183585a02045"
+  ],
+  "shared_screen_ids": {
+    "4161d47e-955b-4f4c-8567-01e99313c58a": ["Moving instances position 2"]
+  },
+  "image_dimensions": "1920x1320",
+  "layout": "desktop web capture with Mobbin footer chrome",
+  "local_images": ["images/01.png", "images/02.png"],
+  "contact_sheets": ["contact-sheet-01.png"],
+  "downloaded": 2,
+  "visually_inspected": 2,
+  "unreadable": 0,
+  "inspection_status": "complete"
+}
