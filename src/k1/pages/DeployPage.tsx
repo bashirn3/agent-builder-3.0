@@ -10,7 +10,7 @@ import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
 
 // Flip once the email step in the Deploy Request workflow sends to Rapid.
-const EMAIL_CONNECTED = false
+const EMAIL_CONNECTED = true
 
 const STATUS_LABEL: Record<DeployRequest['status'], string> = {
   requested: 'Waiting for Rapid',
