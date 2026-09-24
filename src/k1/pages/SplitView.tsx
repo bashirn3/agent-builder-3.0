@@ -24,7 +24,7 @@ export function SampleBadge() {
   return <span className="k1-badge k1-badge--sample" title="Invented records for the preview. Not connected to a live source.">Sample data</span>
 }
 
-export type ListItem = { id: string; title: string; meta: string; subtitle: string; href: string }
+export type ListItem = { id: string; title: string; meta: string; subtitle: string; href: string; tags?: ReactNode }
 
 export function ListSkeleton({ rows = 8 }: { rows?: number }) {
   return (
@@ -77,6 +77,7 @@ export function ListPane({ title, badge, actions, chips, items, selectedId, empt
                     <time>{item.meta}</time>
                   </span>
                   <span className="k1-card__sub">{item.subtitle}</span>
+                  {item.tags && <span className="k1-card__tags">{item.tags}</span>}
                 </a>
               </li>
           ))}

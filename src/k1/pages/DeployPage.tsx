@@ -1,103 +1,89 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { FormEvent, useId, useRef, useState } from 'react'
-import { Check, Copy, WhatsApp } from '../ui/icons'
+import { FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { ease } from '../../lib/motion'
-import type { AgentConfig } from '../data/agentConfig'
-import { Dialog } from '../ui/overlay'
+import { describeError, type AgentConfig, type AgentVersion } from '../data/agentConfig'
+import { requestDeploy, type DeployRequest } from '../data/builderApi'
+import { go } from '../routes'
 import { Skeleton, Spinner } from '../ui/controls'
+import { Check, ThumbsDown, ThumbsUp, WhatsApp } from '../ui/icons'
+import { Dialog } from '../ui/overlay'
+import { formatStamp } from './SplitView'
 
-type DeployRequest = {
-  id: string
-  name: string
-  email: string
-  goLive: string
-  notes: string
-  version: string
-  createdAt: string
+// Flip once the email step in the Deploy Request workflow sends to Rapid.
+const EMAIL_CONNECTED = false
+
+const STATUS_LABEL: Record<DeployRequest['status'], string> = {
+  requested: 'Waiting for Rapid',
+  deployed: 'Deployed',
+  superseded: 'Replaced by a newer request',
 }
 
-const STORE_KEY = 'k1-deploy-requests'
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-function loadRequests(): DeployRequest[] {
-  try {
-    return JSON.parse(sessionStorage.getItem(STORE_KEY) ?? '[]') as DeployRequest[]
-  } catch {
-    return []
-  }
-}
-
-function requestText(request: DeployRequest) {
-  return [
-    'Subject: K1 Katsastus — WhatsApp deployment request',
-    '',
-    `Requested by: ${request.name} <${request.email}>`,
-    `Configuration: ${request.version}`,
-    `Preferred go-live: ${request.goLive || 'Not specified'}`,
-    '',
-    request.notes || 'No additional notes.',
-  ].join('\n')
-}
-
-export function DeployPage({ config, dirty, notify }: {
+export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   config: AgentConfig | null
   dirty: boolean
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
+  versionId?: string
+  onChanged: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [requests, setRequests] = useState<DeployRequest[]>(loadRequests)
-  const [prepared, setPrepared] = useState<DeployRequest | null>(null)
+  const [target, setTarget] = useState<AgentVersion | null>(null)
+  const [sent, setSent] = useState<DeployRequest | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', goLive: '', notes: '', confirmed: false })
   const [attempted, setAttempted] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
   const ids = { name: useId(), email: useId(), goLive: useId(), notes: useId(), confirm: useId(), error: useId() }
 
-  const active = config?.versions.find((version) => version.active)
-  const versionLabel = !config
-    ? 'Loading the saved configuration…'
-    : active ? `Version ${active.number} (active)` : 'Default K1 instructions (not saved yet)'
-  const errors = [
-    !config && 'Wait for the saved configuration to load.',
-    !form.name.trim() && 'Enter your name.',
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 'Enter a valid work email.',
-    !form.confirmed && 'Confirm that the active configuration has been tested.',
-  ].filter(Boolean) as string[]
+  const pendingFor = (version: AgentVersion) => config?.deployRequests.find((request) => request.versionId === version.id && request.status === 'requested')
+  const canRequest = (version: AgentVersion) => Boolean(config?.tracking) && !version.live && !pendingFor(version)
 
-  const openDialog = () => {
-    setPrepared(null)
+  useEffect(onChanged, [])
+
+  const open = (version: AgentVersion) => {
+    setSent(null)
     setAttempted(false)
-    setOpen(true)
+    setTarget(version)
   }
 
-  const submit = (event: FormEvent) => {
+  useEffect(() => {
+    if (!config || !versionId) return
+    const version = config.versions.find((item) => item.id === versionId)
+    if (version && canRequest(version)) open(version)
+    go({ page: 'deploy' }, true)
+  }, [config, versionId])
+
+  const errors = [
+    !form.name.trim() && 'Enter your name.',
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 'Enter a valid work email.',
+    !form.confirmed && 'Confirm that this version has been tested.',
+  ].filter(Boolean) as string[]
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
     setAttempted(true)
-    if (errors.length) return
+    if (errors.length || !target) return
     setSubmitting(true)
-    window.setTimeout(() => {
-      const request: DeployRequest = {
-        id: `req-${Date.now().toString(36)}`,
-        name: form.name.trim(),
+    try {
+      const request = await requestDeploy({
+        versionId: target.id,
+        requestedBy: form.name.trim(),
         email: form.email.trim(),
         goLive: form.goLive,
         notes: form.notes.trim(),
-        version: versionLabel,
-        createdAt: new Date().toISOString(),
-      }
-      const next = [request, ...requests]
-      sessionStorage.setItem(STORE_KEY, JSON.stringify(next))
-      setRequests(next)
-      setPrepared(request)
-      setSubmitting(false)
+      })
+      setSent(request)
       setForm({ name: form.name, email: form.email, goLive: '', notes: '', confirmed: false })
-    }, 500)
+      onChanged()
+    } catch (error) {
+      notify({ tone: 'error', title: 'Request not sent', body: `Nothing was sent (${describeError(error)}). Try again.` })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const copy = (request: DeployRequest) => {
-    void navigator.clipboard?.writeText(requestText(request))
-      .then(() => notify({ title: 'Copied', body: 'The request text is on your clipboard.' }))
-      .catch(() => notify({ tone: 'error', title: 'Copy failed', body: 'Your browser blocked clipboard access.' }))
-  }
+  const live = config?.liveVersion
+  const pending = config?.deployRequests.find((request) => request.status === 'requested')
 
   return (
     <div className="k1-deploy">
@@ -105,72 +91,114 @@ export function DeployPage({ config, dirty, notify }: {
         <h1 className="k1-deploy__title">Deploy</h1>
       </header>
       <div className="k1-deploy__body">
-      <div className="k1-channels">
-        <article className="k1-channel">
-          <div className="k1-channel__top">
-            <span className="k1-channel__tile" aria-hidden="true"><WhatsApp size={26} /></span>
-            {requests.length > 0 && <span className="k1-status k1-status--contacted">Requested</span>}
-          </div>
-          <div className="k1-channel__text">
-            <h2>WhatsApp</h2>
-            <p>Ask the Wasup team to put the K1 booking agent live on your WhatsApp number.</p>
-          </div>
-          <div className="k1-channel__foot">
-            {config
-              ? <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" onClick={openDialog}>Request deployment</button>
-              : <Skeleton width={128} height={36} />}
-          </div>
-        </article>
-      </div>
-      {dirty && <p className="k1-hint k1-hint--warn">You have unsaved Playground changes. A deployment request always refers to the saved active configuration.</p>}
+        <div className="k1-channels">
+          <article className="k1-channel">
+            <div className="k1-channel__top">
+              <span className="k1-channel__tile" aria-hidden="true"><WhatsApp size={26} /></span>
+              {pending && <span className="k1-status k1-status--contacted">v{pending.versionNumber} requested</span>}
+            </div>
+            <div className="k1-channel__text">
+              <h2>WhatsApp</h2>
+              {!config ? <Skeleton width={220} height={14} /> : live ? (
+                <p><span className="k1-live-dot" aria-hidden="true" />Live: <strong>v{live.number}</strong>{config.liveSince ? ` since ${shortDate(config.liveSince)}` : ''}</p>
+              ) : (
+                <p>The live version is recorded once Rapid confirms a deployment.</p>
+              )}
+            </div>
+          </article>
+        </div>
 
-      <section className="k1-deploy__requests" aria-labelledby="k1-requests-title">
-        <h2 id="k1-requests-title" className="k1-label">Requests in this session</h2>
-        {requests.length ? (
-          <ul>
-            <AnimatePresence initial={false}>
-              {requests.map((request) => (
-                <motion.li
-                  key={request.id}
-                  className="k1-row-card"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ duration: 0.2, ease }}
-                >
-                  <div className="k1-row-card__text">
-                    <strong>{request.version}</strong>
-                    <span>{new Date(request.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {request.name}</span>
-                  </div>
-                  <span className="k1-status k1-status--draft">Prepared · not sent</span>
-                  <button type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label="Copy request text" onClick={() => copy(request)}><Copy size={15} strokeWidth={1.75} /></button>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
-        ) : <p className="k1-hint">No requests yet.</p>}
-      </section>
+        {config && !config.tracking && (
+          <p className="k1-hint k1-hint--warn">Deploy requests and live tracking need the latest backend update. Your saved versions are listed below.</p>
+        )}
+        {dirty && <p className="k1-hint k1-hint--warn">You have unsaved Playground changes. Save them as a version before requesting a deployment.</p>}
+
+        <section className="k1-deploy__versions" aria-labelledby="k1-versions-title">
+          <h2 id="k1-versions-title" className="k1-section-title">Versions</h2>
+          {!config ? (
+            <div className="k1-table__skeleton">{[0, 1, 2].map((key) => <Skeleton key={key} height={64} />)}</div>
+          ) : config.versions.length ? (
+            <ul className="k1-versions">
+              {config.versions.map((version) => {
+                const request = pendingFor(version)
+                return (
+                  <li key={version.id} className={`k1-version${version.live ? ' is-live' : ''}`}>
+                    <div className="k1-version__main">
+                      <div className="k1-version__title">
+                        <strong>v{version.number}</strong>
+                        {version.live && <span className="k1-vtag is-live">Live</span>}
+                        {request && <span className="k1-vtag is-draft">Requested</span>}
+                      </div>
+                      <p className="k1-version__note">{version.note || 'No change note'}</p>
+                      <p className="k1-version__meta">
+                        Saved {formatStamp(version.createdAt)}{version.savedBy ? ` · ${version.savedBy}` : ''}
+                        {config.tracking && (
+                          <span className="k1-version__score">
+                            <ThumbsUp size={12} strokeWidth={1.75} />{version.thumbsUp}
+                            <ThumbsDown size={12} strokeWidth={1.75} />{version.thumbsDown}
+                            <span>· {version.conversations} test chat{version.conversations === 1 ? '' : 's'}</span>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {!version.live && (
+                      <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" disabled={!canRequest(version)} onClick={() => open(version)}>
+                        {request ? 'Requested' : 'Request deployment'}
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : <p className="k1-hint">No saved versions yet. Save your Playground changes to create v1.</p>}
+        </section>
+
+        {config && config.deployRequests.length > 0 && (
+          <section className="k1-deploy__requests" aria-labelledby="k1-requests-title">
+            <h2 id="k1-requests-title" className="k1-section-title">Requests</h2>
+            <ul>
+              <AnimatePresence initial={false}>
+                {config.deployRequests.map((request) => (
+                  <motion.li key={request.id} className="k1-row-card" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.2, ease }}>
+                    <div className="k1-row-card__text">
+                      <strong>v{request.versionNumber}</strong>
+                      <span>
+                        {formatStamp(request.createdAt)} · {request.requestedBy}
+                        {request.goLive ? ` · go-live ${request.goLive}` : ''}
+                        {request.deployedAt ? ` · deployed ${formatStamp(request.deployedAt)}` : ''}
+                      </span>
+                    </div>
+                    <span className={`k1-status k1-status--${request.status === 'deployed' ? 'booked' : request.status === 'requested' ? 'contacted' : 'new'}`}>{STATUS_LABEL[request.status]}</span>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          </section>
+        )}
       </div>
 
-      <Dialog open={open} title={prepared ? 'Request prepared' : 'Request deployment'} onClose={() => setOpen(false)} width={440} initialFocus={prepared ? undefined : nameRef}>
+      <Dialog open={Boolean(target)} title={sent ? 'Request sent' : `Request deployment of v${target?.number ?? ''}`} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : nameRef}>
         <AnimatePresence mode="wait" initial={false}>
-          {prepared ? (
+          {sent ? (
             <motion.div key="done" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease }}>
               <div className="k1-deploy__done">
                 <span className="k1-deploy__check" aria-hidden="true"><Check size={16} strokeWidth={2.25} /></span>
-                <p>Email delivery is not connected yet, so this request has <strong>not been sent</strong> to Wasup. It is kept in this browser session. Copy the text below to send it yourself.</p>
+                <p>
+                  {EMAIL_CONNECTED
+                    ? <>Rapid has been emailed about <strong>v{sent.versionNumber}</strong>. It shows as Deployed here once it is live on WhatsApp.</>
+                    : <>The request for <strong>v{sent.versionNumber}</strong> is saved and shows as Waiting for Rapid. The email to Rapid is not connected yet, so let them know directly.</>}
+                </p>
               </div>
-              <pre className="k1-deploy__preview">{requestText(prepared)}</pre>
               <footer className="k1-dialog__foot">
-                <button type="button" className="k1-btn k1-btn--outline" onClick={() => copy(prepared)}><Copy size={14} strokeWidth={1.75} />Copy request text</button>
-                <button type="button" className="k1-btn k1-btn--primary" onClick={() => setOpen(false)}>Done</button>
+                <button type="button" className="k1-btn k1-btn--primary" onClick={() => setTarget(null)}>Done</button>
               </footer>
             </motion.div>
           ) : (
-            <motion.form key="form" onSubmit={submit} noValidate initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14, ease }}>
+            <motion.form key="form" onSubmit={(event) => void submit(event)} noValidate initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14, ease }}>
               <div className="k1-form-stack">
                 <div className="k1-field">
-                  <span className="k1-field__label">Configuration</span>
-                  <p className="k1-readonly">{versionLabel}</p>
+                  <span className="k1-field__label">Version</span>
+                  <p className="k1-readonly">v{target?.number}{target?.note ? ` · ${target.note}` : ''}</p>
                 </div>
                 <div className="k1-field">
                   <label htmlFor={ids.name}>Your name</label>
@@ -186,18 +214,18 @@ export function DeployPage({ config, dirty, notify }: {
                 </div>
                 <div className="k1-field">
                   <label htmlFor={ids.notes}>Notes</label>
-                  <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder="Stations, opening hours, or anything the team should know" onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+                  <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder="Anything Rapid should know before it goes live" onChange={(event) => setForm({ ...form, notes: event.target.value })} />
                 </div>
                 <label className="k1-check" htmlFor={ids.confirm}>
                   <input id={ids.confirm} type="checkbox" checked={form.confirmed} onChange={(event) => setForm({ ...form, confirmed: event.target.checked })} />
                   <span className="k1-check__box" aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
-                  The active configuration has been tested in the Playground.
+                  This version has been tested.
                 </label>
                 {attempted && errors.length > 0 && <p id={ids.error} className="k1-auth__error" role="alert">{errors[0]}</p>}
               </div>
               <footer className="k1-dialog__foot">
-                <button type="button" className="k1-btn k1-btn--outline" onClick={() => setOpen(false)}>Cancel</button>
-                <button type="submit" className="k1-btn k1-btn--primary" disabled={submitting || !config} aria-busy={submitting}>{submitting && <Spinner />}Prepare request</button>
+                <button type="button" className="k1-btn k1-btn--outline" onClick={() => setTarget(null)}>Cancel</button>
+                <button type="submit" className="k1-btn k1-btn--primary" disabled={submitting} aria-busy={submitting}>{submitting && <Spinner />}Send request</button>
               </footer>
             </motion.form>
           )}
