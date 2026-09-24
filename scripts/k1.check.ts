@@ -10,6 +10,8 @@ import {
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
+import { matchesFilters, type TestChatSummary } from '../src/k1/data/builderApi.ts'
+import { describeChanges } from '../src/k1/data/changes.ts'
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message)
@@ -19,6 +21,8 @@ for (const route of [
   { page: 'signin' },
   { page: 'signup' },
   { page: 'playground' },
+  { page: 'compare' },
+  { page: 'deploy', version: 'abc-123' },
   { page: 'deploy' },
   { page: 'chats', id: null },
   { page: 'chats', id: 'c-1042' },
@@ -65,5 +69,22 @@ assert(bold.value.startsWith('**Role**') && bold.start === 2 && bold.end === 6, 
 const italic = applyFormat(text, 5, 9, 'italic')
 assert(italic.value === 'Role\n_Tone_\nRules' && italic.start === 6 && italic.end === 10, 'italic wraps the selection in underscores')
 assert(applyFormat('Role\nTone\n', 0, 5, 'bullet').value === '- Role\nTone\n', 'a selection ending at a line break does not format the next line')
+
+const chat = (over: Partial<TestChatSummary>): TestChatSummary => ({
+  id: 'c', versionId: 'v', versionNumber: 3, isDraft: false, source: 'playground', title: 'Saturday?', startedBy: null,
+  createdAt: '2026-09-20T10:00:00.000Z', updatedAt: '2026-09-20T10:00:00.000Z', messageCount: 2, thumbsUp: 0, thumbsDown: 1, lastReply: 'No', ...over,
+})
+const none = { versions: [], includeDraft: true, feedback: null, source: null, from: null, to: null, query: '' } as const
+assert(matchesFilters(chat({}), { ...none, versions: [3] }), 'version filter keeps chats on that version')
+assert(!matchesFilters(chat({}), { ...none, versions: [4] }), 'version filter drops other versions')
+assert(matchesFilters(chat({ isDraft: true }), { ...none, versions: [4] }), 'drafts stay when drafts are included')
+assert(!matchesFilters(chat({ isDraft: true }), { ...none, includeDraft: false }), 'drafts can be hidden')
+assert(matchesFilters(chat({}), { ...none, feedback: 'down' }) && !matchesFilters(chat({}), { ...none, feedback: 'up' }), 'feedback filter')
+assert(!matchesFilters(chat({}), { ...none, source: 'compare' }), 'source filter')
+assert(matchesFilters(chat({}), { ...none, query: 'SATURDAY' }) && !matchesFilters(chat({}), { ...none, query: 'price' }), 'search matches the title, ignoring case')
+assert(!matchesFilters(chat({}), { ...none, from: '2026-09-21T00:00:00.000Z' }), 'date filter')
+const base = { locked: false, masterPrompt: 'a', additional: '', opener: 'hi' }
+assert(describeChanges(base, { ...base, masterPrompt: 'b', opener: 'hey' }) === 'Edited base prompt · Changed opener', 'change note lists edits')
+assert(describeChanges(base, { ...base, additional: 'Open Mon–Fri.' }) === 'Edited additional instructions', 'change note mentions additional instructions')
 
 console.log('k1 checks passed')

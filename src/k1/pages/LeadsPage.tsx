@@ -44,10 +44,7 @@ function LeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
           <h3 className="k1-facts__heading"><MessagesSquare size={14} strokeWidth={1.75} />Conversation</h3>
           {conversations.length ? conversations.map((conversation) => (
             <div key={conversation.id} className="k1-lead-thread">
-              <p className="k1-hint">
-                {conversation.channel} ·{' '}
-                <a className="k1-link" href={href({ page: 'chats', id: conversation.id })}>Open in Chat logs</a>
-              </p>
+              <p className="k1-hint">{conversation.channel}</p>
               <Thread messages={conversation.messages} />
             </div>
           )) : <p className="k1-hint">No conversation is linked to this lead.</p>}

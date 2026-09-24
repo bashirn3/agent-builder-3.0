@@ -7,7 +7,7 @@ import {
 import { ease } from '../../lib/motion'
 
 const easeInOut = [0.4, 0, 0.2, 1] as const
-import { backendLabel, backendMode } from '../data/agentConfig'
+import type { AgentConfig } from '../data/agentConfig'
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { K1Mark } from '../shell/Shell'
 import { Select, Skeleton, Spinner } from '../ui/controls'
@@ -15,6 +15,7 @@ import { applyFormat, stripPrefix, type Format } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
 import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
+import { OpenerField } from './OpenerField'
 
 function relative(at: number) {
   const minutes = Math.round((Date.now() - at) / 60_000)
@@ -23,7 +24,7 @@ function relative(at: number) {
   return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: string, max = 120) {
+export function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: string, max = 120) {
   useLayoutEffect(() => {
     const node = ref.current
     if (!node) return
@@ -155,7 +156,35 @@ function summarise(text: string) {
   return { title: stripPrefix(lines[0]), meta: `${lines.length} line${lines.length === 1 ? '' : 's'}` }
 }
 
-type PanelTab = 'overview' | 'display'
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' })
+}
+
+function LiveStatus({ config }: { config: AgentConfig }) {
+  const pending = config.deployRequests.find((request) => request.status === 'requested')
+  return (
+    <div className="k1-status-cards">
+      <a className="k1-status-card" href={href({ page: 'deploy' })}>
+        <span className={`k1-status-card__dot${config.liveVersion ? ' is-live' : ''}`} aria-hidden="true" />
+        <span className="k1-status-card__text">
+          <strong>{config.liveVersion ? `Live on WhatsApp: v${config.liveVersion.number}` : 'Live version not recorded yet'}</strong>
+          <small>
+            {config.liveVersion && config.liveSince
+              ? `Since ${shortDate(config.liveSince)}${config.liveBy && config.liveBy !== 'initial' ? ` · by ${config.liveBy}` : ''}`
+              : 'It is recorded when Rapid confirms a deployment'}
+          </small>
+          {pending && <small className="k1-status-card__pending">v{pending.versionNumber} requested · waiting for Rapid</small>}
+        </span>
+      </a>
+      <div className="k1-status-card k1-status-card--row">
+        <span className="k1-status-card__text"><strong>Compare versions</strong></span>
+        <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'compare' })}>Compare</a>
+      </div>
+    </div>
+  )
+}
+
+type PanelTab = 'overview' | 'opener'
 
 function Inspector({ store, showTitle = true, tab: controlledTab }: { store: PlaygroundStore; showTitle?: boolean; tab?: PanelTab }) {
   const { config, draft, dirty, saving } = store
@@ -164,7 +193,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   const [expanded, setExpanded] = useState(false)
   const [extraOpen, setExtraOpen] = useState(false)
   const ids = {
-    master: useId(), expanded: useId(), additional: useId(), opener: useId(),
+    master: useId(), expanded: useId(), additional: useId(),
     lockLabel: useId(), lockNote: useId(), instructions: useId(),
   }
   if (!config || !draft) return null
@@ -187,17 +216,18 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
           label="Agent settings"
           value={tab}
           onChange={setTab}
-          options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }]}
+          options={[{ value: 'overview', label: 'Overview' }, { value: 'opener', label: 'Opener' }]}
         />
       )}
 
         <div
           role="tabpanel"
-          aria-label={tab === 'overview' ? 'Overview' : 'Display'}
+          aria-label={tab === 'overview' ? 'Overview' : 'Opener'}
           className="k1-inspector__panel"
         >
           {tab === 'overview' ? (
             <>
+              <LiveStatus config={config} />
               <section className="k1-inspector__section" aria-labelledby={ids.instructions}>
                 <h2 className="k1-section-title" id={ids.instructions}>Instructions</h2>
                 <div className="k1-inspector__row">
@@ -250,21 +280,11 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
           ) : (
             <div className="k1-accordions">
               <Accordion title="Content" defaultOpen>
-                <label className="k1-label" htmlFor={ids.opener}>Initial message</label>
-                <textarea
-                  id={ids.opener}
-                  className="k1-textarea"
-                  rows={5}
-                  value={draft.opener}
-                  onChange={(event) => store.edit({ opener: event.target.value })}
-                />
-                <p className="k1-hint">The first message a customer sees. {'{{first_name}}'} and {'{{registration_number}}'} show as Rasmus and ABC-123 in the test chat.</p>
+                <OpenerField value={draft.opener} onChange={(opener) => store.edit({ opener })} />
               </Accordion>
             </div>
           )}
         </div>
-
-      <p className="k1-inspector__source">{backendLabel}</p>
 
       <AnimatePresence>
         {dirty && (
@@ -281,7 +301,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
             <div className="k1-unsaved__actions">
               <button type="button" className="k1-btn k1-btn--outline" onClick={store.discard} disabled={saving}>Discard</button>
               <button type="button" className="k1-btn k1-btn--primary" onClick={() => void store.save()} disabled={saving} aria-busy={saving}>
-                {saving && <Spinner />}Save to agent
+                {saving && <Spinner />}Save
               </button>
             </div>
           </motion.div>
@@ -321,7 +341,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   )
 }
 
-function Bubble({ message, onRate }: { message: TestMessage; onRate: (value: 'up' | 'down') => void }) {
+export function Bubble({ message, onRate }: { message: TestMessage; onRate: (value: 'up' | 'down') => void }) {
   const agent = message.role === 'agent'
   return (
     <motion.div
@@ -500,7 +520,7 @@ export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; com
     return (
       <div className="k1-state">
         <h1 className="k1-page-title">Playground</h1>
-        <p>The agent configuration could not be loaded ({store.loadError}). {backendMode === 'n8n' ? 'The n8n agent-builder workflow did not respond.' : ''}</p>
+        <p>The agent configuration could not be loaded ({store.loadError}).</p>
         <button type="button" className="k1-btn k1-btn--outline" onClick={store.reload}>Try again</button>
       </div>
     )
@@ -518,7 +538,7 @@ export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; com
           label="Playground"
           value={mobileTab}
           onChange={setMobileTab}
-          options={[{ value: 'overview', label: 'Overview' }, { value: 'display', label: 'Display' }, { value: 'preview', label: 'Preview' }]}
+          options={[{ value: 'overview', label: 'Overview' }, { value: 'opener', label: 'Opener' }, { value: 'preview', label: 'Preview' }]}
         />
         {mobileTab === 'preview' ? (
           <div className="k1-canvas">{loading ? <TesterSkeleton /> : <Tester store={store} />}</div>

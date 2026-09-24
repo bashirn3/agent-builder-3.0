@@ -79,7 +79,7 @@ export function Header() {
 }
 
 const activityChildren = [
-  { key: 'chats', label: 'Chat logs', to: { page: 'chats', id: null } as Route },
+  { key: 'chats', label: 'Test chats', to: { page: 'chats', id: null } as Route },
   { key: 'leads', label: 'Leads', to: { page: 'leads', id: null } as Route },
 ]
 
@@ -98,7 +98,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
   )
   return (
     <nav className="k1-nav" aria-label="Main">
-      {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />Playground</>)}
+      {link({ page: 'playground' }, route.page === 'playground' || route.page === 'compare', <><Play className="k1-nav__play" />Playground</>)}
       <button
         type="button"
         className={`k1-nav__item${inActivity && !activityOpen ? ' is-active' : ''}`}

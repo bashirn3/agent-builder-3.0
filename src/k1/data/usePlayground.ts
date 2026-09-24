@@ -1,25 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { loadConfig, openerPreview, sameDraft, saveConfig, sendTest, type AgentConfig, type Draft } from './agentConfig'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, type AgentConfig, type Draft } from './agentConfig'
+import { useTestChat } from './useTestChat'
 
-export type TestMessage = {
-  id: string
-  role: 'agent' | 'user'
-  text: string
-  at: number
-  opener?: boolean
-  demo?: boolean
-  feedback?: 'up' | 'down' | null
-}
+export type { TestMessage } from './useTestChat'
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 
-let seq = 0
-const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(seq++).toString(36)}`
-
-function openerMessage(opener: string): TestMessage[] {
-  const text = openerPreview(opener)
-  return text ? [{ id: uid('msg'), role: 'agent', text, at: Date.now(), opener: true }] : []
-}
+const toDraft = (config: AgentConfig): Draft => ({ locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener })
 
 export function usePlayground(notify: Notify) {
   const [config, setConfig] = useState<AgentConfig | null>(null)
@@ -27,11 +14,6 @@ export function usePlayground(notify: Notify) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [versionId, setVersionId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [messages, setMessages] = useState<TestMessage[]>([])
-  const [pending, setPending] = useState(false)
-  const [testError, setTestError] = useState<string | null>(null)
-  const [composer, setComposer] = useState('')
-  const threadRef = useRef(uid('thread'))
 
   const load = useCallback(() => {
     let cancelled = false
@@ -40,24 +22,30 @@ export function usePlayground(notify: Notify) {
       .then((next) => {
         if (cancelled) return
         setConfig(next)
-        setDraft({ locked: next.locked, masterPrompt: next.masterPrompt, additional: next.additional, opener: next.opener })
+        setDraft(toDraft(next))
         setVersionId(next.versions.find((item) => item.active)?.id ?? next.versions[0]?.id ?? null)
-        setMessages((current) => (current.some((message) => message.role === 'user') ? current : openerMessage(next.opener)))
       })
-      .catch((error: Error) => { if (!cancelled) setLoadError(error.message) })
+      .catch((error: Error) => { if (!cancelled) setLoadError(describeError(error)) })
     return () => { cancelled = true }
   }, [])
 
   useEffect(load, [load])
 
-  const saved: Draft | null = config ? { locked: config.locked, masterPrompt: config.masterPrompt, additional: config.additional, opener: config.opener } : null
+  const refresh = useCallback(async () => {
+    try {
+      const next = await loadConfig()
+      setConfig(next)
+      return next
+    } catch {
+      return null
+    }
+  }, [])
+
+  const saved: Draft | null = config ? toDraft(config) : null
   const dirty = Boolean(draft && saved && !sameDraft(draft, saved))
 
-  const hasUserMessages = messages.some((message) => message.role === 'user')
-  useEffect(() => {
-    if (!draft || hasUserMessages) return
-    setMessages(openerMessage(draft.opener))
-  }, [draft?.opener])
+  const target = useMemo(() => (config && draft ? draftTarget(config, draft) : null), [config, draft])
+  const chat = useTestChat(target, 'playground')
 
   const edit = (patch: Partial<Draft>) => setDraft((current) => (current ? { ...current, ...patch } : current))
 
@@ -85,59 +73,28 @@ export function usePlayground(notify: Notify) {
     try {
       const next = await saveConfig(config, draft)
       setConfig(next)
-      setDraft({ locked: next.locked, masterPrompt: next.masterPrompt, additional: next.additional, opener: next.opener })
+      setDraft(toDraft(next))
       setVersionId(next.versions[0]?.id ?? null)
-      notify({ title: 'Success', body: 'Your changes are saved.' })
+      notify({ title: `Saved as v${next.versions[0]?.number ?? ''}`.trim(), body: 'The live WhatsApp agent is unchanged until you request a deployment.' })
     } catch (error) {
-      notify({ tone: 'error', title: 'Save failed', body: `Nothing was saved (${(error as Error).message}). Your draft is still here.` })
+      notify({ tone: 'error', title: 'Save failed', body: `Nothing was saved (${describeError(error)}). Your draft is still here.` })
     } finally {
       setSaving(false)
     }
   }
 
-  const resetConversation = () => {
-    threadRef.current = uid('thread')
-    setPending(false)
-    setTestError(null)
-    setMessages(openerMessage(draft?.opener ?? ''))
-  }
-
-  const send = async (text = composer, base = messages) => {
-    const body = text.trim()
-    if (!body || !draft || pending) return
-    const thread = threadRef.current
-    const userMessage: TestMessage = { id: uid('msg'), role: 'user', text: body, at: Date.now() }
-    const history = [...base, userMessage]
-    setMessages(history)
-    setComposer('')
-    setPending(true)
-    setTestError(null)
-    try {
-      const result = await sendTest(draft, history.map(({ role, text: line }) => ({ role, text: line })))
-      if (thread !== threadRef.current) return
-      setMessages((list) => [...list, { id: uid('msg'), role: 'agent', text: result.reply, at: Date.now(), demo: result.mode === 'demo', feedback: null }])
-    } catch (error) {
-      if (thread !== threadRef.current) return
-      setTestError(`The test reply failed (${(error as Error).message}).`)
-    } finally {
-      if (thread === threadRef.current) setPending(false)
-    }
-  }
-
-  const retry = () => {
-    const lastUser = [...messages].reverse().find((message) => message.role === 'user')
-    if (!lastUser) return
-    void send(lastUser.text, messages.filter((message) => message.id !== lastUser.id))
-  }
-
-  const rate = (id: string, value: 'up' | 'down') => setMessages((list) => list.map((message) => (
-    message.id === id ? { ...message, feedback: message.feedback === value ? null : value } : message
-  )))
-
   return {
-    config, loadError, reload: load, draft, dirty, saving, versionId,
+    config, loadError, reload: load, refresh, draft, dirty, saving, versionId,
     edit, discard, save, loadVersion,
-    messages, pending, testError, composer, setComposer, send, retry, resetConversation, rate,
+    messages: chat.messages,
+    pending: chat.pending,
+    testError: chat.error,
+    composer: chat.composer,
+    setComposer: chat.setComposer,
+    send: chat.send,
+    retry: chat.retry,
+    resetConversation: chat.reset,
+    rate: chat.rate,
   }
 }
 
