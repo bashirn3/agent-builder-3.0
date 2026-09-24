@@ -171,9 +171,9 @@ function LiveStatus({ config }: { config: AgentConfig }) {
           <small>
             {config.liveVersion && config.liveSince
               ? `Since ${shortDate(config.liveSince)}${config.liveBy && config.liveBy !== 'initial' ? ` · by ${config.liveBy}` : ''}`
-              : 'It is recorded when Rapid confirms a deployment'}
+              : 'It is recorded when Wasup confirms a deployment'}
           </small>
-          {pending && <small className="k1-status-card__pending">v{pending.versionNumber} requested · waiting for Rapid</small>}
+          {pending && <small className="k1-status-card__pending">v{pending.versionNumber} requested · waiting for Wasup</small>}
         </span>
       </a>
       <div className="k1-status-card k1-status-card--row">
