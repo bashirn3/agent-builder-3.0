@@ -6,19 +6,18 @@ import { getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFi
 import { downloadCsv, toCsv } from '../data/fixtures'
 import type { TestMessage } from '../data/useTestChat'
 import { go, href } from '../routes'
-import { Select, Skeleton } from '../ui/controls'
+import { MultiSelect, Select, Skeleton, Switch } from '../ui/controls'
 import { DateRangeField } from '../ui/DateRange'
 import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, X } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { Bubble } from './PlaygroundPage'
 import { copy, useCopy } from '../i18n'
+import { orderVersions, versionHint } from './versionText'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
 
 export type ChatFilters = Omit<TestChatFilters, 'from' | 'to' | 'query'> & { from: string | null; to: string | null; query: string }
 
 export const EMPTY_CHAT_FILTERS: ChatFilters = { versions: [], includeDraft: true, feedback: null, source: null, from: null, to: null, query: '' }
-
-const DRAFTS = 'draft'
 
 export function chatFilterCount(filters: ChatFilters) {
   return (filters.versions.length || !filters.includeDraft ? 1 : 0) + (filters.feedback ? 1 : 0) + (filters.source ? 1 : 0) + (filters.from ? 1 : 0)
@@ -53,37 +52,38 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
   onClose: () => void
 }) {
   const t = useCopy()
-  const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId() }
-  const versions = config?.versions ?? []
-  const toggleVersion = (value: string) => {
-    if (value === DRAFTS) {
-      onChange({ ...filters, includeDraft: !filters.includeDraft })
-      return
-    }
-    const number = Number(value)
-    onChange({ ...filters, versions: filters.versions.includes(number) ? filters.versions.filter((item) => item !== number) : [...filters.versions, number] })
-  }
+  const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId(), drafts: useId(), draftsHint: useId() }
+  const ordered = orderVersions(config?.versions ?? [])
+  const tested = ordered.filter((version) => version.live || version.conversations > 0)
+  const untested = ordered.filter((version) => !version.live && version.conversations === 0)
+  const versionOptions = [
+    ...tested.map((version) => ({ value: String(version.number), label: `v${version.number}`, hint: versionHint(version, t), keywords: version.note, group: t.versions.withChats })),
+    ...untested.map((version) => ({ value: String(version.number), label: `v${version.number}`, hint: versionHint(version, t, { chats: false }), keywords: version.note, group: t.versions.noChats })),
+  ]
+  const picked = [...filters.versions].sort((a, b) => b - a)
+  const versionSummary = !picked.length ? t.versions.all : picked.length <= 3 ? picked.map((number) => `v${number}`).join(', ') : t.versions.count(picked.length)
   return (
     <Dialog open={open} title={t.chats.filterBy} onClose={onClose} width={530}>
       <div className="k1-form-stack">
         <div className="k1-field">
-          <span id={ids.versions}>{t.chats.version}</span>
-          <div className="k1-version-picks" role="group" aria-labelledby={ids.versions}>
-            {versions.map((version) => (
-              <button
-                key={version.id}
-                type="button"
-                className="k1-token"
-                aria-pressed={filters.versions.includes(version.number)}
-                onClick={() => toggleVersion(String(version.number))}
-              >
-                v{version.number}{version.live ? ` · ${t.common.live}` : ''}
-              </button>
-            ))}
-            <button type="button" className="k1-token" aria-pressed={filters.includeDraft} onClick={() => toggleVersion(DRAFTS)}>{t.chats.drafts}</button>
-          </div>
-          <p className="k1-hint">{filters.versions.length ? t.chats.onlyTicked : t.chats.allShown} {filters.includeDraft ? t.chats.draftsIncluded : t.chats.draftsHidden}</p>
+          <label htmlFor={ids.versions}>{t.chats.version}</label>
+          <MultiSelect<string>
+            id={ids.versions}
+            label={t.chats.version}
+            values={filters.versions.map(String)}
+            options={versionOptions}
+            summary={versionSummary}
+            searchPlaceholder={t.versions.search}
+            emptyText={t.versions.none}
+            clearLabel={t.versions.clear}
+            onChange={(picked) => onChange({ ...filters, versions: picked.map(Number).sort((a, b) => b - a) })}
+          />
         </div>
+        <div className="k1-switch-row">
+          <span className="k1-switch-row__label" id={ids.drafts}>{t.versions.includeDrafts}</span>
+          <Switch checked={filters.includeDraft} onChange={(includeDraft) => onChange({ ...filters, includeDraft })} labelledBy={ids.drafts} describedBy={ids.draftsHint} />
+        </div>
+        <p className="k1-hint k1-filter__drafts" id={ids.draftsHint}>{t.versions.draftsHint}</p>
         <div className="k1-field">
           <label htmlFor={ids.feedback}>{t.chats.feedback}</label>
           <Select<'up' | 'down' | 'none'>

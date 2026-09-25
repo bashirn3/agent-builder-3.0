@@ -9,7 +9,8 @@ import { go } from '../routes'
 import { Menu, Select, Skeleton, type SelectOption } from '../ui/controls'
 import { ArrowUp, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
 import { Bubble, useAutoGrow } from './PlaygroundPage'
-import { locale, useCopy } from '../i18n'
+import { useCopy } from '../i18n'
+import { versionHint } from './versionText'
 
 const MAX_COLUMNS = 3
 const DRAFT = 'draft'
@@ -162,7 +163,7 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
     ...config.versions.map((version) => ({
       value: version.id,
       label: `v${version.number}`,
-      hint: version.live ? t.common.live : new Date(version.createdAt).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }),
+      hint: versionHint(version, t),
       group: t.playground.savedVersions,
     })),
   ]

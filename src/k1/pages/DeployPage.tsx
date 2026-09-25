@@ -15,6 +15,8 @@ import { localizeNote } from '../data/changes'
 // Flip once the email step in the Deploy Request workflow sends to Wasup.
 const EMAIL_CONNECTED = true
 
+const RECENT = 5
+
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 
 export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
@@ -26,6 +28,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
 }) {
   const t = useCopy()
   const [target, setTarget] = useState<AgentVersion | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const [sent, setSent] = useState<DeployRequest | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', goLive: '', notes: '', confirmed: false })
@@ -85,6 +88,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   }
 
   const live = config?.liveVersion
+  const hiddenCount = config ? config.versions.filter((version, index) => index >= RECENT && !version.live).length : 0
   const pending = config?.deployRequests.find((request) => request.status === 'requested')
 
   return (
@@ -120,8 +124,9 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
           {!config ? (
             <div className="k1-table__skeleton">{[0, 1, 2].map((key) => <Skeleton key={key} height={64} />)}</div>
           ) : config.versions.length ? (
+            <>
             <ul className="k1-versions">
-              {config.versions.map((version) => {
+              {config.versions.filter((version, index) => showAll || index < RECENT || version.live).map((version) => {
                 const request = pendingFor(version)
                 return (
                   <li key={version.id} className={`k1-version${version.live ? ' is-live' : ''}`}>
@@ -152,6 +157,12 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                 )
               })}
             </ul>
+            {hiddenCount > 0 && (
+              <button type="button" className="k1-link k1-versions__more" aria-expanded={showAll} onClick={() => setShowAll((value) => !value)}>
+                {showAll ? t.versions.showFewer : t.versions.showOlder(hiddenCount)}
+              </button>
+            )}
+            </>
           ) : <p className="k1-hint">{t.deploy.noVersions}</p>}
         </section>
 
