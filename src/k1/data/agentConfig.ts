@@ -221,7 +221,10 @@ export async function sendTest(
 export function describeError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
   const status = /_failed:(\d+)$/.exec(message)
-  return status ? copy().common.serverError(status[1]) : message.replace(/n8n[_\s-]*/gi, '')
+  if (status) return copy().common.serverError(status[1])
+  if (message === 'network_failed') return copy().common.networkError
+  if (message === 'muster_failed') return copy().common.musterError
+  return message.replace(/n8n[_\s-]*/gi, '')
 }
 
 export function personalize(text: string, lead: TestLead = SAMPLE_LEAD, lang?: Lang) {
