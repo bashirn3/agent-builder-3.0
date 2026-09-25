@@ -9,17 +9,13 @@ import { Check, ThumbsDown, ThumbsUp, WhatsApp } from '../ui/icons'
 import { useSession } from '../auth/session'
 import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
+import { locale, useCopy } from '../i18n'
+import { localizeNote } from '../data/changes'
 
 // Flip once the email step in the Deploy Request workflow sends to Wasup.
 const EMAIL_CONNECTED = true
 
-const STATUS_LABEL: Record<DeployRequest['status'], string> = {
-  requested: 'Waiting for Wasup',
-  deployed: 'Deployed',
-  superseded: 'Replaced by a newer request',
-}
-
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 
 export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   config: AgentConfig | null
@@ -28,6 +24,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   versionId?: string
   onChanged: () => void
 }) {
+  const t = useCopy()
   const [target, setTarget] = useState<AgentVersion | null>(null)
   const [sent, setSent] = useState<DeployRequest | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -59,9 +56,9 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
 
   const requester = account ? { name: account.name, email: account.email } : { name: form.name.trim(), email: form.email.trim() }
   const errors = [
-    !account && !form.name.trim() && 'Enter your name.',
-    !account && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 'Enter a valid work email.',
-    !form.confirmed && 'Confirm that this version has been tested.',
+    !account && !form.name.trim() && t.deploy.errors.name,
+    !account && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && t.deploy.errors.email,
+    !form.confirmed && t.deploy.errors.tested,
   ].filter(Boolean) as string[]
 
   const submit = async (event: FormEvent) => {
@@ -81,7 +78,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
       setForm({ name: form.name, email: form.email, goLive: '', notes: '', confirmed: false })
       onChanged()
     } catch (error) {
-      notify({ tone: 'error', title: 'Request not sent', body: `Nothing was sent (${describeError(error)}). Try again.` })
+      notify({ tone: 'error', title: t.deploy.failed, body: t.deploy.failedBody(describeError(error)) })
     } finally {
       setSubmitting(false)
     }
@@ -93,33 +90,33 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   return (
     <div className="k1-deploy">
       <header className="k1-deploy__head">
-        <h1 className="k1-deploy__title">Deploy</h1>
+        <h1 className="k1-deploy__title">{t.deploy.title}</h1>
       </header>
       <div className="k1-deploy__body">
         <div className="k1-channels">
           <article className="k1-channel">
             <div className="k1-channel__top">
               <span className="k1-channel__tile" aria-hidden="true"><WhatsApp size={26} /></span>
-              {pending && <span className="k1-status k1-status--contacted">v{pending.versionNumber} requested</span>}
+              {pending && <span className="k1-status k1-status--contacted">{t.deploy.requestedTag(pending.versionNumber)}</span>}
             </div>
             <div className="k1-channel__text">
               <h2>WhatsApp</h2>
               {!config ? <Skeleton width={220} height={14} /> : live ? (
-                <p><span className="k1-live-dot" aria-hidden="true" />Live: <strong>v{live.number}</strong>{config.liveSince ? ` since ${shortDate(config.liveSince)}` : ''}</p>
+                <p><span className="k1-live-dot" aria-hidden="true" />{t.deploy.live} <strong>v{live.number}</strong>{config.liveSince ? t.deploy.since(shortDate(config.liveSince)) : ''}</p>
               ) : (
-                <p>The live version is recorded once Wasup confirms a deployment.</p>
+                <p>{t.deploy.liveUnknown}</p>
               )}
             </div>
           </article>
         </div>
 
         {config && !config.tracking && (
-          <p className="k1-hint k1-hint--warn">Deploy requests and live tracking need the latest backend update. Your saved versions are listed below.</p>
+          <p className="k1-hint k1-hint--warn">{t.deploy.needsBackend}</p>
         )}
-        {dirty && <p className="k1-hint k1-hint--warn">You have unsaved Playground changes. Save them as a version before requesting a deployment.</p>}
+        {dirty && <p className="k1-hint k1-hint--warn">{t.deploy.unsavedWarning}</p>}
 
         <section className="k1-deploy__versions" aria-labelledby="k1-versions-title">
-          <h2 id="k1-versions-title" className="k1-section-title">Versions</h2>
+          <h2 id="k1-versions-title" className="k1-section-title">{t.deploy.versions}</h2>
           {!config ? (
             <div className="k1-table__skeleton">{[0, 1, 2].map((key) => <Skeleton key={key} height={64} />)}</div>
           ) : config.versions.length ? (
@@ -131,36 +128,36 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                     <div className="k1-version__main">
                       <div className="k1-version__title">
                         <strong>v{version.number}</strong>
-                        {version.live && <span className="k1-vtag is-live">Live</span>}
-                        {request && <span className="k1-vtag is-draft">Requested</span>}
+                        {version.live && <span className="k1-vtag is-live">{t.common.live}</span>}
+                        {request && <span className="k1-vtag is-draft">{t.common.requested}</span>}
                       </div>
-                      <p className="k1-version__note">{version.note || 'No change note'}</p>
+                      <p className="k1-version__note">{version.note ? localizeNote(version.note, t) : t.deploy.noNote}</p>
                       <p className="k1-version__meta">
-                        Saved {formatStamp(version.createdAt)}{version.savedBy ? ` · ${version.savedBy}` : ''}
+                        {t.deploy.saved(formatStamp(version.createdAt))}{version.savedBy ? ` · ${version.savedBy}` : ''}
                         {config.tracking && (
                           <span className="k1-version__score">
                             <ThumbsUp size={12} strokeWidth={1.75} />{version.thumbsUp}
                             <ThumbsDown size={12} strokeWidth={1.75} />{version.thumbsDown}
-                            <span>· {version.conversations} test chat{version.conversations === 1 ? '' : 's'}</span>
+                            <span>· {t.deploy.testChats(version.conversations)}</span>
                           </span>
                         )}
                       </p>
                     </div>
                     {!version.live && (
                       <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" disabled={!canRequest(version)} onClick={() => open(version)}>
-                        {request ? 'Requested' : 'Request deployment'}
+                        {request ? t.common.requested : t.deploy.request}
                       </button>
                     )}
                   </li>
                 )
               })}
             </ul>
-          ) : <p className="k1-hint">No saved versions yet. Save your Playground changes to create v1.</p>}
+          ) : <p className="k1-hint">{t.deploy.noVersions}</p>}
         </section>
 
         {config && config.deployRequests.length > 0 && (
           <section className="k1-deploy__requests" aria-labelledby="k1-requests-title">
-            <h2 id="k1-requests-title" className="k1-section-title">Requests</h2>
+            <h2 id="k1-requests-title" className="k1-section-title">{t.deploy.requests}</h2>
             <ul>
               <AnimatePresence initial={false}>
                 {config.deployRequests.map((request) => (
@@ -169,11 +166,11 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                       <strong>v{request.versionNumber}</strong>
                       <span>
                         {formatStamp(request.createdAt)} · {request.requestedBy}
-                        {request.goLive ? ` · go-live ${request.goLive}` : ''}
-                        {request.deployedAt ? ` · deployed ${formatStamp(request.deployedAt)}` : ''}
+                        {request.goLive ? t.deploy.goLive(request.goLive) : ''}
+                        {request.deployedAt ? t.deploy.deployedAt(formatStamp(request.deployedAt)) : ''}
                       </span>
                     </div>
-                    <span className={`k1-status k1-status--${request.status === 'deployed' ? 'booked' : request.status === 'requested' ? 'contacted' : 'new'}`}>{STATUS_LABEL[request.status]}</span>
+                    <span className={`k1-status k1-status--${request.status === 'deployed' ? 'booked' : request.status === 'requested' ? 'contacted' : 'new'}`}>{t.deploy.status[request.status]}</span>
                   </motion.li>
                 ))}
               </AnimatePresence>
@@ -182,7 +179,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
         )}
       </div>
 
-      <Dialog open={Boolean(target)} title={sent ? 'Request sent' : `Request deployment of v${target?.number ?? ''}`} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : account ? goLiveRef : nameRef}>
+      <Dialog open={Boolean(target)} title={sent ? t.deploy.sentTitle : t.deploy.requestTitle(target?.number ?? '')} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : account ? goLiveRef : nameRef}>
         <AnimatePresence mode="wait" initial={false}>
           {sent ? (
             <motion.div key="done" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease }}>
@@ -190,56 +187,56 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                 <span className="k1-deploy__check" aria-hidden="true"><Check size={16} strokeWidth={2.25} /></span>
                 <p>
                   {EMAIL_CONNECTED
-                    ? <>Wasup has been emailed about <strong>v{sent.versionNumber}</strong>. It shows as Deployed here once it is live on WhatsApp.</>
-                    : <>The request for <strong>v{sent.versionNumber}</strong> is saved and shows as Waiting for Wasup. The email to Wasup is not connected yet, so let them know directly.</>}
+                    ? (([a, b, c]) => <>{a}<strong>{b}</strong>{c}</>)(t.deploy.emailed(sent.versionNumber))
+                    : (([a, b, c]) => <>{a}<strong>{b}</strong>{c}</>)(t.deploy.saved2(sent.versionNumber))}
                 </p>
               </div>
               <footer className="k1-dialog__foot">
-                <button type="button" className="k1-btn k1-btn--primary" onClick={() => setTarget(null)}>Done</button>
+                <button type="button" className="k1-btn k1-btn--primary" onClick={() => setTarget(null)}>{t.common.done}</button>
               </footer>
             </motion.div>
           ) : (
             <motion.form key="form" onSubmit={(event) => void submit(event)} noValidate initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14, ease }}>
               <div className="k1-form-stack">
                 <div className="k1-field">
-                  <span className="k1-field__label">Version</span>
+                  <span className="k1-field__label">{t.deploy.version}</span>
                   <p className="k1-readonly">v{target?.number}{target?.note ? ` · ${target.note}` : ''}</p>
                 </div>
                 {account ? (
                   <div className="k1-field">
-                    <span className="k1-field__label">Requested by</span>
+                    <span className="k1-field__label">{t.deploy.requestedBy}</span>
                     <p className="k1-readonly">{account.name !== account.email ? `${account.name} · ${account.email}` : account.email}</p>
                   </div>
                 ) : (
                   <>
                     <div className="k1-field">
-                      <label htmlFor={ids.name}>Your name</label>
+                      <label htmlFor={ids.name}>{t.deploy.yourName}</label>
                       <input ref={nameRef} id={ids.name} className="k1-input" value={form.name} autoComplete="name" aria-invalid={(attempted && !form.name.trim()) || undefined} onChange={(event) => setForm({ ...form, name: event.target.value })} />
                     </div>
                     <div className="k1-field">
-                      <label htmlFor={ids.email}>Work email</label>
-                      <input id={ids.email} className="k1-input" type="email" value={form.email} placeholder="name@k1katsastus.fi" autoComplete="email" aria-invalid={(attempted && errors.includes('Enter a valid work email.')) || undefined} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+                      <label htmlFor={ids.email}>{t.deploy.workEmail}</label>
+                      <input id={ids.email} className="k1-input" type="email" value={form.email} placeholder="name@k1katsastus.fi" autoComplete="email" aria-invalid={(attempted && errors.includes(t.deploy.errors.email)) || undefined} onChange={(event) => setForm({ ...form, email: event.target.value })} />
                     </div>
                   </>
                 )}
                 <div className="k1-field">
-                  <label htmlFor={ids.goLive}>Preferred go-live date</label>
+                  <label htmlFor={ids.goLive}>{t.deploy.goLiveDate}</label>
                   <input ref={goLiveRef} id={ids.goLive} className="k1-input" type="date" value={form.goLive} onChange={(event) => setForm({ ...form, goLive: event.target.value })} />
                 </div>
                 <div className="k1-field">
-                  <label htmlFor={ids.notes}>Notes</label>
-                  <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder="Anything Wasup should know before it goes live" onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+                  <label htmlFor={ids.notes}>{t.deploy.notes}</label>
+                  <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder={t.deploy.notesPlaceholder} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
                 </div>
                 <label className="k1-check" htmlFor={ids.confirm}>
                   <input id={ids.confirm} type="checkbox" checked={form.confirmed} onChange={(event) => setForm({ ...form, confirmed: event.target.checked })} />
                   <span className="k1-check__box" aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
-                  This version has been tested.
+                  {t.deploy.tested}
                 </label>
                 {attempted && errors.length > 0 && <p id={ids.error} className="k1-auth__error" role="alert">{errors[0]}</p>}
               </div>
               <footer className="k1-dialog__foot">
-                <button type="button" className="k1-btn k1-btn--outline" onClick={() => setTarget(null)}>Cancel</button>
-                <button type="submit" className="k1-btn k1-btn--primary" disabled={submitting} aria-busy={submitting}>{submitting && <Spinner />}Send request</button>
+                <button type="button" className="k1-btn k1-btn--outline" onClick={() => setTarget(null)}>{t.common.cancel}</button>
+                <button type="submit" className="k1-btn k1-btn--primary" disabled={submitting} aria-busy={submitting}>{submitting && <Spinner />}{t.deploy.send}</button>
               </footer>
             </motion.form>
           )}

@@ -1,7 +1,8 @@
 import { useAuth, useClerk, useUser } from '@clerk/react'
 import { useJoinTeam } from './team'
 import { createContext, ReactNode, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
-import { setActor } from '../data/builderApi'
+import { setActor, setSessionTokenProvider } from '../data/builderApi'
+import { useCopy } from '../i18n'
 
 export const CLERK_PUBLISHABLE_KEY = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined)?.trim() || ''
 export const clerkEnabled = CLERK_PUBLISHABLE_KEY.length > 0
@@ -50,6 +51,10 @@ function ClerkSession({ children }: { children: ReactNode }) {
   useEffect(() => {
     setActor(value.signedIn && value.user ? { name: value.user.name, email: value.user.email } : null)
   }, [value])
+  useEffect(() => {
+    setSessionTokenProvider(async () => (await clerk.session?.getToken()) ?? null)
+    return () => setSessionTokenProvider(null)
+  }, [clerk])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
@@ -73,14 +78,15 @@ function subscribe(listener: () => void) {
 }
 
 function PreviewSession({ children }: { children: ReactNode }) {
+  const t = useCopy()
   const active = useSyncExternalStore(subscribe, previewSession.active)
   const value = useMemo<Session>(() => ({
     mode: 'preview',
     ready: true,
     signedIn: active,
-    user: active ? { name: 'Development preview', email: 'Clerk sign-in is not connected yet', initials: 'K1' } : null,
+    user: active ? { name: t.nav.previewName, email: t.nav.previewNote, initials: 'K1' } : null,
     signOut: async () => previewSession.end(),
-  }), [active])
+  }), [active, t])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 

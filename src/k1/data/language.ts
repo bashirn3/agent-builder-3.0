@@ -8,7 +8,8 @@ export const LANGUAGES: Array<{ code: Lang; label: string }> = [
 
 export const TRANSLATED: Array<Exclude<Lang, 'en'>> = ['fi', 'sv']
 
-const ALIASES: Record<Exclude<Lang, 'en'>, string[]> = {
+const ALIASES: Record<Lang, string[]> = {
+  en: ['englanti', 'english', 'en', 'eng', 'engelska'],
   fi: ['suomi', 'finnish', 'fi', 'fin', 'suomeksi', 'finska'],
   sv: ['svenska', 'swedish', 'sv', 'swe', 'ruotsi', 'ruotsiksi'],
 }

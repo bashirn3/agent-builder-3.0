@@ -9,6 +9,7 @@ import { go } from '../routes'
 import { Menu, Select, Skeleton, type SelectOption } from '../ui/controls'
 import { ArrowUp, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
 import { Bubble, useAutoGrow } from './PlaygroundPage'
+import { locale, useCopy } from '../i18n'
 
 const MAX_COLUMNS = 3
 const DRAFT = 'draft'
@@ -36,6 +37,7 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
   onRemove: () => void
   clearSignal: number
 }) {
+  const t = useCopy()
   const version = config.versions.find((item) => item.id === pick) ?? null
   const target: TestTarget | null = useMemo(() => {
     if (pick === DRAFT) return store.draft ? draftTarget(config, store.draft) : null
@@ -62,34 +64,34 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
   const deployable = version && !version.live
 
   return (
-    <section className="k1-compare__col" aria-label={`Chat ${index + 1}`}>
+    <section className="k1-compare__col" aria-label={t.compare.chat(index + 1)}>
       <header className="k1-compare__head">
-        <Select label={`Version for chat ${index + 1}`} value={pick} options={options} placeholder="Choose a version" onChange={onPick} className="k1-compare__picker" />
+        <Select label={t.compare.versionFor(index + 1)} value={pick} options={options} placeholder={t.compare.chooseVersion} onChange={onPick} className="k1-compare__picker" />
         {version && (
-          <span className="k1-compare__score" title="Thumbs on saved test chats for this version">
+          <span className="k1-compare__score" title={t.compare.score}>
             <ThumbsUp size={12} strokeWidth={1.75} />{version.thumbsUp}<ThumbsDown size={12} strokeWidth={1.75} />{version.thumbsDown}
           </span>
         )}
         <button
           type="button"
           className="k1-icon-btn"
-          aria-label={deployable ? `Request deployment of v${version?.number}` : 'Only saved versions that are not live can be deployed'}
-          title={deployable ? `Request deployment of v${version?.number}` : version?.live ? 'Already live' : 'Save the draft first'}
+          aria-label={deployable ? t.compare.deploy(version.number) : t.compare.notDeployable}
+          title={deployable ? t.compare.deploy(version.number) : version?.live ? t.compare.alreadyLive : t.compare.saveFirst}
           disabled={!deployable}
           onClick={() => version && go({ page: 'deploy', version: version.id })}
         >
           <Rocket size={15} strokeWidth={1.75} />
         </button>
         <Menu
-          label={`Chat ${index + 1} actions`}
+          label={t.compare.actions(index + 1)}
           items={[
-            ...(index > 0 ? [{ label: 'Move left', onSelect: () => onMove(-1) }] : []),
-            ...(index < total - 1 ? [{ label: 'Move right', onSelect: () => onMove(1) }] : []),
-            { label: 'Clear chat', onSelect: chat.reset },
-            ...(total > 1 ? [{ label: 'Remove', tone: 'danger' as const, onSelect: onRemove }] : []),
+            ...(index > 0 ? [{ label: t.compare.moveLeft, onSelect: () => onMove(-1) }] : []),
+            ...(index < total - 1 ? [{ label: t.compare.moveRight, onSelect: () => onMove(1) }] : []),
+            { label: t.compare.clearChat, onSelect: chat.reset },
+            ...(total > 1 ? [{ label: t.common.remove, tone: 'danger' as const, onSelect: onRemove }] : []),
           ]}
           trigger={(props) => (
-            <button type="button" className="k1-icon-btn" aria-label={`Chat ${index + 1} actions`} {...props}>
+            <button type="button" className="k1-icon-btn" aria-label={t.compare.actions(index + 1)} {...props}>
               <MoreHorizontal size={16} />
             </button>
           )}
@@ -102,14 +104,14 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
         <AnimatePresence>
           {chat.pending && (
             <motion.div key="typing" className="k1-msg k1-msg--agent" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease }}>
-              <div className="k1-msg__bubble k1-typing" aria-label="Agent is replying"><span /><span /><span /></div>
+              <div className="k1-msg__bubble k1-typing" aria-label={t.tester.replying}><span /><span /><span /></div>
             </motion.div>
           )}
         </AnimatePresence>
         {chat.error && (
           <div className="k1-tester__error" role="alert">
             <span>{chat.error}</span>
-            <button type="button" className="k1-link" onClick={chat.retry}>Try again</button>
+            <button type="button" className="k1-link" onClick={chat.retry}>{t.common.tryAgain}</button>
           </div>
         )}
       </div>
@@ -118,12 +120,12 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
           ref={inputRef}
           rows={1}
           value={chat.composer}
-          placeholder="Message..."
-          aria-label={`Message for chat ${index + 1}`}
+          placeholder={t.tester.placeholder}
+          aria-label={t.compare.messageFor(index + 1)}
           onChange={(event) => chat.setComposer(event.target.value)}
           onKeyDown={onKey}
         />
-        <button type="submit" className="k1-send" aria-label={`Send to chat ${index + 1}`} disabled={!canSend}>
+        <button type="submit" className="k1-send" aria-label={t.compare.sendTo(index + 1)} disabled={!canSend}>
           <ArrowUp size={16} strokeWidth={2.25} />
         </button>
       </form>
@@ -132,6 +134,7 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
 }
 
 export function ComparePage({ store }: { store: PlaygroundStore }) {
+  const t = useCopy()
   const config = store.config
   const [columns, setColumns] = useState<Column[]>([])
   const [clearSignal, setClearSignal] = useState(0)
@@ -144,7 +147,7 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
 
   if (!config) {
     return (
-      <div className="k1-compare" role="status" aria-label="Loading versions">
+      <div className="k1-compare" role="status" aria-label={t.compare.loading}>
         <div className="k1-compare__bar"><Skeleton width={120} height={28} /></div>
         <div className="k1-compare__grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
           <div className="k1-compare__col"><Skeleton height={36} /><Skeleton width="70%" height={60} radius={20} /></div>
@@ -155,12 +158,12 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
   }
 
   const options: SelectOption<string>[] = [
-    { value: DRAFT, label: store.dirty ? 'Draft (unsaved)' : 'Draft', group: 'Working copy', hint: 'Your Playground edits' },
+    { value: DRAFT, label: store.dirty ? t.compare.draftUnsaved : t.common.draft, group: t.compare.workingCopy, hint: t.compare.workingCopyHint },
     ...config.versions.map((version) => ({
       value: version.id,
       label: `v${version.number}`,
-      hint: version.live ? 'Live' : new Date(version.createdAt).toLocaleDateString([], { day: 'numeric', month: 'short' }),
-      group: 'Saved versions',
+      hint: version.live ? t.common.live : new Date(version.createdAt).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }),
+      group: t.playground.savedVersions,
     })),
   ]
 
@@ -176,21 +179,21 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
     <div className="k1-compare">
       <div className="k1-compare__bar">
         <div>
-          <h1 className="k1-page-title">Compare</h1>
+          <h1 className="k1-page-title">{t.compare.title}</h1>
         </div>
         <div className="k1-compare__actions">
-          <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setClearSignal((n) => n + 1)}>Clear all chats</button>
+          <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setClearSignal((n) => n + 1)}>{t.compare.clearAll}</button>
           <button
             type="button"
             className="k1-btn k1-btn--primary k1-btn--sm"
             disabled={columns.length >= MAX_COLUMNS}
             onClick={() => setColumns((list) => [...list, { key: newId(), pick: config.versions.find((version) => !list.some((column) => column.pick === version.id))?.id ?? DRAFT }])}
           >
-            Add a version
+            {t.compare.add}
           </button>
         </div>
       </div>
-      <p className="k1-compare__hint">Each chat talks to its own version. Test chats are saved and tagged with the version, so they show up in Test chats.</p>
+      <p className="k1-compare__hint">{t.compare.hint}</p>
       <div className="k1-compare__grid" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
         {columns.map((column, index) => (
           <CompareColumn

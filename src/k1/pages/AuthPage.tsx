@@ -3,7 +3,8 @@ import { AuthenticateWithRedirectCallback } from '@clerk/react'
 import { FormEvent, ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { ArrowUp, Check, Eye, EyeOff } from '../ui/icons'
 import { ease } from '../../lib/motion'
-import { BrandLogo } from '../shell/Shell'
+import { BrandLogo, LangSwitch } from '../shell/Shell'
+import { useCopy, type Copy } from '../i18n'
 import { Collapse } from '../ui/overlay'
 import { Spinner } from '../ui/controls'
 import { go, href } from '../routes'
@@ -14,23 +15,17 @@ type Mode = 'signin' | 'signup'
 type Step = { kind: 'form' } | { kind: 'code'; purpose: CodePurpose } | { kind: 'forgot' } | { kind: 'reset' }
 
 const RULES = [
-  { key: 'length', label: '8 characters or more', test: (value: string) => value.length >= 8 },
-  { key: 'upper', label: '1 uppercase letter', test: (value: string) => /[A-Z]/.test(value) },
-  { key: 'lower', label: '1 lowercase letter', test: (value: string) => /[a-z]/.test(value) },
-  { key: 'number', label: '1 number', test: (value: string) => /\d/.test(value) },
-  { key: 'special', label: '1 special character', test: (value: string) => /[^A-Za-z0-9]/.test(value) },
-]
+  { key: 'length', test: (value: string) => value.length >= 8 },
+  { key: 'upper', test: (value: string) => /[A-Z]/.test(value) },
+  { key: 'lower', test: (value: string) => /[a-z]/.test(value) },
+  { key: 'number', test: (value: string) => /\d/.test(value) },
+  { key: 'special', test: (value: string) => /[^A-Za-z0-9]/.test(value) },
+] as const
 
-const TYPED = [
-  'Can I book an inspection for ABC-123?',
-  'Is K1 Espoo open on Saturday?',
-  'What should I bring to the inspection?',
-]
-
-function strength(score: number) {
-  if (score >= 5) return { label: 'Strong', tone: 'strong' }
-  if (score >= 3) return { label: 'Fair', tone: 'fair' }
-  return { label: 'Weak', tone: 'weak' }
+function strength(score: number, t: Copy) {
+  if (score >= 5) return { label: t.auth.strength.strong, tone: 'strong' }
+  if (score >= 3) return { label: t.auth.strength.fair, tone: 'fair' }
+  return { label: t.auth.strength.weak, tone: 'weak' }
 }
 
 function GoogleMark() {
@@ -55,6 +50,7 @@ function PasswordField({ id, label, value, onChange, autoComplete, invalid, desc
   action?: ReactNode
 }) {
   const [shown, setShown] = useState(false)
+  const t = useCopy()
   return (
     <div className="k1-field">
       {action ? <div className="k1-field__head"><label htmlFor={id}>{label}</label>{action}</div> : <label htmlFor={id}>{label}</label>}
@@ -70,7 +66,7 @@ function PasswordField({ id, label, value, onChange, autoComplete, invalid, desc
           aria-describedby={describedBy}
           onChange={(event) => onChange(event.target.value)}
         />
-        <button type="button" className="k1-input-wrap__action" aria-label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`} aria-pressed={shown} onClick={() => setShown((next) => !next)}>
+        <button type="button" className="k1-input-wrap__action" aria-label={shown ? t.auth.hidePassword(label) : t.auth.showPassword(label)} aria-pressed={shown} onClick={() => setShown((next) => !next)}>
           {shown ? <Eye size={16} strokeWidth={1.75} /> : <EyeOff size={16} strokeWidth={1.75} />}
         </button>
       </div>
@@ -79,6 +75,7 @@ function PasswordField({ id, label, value, onChange, autoComplete, invalid, desc
 }
 
 function TypingComposer() {
+  const TYPED = useCopy().auth.typed
   const reduced = useReducedMotion()
   const [phrase, setPhrase] = useState(0)
   const [count, setCount] = useState(reduced ? TYPED[0].length : 0)
@@ -95,8 +92,8 @@ function TypingComposer() {
       }
     }, done ? 2200 : 55 + Math.random() * 60)
     return () => window.clearTimeout(timer)
-  }, [count, phrase, reduced])
-  const text = TYPED[phrase].slice(0, count)
+  }, [count, phrase, reduced, TYPED])
+  const text = (TYPED[phrase] ?? '').slice(0, count)
   return (
     <div className="k1-auth-composer" aria-hidden="true">
       <div className="k1-auth-composer__box">
@@ -108,8 +105,9 @@ function TypingComposer() {
 }
 
 function StrengthRules({ id, password }: { id: string; password: string }) {
+  const t = useCopy()
   const score = RULES.filter((rule) => rule.test(password)).length
-  const meter = strength(score)
+  const meter = strength(score, t)
   return (
     <Collapse open={password.length > 0}>
       <div className="k1-strength" id={id}>
@@ -125,8 +123,8 @@ function StrengthRules({ id, password }: { id: string; password: string }) {
             return (
               <li key={rule.key} className={met ? 'is-met' : undefined}>
                 <span className="k1-strength__dot" aria-hidden="true"><Check size={10} strokeWidth={3} /></span>
-                {rule.label}
-                <span className="k1-sr">{met ? ' — met' : ' — not met'}</span>
+                {t.auth.rules[rule.key]}
+                <span className="k1-sr">{met ? t.auth.met : t.auth.notMet}</span>
               </li>
             )
           })}
@@ -146,6 +144,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
 }
 
 export function SsoCallbackPage() {
+  const t = useCopy()
   return (
     <div className="k1-auth">
       <span className="k1-auth__brand"><BrandLogo height={28} /></span>
@@ -153,7 +152,7 @@ export function SsoCallbackPage() {
         <section className="k1-auth__form-side">
           <div className="k1-auth__form k1-auth__pending" role="status">
             <Spinner />
-            <p>Signing you in…</p>
+            <p>{t.auth.signingIn}</p>
             {clerkEnabled && <AuthenticateWithRedirectCallback signInForceRedirectUrl="/#/playground" signUpForceRedirectUrl="/#/playground" />}
           </div>
         </section>
@@ -167,6 +166,7 @@ export function SsoCallbackPage() {
 }
 
 function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
+  const t = useCopy()
   const signup = mode === 'signup'
   const live = clerkEnabled
   const [step, setStep] = useState<Step>({ kind: 'form' })
@@ -209,21 +209,21 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
   const codeValid = /^\d{6}$/.test(code)
   const newPassword = signup || step.kind === 'reset'
   const errors = (step.kind === 'code'
-    ? [!codeValid && 'Enter the 6-digit code from the email.']
+    ? [!codeValid && t.auth.errors.code]
     : step.kind === 'forgot'
-      ? [!emailValid && 'Enter a valid email address.']
+      ? [!emailValid && t.auth.errors.email]
       : step.kind === 'reset'
         ? [
-            !codeValid && 'Enter the 6-digit code from the email.',
-            !password && 'Enter a new password.',
-            password && score < 5 && 'Choose a password that meets every rule below.',
-            confirm !== password && 'Passwords do not match.',
+            !codeValid && t.auth.errors.code,
+            !password && t.auth.errors.newPassword,
+            password && score < 5 && t.auth.errors.rules,
+            confirm !== password && t.auth.errors.match,
           ]
         : [
-            !emailValid && 'Enter a valid email address.',
-            !password && 'Enter a password.',
-            signup && password && score < 5 && 'Choose a password that meets every rule below.',
-            signup && confirm !== password && 'Passwords do not match.',
+            !emailValid && t.auth.errors.email,
+            !password && t.auth.errors.password,
+            signup && password && score < 5 && t.auth.errors.rules,
+            signup && confirm !== password && t.auth.errors.match,
           ]
   ).filter(Boolean) as string[]
   const shownError = attempted && errors.length ? errors[0] : serverError
@@ -300,34 +300,33 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
     go({ page: 'playground' })
   }
 
+  const withEmail = (parts: readonly [string, string, string]) => <>{parts[0]}<strong>{parts[1]}</strong>{parts[2]}</>
   const heading = step.kind === 'code'
-    ? 'Check your email'
+    ? t.auth.checkEmail
     : step.kind === 'forgot'
-      ? 'Reset your password'
+      ? t.auth.resetTitle
       : step.kind === 'reset'
-        ? 'Choose a new password'
-        : signup ? "Let's get you started" : 'Welcome back'
+        ? t.auth.newPasswordTitle
+        : signup ? t.auth.signupTitle : t.auth.signinTitle
   const lede = step.kind === 'code'
-    ? step.purpose === 'signup'
-      ? <>We sent a 6-digit code to <strong>{email}</strong>. Enter it to confirm your email.</>
-      : <>To confirm it’s you on this device, we sent a 6-digit code to <strong>{email}</strong>.</>
+    ? withEmail(step.purpose === 'signup' ? t.auth.codeSignup(email) : t.auth.codeDevice(email))
     : step.kind === 'forgot'
-      ? 'Enter your email and we’ll send you a code to reset your password.'
+      ? t.auth.resetLede
       : step.kind === 'reset'
-        ? <>Enter the code we sent to <strong>{email}</strong> and choose a new password.</>
-        : signup ? 'Securely create your account in seconds.' : 'Sign in to the K1 booking agent workspace.'
+        ? withEmail(t.auth.newPasswordLede(email))
+        : signup ? t.auth.signupLede : t.auth.signinLede
   const submitLabel = step.kind === 'code'
-    ? step.purpose === 'signup' ? 'Verify email' : 'Verify'
+    ? step.purpose === 'signup' ? t.auth.verifyEmail : t.auth.verify
     : step.kind === 'forgot'
-      ? 'Send code'
+      ? t.auth.sendCode
       : step.kind === 'reset'
-        ? 'Reset password'
-        : signup ? 'Sign up' : 'Log in'
+        ? t.auth.resetPassword
+        : signup ? t.auth.signup : t.auth.login
   const locked = busy !== null || (live && !flow)
 
   const codeField = (
     <div className="k1-field">
-      <label htmlFor={ids.code}>Code</label>
+      <label htmlFor={ids.code}>{t.auth.code}</label>
       <input
         id={ids.code}
         className="k1-input k1-input--code"
@@ -345,15 +344,16 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
 
   const resendLine = (
     <p className="k1-auth__switch">
-      Didn’t get it?{' '}
+      {t.auth.noCode}{' '}
       {resent
-        ? <span aria-live="polite">A new code is on its way.</span>
-        : <button type="button" className="k1-auth__link" onClick={resend} disabled={locked}>{busy === 'resend' ? 'Sending…' : 'Send a new code'}</button>}
+        ? <span aria-live="polite">{t.auth.newCodeSent}</span>
+        : <button type="button" className="k1-auth__link" onClick={resend} disabled={locked}>{busy === 'resend' ? t.auth.sending : t.auth.sendNewCode}</button>}
     </p>
   )
 
   return (
     <div className="k1-auth">
+      <div className="k1-auth__lang"><LangSwitch /></div>
       <a className="k1-auth__brand" href={href({ page: signup ? 'signup' : 'signin' })}>
         <BrandLogo height={28} />
       </a>
@@ -367,15 +367,15 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
               <>
                 <button type="button" className="k1-btn k1-btn--outline k1-btn--block" onClick={google} disabled={locked} aria-busy={busy === 'google'}>
                   {busy === 'google' ? <Spinner /> : <GoogleMark />}
-                  {signup ? 'Sign up with Google' : 'Continue with Google'}
+                  {signup ? t.auth.googleSignup : t.auth.googleSignin}
                 </button>
-                <div className="k1-or"><span>OR</span></div>
+                <div className="k1-or"><span>{t.auth.or}</span></div>
               </>
             )}
 
             {(step.kind === 'form' || step.kind === 'forgot') && (
               <div className="k1-field">
-                <label htmlFor={ids.email}>Email</label>
+                <label htmlFor={ids.email}>{t.auth.email}</label>
                 <input
                   id={ids.email}
                   className="k1-input"
@@ -394,14 +394,14 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
             {(step.kind === 'form' || step.kind === 'reset') && (
               <PasswordField
                 id={ids.password}
-                label={step.kind === 'reset' ? 'New password' : 'Password'}
+                label={step.kind === 'reset' ? t.auth.newPassword : t.auth.password}
                 value={password}
                 onChange={setPassword}
                 autoComplete={newPassword ? 'new-password' : 'current-password'}
                 invalid={attempted && (!password || (newPassword && score < 5))}
                 describedBy={newPassword ? ids.rules : undefined}
                 action={step.kind === 'form' && !signup && live
-                  ? <button type="button" className="k1-auth__link k1-auth__forgot" onClick={() => moveTo({ kind: 'forgot' })}>Forgot password?</button>
+                  ? <button type="button" className="k1-auth__link k1-auth__forgot" onClick={() => moveTo({ kind: 'forgot' })}>{t.auth.forgot}</button>
                   : undefined}
               />
             )}
@@ -411,7 +411,7 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
             {newPassword && (step.kind === 'form' || step.kind === 'reset') && (
               <PasswordField
                 id={ids.confirm}
-                label={step.kind === 'reset' ? 'Confirm new password' : 'Confirm Password'}
+                label={step.kind === 'reset' ? t.auth.confirmNewPassword : t.auth.confirmPassword}
                 value={confirm}
                 onChange={setConfirm}
                 autoComplete="new-password"
@@ -439,9 +439,9 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
             {!live && (
               <Collapse open={deferred !== null}>
                 <div className="k1-auth__notice" ref={noticeRef} tabIndex={-1} role="status">
-                  <strong>{deferred === 'google' ? 'Google sign-in is not connected yet.' : 'Accounts are not connected yet.'}</strong>
-                  <p>Clerk integration is still pending, so {signup ? 'no account was created' : 'no one was signed in'} and nothing was sent. You can open the development preview instead — it shows sample Activity and Leads, not customer records.</p>
-                  <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={enterPreview}>Open development preview</button>
+                  <strong>{deferred === 'google' ? t.auth.deferredGoogle : t.auth.deferredEmail}</strong>
+                  <p>{t.auth.deferredBody(signup)}</p>
+                  <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={enterPreview}>{t.auth.openPreview}</button>
                 </div>
               </Collapse>
             )}
@@ -453,18 +453,18 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
               {submitLabel}
             </button>
 
-            {step.kind === 'form' && signup && <p className="k1-auth__terms">By continuing, you agree to our Terms of Service and Privacy Policy.</p>}
+            {step.kind === 'form' && signup && <p className="k1-auth__terms">{t.auth.terms}</p>}
             {step.kind === 'form' && (
               <p className="k1-auth__switch">
-                {signup ? 'Already have an account?' : "Don't have an account?"}{' '}
-                <a href={href({ page: signup ? 'signin' : 'signup' })}>{signup ? 'Login' : 'Sign up'}</a>
+                {signup ? t.auth.haveAccount : t.auth.noAccount}{' '}
+                <a href={href({ page: signup ? 'signin' : 'signup' })}>{signup ? t.auth.loginLink : t.auth.signup}</a>
               </p>
             )}
             {(step.kind === 'code' || step.kind === 'reset') && resendLine}
             {step.kind !== 'form' && (
               <p className="k1-auth__switch k1-auth__switch--tight">
                 <button type="button" className="k1-auth__link" onClick={() => moveTo({ kind: 'form' })}>
-                  {step.kind === 'code' && step.purpose === 'signup' ? 'Use a different email' : 'Back to login'}
+                  {step.kind === 'code' && step.purpose === 'signup' ? t.auth.differentEmail : t.auth.backToLogin}
                 </button>
               </p>
             )}

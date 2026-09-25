@@ -1,3 +1,4 @@
+import { copy } from '../i18n'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { createContext, ReactNode, RefObject, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -124,7 +125,7 @@ function DialogSurface({ title, onClose, children, width = 460, initialFocus }: 
         transition={{ duration: 0.2, ease: cssEase }}
       >
         <h2 id={titleId} className="k1-dialog__title">{title}</h2>
-        <button type="button" className="k1-dialog__close" aria-label="Close" onClick={onClose}>
+        <button type="button" className="k1-dialog__close" aria-label={copy().common.close} onClick={onClose}>
           <X size={16} strokeWidth={1.75} />
         </button>
         {children}

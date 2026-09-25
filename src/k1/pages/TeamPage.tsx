@@ -10,6 +10,7 @@ import { Skeleton, Spinner } from '../ui/controls'
 import { UserAdd } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
+import { copy, useCopy } from '../i18n'
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 
@@ -31,7 +32,7 @@ function PersonAvatar({ name, imageUrl }: { name: string; imageUrl?: string }) {
 function memberName(member: OrganizationMembershipResource) {
   const data = member.publicUserData
   const full = [data?.firstName, data?.lastName].filter(Boolean).join(' ').trim()
-  return { name: full || data?.identifier || 'Member', email: data?.identifier ?? '', imageUrl: data?.hasImage ? data.imageUrl : undefined, userId: data?.userId }
+  return { name: full || data?.identifier || copy().team.member, email: data?.identifier ?? '', imageUrl: data?.hasImage ? data.imageUrl : undefined, userId: data?.userId }
 }
 
 function InviteDialog({ open, onClose, onSent, invite }: {
@@ -40,6 +41,7 @@ function InviteDialog({ open, onClose, onSent, invite }: {
   onSent: (emails: string[]) => void
   invite: (emails: string[]) => Promise<void>
 }) {
+  const t = useCopy()
   const [value, setValue] = useState('')
   const [attempted, setAttempted] = useState(false)
   const [sending, setSending] = useState(false)
@@ -49,7 +51,7 @@ function InviteDialog({ open, onClose, onSent, invite }: {
 
   const emails = [...new Set(value.split(/[\s,;]+/).map((item) => item.trim().toLowerCase()).filter(Boolean))]
   const invalid = emails.filter((email) => !EMAIL.test(email))
-  const error = !emails.length ? 'Enter an email address.' : invalid.length ? `“${invalid[0]}” is not a valid email address.` : ''
+  const error = !emails.length ? t.team.enterEmail : invalid.length ? t.team.invalidEmail(invalid[0]) : ''
   const shown = (attempted && error) || serverError
 
   const close = () => {
@@ -80,11 +82,11 @@ function InviteDialog({ open, onClose, onSent, invite }: {
   }
 
   return (
-    <Dialog open={open} title="Invite people" onClose={close} width={440} initialFocus={inputRef}>
+    <Dialog open={open} title={t.team.invitePeople} onClose={close} width={440} initialFocus={inputRef}>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <div className="k1-form-stack">
           <div className="k1-field">
-            <label htmlFor={ids.input}>Email addresses</label>
+            <label htmlFor={ids.input}>{t.team.emails}</label>
             <input
               ref={inputRef}
               id={ids.input}
@@ -98,14 +100,14 @@ function InviteDialog({ open, onClose, onSent, invite }: {
               aria-describedby={shown ? `${ids.hint} ${ids.error}` : ids.hint}
               onChange={(event) => setValue(event.target.value)}
             />
-            <p id={ids.hint} className="k1-hint">Separate several addresses with commas. Each person gets an email with a link to join {TEAM_NAME}.</p>
+            <p id={ids.hint} className="k1-hint">{t.team.emailsHint(TEAM_NAME)}</p>
           </div>
           {shown && <p id={ids.error} className="k1-auth__error" role="alert">{shown}</p>}
         </div>
         <footer className="k1-dialog__foot">
-          <button type="button" className="k1-btn k1-btn--outline" onClick={close} disabled={sending}>Cancel</button>
+          <button type="button" className="k1-btn k1-btn--outline" onClick={close} disabled={sending}>{t.common.cancel}</button>
           <button type="submit" className="k1-btn k1-btn--primary" disabled={sending} aria-busy={sending}>
-            {sending && <Spinner />}{emails.length > 1 ? `Send ${emails.length} invites` : 'Send invite'}
+            {sending && <Spinner />}{emails.length > 1 ? t.team.sendInvites(emails.length) : t.team.sendInvite}
           </button>
         </footer>
       </form>
@@ -114,6 +116,7 @@ function InviteDialog({ open, onClose, onSent, invite }: {
 }
 
 function ConfirmRemove({ target, onClose, onConfirm }: { target: { name: string } | null; onClose: () => void; onConfirm: () => Promise<void> }) {
+  const t = useCopy()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const confirm = async () => {
@@ -129,20 +132,21 @@ function ConfirmRemove({ target, onClose, onConfirm }: { target: { name: string 
     }
   }
   return (
-    <Dialog open={Boolean(target)} title={`Remove ${target?.name ?? ''}?`} onClose={() => { if (!busy) { setError(''); onClose() } }} width={420}>
+    <Dialog open={Boolean(target)} title={t.team.removeTitle(target?.name ?? '')} onClose={() => { if (!busy) { setError(''); onClose() } }} width={420}>
       <div className="k1-form-stack">
-        <p className="k1-dialog__text">They will no longer be part of the {TEAM_NAME} team. You can invite them again later.</p>
+        <p className="k1-dialog__text">{t.team.removeBody(TEAM_NAME)}</p>
         {error && <p className="k1-auth__error" role="alert">{error}</p>}
       </div>
       <footer className="k1-dialog__foot">
-        <button type="button" className="k1-btn k1-btn--outline" onClick={onClose} disabled={busy}>Cancel</button>
-        <button type="button" className="k1-btn k1-btn--danger" onClick={() => void confirm()} disabled={busy} aria-busy={busy}>{busy && <Spinner />}Remove</button>
+        <button type="button" className="k1-btn k1-btn--outline" onClick={onClose} disabled={busy}>{t.common.cancel}</button>
+        <button type="button" className="k1-btn k1-btn--danger" onClick={() => void confirm()} disabled={busy} aria-busy={busy}>{busy && <Spinner />}{t.common.remove}</button>
       </footer>
     </Dialog>
   )
 }
 
 function ClerkTeam({ notify }: { notify: Notify }) {
+  const t = useCopy()
   const { user } = useUser()
   const { sessionId } = useAuth()
   const { isLoaded, organization, memberships, invitations } = useOrganization({
@@ -167,17 +171,17 @@ function ClerkTeam({ notify }: { notify: Notify }) {
         const created = await createOrganization({ name: TEAM_NAME })
         await setActive({ session: sessionId, organization: created.id })
       } catch (failure) {
-        notify({ tone: 'error', title: 'Team not created', body: authError(failure) })
+        notify({ tone: 'error', title: t.team.notCreated, body: authError(failure) })
       } finally {
         setCreating(false)
       }
     }
     return (
       <div className="k1-team__empty">
-        <strong>No team yet</strong>
-        <p>Create the {TEAM_NAME} team, then invite people by email. If someone invited you, sign in with the invited email and you’ll join automatically.</p>
+        <strong>{t.team.noTeam}</strong>
+        <p>{t.team.noTeamBody(TEAM_NAME)}</p>
         <button type="button" className="k1-btn k1-btn--primary k1-btn--sm" onClick={() => void create()} disabled={creating} aria-busy={creating}>
-          {creating && <Spinner />}Create team
+          {creating && <Spinner />}{t.team.create}
         </button>
       </div>
     )
@@ -196,9 +200,9 @@ function ClerkTeam({ notify }: { notify: Notify }) {
     try {
       await invitation.revoke()
       await invitations?.revalidate?.()
-      notify({ title: 'Invite revoked', body: `${invitation.emailAddress} can no longer use the link to join.` })
+      notify({ title: t.team.revoked, body: t.team.revokedBody(invitation.emailAddress) })
     } catch (failure) {
-      notify({ tone: 'error', title: 'Invite not revoked', body: authError(failure) })
+      notify({ tone: 'error', title: t.team.notRevoked, body: authError(failure) })
     } finally {
       setRevoking(null)
     }
@@ -208,9 +212,9 @@ function ClerkTeam({ notify }: { notify: Notify }) {
     <>
       <section className="k1-team__section" aria-labelledby="k1-members-title">
         <div className="k1-team__head">
-          <h2 id="k1-members-title" className="k1-section-title">Members <span className="k1-team__count">{members.length}</span></h2>
+          <h2 id="k1-members-title" className="k1-section-title">{t.team.members} <span className="k1-team__count">{members.length}</span></h2>
           <button type="button" className="k1-btn k1-btn--primary k1-btn--sm" aria-haspopup="dialog" onClick={() => setInviting(true)}>
-            <UserAdd size={16} />Invite
+            <UserAdd size={16} />{t.team.invite}
           </button>
         </div>
         <ul className="k1-versions">
@@ -224,13 +228,13 @@ function ClerkTeam({ notify }: { notify: Notify }) {
                   <div className="k1-version__main">
                     <div className="k1-version__title">
                       <strong>{person.name}</strong>
-                      {you && <span className="k1-vtag">You</span>}
+                      {you && <span className="k1-vtag">{t.team.you}</span>}
                     </div>
                     {person.email && person.email !== person.name && <p className="k1-version__note">{person.email}</p>}
-                    <p className="k1-version__meta">Joined {formatStamp(member.createdAt.toISOString())}</p>
+                    <p className="k1-version__meta">{t.team.joined(formatStamp(member.createdAt.toISOString()))}</p>
                   </div>
                   {!you && (
-                    <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" onClick={() => setRemoving({ member, name: person.name })}>Remove</button>
+                    <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" onClick={() => setRemoving({ member, name: person.name })}>{t.common.remove}</button>
                   )}
                 </motion.li>
               )
@@ -241,7 +245,7 @@ function ClerkTeam({ notify }: { notify: Notify }) {
 
       {pending.length > 0 && (
         <section className="k1-team__section" aria-labelledby="k1-invites-title">
-          <h2 id="k1-invites-title" className="k1-section-title">Invitations <span className="k1-team__count">{pending.length}</span></h2>
+          <h2 id="k1-invites-title" className="k1-section-title">{t.team.invitations} <span className="k1-team__count">{pending.length}</span></h2>
           <ul className="k1-versions">
             <AnimatePresence initial={false}>
               {pending.map((invitation) => (
@@ -250,12 +254,12 @@ function ClerkTeam({ notify }: { notify: Notify }) {
                   <div className="k1-version__main">
                     <div className="k1-version__title">
                       <strong>{invitation.emailAddress}</strong>
-                      <span className="k1-vtag is-draft">Invited</span>
+                      <span className="k1-vtag is-draft">{t.team.invited}</span>
                     </div>
-                    <p className="k1-version__meta">Sent {formatStamp(invitation.createdAt.toISOString())}</p>
+                    <p className="k1-version__meta">{t.team.sent(formatStamp(invitation.createdAt.toISOString()))}</p>
                   </div>
                   <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => void revoke(invitation)} disabled={revoking === invitation.id} aria-busy={revoking === invitation.id}>
-                    {revoking === invitation.id && <Spinner />}Revoke
+                    {revoking === invitation.id && <Spinner />}{t.team.revoke}
                   </button>
                 </motion.li>
               ))}
@@ -269,8 +273,8 @@ function ClerkTeam({ notify }: { notify: Notify }) {
         onClose={() => setInviting(false)}
         invite={invite}
         onSent={(emails) => notify({
-          title: emails.length > 1 ? `${emails.length} invites sent` : 'Invite sent',
-          body: `${emails.length > 1 ? 'They get' : `${emails[0]} gets`} an email with a link to join ${TEAM_NAME}.`,
+          title: emails.length > 1 ? t.team.invitesSent(emails.length) : t.team.inviteSent,
+          body: t.team.inviteSentBody(emails.length > 1 ? null : emails[0], TEAM_NAME),
         })}
       />
       <ConfirmRemove
@@ -280,7 +284,7 @@ function ClerkTeam({ notify }: { notify: Notify }) {
           if (!removing) return
           await removing.member.destroy()
           await memberships?.revalidate?.()
-          notify({ title: 'Member removed', body: `${removing.name} is no longer in ${TEAM_NAME}.` })
+          notify({ title: t.team.removed, body: t.team.removedBody(removing.name, TEAM_NAME) })
         }}
       />
     </>
@@ -288,16 +292,17 @@ function ClerkTeam({ notify }: { notify: Notify }) {
 }
 
 export function TeamPage({ notify }: { notify: Notify }) {
+  const t = useCopy()
   const session = useSession()
   return (
     <div className="k1-deploy">
       <header className="k1-deploy__head">
-        <h1 className="k1-deploy__title">Team</h1>
+        <h1 className="k1-deploy__title">{t.team.title}</h1>
       </header>
       <div className="k1-deploy__body k1-team">
         {session.mode === 'clerk'
           ? <ClerkTeam notify={notify} />
-          : <p className="k1-hint">Team members can be managed once Clerk sign-in is connected. The development preview has no accounts.</p>}
+          : <p className="k1-hint">{t.team.previewNote}</p>}
       </div>
     </div>
   )

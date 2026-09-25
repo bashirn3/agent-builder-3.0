@@ -9,6 +9,7 @@ import { PlaygroundPage } from './pages/PlaygroundPage'
 import { TeamPage } from './pages/TeamPage'
 import { EMPTY_CHAT_FILTERS, TestChatsPage, type ChatFilters } from './pages/TestChatsPage'
 import { useSession } from './auth/session'
+import { useCopy } from './i18n'
 import { go, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
 import { ToastStack, useToasts } from './ui/controls'
@@ -20,10 +21,11 @@ function Workspace({ compact }: { compact: boolean }) {
   const playground = usePlayground(push)
   const [filters, setFilters] = useState<ChatFilters>(EMPTY_CHAT_FILTERS)
 
-  const titles: Record<string, string> = { playground: 'Playground', compare: 'Compare', chats: 'Test chats', leads: 'Leads', deploy: 'Deploy', team: 'Team' }
+  const t = useCopy()
+  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, deploy: t.nav.deploy, team: t.nav.team }
   useEffect(() => {
     document.title = `${titles[route.page] ?? 'A-Katsastus'} · A-Katsastus`
-  }, [route.page])
+  }, [route.page, t])
 
   let page = null
   if (route.page === 'playground') page = <PlaygroundPage store={playground} compact={compact} />

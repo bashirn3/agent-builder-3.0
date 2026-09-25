@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, Users, X } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { useSession } from '../auth/session'
+import { setUiLang, useCopy, useUiLang } from '../i18n'
 import { go, href, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
@@ -11,16 +12,31 @@ export function BrandLogo({ height = 22 }: { height?: number }) {
   return <img className="k1-brand-logo" src="/brand/a-katsastus-logo.jpg" alt="A-Katsastus" height={height} width={Math.round(height * 1024 / 279)} />
 }
 
+export function LangSwitch() {
+  const lang = useUiLang()
+  const t = useCopy()
+  return (
+    <div className="k1-langs" role="group" aria-label={t.common.interfaceLanguage}>
+      {(['fi', 'en'] as const).map((code) => (
+        <button key={code} type="button" lang={code} aria-pressed={lang === code} onClick={() => setUiLang(code)}>
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () => void }) {
+  const t = useCopy()
   return (
     <header className="k1-header k1-header--mobile">
-      <a className="k1-header__brand" href={href({ page: 'playground' })} aria-label="A-Katsastus playground">
+      <a className="k1-header__brand" href={href({ page: 'playground' })} aria-label={t.nav.home}>
         <BrandLogo />
       </a>
       <button
         type="button"
         className="k1-icon-btn k1-header__toggle"
-        aria-label={navOpen ? 'Close navigation' : 'Open navigation'}
+        aria-label={navOpen ? t.nav.closeNavigation : t.nav.openNavigation}
         aria-expanded={navOpen}
         aria-controls="k1-mobile-nav"
         onClick={onToggle}
@@ -47,23 +63,25 @@ function useSignOut() {
 }
 
 export function Header() {
+  const t = useCopy()
   const { user } = useSession()
   const signOut = useSignOut()
   return (
     <header className="k1-header">
-      <a className="k1-header__home" href={href({ page: 'playground' })} aria-label="A-Katsastus playground">
+      <a className="k1-header__home" href={href({ page: 'playground' })} aria-label={t.nav.home}>
         <BrandLogo />
       </a>
-      <nav className="k1-crumbs" aria-label="Workspace">
+      <nav className="k1-crumbs" aria-label={t.nav.workspace}>
         <span className="k1-crumbs__sep" aria-hidden="true">/</span>
         <span className="k1-crumbs__item">K1 Katsastus</span>
         <span className="k1-crumbs__sep" aria-hidden="true">/</span>
-        <span className="k1-crumbs__item">Booking agent</span>
-        <span className="k1-badge">Agent</span>
+        <span className="k1-crumbs__item">{t.nav.bookingAgent}</span>
+        <span className="k1-badge">{t.nav.agent}</span>
       </nav>
       <div className="k1-header__end">
+        <LangSwitch />
         <Menu
-          label="Account"
+          label={t.nav.account}
           header={(
             <div className="k1-menu__header">
               <strong>{user?.name}</strong>
@@ -71,12 +89,12 @@ export function Header() {
             </div>
           )}
           items={[{
-            label: 'Sign out',
+            label: t.nav.signOut,
             icon: <LogOut />,
             onSelect: () => { void signOut() },
           }]}
           trigger={(props) => (
-            <button {...props} type="button" className="k1-avatar" aria-label="Account menu">
+            <button {...props} type="button" className="k1-avatar" aria-label={t.nav.accountMenu}>
               <Avatar />
             </button>
           )}
@@ -87,11 +105,12 @@ export function Header() {
 }
 
 const activityChildren = [
-  { key: 'chats', label: 'Test chats', to: { page: 'chats', id: null } as Route },
-  { key: 'leads', label: 'Leads', to: { page: 'leads', id: null } as Route },
-]
+  { key: 'chats', label: 'testChats', to: { page: 'chats', id: null } as Route },
+  { key: 'leads', label: 'leads', to: { page: 'leads', id: null } as Route },
+] as const
 
 export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () => void }) {
+  const t = useCopy()
   const inActivity = route.page === 'chats' || route.page === 'leads'
   const [activityOpen, setActivityOpen] = useState(true)
   const link = (to: Route, active: boolean, children: ReactNode, sub = false) => (
@@ -106,8 +125,8 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
     </a>
   )
   return (
-    <nav className="k1-nav" aria-label="Main">
-      {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />Playground</>)}
+    <nav className="k1-nav" aria-label={t.nav.main}>
+      {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />{t.nav.playground}</>)}
       <button
         type="button"
         className={`k1-nav__item${inActivity && !activityOpen ? ' is-active' : ''}`}
@@ -116,41 +135,46 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
         onClick={() => setActivityOpen((open) => !open)}
       >
         <History size={16} strokeWidth={1.75} />
-        Activity
+        {t.nav.activity}
         <motion.span className="k1-nav__chevron" animate={{ rotate: activityOpen ? 180 : 0 }} transition={space} aria-hidden="true">
           <ChevronDown size={16} strokeWidth={1.75} />
         </motion.span>
       </button>
       <Collapse open={activityOpen} id="k1-nav-activity">
         <div className="k1-nav__group">
-          {activityChildren.map((child) => link(child.to, route.page === child.key, child.label, true))}
+          {activityChildren.map((child) => link(child.to, route.page === child.key, t.nav[child.label], true))}
         </div>
       </Collapse>
-      {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />Compare</>)}
-      {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />Deploy</>)}
-      {link({ page: 'team' }, route.page === 'team', <><Users size={16} />Team</>)}
+      {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />{t.nav.compare}</>)}
+      {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />{t.nav.deploy}</>)}
+      {link({ page: 'team' }, route.page === 'team', <><Users size={16} />{t.nav.team}</>)}
     </nav>
   )
 }
 
 function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
+  const t = useCopy()
   const panelRef = useRef<HTMLDivElement>(null)
   const { user } = useSession()
   const signOut = useSignOut()
   useFocusTrap(panelRef, onClose)
   return (
-    <div ref={panelRef} id="k1-mobile-nav" className="k1-mobile-nav" role="dialog" aria-modal="true" aria-label="Navigation">
+    <div ref={panelRef} id="k1-mobile-nav" className="k1-mobile-nav" role="dialog" aria-modal="true" aria-label={t.nav.navigation}>
       <div className="k1-mobile-nav__workspace">
-        <strong>Booking agent</strong>
-        <span>K1 Katsastus <span className="k1-badge">Agent</span></span>
+        <strong>{t.nav.bookingAgent}</strong>
+        <span>K1 Katsastus <span className="k1-badge">{t.nav.agent}</span></span>
       </div>
       <Sidebar route={route} onNavigate={onClose} />
       <div className="k1-mobile-nav__foot">
         <span className="k1-avatar" aria-hidden="true"><Avatar /></span>
         <span className="k1-mobile-nav__who">{user?.name}{user?.email && user.email !== user.name && <small>{user.email}</small>}</span>
         <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => { void signOut() }}>
-          <LogOut />Sign out
+          <LogOut />{t.nav.signOut}
         </button>
+      </div>
+      <div className="k1-mobile-nav__lang">
+        <span>{t.common.interfaceLanguage}</span>
+        <LangSwitch />
       </div>
     </div>
   )

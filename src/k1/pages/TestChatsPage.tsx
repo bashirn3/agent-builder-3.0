@@ -11,6 +11,7 @@ import { DateRangeField } from '../ui/DateRange'
 import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, X } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { Bubble } from './PlaygroundPage'
+import { copy, useCopy } from '../i18n'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
 
 export type ChatFilters = Omit<TestChatFilters, 'from' | 'to' | 'query'> & { from: string | null; to: string | null; query: string }
@@ -37,11 +38,12 @@ function toApi(filters: ChatFilters): TestChatFilters {
 }
 
 export function versionTag(chat: Pick<TestChatSummary, 'isDraft' | 'versionNumber'>) {
-  if (chat.isDraft) return chat.versionNumber ? `Draft from v${chat.versionNumber}` : 'Draft'
-  return chat.versionNumber ? `v${chat.versionNumber}` : 'Unsaved version'
+  const t = copy()
+  if (chat.isDraft) return chat.versionNumber ? t.chats.draftFrom(chat.versionNumber) : t.common.draft
+  return chat.versionNumber ? `v${chat.versionNumber}` : t.chats.unsavedVersion
 }
 
-const sourceLabel = (source: TestChatSummary['source']) => (source === 'compare' ? 'Compare' : 'Playground')
+const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source === 'compare' ? 'compare' : 'playground']
 
 function FilterDialog({ open, filters, config, onChange, onClose }: {
   open: boolean
@@ -50,6 +52,7 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
   onChange: (filters: ChatFilters) => void
   onClose: () => void
 }) {
+  const t = useCopy()
   const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId() }
   const versions = config?.versions ?? []
   const toggleVersion = (value: string) => {
@@ -61,10 +64,10 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
     onChange({ ...filters, versions: filters.versions.includes(number) ? filters.versions.filter((item) => item !== number) : [...filters.versions, number] })
   }
   return (
-    <Dialog open={open} title="Filter by" onClose={onClose} width={530}>
+    <Dialog open={open} title={t.chats.filterBy} onClose={onClose} width={530}>
       <div className="k1-form-stack">
         <div className="k1-field">
-          <span id={ids.versions}>Version</span>
+          <span id={ids.versions}>{t.chats.version}</span>
           <div className="k1-version-picks" role="group" aria-labelledby={ids.versions}>
             {versions.map((version) => (
               <button
@@ -74,53 +77,54 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
                 aria-pressed={filters.versions.includes(version.number)}
                 onClick={() => toggleVersion(String(version.number))}
               >
-                v{version.number}{version.live ? ' · Live' : ''}
+                v{version.number}{version.live ? ` · ${t.common.live}` : ''}
               </button>
             ))}
-            <button type="button" className="k1-token" aria-pressed={filters.includeDraft} onClick={() => toggleVersion(DRAFTS)}>Drafts</button>
+            <button type="button" className="k1-token" aria-pressed={filters.includeDraft} onClick={() => toggleVersion(DRAFTS)}>{t.chats.drafts}</button>
           </div>
-          <p className="k1-hint">{filters.versions.length ? 'Only the ticked versions are shown.' : 'All versions are shown.'} {filters.includeDraft ? 'Draft chats are included.' : 'Draft chats are hidden.'}</p>
+          <p className="k1-hint">{filters.versions.length ? t.chats.onlyTicked : t.chats.allShown} {filters.includeDraft ? t.chats.draftsIncluded : t.chats.draftsHidden}</p>
         </div>
         <div className="k1-field">
-          <label htmlFor={ids.feedback}>Feedback</label>
+          <label htmlFor={ids.feedback}>{t.chats.feedback}</label>
           <Select<'up' | 'down' | 'none'>
             id={ids.feedback}
-            label="Feedback"
+            label={t.chats.feedback}
             value={filters.feedback}
-            placeholder="Select feedback"
-            options={[{ value: 'up', label: 'Has a thumbs up' }, { value: 'down', label: 'Has a thumbs down' }, { value: 'none', label: 'No feedback yet' }]}
+            placeholder={t.chats.selectFeedback}
+            options={[{ value: 'up', label: t.chats.hasUp }, { value: 'down', label: t.chats.hasDown }, { value: 'none', label: t.chats.noFeedback }]}
             onChange={(feedback) => onChange({ ...filters, feedback })}
           />
         </div>
         <div className="k1-field">
-          <label htmlFor={ids.source}>Source</label>
+          <label htmlFor={ids.source}>{t.chats.source}</label>
           <Select<'playground' | 'compare'>
             id={ids.source}
-            label="Source"
+            label={t.chats.source}
             value={filters.source}
-            placeholder="Select source"
-            options={[{ value: 'playground', label: 'Playground' }, { value: 'compare', label: 'Compare' }]}
+            placeholder={t.chats.selectSource}
+            options={[{ value: 'playground', label: t.chats.sources.playground }, { value: 'compare', label: t.chats.sources.compare }]}
             onChange={(source) => onChange({ ...filters, source })}
           />
         </div>
         <div className="k1-field">
-          <label htmlFor={ids.range}>Date range</label>
+          <label htmlFor={ids.range}>{t.chats.dateRange}</label>
           <DateRangeField id={ids.range} from={filters.from} to={filters.to} onChange={(range) => onChange({ ...filters, ...range })} />
         </div>
       </div>
       <footer className="k1-dialog__foot">
-        <button type="button" className="k1-link k1-link--danger" onClick={() => onChange({ ...EMPTY_CHAT_FILTERS, query: filters.query })} disabled={!chatFilterCount(filters)}>Clear all</button>
-        <button type="button" className="k1-btn k1-btn--outline" onClick={onClose}>Close</button>
+        <button type="button" className="k1-link k1-link--danger" onClick={() => onChange({ ...EMPTY_CHAT_FILTERS, query: filters.query })} disabled={!chatFilterCount(filters)}>{t.common.clearAll}</button>
+        <button type="button" className="k1-btn k1-btn--outline" onClick={onClose}>{t.common.close}</button>
       </footer>
     </Dialog>
   )
 }
 
 function Chips({ filters, onChange }: { filters: ChatFilters; onChange: (filters: ChatFilters) => void }) {
+  const t = useCopy()
   const chips = [
     ...filters.versions.map((number) => ({ key: `v${number}`, label: `v${number}`, clear: { versions: filters.versions.filter((item) => item !== number) } })),
-    !filters.includeDraft && { key: 'drafts', label: 'No drafts', clear: { includeDraft: true } },
-    filters.feedback && { key: 'feedback', label: filters.feedback === 'up' ? 'Has thumbs up' : filters.feedback === 'down' ? 'Has thumbs down' : 'No feedback', clear: { feedback: null } },
+    !filters.includeDraft && { key: 'drafts', label: t.chats.noDrafts, clear: { includeDraft: true } },
+    filters.feedback && { key: 'feedback', label: filters.feedback === 'up' ? t.chats.chipUp : filters.feedback === 'down' ? t.chats.chipDown : t.chats.chipNone, clear: { feedback: null } },
     filters.source && { key: 'source', label: sourceLabel(filters.source), clear: { source: null } },
     filters.from && { key: 'range', label: `${filters.from} – ${filters.to ?? filters.from}`, clear: { from: null, to: null } },
   ].filter(Boolean) as Array<{ key: string; label: string; clear: Partial<ChatFilters> }>
@@ -132,10 +136,10 @@ function Chips({ filters, onChange }: { filters: ChatFilters; onChange: (filters
             {chips.map((chip) => (
               <span key={chip.key} className="k1-chip">
                 {chip.label}
-                <button type="button" aria-label={`Remove filter ${chip.label}`} onClick={() => onChange({ ...filters, ...chip.clear })}><X size={12} strokeWidth={2} /></button>
+                <button type="button" aria-label={t.chats.removeFilter(chip.label)} onClick={() => onChange({ ...filters, ...chip.clear })}><X size={12} strokeWidth={2} /></button>
               </span>
             ))}
-            <button type="button" className="k1-link k1-link--danger" onClick={() => onChange({ ...EMPTY_CHAT_FILTERS, query: filters.query })}>Clear all</button>
+            <button type="button" className="k1-link k1-link--danger" onClick={() => onChange({ ...EMPTY_CHAT_FILTERS, query: filters.query })}>{t.common.clearAll}</button>
           </div>
         </motion.div>
       )}
@@ -144,11 +148,12 @@ function Chips({ filters, onChange }: { filters: ChatFilters; onChange: (filters
 }
 
 function Totals({ items }: { items: TestChatSummary[] }) {
+  const t = useCopy()
   const up = items.reduce((sum, item) => sum + item.thumbsUp, 0)
   const down = items.reduce((sum, item) => sum + item.thumbsDown, 0)
   return (
-    <div className="k1-totals" aria-label="Totals for the chats shown">
-      <span><strong>{items.length}</strong> chat{items.length === 1 ? '' : 's'}</span>
+    <div className="k1-totals" aria-label={t.chats.totals}>
+      <span><strong>{items.length}</strong> {t.chats.chats(items.length)}</span>
       <span><ThumbsUp size={13} strokeWidth={1.75} /><strong>{up}</strong></span>
       <span><ThumbsDown size={13} strokeWidth={1.75} /><strong>{down}</strong></span>
     </div>
@@ -176,6 +181,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   onFilters: (filters: ChatFilters) => void
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 }) {
+  const t = useCopy()
   const [items, setItems] = useState<TestChatSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -194,7 +200,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     setLoadError(null)
     listTestChats(toApi(filters))
       .then((list) => { if (ticket === request.current) setItems(list) })
-      .catch(() => { if (ticket === request.current) { setItems([]); setLoadError('Test chats could not be loaded.') } })
+      .catch(() => { if (ticket === request.current) { setItems([]); setLoadError(copy().chats.loadFailed) } })
       .finally(() => { if (ticket === request.current) setLoading(false) })
   }
   useEffect(refresh, [filters])
@@ -230,7 +236,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     setMessages((list) => list.map((item) => (item.id === messageId ? { ...item, feedback: next } : item)))
     const delta = (kind: 'up' | 'down') => (next === kind ? 1 : 0) - (message.feedback === kind ? 1 : 0)
     setItems((list) => list.map((item) => (item.id === id ? { ...item, thumbsUp: item.thumbsUp + delta('up'), thumbsDown: item.thumbsDown + delta('down') } : item)))
-    void setFeedback(message.serverId, next).catch(() => notify({ tone: 'error', title: 'Feedback not saved', body: 'Check your connection and try again.' }))
+    void setFeedback(message.serverId, next).catch(() => notify({ tone: 'error', title: copy().chats.feedbackFailed, body: copy().chats.feedbackFailedBody }))
   }
 
   const count = chatFilterCount(filters)
@@ -248,26 +254,26 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       thumbs_down: String(item.thumbsDown),
       updated: item.updatedAt,
     }))))
-    notify({ title: 'Export ready', body: `${items.length} test chat${items.length === 1 ? '' : 's'} downloaded as CSV.` })
+    notify({ title: t.common.exportReady, body: t.chats.exportBody(items.length) })
   }
 
   const list = (
     <ListPane
-      title="Test chats"
+      title={t.chats.title}
       loading={loading}
       selectedId={id}
       actions={(
         <>
-          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={count ? `Filters (${count} active)` : 'Filters'} aria-haspopup="dialog" onClick={() => setFilterOpen(true)}>
+          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={count ? t.chats.filtersActive(count) : t.chats.filters} aria-haspopup="dialog" onClick={() => setFilterOpen(true)}>
             <SlidersHorizontal size={16} strokeWidth={1.75} />
             <AnimatePresence>
               {count > 0 && <motion.span className="k1-count" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.16, ease }}>{count}</motion.span>}
             </AnimatePresence>
           </button>
-          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label="Refresh" onClick={() => { setSpin((turns) => turns + 1); refresh() }}>
+          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.common.refresh} onClick={() => { setSpin((turns) => turns + 1); refresh() }}>
             <motion.span animate={{ rotate: spin * 360 }} transition={{ duration: 0.5, ease }} style={{ display: 'inline-flex' }}><RefreshCw size={16} strokeWidth={1.75} /></motion.span>
           </button>
-          <button type="button" className="k1-icon-btn k1-icon-btn--solid k1-icon-btn--lg" aria-label="Export as CSV" onClick={exportCsv} disabled={!items.length}>
+          <button type="button" className="k1-icon-btn k1-icon-btn--solid k1-icon-btn--lg" aria-label={t.common.exportCsv} onClick={exportCsv} disabled={!items.length}>
             <Download size={16} strokeWidth={1.75} />
           </button>
         </>
@@ -276,7 +282,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         <>
           <label className="k1-list-search">
             <Search size={14} />
-            <input className="k1-input" value={query} placeholder="Search messages" aria-label="Search test chats" onChange={(event) => setQuery(event.target.value)} />
+            <input className="k1-input" value={query} placeholder={t.chats.search} aria-label={t.chats.searchLabel} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Chips filters={filters} onChange={(next) => { setQuery(next.query); onFilters(next) }} />
           {!loading && items.length > 0 && <Totals items={items} />}
@@ -284,14 +290,14 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       )}
       items={items.map((item) => ({
         id: item.id,
-        title: item.title || 'Opener only',
-        subtitle: item.lastReply || 'No reply yet',
+        title: item.title || t.chats.openerOnly,
+        subtitle: item.lastReply || t.chats.noReply,
         meta: relativeTime(item.updatedAt),
         href: href({ page: 'chats', id: item.id }),
         tags: (
           <>
             <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>
-            {item.source === 'compare' && <span className="k1-vtag is-muted">Compare</span>}
+            {item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
             {item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
             {item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
           </>
@@ -300,14 +306,14 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       empty={loadError ? (
         <>
           <p><strong>{loadError}</strong></p>
-          {!tracking && <p>Saving test chats needs the latest backend update.</p>}
-          <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={refresh}>Try again</button>
+          {!tracking && <p>{t.chats.needsBackend}</p>}
+          <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={refresh}>{t.common.tryAgain}</button>
         </>
       ) : (
         <>
-          <p><strong>{count || filters.query ? 'No chats match' : 'No test chats yet'}</strong></p>
-          <p>{count || filters.query ? 'Try other filters or search words.' : 'Chats from the Playground and Compare are saved here, tagged with their version.'}</p>
-          {count > 0 && <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => onFilters({ ...EMPTY_CHAT_FILTERS, query: filters.query })}>Clear filters</button>}
+          <p><strong>{count || filters.query ? t.chats.noMatch : t.chats.none}</strong></p>
+          <p>{count || filters.query ? t.chats.noMatchHint : t.chats.noneHint}</p>
+          {count > 0 && <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => onFilters({ ...EMPTY_CHAT_FILTERS, query: filters.query })}>{t.chats.clearFilters}</button>}
         </>
       )}
     />
@@ -315,23 +321,23 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
 
   const conversation = selected?.conversation?.id === id ? selected.conversation : null
   const detail = detailLoading && !conversation ? (
-    <div className="k1-detail k1-detail--empty" role="status" aria-label="Loading test chat"><Skeleton width="60%" height={60} radius={20} /></div>
+    <div className="k1-detail k1-detail--empty" role="status" aria-label={t.chats.loadingChat}><Skeleton width="60%" height={60} radius={20} /></div>
   ) : conversation ? (
     <DetailPane
       paneKey={conversation.id}
-      title={conversation.title || 'Test chat'}
-      tabs={[{ value: 'chat', label: 'Chat' }, { value: 'details', label: 'Details' }]}
+      title={conversation.title || t.chats.testChat}
+      tabs={[{ value: 'chat', label: t.chats.chat }, { value: 'details', label: t.chats.details }]}
       tab={tab}
       onTab={setTab}
-      backLabel="Back to Test chats"
+      backLabel={t.chats.backTo}
       onBack={compact ? () => go({ page: 'chats', id: null }) : undefined}
       menu={[{
-        label: 'Copy link',
+        label: t.common.copyLink,
         icon: <Link2 size={14} strokeWidth={1.75} />,
         onSelect: () => {
           void navigator.clipboard?.writeText(window.location.href)
-            .then(() => notify({ title: 'Link copied', body: 'The link to this test chat is on your clipboard.' }))
-            .catch(() => notify({ tone: 'error', title: 'Copy failed', body: 'Your browser blocked clipboard access.' }))
+            .then(() => notify({ title: t.common.linkCopied, body: t.chats.linkCopiedBody }))
+            .catch(() => notify({ tone: 'error', title: t.common.copyFailed, body: t.common.clipboardBlocked }))
         },
       }]}
     >
@@ -344,19 +350,19 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         </div>
       ) : (
         <Facts rows={[
-          ['Version', versionTag(conversation)],
-          ['Source', sourceLabel(conversation.source)],
-          ['Started', formatStamp(conversation.createdAt)],
-          ['Last message', formatStamp(conversation.updatedAt)],
-          ['Messages', String(conversation.messageCount)],
-          ['Thumbs up', String(messages.filter((message) => message.feedback === 'up').length)],
-          ['Thumbs down', String(messages.filter((message) => message.feedback === 'down').length)],
-          ['Conversation ID', <code>{conversation.id}</code>],
+          [t.chats.version, versionTag(conversation)],
+          [t.chats.source, sourceLabel(conversation.source)],
+          [t.chats.started, formatStamp(conversation.createdAt)],
+          [t.chats.lastMessage, formatStamp(conversation.updatedAt)],
+          [t.chats.messages, String(conversation.messageCount)],
+          [t.chats.thumbsUp, String(messages.filter((message) => message.feedback === 'up').length)],
+          [t.chats.thumbsDown, String(messages.filter((message) => message.feedback === 'down').length)],
+          [t.chats.conversationId, <code>{conversation.id}</code>],
         ]} />
       )}
     </DetailPane>
   ) : (
-    <div className="k1-detail k1-detail--empty"><p>{id && !loading && !detailLoading ? 'This test chat was not found.' : 'Select a test chat'}</p></div>
+    <div className="k1-detail k1-detail--empty"><p>{id && !loading && !detailLoading ? t.chats.notFound : t.chats.select}</p></div>
   )
 
   return (

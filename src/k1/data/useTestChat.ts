@@ -1,3 +1,4 @@
+import { copy } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import { describeError, localized, openerPreview, personalize, SAMPLE_LEAD, sendTest, type TestLead, type TestTarget } from './agentConfig'
 import { newId, recordReminder, setFeedback, type ChatSource, type ReminderKind } from './builderApi'
@@ -71,7 +72,7 @@ export function useTestChat(target: TestTarget | null, source: ChatSource, lead:
       }])
     } catch (failure) {
       if (conversationId !== conversationRef.current) return
-      setError(`The test reply failed (${describeError(failure)}).`)
+      setError(copy().tester.replyFailed(describeError(failure)))
     } finally {
       if (conversationId === conversationRef.current) setPending(false)
     }

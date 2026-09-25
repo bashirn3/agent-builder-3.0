@@ -4,31 +4,35 @@ import { ChevronLeft, Info, MoreHorizontal } from '../ui/icons'
 import { ease } from '../../lib/motion'
 import type { ThreadMessage } from '../data/fixtures'
 import { Menu, Skeleton, type MenuItem } from '../ui/controls'
+import { copy, locale, useCopy } from '../i18n'
 
 export function relativeTime(iso: string, now = Date.now()) {
+  const t = copy().common
   const minutes = Math.round((now - new Date(iso).getTime()) / 60_000)
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  if (minutes < 1) return t.justNow
+  if (minutes < 60) return t.minutesAgo(minutes)
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  if (hours < 24) return t.hoursAgo(hours)
   const days = Math.round(hours / 24)
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  if (days < 7) return t.daysAgo(days)
+  return new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 }
 
 export function formatStamp(iso: string) {
-  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export function SampleBadge() {
-  return <span className="k1-badge k1-badge--sample" title="Invented records for the preview. Not connected to a live source.">Sample data</span>
+  const t = useCopy()
+  return <span className="k1-badge k1-badge--sample" title={t.common.sampleDataHint}>{t.common.sampleData}</span>
 }
 
 export type ListItem = { id: string; title: string; meta: string; subtitle: string; href: string; tags?: ReactNode }
 
 export function ListSkeleton({ rows = 8 }: { rows?: number }) {
+  const t = useCopy()
   return (
-    <div className="k1-list__items k1-list__items--skeleton" role="status" aria-label="Loading">
+    <div className="k1-list__items k1-list__items--skeleton" role="status" aria-label={t.common.loading}>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="k1-skel-row">
           <span className="k1-skel-row__top"><Skeleton height={14} width="50%" /><Skeleton height={12} width={36} /></span>
@@ -132,7 +136,7 @@ export function UnderlineTabs<T extends string>({ value, options, onChange, labe
   return <div className="k1-underline-tabs"><Tabs tabs={options} value={value} onChange={onChange} idBase={idBase} label={label} /></div>
 }
 
-export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, onBack, backLabel = 'Back', children, paneKey }: {
+export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, onBack, backLabel, children, paneKey }: {
   title: string
   backLabel?: string
   tabs: Array<{ value: T; label: string }>
@@ -144,21 +148,22 @@ export function DetailPane<T extends string>({ title, tabs, tab, onTab, menu, on
   paneKey: string
 }) {
   const idBase = useId().replace(/:/g, '')
+  const t = useCopy()
   return (
     <section className="k1-detail" aria-label={title}>
       <header className="k1-detail__head">
         {onBack && (
           <button type="button" className="k1-detail__back" onClick={onBack}>
-            <ChevronLeft />{backLabel}
+            <ChevronLeft />{backLabel ?? t.common.back}
           </button>
         )}
         <div className="k1-detail__titlebar">
           <h2>{title}</h2>
           <Menu
-            label="More actions"
+            label={t.common.moreActions}
             items={menu}
             trigger={(props) => (
-              <button {...props} type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label="More actions">
+              <button {...props} type="button" className="k1-icon-btn k1-icon-btn--boxed" aria-label={t.common.moreActions}>
                 <MoreHorizontal size={16} strokeWidth={1.75} />
               </button>
             )}
@@ -191,10 +196,11 @@ export function Thread({ messages }: { messages: ThreadMessage[] }) {
   )
 }
 
-export function Facts({ rows, heading = 'General details' }: { rows: Array<[string, ReactNode]>; heading?: string }) {
+export function Facts({ rows, heading }: { rows: Array<[string, ReactNode]>; heading?: string }) {
+  const t = useCopy()
   return (
     <section className="k1-facts">
-      <h3 className="k1-facts__heading"><Info size={14} strokeWidth={1.75} />{heading}</h3>
+      <h3 className="k1-facts__heading"><Info size={14} strokeWidth={1.75} />{heading ?? t.common.generalDetails}</h3>
       <dl>
         {rows.map(([label, value]) => (
           <div key={label}>

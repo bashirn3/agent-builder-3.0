@@ -1,6 +1,7 @@
 import { isClerkAPIResponseError } from '@clerk/react/errors'
 import { useSignIn, useSignUp } from '@clerk/react/legacy'
 import { useMemo, useRef } from 'react'
+import { copy } from '../i18n'
 
 type SignInAttempt = NonNullable<ReturnType<typeof useSignIn>['signIn']>
 type SignUpAttempt = NonNullable<ReturnType<typeof useSignUp>['signUp']>
@@ -17,26 +18,14 @@ export type AuthFlow = {
   reset: (code: string, password: string) => Promise<void>
 }
 
-const MESSAGES: Record<string, string> = {
-  form_password_incorrect: 'That email and password don’t match.',
-  form_identifier_not_found: 'No account uses that email.',
-  form_identifier_exists: 'An account already uses that email. Log in instead.',
-  form_code_incorrect: 'That code isn’t right. Check the email and try again.',
-  verification_expired: 'That code has expired. Send a new one.',
-  verification_failed: 'Too many attempts. Send a new code.',
-  form_password_pwned: 'This password has appeared in a data breach. Choose a different one.',
-  strategy_for_user_invalid: 'This account signs in with Google. Use “Continue with Google”.',
-  not_allowed_access: 'This email isn’t allowed to access the workspace. Ask Wasup for access.',
-  too_many_requests: 'Too many attempts. Wait a moment and try again.',
-}
 
 export function authError(error: unknown) {
   if (isClerkAPIResponseError(error)) {
     const first = error.errors[0]
-    if (first) return MESSAGES[first.code] ?? first.longMessage ?? first.message
+    if (first) return copy().auth.clerk[first.code] ?? first.longMessage ?? first.message
   }
   if (error instanceof Error && error.message) return error.message
-  return 'Something went wrong. Try again.'
+  return copy().auth.generic
 }
 
 const callbackUrl = () => `${window.location.origin}/#/sso-callback`
@@ -54,7 +43,7 @@ export function useClerkFlow(): AuthFlow | null {
     const { signUp } = signUpState
 
     const activate = async (sessionId: string | null) => {
-      if (!sessionId) throw new Error('Sign-in did not finish. Try again.')
+      if (!sessionId) throw new Error(copy().auth.notFinished)
       await setActive({ session: sessionId })
     }
 
@@ -65,7 +54,7 @@ export function useClerkFlow(): AuthFlow | null {
 
     const sendDeviceCode = async (current: SignInAttempt) => {
       const emailAddressId = emailFactorId(current)
-      if (!emailAddressId) throw new Error('This account needs a sign-in step this page doesn’t support yet.')
+      if (!emailAddressId) throw new Error(copy().auth.unsupportedStep)
       attempt.current = await current.prepareSecondFactor({ strategy: 'email_code', emailAddressId })
     }
 
@@ -86,7 +75,7 @@ export function useClerkFlow(): AuthFlow | null {
           await sendDeviceCode(result)
           return 'device'
         }
-        throw new Error('This account needs a sign-in step this page doesn’t support yet.')
+        throw new Error(copy().auth.unsupportedStep)
       },
       signUp: async (email, password) => {
         const created = await signUp.create({ emailAddress: email, password })
@@ -97,14 +86,14 @@ export function useClerkFlow(): AuthFlow | null {
           const current = registration.current ?? signUp
           const result = await current.attemptEmailAddressVerification({ code })
           registration.current = result
-          if (result.status !== 'complete') throw new Error('Your account needs more details before it can be used. Ask Wasup for help.')
+          if (result.status !== 'complete') throw new Error(copy().auth.needsDetails)
           await activate(result.createdSessionId)
           return
         }
         const current = attempt.current ?? signIn
         const result = await current.attemptSecondFactor({ strategy: 'email_code', code })
         attempt.current = result
-        if (result.status !== 'complete') throw new Error('Sign-in did not finish. Try again.')
+        if (result.status !== 'complete') throw new Error(copy().auth.notFinished)
         await activate(result.createdSessionId)
       },
       resend: async (purpose) => {
@@ -123,9 +112,9 @@ export function useClerkFlow(): AuthFlow | null {
         attempt.current = result
         if (result.status === 'complete') return activate(result.createdSessionId)
         if (result.status === 'needs_second_factor' || result.status === 'needs_client_trust') {
-          throw new Error('Password changed. Log in with your new password.')
+          throw new Error(copy().auth.passwordChanged)
         }
-        throw new Error('Password reset did not finish. Try again.')
+        throw new Error(copy().auth.resetNotFinished)
       },
     }
   }, [signInState, signUpState])
