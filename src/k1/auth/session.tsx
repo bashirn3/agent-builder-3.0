@@ -1,6 +1,6 @@
 import { useAuth, useClerk, useUser } from '@clerk/react'
 import { useJoinTeam } from './team'
-import { createContext, ReactNode, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { setActor, setSessionTokenProvider } from '../data/builderApi'
 import { useCopy } from '../i18n'
 
@@ -37,17 +37,22 @@ function ClerkSession({ children }: { children: ReactNode }) {
   const { user } = useUser()
   const clerk = useClerk()
   useJoinTeam()
+  // Clerk briefly reports "not loaded" while it switches team or session; keep the last known state so the workspace stays mounted.
+  const settled = useRef<{ ready: boolean; signedIn: boolean }>({ ready: false, signedIn: false })
+  if (isLoaded) settled.current = { ready: true, signedIn: Boolean(isSignedIn) }
+  const ready = settled.current.ready
+  const signedIn = isLoaded ? Boolean(isSignedIn) : settled.current.signedIn
   const value = useMemo<Session>(() => {
     const email = user?.primaryEmailAddress?.emailAddress ?? ''
     const name = user?.fullName?.trim() || email
     return {
       mode: 'clerk',
-      ready: isLoaded,
-      signedIn: Boolean(isSignedIn),
+      ready,
+      signedIn,
       user: user ? { name, email, initials: initials(user.fullName ?? '', email), imageUrl: user.hasImage ? user.imageUrl : undefined } : null,
       signOut: () => clerk.signOut(),
     }
-  }, [clerk, isLoaded, isSignedIn, user])
+  }, [clerk, ready, signedIn, user])
   useEffect(() => {
     setActor(value.signedIn && value.user ? { name: value.user.name, email: value.user.email } : null)
   }, [value])

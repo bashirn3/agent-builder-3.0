@@ -88,11 +88,10 @@ export function Header() {
               {user?.email && user.email !== user.name && <span>{user.email}</span>}
             </div>
           )}
-          items={[{
-            label: t.nav.signOut,
-            icon: <LogOut />,
-            onSelect: () => { void signOut() },
-          }]}
+          items={[
+            { label: t.nav.team, icon: <Users size={16} />, onSelect: () => go({ page: 'team' }) },
+            { label: t.nav.signOut, icon: <LogOut />, onSelect: () => { void signOut() } },
+          ]}
           trigger={(props) => (
             <button {...props} type="button" className="k1-avatar" aria-label={t.nav.accountMenu}>
               <Avatar />
@@ -147,7 +146,6 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
       </Collapse>
       {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />{t.nav.compare}</>)}
       {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />{t.nav.deploy}</>)}
-      {link({ page: 'team' }, route.page === 'team', <><Users size={16} />{t.nav.team}</>)}
     </nav>
   )
 }
@@ -168,6 +166,9 @@ function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
       <div className="k1-mobile-nav__foot">
         <span className="k1-avatar" aria-hidden="true"><Avatar /></span>
         <span className="k1-mobile-nav__who">{user?.name}{user?.email && user.email !== user.name && <small>{user.email}</small>}</span>
+        <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'team' })} aria-current={route.page === 'team' ? 'page' : undefined} onClick={onClose}>
+          <Users size={16} />{t.nav.team}
+        </a>
         <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => { void signOut() }}>
           <LogOut />{t.nav.signOut}
         </button>

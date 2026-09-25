@@ -30,7 +30,9 @@ function Month({ year, month, from, to, hover, today, onPick, onHover, future, m
   const first = new Date(year, month, 1)
   const days = new Date(year, month + 1, 0).getDate()
   const cells: Array<string | null> = [...Array(first.getDay()).fill(null), ...Array.from({ length: days }, (_, index) => isoDay(new Date(year, month, index + 1)))]
-  const end = to ?? (from && hover && hover > from ? hover : null)
+  const cap = maxDays && from && !to ? isoDay(addDays(fromIso(from), maxDays - 1)) : null
+  const reach = hover && cap && hover > cap ? cap : hover
+  const end = to ?? (from && reach && reach > from ? reach : null)
   return (
     <div className="k1-cal__month">
       <div className="k1-cal__grid" role="grid" aria-label={first.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}>
@@ -46,13 +48,13 @@ function Month({ year, month, from, to, hover, today, onPick, onHover, future, m
             <button
               key={day}
               type="button"
-              className={`k1-cal__day${edge ? ' is-edge' : ''}${inRange ? ' is-range' : ''}`}
+              className={`k1-cal__day${edge ? ' is-edge' : ''}${inRange ? ' is-range' : ''}${blocked && limit ? ' is-beyond' : ''}`}
               disabled={blocked}
               aria-pressed={edge}
               aria-label={fromIso(day).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               onClick={() => onPick(day)}
-              onPointerEnter={() => onHover(day)}
-              onFocus={() => onHover(day)}
+              onPointerEnter={() => { if (!blocked) onHover(day) }}
+              onFocus={() => { if (!blocked) onHover(day) }}
             >
               {Number(day.slice(8))}
             </button>
@@ -156,6 +158,7 @@ export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date
           <Month year={left.getFullYear()} month={left.getMonth()} from={from} to={to} hover={hover} today={today} onPick={pick} onHover={setHover} future={future} maxDays={maxDays} />
           <Month year={right.getFullYear()} month={right.getMonth()} from={from} to={to} hover={hover} today={today} onPick={pick} onHover={setHover} future={future} maxDays={maxDays} />
         </div>
+        {maxDays && <p className="k1-cal__note">{t.common.maxDays(maxDays)}</p>}
       </Popover>
     </>
   )

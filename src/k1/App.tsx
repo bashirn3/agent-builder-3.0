@@ -12,7 +12,8 @@ import { useSession } from './auth/session'
 import { useCopy } from './i18n'
 import { go, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
-import { ToastStack, useToasts } from './ui/controls'
+import { Spinner, ToastStack, useToasts } from './ui/controls'
+import { ErrorBoundary } from './shell/ErrorBoundary'
 import { LayerProvider } from './ui/overlay'
 
 function Workspace({ compact }: { compact: boolean }) {
@@ -45,6 +46,7 @@ function Workspace({ compact }: { compact: boolean }) {
 }
 
 export default function App() {
+  const t = useCopy()
   const route = useRoute()
   const compact = useMedia('(max-width: 900px)')
   const session = useSession()
@@ -53,7 +55,11 @@ export default function App() {
   const isCallback = route.page === 'sso-callback'
 
   useEffect(() => {
-    if (!session.ready || isCallback) return
+    if (!session.ready) return
+    if (isCallback) {
+      if (session.signedIn) go({ page: 'playground' }, true)
+      return
+    }
     if (!isAuth && !session.signedIn) go({ page: 'signin' }, true)
     if (isAuth && session.signedIn) go({ page: 'playground' }, true)
   }, [isAuth, isCallback, session.ready, session.signedIn])
@@ -66,7 +72,7 @@ export default function App() {
             ? <SsoCallbackPage />
             : isAuth
               ? <AuthPage mode={route.page as 'signin' | 'signup'} />
-              : authed ? <Workspace compact={compact} /> : null}
+              : authed ? <ErrorBoundary><Workspace compact={compact} /></ErrorBoundary> : <div className="k1-boot" role="status" aria-label={t.common.loading}><Spinner size={18} /></div>}
         </LayerProvider>
       </div>
     </MotionConfig>
