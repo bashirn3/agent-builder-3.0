@@ -7,7 +7,7 @@ import {
   Link01Icon, Logout01Icon, Menu01Icon, Message01Icon, MessageMultiple01Icon, PlayIcon,
   HistoryIcon, Refresh01Icon, RefreshIcon, Rocket01Icon, SquareLock02Icon, SquareUnlock02Icon, TextBoldIcon,
   TextItalicIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon,  WhatsappIcon, BookOpen01Icon,
-  Clock01Icon,
+  Clock01Icon, UserMultipleIcon, UserAdd01Icon,
 } from '@hugeicons/core-free-icons'
 import { Check as LucideCheck, ChevronsUpDown as LucideUpDown, Columns2 as LucideColumns, Eye as LucideEye, EyeOff as LucideEyeOff, MoreHorizontal as LucideMore, Plus as PlusLucide, Search as LucideSearch, Upload as UploadLucide, X as LucideX } from 'lucide-react'
 
@@ -62,6 +62,8 @@ export const MessageCircle = huge(Message01Icon)
 export const MessageSquareMore = huge(Message01Icon)
 export const MessagesSquare = huge(MessageMultiple01Icon)
 export const MoreHorizontal = lucide(LucideMore)
+export const Users = huge(UserMultipleIcon)
+export const UserAdd = huge(UserAdd01Icon)
 export const Play = huge(PlayIcon)
 export const RefreshCw = huge(Refresh01Icon)
 export const Rocket = huge(Rocket01Icon)
