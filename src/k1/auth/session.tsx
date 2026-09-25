@@ -1,6 +1,7 @@
 import { useAuth, useClerk, useUser } from '@clerk/react'
 import { useJoinTeam } from './team'
-import { createContext, ReactNode, useContext, useMemo, useSyncExternalStore } from 'react'
+import { createContext, ReactNode, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { setActor } from '../data/builderApi'
 
 export const CLERK_PUBLISHABLE_KEY = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined)?.trim() || ''
 export const clerkEnabled = CLERK_PUBLISHABLE_KEY.length > 0
@@ -46,6 +47,9 @@ function ClerkSession({ children }: { children: ReactNode }) {
       signOut: () => clerk.signOut(),
     }
   }, [clerk, isLoaded, isSignedIn, user])
+  useEffect(() => {
+    setActor(value.signedIn && value.user ? { name: value.user.name, email: value.user.email } : null)
+  }, [value])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 

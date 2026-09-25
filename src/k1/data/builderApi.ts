@@ -486,6 +486,11 @@ export async function importLeads(rows: LeadRow[]): Promise<{ inserted: number; 
   return { inserted: result.inserted ?? 0, updated: result.updated ?? 0 }
 }
 
+export type Actor = { name: string; email: string }
+let actor: Actor | null = null
+export const setActor = (next: Actor | null) => { actor = next }
+export const currentActor = () => actor
+
 export async function requestMuster(requestedBy: string | null): Promise<void> {
   if (!remote) {
     await pause(400)

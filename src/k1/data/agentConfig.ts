@@ -2,6 +2,7 @@ import { DEFAULT_INSTRUCTIONS } from '../../lib/playgroundService'
 import { LEADS } from './fixtures'
 import { detectLanguage, fillTemplate, TRANSLATED, type Lang, type TemplateLead } from './language'
 import {
+  currentActor,
   loadState,
   remote,
   saveVersion,
@@ -158,7 +159,7 @@ export async function saveConfig(config: AgentConfig, draft: Draft): Promise<Age
     translations: draft.translations,
     locked: draft.locked,
     note: describeChanges(before, draft) || 'Saved without changes',
-    savedBy: null,
+    savedBy: currentActor()?.name ?? null,
   })
   return loadConfig()
 }
