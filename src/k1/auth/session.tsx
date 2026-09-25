@@ -1,4 +1,5 @@
 import { useAuth, useClerk, useUser } from '@clerk/react'
+import { useJoinTeam } from './team'
 import { createContext, ReactNode, useContext, useMemo, useSyncExternalStore } from 'react'
 
 export const CLERK_PUBLISHABLE_KEY = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined)?.trim() || ''
@@ -33,6 +34,7 @@ function ClerkSession({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
   const clerk = useClerk()
+  useJoinTeam()
   const value = useMemo<Session>(() => {
     const email = user?.primaryEmailAddress?.emailAddress ?? ''
     const name = user?.fullName?.trim() || email

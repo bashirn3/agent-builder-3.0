@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, X } from '../ui/icons'
+import { ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, Users, X } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { useSession } from '../auth/session'
 import { go, href, type Route } from '../routes'
@@ -128,6 +128,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
       </Collapse>
       {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />Compare</>)}
       {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />Deploy</>)}
+      {link({ page: 'team' }, route.page === 'team', <><Users size={16} />Team</>)}
     </nav>
   )
 }

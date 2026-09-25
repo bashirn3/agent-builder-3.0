@@ -6,6 +6,7 @@ import { ComparePage } from './pages/ComparePage'
 import { DeployPage } from './pages/DeployPage'
 import { LeadsPage } from './pages/LeadsPage'
 import { PlaygroundPage } from './pages/PlaygroundPage'
+import { TeamPage } from './pages/TeamPage'
 import { EMPTY_CHAT_FILTERS, TestChatsPage, type ChatFilters } from './pages/TestChatsPage'
 import { useSession } from './auth/session'
 import { go, useMedia, useRoute } from './routes'
@@ -19,7 +20,7 @@ function Workspace({ compact }: { compact: boolean }) {
   const playground = usePlayground(push)
   const [filters, setFilters] = useState<ChatFilters>(EMPTY_CHAT_FILTERS)
 
-  const titles: Record<string, string> = { playground: 'Playground', compare: 'Compare', chats: 'Test chats', leads: 'Leads', deploy: 'Deploy' }
+  const titles: Record<string, string> = { playground: 'Playground', compare: 'Compare', chats: 'Test chats', leads: 'Leads', deploy: 'Deploy', team: 'Team' }
   useEffect(() => {
     document.title = `${titles[route.page] ?? 'A-Katsastus'} · A-Katsastus`
   }, [route.page])
@@ -30,6 +31,8 @@ function Workspace({ compact }: { compact: boolean }) {
   else if (route.page === 'chats') page = <TestChatsPage id={route.id} compact={compact} config={playground.config} filters={filters} onFilters={setFilters} notify={push} />
   else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} onImported={playground.refreshLeads} />
   else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} versionId={route.version} onChanged={() => void playground.refresh()} />
+
+  else if (route.page === 'team') page = <TeamPage notify={push} />
 
   return (
     <>

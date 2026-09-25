@@ -9,6 +9,7 @@ export type Route =
   | { page: 'chats'; id: string | null }
   | { page: 'leads'; id: string | null }
   | { page: 'deploy'; version?: string }
+  | { page: 'team' }
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
@@ -18,6 +19,7 @@ export function parse(hash: string): Route {
     case 'sso-callback': return { page: 'sso-callback' }
     case 'playground': return { page: 'playground' }
     case 'compare': return { page: 'compare' }
+    case 'team': return { page: 'team' }
     case 'deploy': return parts[1] ? { page: 'deploy', version: parts[1] } : { page: 'deploy' }
     case 'activity':
       if (parts[1] === 'leads') return { page: 'leads', id: parts[2] ?? null }
