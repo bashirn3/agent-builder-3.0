@@ -12,7 +12,7 @@ export type Route =
   | { page: 'team' }
 
 export function parse(hash: string): Route {
-  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+  const parts = hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean)
   switch (parts[0]) {
     case 'signup': return { page: 'signup' }
     case 'signin': return { page: 'signin' }
