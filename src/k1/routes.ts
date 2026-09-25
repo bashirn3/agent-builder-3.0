@@ -45,12 +45,29 @@ export function go(route: Route, replace = false) {
   if (replace) window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
+// Clerk hands over paths like "/#/playground"; keep them inside the hash router.
+export function navigateTo(to: string, replace: boolean) {
+  const url = new URL(to, window.location.href)
+  if (url.origin !== window.location.origin) {
+    window.location.assign(url.href)
+    return
+  }
+  const hash = url.hash || '#/playground'
+  if (replace) window.history.replaceState(null, '', `${url.pathname}${hash}`)
+  else window.history.pushState(null, '', `${url.pathname}${hash}`)
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
 export function useRoute() {
   const [route, setRoute] = useState(() => parse(window.location.hash))
   useEffect(() => {
     const onChange = () => setRoute(parse(window.location.hash))
     window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
+    window.addEventListener('popstate', onChange)
+    return () => {
+      window.removeEventListener('hashchange', onChange)
+      window.removeEventListener('popstate', onChange)
+    }
   }, [])
   return route
 }

@@ -1,4 +1,4 @@
-import { useAuth, useOrganization, useOrganizationList, useUser } from '@clerk/react'
+import { useOrganization, useUser } from '@clerk/react'
 import type { OrganizationInvitationResource, OrganizationMembershipResource } from '@clerk/react/types'
 import { AnimatePresence, motion } from 'motion/react'
 import { FormEvent, useId, useRef, useState } from 'react'
@@ -148,14 +148,11 @@ function ConfirmRemove({ target, onClose, onConfirm }: { target: { name: string 
 function ClerkTeam({ notify }: { notify: Notify }) {
   const t = useCopy()
   const { user } = useUser()
-  const { sessionId } = useAuth()
   const { isLoaded, organization, memberships, invitations } = useOrganization({
     memberships: { infinite: true, pageSize: 50, keepPreviousData: true },
     invitations: { infinite: true, pageSize: 50, status: ['pending'], keepPreviousData: true },
   })
-  const { createOrganization, setActive } = useOrganizationList()
   const [inviting, setInviting] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [revoking, setRevoking] = useState<string | null>(null)
   const [removing, setRemoving] = useState<{ member: OrganizationMembershipResource; name: string } | null>(null)
 
@@ -164,25 +161,10 @@ function ClerkTeam({ notify }: { notify: Notify }) {
   }
 
   if (!organization) {
-    const create = async () => {
-      if (!createOrganization || !setActive) return
-      setCreating(true)
-      try {
-        const created = await createOrganization({ name: TEAM_NAME })
-        await setActive({ session: sessionId, organization: created.id })
-      } catch (failure) {
-        notify({ tone: 'error', title: t.team.notCreated, body: authError(failure) })
-      } finally {
-        setCreating(false)
-      }
-    }
     return (
       <div className="k1-team__empty">
         <strong>{t.team.noTeam}</strong>
         <p>{t.team.noTeamBody(TEAM_NAME)}</p>
-        <button type="button" className="k1-btn k1-btn--primary k1-btn--sm" onClick={() => void create()} disabled={creating} aria-busy={creating}>
-          {creating && <Spinner />}{t.team.create}
-        </button>
       </div>
     )
   }

@@ -43,6 +43,7 @@ export type Lead = {
   reason: string
   addedAt: string
   sample: boolean
+  live?: boolean
   conversationIds: string[]
 }
 
