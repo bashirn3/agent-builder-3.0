@@ -7,7 +7,7 @@ import { ease } from '../../lib/motion'
 
 const easeInOut = [0.4, 0, 0.2, 1] as const
 import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
-import { Select, Skeleton, Spinner } from '../ui/controls'
+import { Select, Skeleton, Spinner, Switch } from '../ui/controls'
 import { stripPrefix } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
 import { href } from '../routes'
@@ -17,6 +17,7 @@ import { detectLanguage, type Lang } from '../data/language'
 import { localized, normalizeReminders } from '../data/agentConfig'
 import { shortStation } from '../data/fixtures'
 import { PromptEditor } from './PromptEditor'
+import { versionHint } from './versionText'
 import { copy, locale, useCopy, type Copy } from '../i18n'
 
 function relative(at: number) {
@@ -34,22 +35,6 @@ export function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, va
     node.style.height = 'auto'
     node.style.height = `${Math.min(node.scrollHeight, max)}px`
   }, [ref, value, max])
-}
-
-function Switch({ checked, onChange, labelledBy, describedBy }: { checked: boolean; onChange: (next: boolean) => void; labelledBy: string; describedBy?: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-labelledby={labelledBy}
-      aria-describedby={describedBy}
-      className={`k1-switch${checked ? ' is-on' : ''}`}
-      onClick={() => onChange(!checked)}
-    >
-      <span className="k1-switch__thumb" />
-    </button>
-  )
 }
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: Array<{ value: T; label: string }>; onChange: (value: T) => void; label: string }) {
@@ -119,7 +104,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
     ? config.versions.map((version) => ({
       value: version.id,
       label: t.playground.version(version.number),
-      hint: version.active ? t.playground.active : new Date(version.createdAt).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }),
+      hint: [version.active && t.playground.active, versionHint(version, t, { chats: false })].filter(Boolean).join(' · '),
       group: version.active ? t.playground.activeConfiguration : t.playground.savedVersions,
     }))
     : [{ value: 'default', label: t.playground.defaultInstructions, group: t.playground.notSavedYet }]

@@ -115,6 +115,147 @@ export function Select<T extends string>({
   )
 }
 
+export function Switch({ checked, onChange, labelledBy, describedBy }: { checked: boolean; onChange: (next: boolean) => void; labelledBy: string; describedBy?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      className={`k1-switch${checked ? ' is-on' : ''}`}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="k1-switch__thumb" />
+    </button>
+  )
+}
+
+export type MultiOption<T extends string> = SelectOption<T> & { keywords?: string }
+
+export function MultiSelect<T extends string>({
+  values,
+  options,
+  onChange,
+  summary,
+  label,
+  id,
+  searchPlaceholder,
+  emptyText,
+  clearLabel,
+}: {
+  values: T[]
+  options: MultiOption<T>[]
+  onChange: (values: T[]) => void
+  summary: string
+  label: string
+  id?: string
+  searchPlaceholder: string
+  emptyText: string
+  clearLabel: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const listId = useId()
+  const needle = query.trim().toLowerCase()
+  const shown = needle ? options.filter((option) => `${option.label} ${option.hint ?? ''} ${option.keywords ?? ''}`.toLowerCase().includes(needle)) : options
+
+  useEffect(() => {
+    if (!open) return
+    setQuery('')
+    setActive(0)
+    requestAnimationFrame(() => searchRef.current?.focus({ preventScroll: true }))
+  }, [open])
+
+  useEffect(() => { setActive(0) }, [query])
+
+  useEffect(() => {
+    listRef.current?.querySelector<HTMLElement>(`#${CSS.escape(`${listId}-${active}`)}`)?.scrollIntoView({ block: 'nearest' })
+  }, [active, listId])
+
+  const toggle = (value: T) => onChange(values.includes(value) ? values.filter((item) => item !== value) : [...values, value])
+
+  const onKey = (event: KeyboardEvent) => {
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActive((index) => Math.min(shown.length - 1, index + 1)) }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); setActive((index) => Math.max(0, index - 1)) }
+    else if (event.key === 'Enter') { event.preventDefault(); const option = shown[active]; if (option) toggle(option.value) }
+    else if (event.key === 'Tab') setOpen(false)
+  }
+
+  let lastGroup: string | undefined
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        id={id}
+        type="button"
+        className="k1-select"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        aria-label={`${label}: ${summary}`}
+        onClick={() => setOpen((next) => !next)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setOpen(true) }
+        }}
+      >
+        <span className={values.length ? 'k1-select__value' : 'k1-select__placeholder'}>{summary}</span>
+        <ChevronDown size={14} strokeWidth={1.75} aria-hidden="true" className="k1-select__chevron" />
+      </button>
+      <Popover open={open} anchorRef={buttonRef} onClose={() => setOpen(false)} matchWidth>
+        <div className="k1-multi" onKeyDown={onKey}>
+          <input
+            ref={searchRef}
+            className="k1-input k1-multi__search"
+            value={query}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            aria-controls={listId}
+            aria-activedescendant={shown.length ? `${listId}-${active}` : undefined}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <div ref={listRef} id={listId} role="listbox" aria-multiselectable="true" aria-label={label} className="k1-listbox">
+            {shown.length ? shown.map((option, index) => {
+              const heading = option.group && option.group !== lastGroup ? option.group : null
+              lastGroup = option.group
+              const checked = values.includes(option.value)
+              return (
+                <div key={option.value} role="presentation">
+                  {heading && <div className="k1-listbox__group" role="presentation">{heading}</div>}
+                  <div
+                    id={`${listId}-${index}`}
+                    role="option"
+                    aria-selected={checked}
+                    className={`k1-listbox__option k1-multi__option${index === active ? ' is-active' : ''}`}
+                    onPointerEnter={() => setActive(index)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => toggle(option.value)}
+                  >
+                    <span className={`k1-check__box k1-multi__box${checked ? ' is-checked' : ''}`} aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
+                    <span className="k1-multi__text">
+                      {option.label}
+                      {option.hint && <small>{option.hint}</small>}
+                    </span>
+                  </div>
+                </div>
+              )
+            }) : <p className="k1-multi__empty">{emptyText}</p>}
+          </div>
+          {values.length > 0 && (
+            <div className="k1-multi__foot">
+              <button type="button" className="k1-link k1-link--danger" onClick={() => onChange([])}>{clearLabel}</button>
+            </div>
+          )}
+        </div>
+      </Popover>
+    </>
+  )
+}
+
 export type MenuItem = { label: string; icon?: ReactNode; onSelect: () => void; tone?: 'danger'; hint?: string }
 
 export function Menu({ trigger, items, label, align = 'end', header }: {
