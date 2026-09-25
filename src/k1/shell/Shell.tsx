@@ -2,7 +2,8 @@ import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, X } from '../ui/icons'
 import { space } from '../../lib/motion'
-import { go, href, previewSession, type Route } from '../routes'
+import { useSession } from '../auth/session'
+import { go, href, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
 
@@ -30,7 +31,24 @@ function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () =>
   )
 }
 
+function Avatar() {
+  const { user } = useSession()
+  return user?.imageUrl
+    ? <img className="k1-avatar__img" src={user.imageUrl} alt="" referrerPolicy="no-referrer" />
+    : <span aria-hidden="true">{user?.initials ?? 'K1'}</span>
+}
+
+function useSignOut() {
+  const session = useSession()
+  return async () => {
+    await session.signOut()
+    go({ page: 'signin' })
+  }
+}
+
 export function Header() {
+  const { user } = useSession()
+  const signOut = useSignOut()
   return (
     <header className="k1-header">
       <a className="k1-header__home" href={href({ page: 'playground' })} aria-label="A-Katsastus playground">
@@ -48,21 +66,18 @@ export function Header() {
           label="Account"
           header={(
             <div className="k1-menu__header">
-              <strong>Development preview</strong>
-              <span>Clerk sign-in is not connected yet</span>
+              <strong>{user?.name}</strong>
+              {user?.email && user.email !== user.name && <span>{user.email}</span>}
             </div>
           )}
           items={[{
             label: 'Sign out',
             icon: <LogOut />,
-            onSelect: () => {
-              previewSession.end()
-              go({ page: 'signin' })
-            },
+            onSelect: () => { void signOut() },
           }]}
           trigger={(props) => (
             <button {...props} type="button" className="k1-avatar" aria-label="Account menu">
-              <span aria-hidden="true">K1</span>
+              <Avatar />
             </button>
           )}
         />
@@ -119,6 +134,8 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
 
 function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const { user } = useSession()
+  const signOut = useSignOut()
   useFocusTrap(panelRef, onClose)
   return (
     <div ref={panelRef} id="k1-mobile-nav" className="k1-mobile-nav" role="dialog" aria-modal="true" aria-label="Navigation">
@@ -128,9 +145,9 @@ function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
       </div>
       <Sidebar route={route} onNavigate={onClose} />
       <div className="k1-mobile-nav__foot">
-        <span className="k1-avatar" aria-hidden="true">K1</span>
-        <span className="k1-mobile-nav__who">Development preview<small>Clerk sign-in is not connected yet</small></span>
-        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => { previewSession.end(); go({ page: 'signin' }) }}>
+        <span className="k1-avatar" aria-hidden="true"><Avatar /></span>
+        <span className="k1-mobile-nav__who">{user?.name}{user?.email && user.email !== user.name && <small>{user.email}</small>}</span>
+        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => { void signOut() }}>
           <LogOut />Sign out
         </button>
       </div>

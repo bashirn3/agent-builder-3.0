@@ -1,13 +1,14 @@
 import { MotionConfig } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { usePlayground } from './data/usePlayground'
-import { AuthPage } from './pages/AuthPage'
+import { AuthPage, SsoCallbackPage } from './pages/AuthPage'
 import { ComparePage } from './pages/ComparePage'
 import { DeployPage } from './pages/DeployPage'
 import { LeadsPage } from './pages/LeadsPage'
 import { PlaygroundPage } from './pages/PlaygroundPage'
 import { EMPTY_CHAT_FILTERS, TestChatsPage, type ChatFilters } from './pages/TestChatsPage'
-import { go, previewSession, useMedia, useRoute } from './routes'
+import { useSession } from './auth/session'
+import { go, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
 import { ToastStack, useToasts } from './ui/controls'
 import { LayerProvider } from './ui/overlay'
@@ -41,18 +42,26 @@ function Workspace({ compact }: { compact: boolean }) {
 export default function App() {
   const route = useRoute()
   const compact = useMedia('(max-width: 900px)')
-  const authed = previewSession.active()
+  const session = useSession()
+  const authed = session.ready && session.signedIn
   const isAuth = route.page === 'signin' || route.page === 'signup'
+  const isCallback = route.page === 'sso-callback'
 
   useEffect(() => {
-    if (!isAuth && !authed) go({ page: 'signin' }, true)
-  }, [isAuth, authed])
+    if (!session.ready || isCallback) return
+    if (!isAuth && !session.signedIn) go({ page: 'signin' }, true)
+    if (isAuth && session.signedIn) go({ page: 'playground' }, true)
+  }, [isAuth, isCallback, session.ready, session.signedIn])
 
   return (
     <MotionConfig reducedMotion="user">
       <div className="k1">
         <LayerProvider>
-          {isAuth ? <AuthPage mode={route.page as 'signin' | 'signup'} /> : authed ? <Workspace compact={compact} /> : null}
+          {isCallback
+            ? <SsoCallbackPage />
+            : isAuth
+              ? <AuthPage mode={route.page as 'signin' | 'signup'} />
+              : authed ? <Workspace compact={compact} /> : null}
         </LayerProvider>
       </div>
     </MotionConfig>

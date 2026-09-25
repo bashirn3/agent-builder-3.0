@@ -3,32 +3,26 @@ import { useEffect, useState } from 'react'
 export type Route =
   | { page: 'signin' }
   | { page: 'signup' }
+  | { page: 'sso-callback' }
   | { page: 'playground' }
   | { page: 'compare' }
   | { page: 'chats'; id: string | null }
   | { page: 'leads'; id: string | null }
   | { page: 'deploy'; version?: string }
 
-const SESSION_KEY = 'k1-preview-session'
-
-export const previewSession = {
-  active: () => sessionStorage.getItem(SESSION_KEY) === '1',
-  start: () => sessionStorage.setItem(SESSION_KEY, '1'),
-  end: () => sessionStorage.removeItem(SESSION_KEY),
-}
-
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
   switch (parts[0]) {
     case 'signup': return { page: 'signup' }
     case 'signin': return { page: 'signin' }
+    case 'sso-callback': return { page: 'sso-callback' }
     case 'playground': return { page: 'playground' }
     case 'compare': return { page: 'compare' }
     case 'deploy': return parts[1] ? { page: 'deploy', version: parts[1] } : { page: 'deploy' }
     case 'activity':
       if (parts[1] === 'leads') return { page: 'leads', id: parts[2] ?? null }
       return { page: 'chats', id: parts[2] ?? null }
-    default: return previewSession.active() ? { page: 'playground' } : { page: 'signin' }
+    default: return { page: 'playground' }
   }
 }
 
