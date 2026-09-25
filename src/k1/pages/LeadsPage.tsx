@@ -329,6 +329,11 @@ export function LeadsPage({ id, compact, notify, onImported }: {
                 <div className="k1-fetch__bar" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>
                 <p className="k1-hint">{t.muster.fetching(formatDate(muster.progress.day, 'fi'), Math.min(muster.progress.done + 1, muster.progress.total), muster.progress.total)}</p>
               </div>
+            ) : muster.problem ? (
+              <p className="k1-hint k1-hint--warn">
+                {t.leads.stopped(muster.problem)}{' '}
+                <button type="button" className="k1-link" onClick={muster.retry}>{t.common.tryAgain}</button>
+              </p>
             ) : muster.failed.length ? (
               <p className="k1-hint k1-hint--warn">
                 {t.leads.failedDays(muster.failed.length, muster.failed.map((value) => formatDate(value, 'fi')).join(', '))}{' '}

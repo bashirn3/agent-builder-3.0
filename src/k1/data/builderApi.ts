@@ -178,14 +178,25 @@ export class AccessError extends Error {
 }
 
 async function secure<T>(action: string, body: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
-  const token = sessionToken ? await sessionToken() : null
+  let token: string | null = null
+  try {
+    token = sessionToken ? await sessionToken() : null
+  } catch {
+    throw new AccessError('signin_required')
+  }
   if (!token) throw new AccessError('signin_required')
-  const response = await fetch(`${BASE}/secure`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-K1-Session': token },
-    body: JSON.stringify({ action, ...body }),
-    signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${BASE}/secure`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-K1-Session': token },
+      body: JSON.stringify({ action, ...body }),
+      signal,
+    })
+  } catch (error) {
+    if (signal?.aborted) throw error
+    throw new Error('network_failed')
+  }
   const data = await response.json().catch(() => null) as ({ error?: string } & T) | null
   if (response.status === 401) throw new AccessError('signin_required')
   if (response.status === 403) throw new AccessError('team_required')

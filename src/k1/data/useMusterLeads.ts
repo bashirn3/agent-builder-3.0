@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AccessError, fetchMusterDay, type LeadRow } from './builderApi'
+import { describeError } from './agentConfig'
 
 export const MUSTER_MAX_DAYS = 15
 
@@ -24,6 +25,7 @@ export type MusterState = {
   progress: { done: number; total: number; day: string }
   failed: string[]
   blocked: AccessError['reason'] | null
+  problem: string | null
   retry: () => void
 }
 
@@ -39,6 +41,7 @@ export function useMusterLeads(stationId: number, from: string | null, to: strin
   const [progress, setProgress] = useState({ done: 0, total: 0, day: '' })
   const [failed, setFailed] = useState<string[]>([])
   const [blocked, setBlocked] = useState<AccessError['reason'] | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const running = useRef<AbortController | null>(null)
 
@@ -55,6 +58,7 @@ export function useMusterLeads(stationId: number, from: string | null, to: strin
     setRows(collect(stationId, days))
     setFailed([])
     setBlocked(null)
+    setProblem(null)
     if (!missing.length) {
       setLoading(false)
       setProgress({ done: days.length, total: days.length, day: days[days.length - 1] ?? '' })
@@ -65,6 +69,8 @@ export function useMusterLeads(stationId: number, from: string | null, to: strin
     setLoading(true)
     void (async () => {
       const missed: string[] = []
+      let streak = 0
+      let lastError: unknown = null
       for (const [index, day] of missing.entries()) {
         if (controller.signal.aborted) return
         setProgress({ done: days.length - missing.length + index, total: days.length, day })
@@ -79,13 +85,23 @@ export function useMusterLeads(stationId: number, from: string | null, to: strin
               setLoading(false)
               return
             }
+            lastError = error
           }
         }
         if (result) {
+          streak = 0
           cache.set(keyOf(stationId, day), result)
           setRows(collect(stationId, days))
         } else {
           missed.push(day)
+          streak += 1
+          // Two failed days in a row means Muster or the connection is down; stop instead of retrying every day.
+          if (streak >= 2) {
+            setProblem(describeError(lastError))
+            setFailed([...missed, ...missing.slice(index + 1)])
+            setLoading(false)
+            return
+          }
         }
       }
       if (controller.signal.aborted) return
@@ -96,5 +112,5 @@ export function useMusterLeads(stationId: number, from: string | null, to: strin
     return () => controller.abort()
   }, [stationId, from, to, enabled, attempt])
 
-  return { rows, loading, progress, failed, blocked, retry: () => setAttempt((value) => value + 1) }
+  return { rows, loading, progress, failed, blocked, problem, retry: () => setAttempt((value) => value + 1) }
 }
