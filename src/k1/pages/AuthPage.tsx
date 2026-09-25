@@ -446,6 +446,8 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
               </Collapse>
             )}
 
+            {live && signup && step.kind === 'form' && <div id="clerk-captcha" className="k1-auth__captcha" data-cl-theme="light" data-cl-size="flexible" />}
+
             <button type="submit" className="k1-btn k1-btn--primary k1-btn--block k1-auth__submit" disabled={locked} aria-busy={busy === 'submit'}>
               {busy === 'submit' && <Spinner />}
               {submitLabel}

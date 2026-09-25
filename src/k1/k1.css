@@ -600,6 +600,7 @@ body { overscroll-behavior: none; }
 .k1-input--code { font-variant-numeric: tabular-nums; letter-spacing: 0.3em; }
 .k1-input--code::placeholder { letter-spacing: 0.3em; }
 .k1-auth__switch--tight { margin-top: 12px; }
+.k1-auth__captcha:not(:empty) { margin-top: 16px; }
 .k1-auth__pending { justify-items: center; gap: 12px; font-size: 13px; color: var(--k1-ink-2); }
 
 .k1-strength { padding-top: 12px; }
@@ -884,5 +885,6 @@ body { overscroll-behavior: none; }
 .k1-team__empty p { font-size: 14px; color: var(--k1-para); line-height: 1.5; margin-bottom: 4px; }
 .k1-dialog__text { font-size: 14px; color: var(--k1-para); line-height: 1.5; }
 @media (max-width: 900px) {
-  .k1-member { flex-wrap: wrap; }
+  .k1-version.k1-member { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+  .k1-member > .k1-btn { flex-basis: 100%; }
 }

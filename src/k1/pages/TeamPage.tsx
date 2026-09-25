@@ -1,4 +1,4 @@
-import { useOrganization, useOrganizationList, useUser } from '@clerk/react'
+import { useAuth, useOrganization, useOrganizationList, useUser } from '@clerk/react'
 import type { OrganizationInvitationResource, OrganizationMembershipResource } from '@clerk/react/types'
 import { AnimatePresence, motion } from 'motion/react'
 import { FormEvent, useId, useRef, useState } from 'react'
@@ -144,6 +144,7 @@ function ConfirmRemove({ target, onClose, onConfirm }: { target: { name: string 
 
 function ClerkTeam({ notify }: { notify: Notify }) {
   const { user } = useUser()
+  const { sessionId } = useAuth()
   const { isLoaded, organization, memberships, invitations } = useOrganization({
     memberships: { infinite: true, pageSize: 50, keepPreviousData: true },
     invitations: { infinite: true, pageSize: 50, status: ['pending'], keepPreviousData: true },
@@ -164,7 +165,7 @@ function ClerkTeam({ notify }: { notify: Notify }) {
       setCreating(true)
       try {
         const created = await createOrganization({ name: TEAM_NAME })
-        await setActive({ organization: created.id })
+        await setActive({ session: sessionId, organization: created.id })
       } catch (failure) {
         notify({ tone: 'error', title: 'Team not created', body: authError(failure) })
       } finally {
