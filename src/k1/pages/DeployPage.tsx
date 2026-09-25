@@ -6,6 +6,7 @@ import { requestDeploy, type DeployRequest } from '../data/builderApi'
 import { go } from '../routes'
 import { Skeleton, Spinner } from '../ui/controls'
 import { Check, ThumbsDown, ThumbsUp, WhatsApp } from '../ui/icons'
+import { useSession } from '../auth/session'
 import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
 
@@ -33,6 +34,9 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   const [form, setForm] = useState({ name: '', email: '', goLive: '', notes: '', confirmed: false })
   const [attempted, setAttempted] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
+  const goLiveRef = useRef<HTMLInputElement>(null)
+  const { mode, user } = useSession()
+  const account = mode === 'clerk' && user ? user : null
   const ids = { name: useId(), email: useId(), goLive: useId(), notes: useId(), confirm: useId(), error: useId() }
 
   const pendingFor = (version: AgentVersion) => config?.deployRequests.find((request) => request.versionId === version.id && request.status === 'requested')
@@ -53,9 +57,10 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
     go({ page: 'deploy' }, true)
   }, [config, versionId])
 
+  const requester = account ? { name: account.name, email: account.email } : { name: form.name.trim(), email: form.email.trim() }
   const errors = [
-    !form.name.trim() && 'Enter your name.',
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 'Enter a valid work email.',
+    !account && !form.name.trim() && 'Enter your name.',
+    !account && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 'Enter a valid work email.',
     !form.confirmed && 'Confirm that this version has been tested.',
   ].filter(Boolean) as string[]
 
@@ -67,8 +72,8 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
     try {
       const request = await requestDeploy({
         versionId: target.id,
-        requestedBy: form.name.trim(),
-        email: form.email.trim(),
+        requestedBy: requester.name,
+        email: requester.email,
         goLive: form.goLive,
         notes: form.notes.trim(),
       })
@@ -177,7 +182,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
         )}
       </div>
 
-      <Dialog open={Boolean(target)} title={sent ? 'Request sent' : `Request deployment of v${target?.number ?? ''}`} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : nameRef}>
+      <Dialog open={Boolean(target)} title={sent ? 'Request sent' : `Request deployment of v${target?.number ?? ''}`} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : account ? goLiveRef : nameRef}>
         <AnimatePresence mode="wait" initial={false}>
           {sent ? (
             <motion.div key="done" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease }}>
@@ -200,17 +205,26 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                   <span className="k1-field__label">Version</span>
                   <p className="k1-readonly">v{target?.number}{target?.note ? ` · ${target.note}` : ''}</p>
                 </div>
-                <div className="k1-field">
-                  <label htmlFor={ids.name}>Your name</label>
-                  <input ref={nameRef} id={ids.name} className="k1-input" value={form.name} autoComplete="name" aria-invalid={(attempted && !form.name.trim()) || undefined} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-                </div>
-                <div className="k1-field">
-                  <label htmlFor={ids.email}>Work email</label>
-                  <input id={ids.email} className="k1-input" type="email" value={form.email} placeholder="name@k1katsastus.fi" autoComplete="email" aria-invalid={(attempted && errors.includes('Enter a valid work email.')) || undefined} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-                </div>
+                {account ? (
+                  <div className="k1-field">
+                    <span className="k1-field__label">Requested by</span>
+                    <p className="k1-readonly">{account.name !== account.email ? `${account.name} · ${account.email}` : account.email}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="k1-field">
+                      <label htmlFor={ids.name}>Your name</label>
+                      <input ref={nameRef} id={ids.name} className="k1-input" value={form.name} autoComplete="name" aria-invalid={(attempted && !form.name.trim()) || undefined} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+                    </div>
+                    <div className="k1-field">
+                      <label htmlFor={ids.email}>Work email</label>
+                      <input id={ids.email} className="k1-input" type="email" value={form.email} placeholder="name@k1katsastus.fi" autoComplete="email" aria-invalid={(attempted && errors.includes('Enter a valid work email.')) || undefined} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+                    </div>
+                  </>
+                )}
                 <div className="k1-field">
                   <label htmlFor={ids.goLive}>Preferred go-live date</label>
-                  <input id={ids.goLive} className="k1-input" type="date" value={form.goLive} onChange={(event) => setForm({ ...form, goLive: event.target.value })} />
+                  <input ref={goLiveRef} id={ids.goLive} className="k1-input" type="date" value={form.goLive} onChange={(event) => setForm({ ...form, goLive: event.target.value })} />
                 </div>
                 <div className="k1-field">
                   <label htmlFor={ids.notes}>Notes</label>

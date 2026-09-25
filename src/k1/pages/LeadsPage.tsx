@@ -6,7 +6,7 @@ import { downloadCsv, filterLeads, fixtureLeads, shortStation, submittedStamp, t
 import { formatDate } from '../data/language'
 import { go, href } from '../routes'
 import { Skeleton, Spinner } from '../ui/controls'
-import { listLeads, requestMuster, type UploadedLead } from '../data/builderApi'
+import { currentActor, listLeads, requestMuster, type UploadedLead } from '../data/builderApi'
 import { describeError } from '../data/agentConfig'
 import { LeadUploadDialog } from './LeadUpload'
 import { DateRangeField } from '../ui/DateRange'
@@ -124,7 +124,7 @@ export function LeadsPage({ id, compact, notify, onImported }: {
   const askMuster = async () => {
     setMuster('sending')
     try {
-      await requestMuster(null)
+      await requestMuster(currentActor()?.name ?? null)
       sessionStorage.setItem(MUSTER_KEY, '1')
       setMuster('sent')
       notify({ title: 'Muster API requested', body: 'Wasup has been emailed and will be in touch about connecting it.' })
