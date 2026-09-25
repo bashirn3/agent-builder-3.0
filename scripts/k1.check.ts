@@ -11,7 +11,8 @@ import {
 import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
 import { matchesFilters, type TestChatSummary } from '../src/k1/data/builderApi.ts'
-import { describeChanges } from '../src/k1/data/changes.ts'
+import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
+import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate } from '../src/k1/data/language.ts'
 
@@ -41,7 +42,7 @@ for (const lead of LEADS) {
     assert(conversation?.leadId === lead.id, `conversation ${id} does not link back to lead ${lead.id}`)
   }
   assert(lead.phoneNumber.startsWith('+358 40 000 '), `lead ${lead.id} must use a placeholder phone number`)
-  assert(lead.product === 'D04' && lead.sample, `lead ${lead.id} must be a sample D04 inspection lead`)
+  assert(lead.product === '004' && lead.sample, `lead ${lead.id} must be a sample 004 inspection lead`)
 }
 
 assert(filterConversations(CONVERSATIONS, EMPTY_FILTERS).length === CONVERSATIONS.length, 'empty filters must keep every conversation')
@@ -107,6 +108,16 @@ assert(readLeads('Rekisterinumero,Puhelin\nABC-123,040\n').rows[0].PlateNumber =
 assert(readLeads('email,phone\na@x.fi,1\n').error === 'The file needs a PlateNumber column.', 'a missing plate column is explained')
 
 const lead = { plateNumber: 'JJ-190', stationName: 'K1 Katsastus Kouvola', nextInspection: '2026-09-23', lastInspection: '2025-09-23', language: 'Suomi' }
+assert(detectLanguage('Ruotsi') === 'sv' && detectLanguage('Englanti') === 'en' && detectLanguage(' suomi ') === 'fi', 'Muster writes languages in Finnish (Suomi, Ruotsi, Englanti)')
+assert(localizeNote('Edited base prompt · Changed reminders 1, 3 · Changed Finnish opener', fi) === 'Muokattu perusohjetta · Muutettu muistutuksia 1, 3 · Muutettu suomenkielistä avausviestiä', 'saved change notes are shown in Finnish')
+assert(localizeNote('Edited base prompt · Something new', en) === 'Edited base prompt · Something new', 'unknown note parts pass through unchanged')
+const missing = (a: Record<string, unknown>, b: Record<string, unknown>, path = ''): string[] => Object.keys(a).flatMap((key) => {
+  if (!(key in b)) return [`${path}${key}`]
+  const left = a[key]
+  const right = b[key]
+  return left && typeof left === 'object' && !Array.isArray(left) ? missing(left as Record<string, unknown>, right as Record<string, unknown>, `${path}${key}.`) : []
+})
+assert(!missing(en, fi).length, `Finnish copy is missing: ${missing(en, fi).join(', ')}`)
 assert(detectLanguage('Suomi') === 'fi' && detectLanguage('svenska') === 'sv' && detectLanguage('Deutsch') === 'en' && detectLanguage('') === 'en', 'language detection falls back to English')
 assert(fillTemplate('Hi {{first_name}}, {{registration_number}} is due by {{due_date}} at {{station}} (last {{last_inspection}}).', lead) === 'Hi, JJ-190 is due by 23.9.2026 at K1 Katsastus Kouvola (last 23.9.2025).', 'placeholders fill from the lead; first name is dropped')
 assert(fillTemplate('{{due_date}}', { ...lead, language: 'English' }) === '23 Sep 2026', 'English dates are written out')

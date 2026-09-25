@@ -2,6 +2,7 @@ import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from './icons'
 import { Popover } from './overlay'
 import { Select } from './controls'
+import { locale, useCopy } from '../i18n'
 
 const pad = (value: number) => String(value).padStart(2, '0')
 export const isoDay = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -10,11 +11,10 @@ const fromIso = (value: string) => {
   return new Date(year, month - 1, day)
 }
 const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days)
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 type Preset = '7' | '14' | '30' | 'custom'
 
-function Month({ year, month, from, to, hover, today, onPick, onHover }: {
+function Month({ year, month, from, to, hover, today, onPick, onHover, future, maxDays }: {
   year: number
   month: number
   from: string | null
@@ -23,18 +23,23 @@ function Month({ year, month, from, to, hover, today, onPick, onHover }: {
   today: string
   onPick: (day: string) => void
   onHover: (day: string | null) => void
+  future?: boolean
+  maxDays?: number
 }) {
+  const t = useCopy()
   const first = new Date(year, month, 1)
   const days = new Date(year, month + 1, 0).getDate()
   const cells: Array<string | null> = [...Array(first.getDay()).fill(null), ...Array.from({ length: days }, (_, index) => isoDay(new Date(year, month, index + 1)))]
   const end = to ?? (from && hover && hover > from ? hover : null)
   return (
     <div className="k1-cal__month">
-      <div className="k1-cal__grid" role="grid" aria-label={first.toLocaleDateString('en', { month: 'long', year: 'numeric' })}>
-        {WEEKDAYS.map((day) => <span key={day} className="k1-cal__dow" aria-hidden="true">{day}</span>)}
+      <div className="k1-cal__grid" role="grid" aria-label={first.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}>
+        {t.common.weekdays.map((day) => <span key={day} className="k1-cal__dow" aria-hidden="true">{day}</span>)}
         {cells.map((day, index) => {
           if (!day) return <span key={`blank-${index}`} />
-          const future = day > today
+          const limit = maxDays && from && !to ? isoDay(addDays(fromIso(from), maxDays - 1)) : null
+          const floor = maxDays && from && !to ? isoDay(addDays(fromIso(from), -(maxDays - 1))) : null
+          const blocked = future ? Boolean(limit && floor && (day > limit || day < floor)) : day > today
           const edge = day === from || day === end
           const inRange = Boolean(from && end && day > from && day < end)
           return (
@@ -42,9 +47,9 @@ function Month({ year, month, from, to, hover, today, onPick, onHover }: {
               key={day}
               type="button"
               className={`k1-cal__day${edge ? ' is-edge' : ''}${inRange ? ' is-range' : ''}`}
-              disabled={future}
+              disabled={blocked}
               aria-pressed={edge}
-              aria-label={fromIso(day).toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              aria-label={fromIso(day).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               onClick={() => onPick(day)}
               onPointerEnter={() => onHover(day)}
               onFocus={() => onHover(day)}
@@ -58,8 +63,10 @@ function Month({ year, month, from, to, hover, today, onPick, onHover }: {
   )
 }
 
-export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date()), leading, ariaLabel }: {
+export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date()), leading, ariaLabel, future = false, maxDays }: {
   id?: string
+  future?: boolean
+  maxDays?: number
   leading?: ReactNode
   ariaLabel?: string
   from: string | null
@@ -67,11 +74,12 @@ export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date
   onChange: (range: { from: string | null; to: string | null }) => void
   today?: string
 }) {
+  const t = useCopy()
   const [open, setOpen] = useState(false)
   const [preset, setPreset] = useState<Preset | null>(null)
   const [hover, setHover] = useState<string | null>(null)
   const anchor = useRef<HTMLButtonElement>(null)
-  const base = fromIso(to ?? today)
+  const base = future ? addDays(fromIso(from ?? today), 31) : fromIso(to ?? today)
   const [view, setView] = useState({ year: base.getFullYear(), month: base.getMonth() })
   const left = new Date(view.year, view.month - 1, 1)
   const right = new Date(view.year, view.month, 1)
@@ -86,8 +94,16 @@ export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date
   const applyPreset = (value: Preset) => {
     setPreset(value)
     if (value === 'custom') return
+    const days = Number(value)
+    if (future) {
+      const start = fromIso(today)
+      onChange({ from: today, to: isoDay(addDays(start, days - 1)) })
+      const end = addDays(start, days - 1)
+      setView({ year: end.getFullYear(), month: end.getMonth() })
+      return
+    }
     const end = fromIso(today)
-    onChange({ from: isoDay(addDays(end, -(Number(value) - 1))), to: today })
+    onChange({ from: isoDay(addDays(end, -(days - 1))), to: today })
     setView({ year: end.getFullYear(), month: end.getMonth() })
   }
 
@@ -113,32 +129,32 @@ export function DateRangeField({ id, from, to, onChange, today = isoDay(new Date
     <>
       <button ref={anchor} id={id} type="button" className="k1-select" aria-haspopup="dialog" aria-expanded={open} aria-label={ariaLabel} onClick={() => setOpen((next) => !next)}>
         {leading}
-        <span className={label ? 'k1-select__value' : 'k1-select__placeholder'}>{label ?? 'Select date range'}</span>
+        <span className={label ? 'k1-select__value' : 'k1-select__placeholder'}>{label ?? t.common.selectDateRange}</span>
       </button>
-      <Popover open={open} anchorRef={anchor} onClose={() => { setOpen(false); setHover(null) }} className="k1-cal" role="dialog" label="Choose a date range">
+      <Popover open={open} anchorRef={anchor} onClose={() => { setOpen(false); setHover(null) }} className="k1-cal" role="dialog" label={t.common.chooseDateRange}>
         <div className="k1-cal__preset">
           <Select<Preset>
-            label="Date range preset"
+            label={t.common.dateRangePreset}
             value={preset}
-            placeholder="Select date range"
+            placeholder={t.common.selectDateRange}
             options={[
-              { value: '7', label: 'Last 7 days' },
-              { value: '14', label: 'Last 14 days' },
-              { value: '30', label: 'Last 30 days' },
-              { value: 'custom', label: 'Custom range' },
+              { value: '7', label: future ? t.common.next(7) : t.common.last(7) },
+              { value: '14', label: future ? t.common.next(14) : t.common.last(14) },
+              { value: '30', label: future ? t.common.next(30) : t.common.last(30) },
+              { value: 'custom', label: t.common.customRange },
             ]}
             onChange={applyPreset}
           />
         </div>
         <div className="k1-cal__months" onKeyDown={onKey} onPointerLeave={() => setHover(null)}>
           <div className="k1-cal__nav">
-            <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--xs" aria-label="Previous month" onClick={() => shift(-1)}><ChevronLeft size={14} strokeWidth={1.75} /></button>
-            <span>{left.toLocaleDateString('en', { month: 'long', year: 'numeric' })}</span>
-            <span>{right.toLocaleDateString('en', { month: 'long', year: 'numeric' })}</span>
-            <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--xs" aria-label="Next month" disabled={isoDay(right) >= today.slice(0, 8) + '01'} onClick={() => shift(1)}><ChevronRight size={14} strokeWidth={1.75} /></button>
+            <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--xs" aria-label={t.common.previousMonth} onClick={() => shift(-1)}><ChevronLeft size={14} strokeWidth={1.75} /></button>
+            <span>{left.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}</span>
+            <span>{right.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}</span>
+            <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--xs" aria-label={t.common.nextMonth} disabled={!future && isoDay(right) >= today.slice(0, 8) + '01'} onClick={() => shift(1)}><ChevronRight size={14} strokeWidth={1.75} /></button>
           </div>
-          <Month year={left.getFullYear()} month={left.getMonth()} from={from} to={to} hover={hover} today={today} onPick={pick} onHover={setHover} />
-          <Month year={right.getFullYear()} month={right.getMonth()} from={from} to={to} hover={hover} today={today} onPick={pick} onHover={setHover} />
+          <Month year={left.getFullYear()} month={left.getMonth()} from={from} to={to} hover={hover} today={today} onPick={pick} onHover={setHover} future={future} maxDays={maxDays} />
+          <Month year={right.getFullYear()} month={right.getMonth()} from={from} to={to} hover={hover} today={today} onPick={pick} onHover={setHover} future={future} maxDays={maxDays} />
         </div>
       </Popover>
     </>

@@ -1,3 +1,4 @@
+import { copy } from '../i18n'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, type AgentConfig, type Draft, type TestLead } from './agentConfig'
 import { listLeads, type UploadedLead } from './builderApi'
@@ -90,7 +91,7 @@ export function usePlayground(notify: Notify) {
     const version = config.versions.find((item) => item.id === id)
     if (!version) return
     if (draft.locked && version.masterPrompt !== draft.masterPrompt) {
-      notify({ tone: 'error', title: 'Base prompt is locked', body: `Unlock the base prompt before loading v${version.number}.` })
+      notify({ tone: 'error', title: copy().playground.lockedToast, body: copy().playground.lockedToastBody(version.number) })
       return
     }
     setVersionId(id)
@@ -105,9 +106,9 @@ export function usePlayground(notify: Notify) {
       setConfig(next)
       setDraft(toDraft(next))
       setVersionId(next.versions[0]?.id ?? null)
-      notify({ title: `Saved as v${next.versions[0]?.number ?? ''}`.trim(), body: 'The live WhatsApp agent is unchanged until you request a deployment.' })
+      notify({ title: copy().playground.savedToast(next.versions[0]?.number ?? ''), body: copy().playground.savedToastBody })
     } catch (error) {
-      notify({ tone: 'error', title: 'Save failed', body: `Nothing was saved (${describeError(error)}). Your draft is still here.` })
+      notify({ tone: 'error', title: copy().playground.saveFailed, body: copy().playground.saveFailedBody(describeError(error)) })
     } finally {
       setSaving(false)
     }

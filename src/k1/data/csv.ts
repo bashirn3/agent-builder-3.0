@@ -101,25 +101,42 @@ export function parseClosed(value: string) {
   return ['1', 'true', 'yes', 'kyllä', 'closed'].includes(value.trim().toLowerCase())
 }
 
-export function readLeads(text: string): ParseResult {
+export type CsvMessages = {
+  noRows: string
+  needsPlate: string
+  nothingImportable: string
+  noPlate: string
+  notRecognised: (label: string, value: string) => string
+  fields?: Record<string, string>
+}
+
+const ENGLISH: CsvMessages = {
+  noRows: 'The file has no rows under the header.',
+  needsPlate: 'The file needs a PlateNumber column.',
+  nothingImportable: 'No rows could be imported.',
+  noPlate: 'no plate number',
+  notRecognised: (label, value) => `${label} “${value}” not recognised`,
+}
+
+export function readLeads(text: string, messages: CsvMessages = ENGLISH): ParseResult {
   const table = parseCsv(text)
-  if (table.length < 2) return { rows: [], skipped: [], missing: [], error: 'The file has no rows under the header.' }
+  if (table.length < 2) return { rows: [], skipped: [], missing: [], error: messages.noRows }
   const header = table[0].map(clean)
   const index = Object.fromEntries(LEAD_FIELDS.map((field) => [field, header.findIndex((cell) => ALIASES[field].includes(cell))])) as Record<LeadField, number>
   const missing = LEAD_FIELDS.filter((field) => index[field] < 0)
   const missingRequired = REQUIRED.filter((field) => index[field] < 0)
-  if (missingRequired.length) return { rows: [], skipped: [], missing, error: 'The file needs a PlateNumber column.' }
+  if (missingRequired.length) return { rows: [], skipped: [], missing, error: messages.needsPlate }
   const rows: ParsedLead[] = []
   const skipped: ParseResult['skipped'] = []
   table.slice(1).forEach((cells, offset) => {
     const get = (field: LeadField) => (index[field] >= 0 ? (cells[index[field]] ?? '').trim() : '')
     const line = offset + 2
     const plate = get('PlateNumber')
-    if (!plate) { skipped.push({ line, reason: 'no plate number' }); return }
+    if (!plate) { skipped.push({ line, reason: messages.noPlate }); return }
     const dates = { NextInspectionDateRangeEnd: get('NextInspectionDateRangeEnd'), LastInspection: get('LastInspection') }
     const normalized = { NextInspectionDateRangeEnd: normalizeDate(dates.NextInspectionDateRangeEnd), LastInspection: normalizeDate(dates.LastInspection) }
     const bad = (Object.keys(dates) as Array<keyof typeof dates>).find((key) => dates[key] && !normalized[key])
-    if (bad) { skipped.push({ line, reason: `${FIELD_LABELS[bad].toLowerCase()} “${dates[bad]}” not recognised` }); return }
+    if (bad) { skipped.push({ line, reason: messages.notRecognised((messages.fields?.[bad] ?? FIELD_LABELS[bad]).toLowerCase(), dates[bad]) }); return }
     rows.push({
       StationName: get('StationName'),
       isClosed: parseClosed(get('isClosed')),
@@ -132,5 +149,5 @@ export function readLeads(text: string): ParseResult {
       Reason: get('Reason'),
     })
   })
-  return { rows, skipped, missing, error: rows.length ? null : 'No rows could be imported.' }
+  return { rows, skipped, missing, error: rows.length ? null : messages.nothingImportable }
 }

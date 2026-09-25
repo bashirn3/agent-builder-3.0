@@ -2,15 +2,41 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useId, useRef, useState, type DragEvent } from 'react'
 import { ease } from '../../lib/motion'
 import { describeError } from '../data/agentConfig'
-import { importLeads } from '../data/builderApi'
+import { importLeads, type LeadRow } from '../data/builderApi'
 import { FIELD_LABELS, readLeads, type ParseResult } from '../data/csv'
 import { shortStation } from '../data/fixtures'
 import { formatDate } from '../data/language'
 import { Spinner } from '../ui/controls'
 import { Upload } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
+import { copy, useCopy } from '../i18n'
 
 const PREVIEW_ROWS = 5
+
+export function LeadPreview({ rows }: { rows: LeadRow[] }) {
+  const t = useCopy()
+  return (
+    <div className="k1-upload__preview">
+      <table className="k1-table">
+        <thead>
+          <tr>{(['PlateNumber', 'StationName', 'NextInspectionDateRangeEnd', 'Language', 'PhoneNumber'] as const).map((field) => <th key={field} scope="col">{t.upload.fields[field] ?? FIELD_LABELS[field]}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, PREVIEW_ROWS).map((row, index) => (
+            <tr key={index}>
+              <th scope="row">{row.PlateNumber}</th>
+              <td>{shortStation(row.StationName) || '—'}{row.isClosed && <span className="k1-tag k1-tag--danger k1-table__tag">{t.upload.closed}</span>}</td>
+              <td className="k1-table__num">{formatDate(row.NextInspectionDateRangeEnd, 'fi') || '—'}</td>
+              <td>{row.Language || '—'}</td>
+              <td className="k1-table__num">{row.PhoneNumber || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > PREVIEW_ROWS && <p className="k1-hint">{t.upload.andMore(rows.length - PREVIEW_ROWS)}</p>}
+    </div>
+  )
+}
 
 export function LeadUploadDialog({ open, onClose, onImported, notify }: {
   open: boolean
@@ -18,6 +44,7 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
   onImported: () => void
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 }) {
+  const t = useCopy()
   const [file, setFile] = useState<string | null>(null)
   const [result, setResult] = useState<ParseResult | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -33,11 +60,11 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
     if (!picked) return
     if (!/\.(csv|txt)$/i.test(picked.name) && !/csv|text/.test(picked.type)) {
       setFile(picked.name)
-      setResult({ rows: [], skipped: [], missing: [], error: 'Choose a .csv file.' })
+      setResult({ rows: [], skipped: [], missing: [], error: copy().upload.chooseCsv })
       return
     }
     setFile(picked.name)
-    setResult(readLeads(await picked.text()))
+    setResult(readLeads(await picked.text(), copy().upload))
   }
 
   const onDrop = (event: DragEvent<HTMLLabelElement>) => {
@@ -52,14 +79,14 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
     try {
       const { inserted, updated } = await importLeads(result.rows)
       notify({
-        title: `${inserted + updated} lead${inserted + updated === 1 ? '' : 's'} imported`,
-        body: updated ? `${inserted} new, ${updated} updated because the plate number was already in the list.` : 'They are now in Leads and in the test chat lead picker.',
+        title: t.upload.imported(inserted + updated),
+        body: updated ? t.upload.importedUpdated(inserted, updated) : t.upload.importedBody,
       })
       onImported()
       reset()
       onClose()
     } catch (error) {
-      notify({ tone: 'error', title: 'Import failed', body: `Nothing was imported (${describeError(error)}). Try again.` })
+      notify({ tone: 'error', title: t.upload.importFailed, body: t.upload.importFailedBody(describeError(error)) })
     } finally {
       setImporting(false)
     }
@@ -68,7 +95,7 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
   const ready = result?.rows.length ?? 0
 
   return (
-    <Dialog open={open} title="Upload CSV" onClose={close} width={680}>
+    <Dialog open={open} title={t.upload.title} onClose={close} width={680}>
       <div className="k1-form-stack">
         <label
           htmlFor={inputId}
@@ -79,8 +106,8 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
         >
           <span className="k1-dropzone__icon" aria-hidden="true"><Upload size={18} strokeWidth={1.75} /></span>
           <span className="k1-dropzone__text">
-            <strong>{file ?? 'Drop a CSV file here, or choose a file'}</strong>
-            <small id={hintId}>Muster columns: StationName, isClosed, PlateNumber, Product, NextInspectionDateRangeEnd, PhoneNumber, Language, LastInspection, Reason</small>
+            <strong>{file ?? t.upload.drop}</strong>
+            <small id={hintId}>{t.upload.columns}</small>
           </span>
           <input
             ref={inputRef}
@@ -100,36 +127,16 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
                 <p className="k1-auth__error" role="alert">{result.error}</p>
               ) : (
                 <p className="k1-upload__summary" role="status">
-                  <strong>{ready} lead{ready === 1 ? '' : 's'} ready</strong>
-                  {result.skipped.length > 0 && <span> · {result.skipped.length} row{result.skipped.length === 1 ? '' : 's'} skipped</span>}
-                  {result.missing.length > 0 && <span> · missing {result.missing.join(', ')}</span>}
+                  <strong>{t.upload.ready(ready)}</strong>
+                  {result.skipped.length > 0 && <span> · {t.upload.skipped(result.skipped.length)}</span>}
+                  {result.missing.length > 0 && <span> · {t.upload.missing(result.missing.join(', '))}</span>}
                 </p>
               )}
-              {ready > 0 && (
-                <div className="k1-upload__preview">
-                  <table className="k1-table">
-                    <thead>
-                      <tr>{(['PlateNumber', 'StationName', 'NextInspectionDateRangeEnd', 'Language', 'PhoneNumber'] as const).map((field) => <th key={field} scope="col">{FIELD_LABELS[field]}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {result.rows.slice(0, PREVIEW_ROWS).map((row, index) => (
-                        <tr key={index}>
-                          <th scope="row">{row.PlateNumber}</th>
-                          <td>{shortStation(row.StationName) || '—'}{row.isClosed && <span className="k1-tag k1-tag--danger k1-table__tag">Closed</span>}</td>
-                          <td className="k1-table__num">{formatDate(row.NextInspectionDateRangeEnd, 'fi') || '—'}</td>
-                          <td>{row.Language || '—'}</td>
-                          <td className="k1-table__num">{row.PhoneNumber || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {ready > PREVIEW_ROWS && <p className="k1-hint">and {ready - PREVIEW_ROWS} more</p>}
-                </div>
-              )}
+              {ready > 0 && <LeadPreview rows={result.rows} />}
               {result.skipped.length > 0 && (
                 <ul className="k1-upload__skipped">
-                  {result.skipped.slice(0, 3).map((row) => <li key={row.line}>Row {row.line}: {row.reason}</li>)}
-                  {result.skipped.length > 3 && <li>and {result.skipped.length - 3} more</li>}
+                  {result.skipped.slice(0, 3).map((row) => <li key={row.line}>{t.upload.row(row.line, row.reason)}</li>)}
+                  {result.skipped.length > 3 && <li>{t.upload.andMore(result.skipped.length - 3)}</li>}
                 </ul>
               )}
             </motion.div>
@@ -137,9 +144,9 @@ export function LeadUploadDialog({ open, onClose, onImported, notify }: {
         </AnimatePresence>
       </div>
       <footer className="k1-dialog__foot">
-        <button type="button" className="k1-btn k1-btn--outline" onClick={close} disabled={importing}>Cancel</button>
+        <button type="button" className="k1-btn k1-btn--outline" onClick={close} disabled={importing}>{t.common.cancel}</button>
         <button type="button" className="k1-btn k1-btn--primary" onClick={() => void submit()} disabled={!ready || importing} aria-busy={importing}>
-          {importing && <Spinner />}{ready ? `Import ${ready} lead${ready === 1 ? '' : 's'}` : 'Import'}
+          {importing && <Spinner />}{ready ? t.upload.importCount(ready) : t.upload.import}
         </button>
       </footer>
     </Dialog>

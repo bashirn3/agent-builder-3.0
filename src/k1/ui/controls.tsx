@@ -1,3 +1,4 @@
+import { copy } from '../i18n'
 import { AnimatePresence, motion } from 'motion/react'
 import { ReactNode, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { Check, ChevronDown, X } from './icons'
@@ -185,7 +186,7 @@ export function ToastStack({ toasts, onDismiss }: { toasts: ToastMessage[]; onDi
             exit={{ opacity: 0, y: '-100%' }}
             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <button type="button" className="k1-toast__close" aria-label="Dismiss notification" onClick={() => onDismiss(toast.id)}>
+            <button type="button" className="k1-toast__close" aria-label={copy().common.dismissNotification} onClick={() => onDismiss(toast.id)}>
               <X size={10} strokeWidth={2} />
             </button>
             {toast.tone === 'error'

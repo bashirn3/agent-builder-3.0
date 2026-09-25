@@ -7,14 +7,15 @@ import { tags } from '@lezer/highlight'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { applyFormat, type Format } from '../ui/format'
 import { Bold, Heading, Italic, List, ListOrdered, Maximize2 } from '../ui/icons'
+import { useCopy } from '../i18n'
 
-const TOOLS: Array<{ kind: Format; label: string; icon: ReactNode; keys?: string } | 'sep'> = [
-  { kind: 'bold', label: 'Bold', icon: <Bold />, keys: 'Mod-b' },
-  { kind: 'italic', label: 'Italic', icon: <Italic />, keys: 'Mod-i' },
-  { kind: 'heading', label: 'Heading', icon: <Heading /> },
+const TOOLS: Array<{ kind: Format; icon: ReactNode; keys?: string } | 'sep'> = [
+  { kind: 'bold', icon: <Bold />, keys: 'Mod-b' },
+  { kind: 'italic', icon: <Italic />, keys: 'Mod-i' },
+  { kind: 'heading', icon: <Heading /> },
   'sep',
-  { kind: 'bullet', label: 'Bulleted list', icon: <List /> },
-  { kind: 'number', label: 'Numbered list', icon: <ListOrdered /> },
+  { kind: 'bullet', icon: <List /> },
+  { kind: 'number', icon: <ListOrdered /> },
 ]
 
 // Markdown stays the source of truth (the agent reads it verbatim); the editor
@@ -117,16 +118,17 @@ export function PromptEditor({ id, value, onChange, readOnly, describedBy, onExp
     viewRef.current?.dispatch({ effects: editable.current.reconfigure([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]) })
   }, [readOnly])
 
+  const t = useCopy()
   return (
     <div className={`k1-editor k1-editor--${size}${readOnly ? ' is-readonly' : ''}`}>
-      <div className="k1-editor__toolbar" role="toolbar" aria-label="Formatting" aria-controls={id}>
+      <div className="k1-editor__toolbar" role="toolbar" aria-label={t.editor.formatting} aria-controls={id}>
         {TOOLS.map((tool, index) => tool === 'sep' ? <span key={`sep-${index}`} className="k1-editor__sep" aria-hidden="true" /> : (
           <button
             key={tool.kind}
             type="button"
             className="k1-editor__tool"
-            aria-label={tool.label}
-            title={tool.keys ? `${tool.label} (${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl+'}${tool.keys.slice(-1).toUpperCase()})` : tool.label}
+            aria-label={t.editor[tool.kind]}
+            title={tool.keys ? `${t.editor[tool.kind]} (${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl+'}${tool.keys.slice(-1).toUpperCase()})` : t.editor[tool.kind]}
             disabled={readOnly}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => format(tool.kind)}
@@ -135,7 +137,7 @@ export function PromptEditor({ id, value, onChange, readOnly, describedBy, onExp
           </button>
         ))}
         {onExpand && (
-          <button type="button" className="k1-editor__tool k1-editor__expand" aria-label="Expand instructions" title="Expand" onClick={onExpand}>
+          <button type="button" className="k1-editor__tool k1-editor__expand" aria-label={t.editor.expand} title={t.editor.expandShort} onClick={onExpand}>
             <Maximize2 size={14} strokeWidth={1.75} />
           </button>
         )}

@@ -176,7 +176,7 @@ export const CONVERSATIONS: Conversation[] = [
   },
 ]
 
-const sampleLead = (id: string, fields: Omit<Lead, 'id' | 'product' | 'sample'>): Lead => ({ id, product: 'D04', sample: true, ...fields })
+const sampleLead = (id: string, fields: Omit<Lead, 'id' | 'product' | 'sample'>): Lead => ({ id, product: '004', sample: true, ...fields })
 
 export const LEADS: Lead[] = [
   sampleLead('l-abc123', { stationName: 'K1 Katsastus Kouvola Kankaanpää', isClosed: false, plateNumber: 'ABC-123', nextInspection: '2026-10-23', phoneNumber: '+358 40 000 0101', language: 'Suomi', lastInspection: '2025-10-23', reason: 'previous visit', addedAt: '2026-09-23T09:26:00+03:00', conversationIds: ['c-1042'] }),
@@ -231,7 +231,7 @@ export function filterLeads(list: Lead[], range: { from: string | null; to: stri
 }
 
 export function shortStation(name: string) {
-  return name.replace(/^K1 Katsastus\s+/i, '')
+  return name.replace(/^SULJETTU\s+/i, '').replace(/^K1 Katsastus\s+/i, '')
 }
 
 export function submittedStamp(iso: string) {

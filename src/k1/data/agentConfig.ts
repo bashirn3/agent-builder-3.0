@@ -1,3 +1,4 @@
+import { copy } from '../i18n'
 import { DEFAULT_INSTRUCTIONS } from '../../lib/playgroundService'
 import { LEADS } from './fixtures'
 import { detectLanguage, fillTemplate, TRANSLATED, type Lang, type TemplateLead } from './language'
@@ -220,7 +221,7 @@ export async function sendTest(
 export function describeError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
   const status = /_failed:(\d+)$/.exec(message)
-  return status ? `server error ${status[1]}` : message.replace(/n8n[_\s-]*/gi, '')
+  return status ? copy().common.serverError(status[1]) : message.replace(/n8n[_\s-]*/gi, '')
 }
 
 export function personalize(text: string, lead: TestLead = SAMPLE_LEAD, lang?: Lang) {

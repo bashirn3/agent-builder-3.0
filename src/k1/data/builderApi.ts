@@ -166,6 +166,33 @@ export const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in cry
 
 const pause = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
+let sessionToken: (() => Promise<string | null>) | null = null
+export const setSessionTokenProvider = (provider: (() => Promise<string | null>) | null) => { sessionToken = provider }
+
+export class AccessError extends Error {
+  reason: 'signin_required' | 'team_required'
+  constructor(reason: 'signin_required' | 'team_required') {
+    super(reason)
+    this.reason = reason
+  }
+}
+
+async function secure<T>(action: string, body: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
+  const token = sessionToken ? await sessionToken() : null
+  if (!token) throw new AccessError('signin_required')
+  const response = await fetch(`${BASE}/secure`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-K1-Session': token },
+    body: JSON.stringify({ action, ...body }),
+    signal,
+  })
+  const data = await response.json().catch(() => null) as ({ error?: string } & T) | null
+  if (response.status === 401) throw new AccessError('signin_required')
+  if (response.status === 403) throw new AccessError('team_required')
+  if (!response.ok || !data) throw new Error(`request_failed:${response.status}`)
+  return data
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
@@ -451,7 +478,7 @@ export async function listLeads(): Promise<UploadedLead[]> {
     await pause(200)
     return readLocal().leads ?? []
   }
-  const { items } = await call<{ items: UploadedLead[] }>(`/leads?tenantKey=${TENANT_KEY}`)
+  const { items } = await secure<{ items: UploadedLead[] }>('leads.list')
   return items
 }
 
@@ -478,10 +505,7 @@ export async function importLeads(rows: LeadRow[]): Promise<{ inserted: number; 
     writeLocal(store)
     return { inserted, updated }
   }
-  const result = await call<{ ok: boolean; inserted?: number; updated?: number; error?: string }>('/leads/import', {
-    method: 'POST',
-    body: JSON.stringify({ tenantKey: TENANT_KEY, rows }),
-  })
+  const result = await secure<{ ok: boolean; inserted?: number; updated?: number; error?: string }>('leads.import', { rows })
   if (!result.ok) throw new Error(result.error ?? 'import_failed')
   return { inserted: result.inserted ?? 0, updated: result.updated ?? 0 }
 }
@@ -491,12 +515,50 @@ let actor: Actor | null = null
 export const setActor = (next: Actor | null) => { actor = next }
 export const currentActor = () => actor
 
-export async function requestMuster(requestedBy: string | null): Promise<void> {
+export type MusterStation = { id: number; name: string }
+
+export const MUSTER_STATIONS: MusterStation[] = [
+  { id: 256, name: 'K1 Katsastus Jyväskylä Palokka' },
+  { id: 241, name: 'K1 Katsastus Turku Itäharju' },
+]
+
+export type StationStatus = 'all' | 'open' | 'closed'
+
+export type MusterDay = { day: string; total: number; items: LeadRow[] }
+
+function sampleMusterDay(day: string, stationIds: number[], closed: StationStatus): MusterDay {
+  const weekday = new Date(`${day}T12:00:00`).getDay()
+  if (weekday === 0 || weekday === 6) return { day, total: 0, items: [] }
+  const seed = Number(day.replace(/-/g, '')) % 97
+  const items: LeadRow[] = MUSTER_STATIONS.filter((station) => stationIds.includes(station.id)).flatMap((station, index) =>
+    Array.from({ length: 2 }, (_, offset) => {
+      const number = (seed * 7 + index * 31 + offset * 13) % 900 + 100
+      const isClosed = offset === 1 && seed % 5 === 0
+      return {
+        StationName: isClosed ? `SULJETTU ${station.name}` : station.name,
+        isClosed,
+        PlateNumber: `${['KLM', 'RTY', 'JKL', 'TKU'][(seed + index + offset) % 4]}-${number}`,
+        Product: ['004', '004', '004e', '0040'][(seed + offset) % 4],
+        NextInspectionDateRangeEnd: day,
+        PhoneNumber: `+358 40 000 0${number}`,
+        Language: ['Suomi', 'Suomi', 'Ruotsi', 'Englanti'][(seed + index + offset) % 4],
+        LastInspection: `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`,
+        Reason: 'Customer relationship',
+      }
+    }))
+  const filtered = items.filter((row) => closed === 'all' || (closed === 'closed') === row.isClosed)
+  return { day, total: items.length + 40, items: filtered }
+}
+
+export async function fetchMusterDay(day: string, stationIds: number[], closed: StationStatus, signal?: AbortSignal): Promise<MusterDay> {
   if (!remote) {
-    await pause(400)
-    return
+    await pause(250)
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    return sampleMusterDay(day, stationIds, closed)
   }
-  await call('/muster/request', { method: 'POST', body: JSON.stringify({ tenantKey: TENANT_KEY, requestedBy }) })
+  const result = await secure<{ ok: boolean; day: string; total?: number; items?: LeadRow[]; error?: string }>('muster.fetch', { day, stationIds, closed }, signal)
+  if (!result.ok) throw new Error(result.error ?? 'muster_failed')
+  return { day, total: result.total ?? 0, items: result.items ?? [] }
 }
 
 export type ReminderKind = 'reminder_1' | 'reminder_2' | 'reminder_3'
