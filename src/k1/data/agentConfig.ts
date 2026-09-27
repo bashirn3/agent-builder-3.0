@@ -13,6 +13,7 @@ import {
   type Reminder,
   type Translation,
   type Translations,
+  type VersionContent,
   type VersionRecord,
 } from './builderApi'
 import { describeChanges } from './changes'
@@ -35,6 +36,7 @@ export type AgentVersion = {
   thumbsUp: number
   thumbsDown: number
   conversations: number
+  loaded: boolean
 }
 
 export type AgentConfig = {
@@ -112,7 +114,7 @@ function toVersion(record: VersionRecord, liveId: string | null): AgentVersion {
   return {
     id: record.id,
     number: record.versionNumber,
-    masterPrompt: record.masterPrompt,
+    masterPrompt: record.masterPrompt ?? '',
     additional: record.additionalInformation ?? '',
     opener: record.openingMessage ?? '',
     reminders: normalizeReminders(record.reminders),
@@ -125,6 +127,19 @@ function toVersion(record: VersionRecord, liveId: string | null): AgentVersion {
     thumbsUp: Number(record.thumbsUp ?? 0),
     thumbsDown: Number(record.thumbsDown ?? 0),
     conversations: Number(record.conversations ?? 0),
+    loaded: record.hasContent !== false,
+  }
+}
+
+export function withContent(version: AgentVersion, content: VersionContent): AgentVersion {
+  return {
+    ...version,
+    masterPrompt: content.masterPrompt,
+    additional: content.additionalInformation ?? '',
+    opener: content.openingMessage ?? '',
+    reminders: normalizeReminders(content.reminders),
+    translations: normalizeTranslations(content.translations),
+    loaded: true,
   }
 }
 

@@ -11,6 +11,7 @@ import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
 import { locale, useCopy } from '../i18n'
 import { localizeNote } from '../data/changes'
+import { ResetVersions } from './ResetVersions'
 
 // Flip once the email step in the Deploy Request workflow sends to Wasup.
 const EMAIL_CONNECTED = true
@@ -24,7 +25,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   dirty: boolean
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
   versionId?: string
-  onChanged: () => void
+  onChanged: (force?: boolean) => void
 }) {
   const t = useCopy()
   const [target, setTarget] = useState<AgentVersion | null>(null)
@@ -42,7 +43,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
   const pendingFor = (version: AgentVersion) => config?.deployRequests.find((request) => request.versionId === version.id && request.status === 'requested')
   const canRequest = (version: AgentVersion) => Boolean(config?.tracking) && !version.live && !pendingFor(version)
 
-  useEffect(onChanged, [])
+  useEffect(() => onChanged(), [])
 
   const open = (version: AgentVersion) => {
     setSent(null)
@@ -79,7 +80,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
       })
       setSent(request)
       setForm({ name: form.name, email: form.email, goLive: '', notes: '', confirmed: false })
-      onChanged()
+      onChanged(true)
     } catch (error) {
       notify({ tone: 'error', title: t.deploy.failed, body: t.deploy.failedBody(describeError(error)) })
     } finally {
@@ -188,6 +189,8 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
             </ul>
           </section>
         )}
+
+        {config && config.tracking && <ResetVersions config={config} dirty={dirty} notify={notify} onReset={() => onChanged(true)} />}
       </div>
 
       <Dialog open={Boolean(target)} title={sent ? t.deploy.sentTitle : t.deploy.requestTitle(target?.number ?? '')} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : account ? goLiveRef : nameRef}>

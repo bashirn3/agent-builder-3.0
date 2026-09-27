@@ -37,6 +37,7 @@ export type LeadRow = {
 export type VersionRecord = {
   id: string
   versionNumber: number
+  hasContent?: boolean
   masterPrompt: string
   additionalInformation: string
   openingMessage: string
@@ -294,7 +295,17 @@ type LegacyConfig = {
   versions: Array<{ id: string; versionNumber: number; masterPrompt: string; additionalInformation?: string; openingMessage?: string; createdAt: string; isActive: boolean }>
 }
 
-export async function loadState(): Promise<BuilderState> {
+// Until the database has the light state, remember that for a while so each load does not pay for a failed request.
+const LIGHT_KEY = 'k1-light-state-unavailable'
+const LIGHT_RETRY = 10 * 60_000
+function lightUnavailable() {
+  try { return Date.now() - Number(sessionStorage.getItem(LIGHT_KEY) ?? 0) < LIGHT_RETRY } catch { return false }
+}
+function markLightUnavailable() {
+  try { sessionStorage.setItem(LIGHT_KEY, String(Date.now())) } catch { /* storage blocked */ }
+}
+
+export async function loadState({ full = false }: { full?: boolean } = {}): Promise<BuilderState> {
   if (!remote) {
     await pause(300)
     const store = readLocal()
@@ -308,6 +319,16 @@ export async function loadState(): Promise<BuilderState> {
       versions: withStats(store).sort((a, b) => b.versionNumber - a.versionNumber),
       deployRequests: store.deployRequests,
       tracking: true,
+    }
+  }
+  // The light state leaves out prompt text for versions that are not active; until the
+  // database supports it the request fails and the full state is used instead.
+  if (!full && !lightUnavailable()) {
+    try {
+      const light = await call<Omit<BuilderState, 'tracking'> | null>(`/state?tenantKey=${TENANT_KEY}&lite=1`)
+      if (light && Array.isArray(light.versions)) return { ...light, tracking: true }
+    } catch {
+      markLightUnavailable()
     }
   }
   try {
@@ -432,7 +453,7 @@ export async function setFeedback(messageId: string, feedback: Feedback): Promis
   await call('/feedback', { method: 'POST', body: JSON.stringify({ messageId, feedback }) })
 }
 
-export async function listTestChats(filters: TestChatFilters): Promise<TestChatSummary[]> {
+export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal): Promise<TestChatSummary[]> {
   if (!remote) {
     await pause(250)
     return readLocal().chats
@@ -448,7 +469,7 @@ export async function listTestChats(filters: TestChatFilters): Promise<TestChatS
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
   if (filters.query.trim()) params.set('q', filters.query.trim())
-  const { items } = await call<{ items: TestChatSummary[] }>(`/test-chats?${params}`)
+  const { items } = await call<{ items: TestChatSummary[] }>(`/test-chats?${params}`, { signal })
   return items
 }
 
@@ -486,16 +507,38 @@ export async function requestDeploy(input: DeployRequestInput): Promise<DeployRe
 
 export const registrationKey = (value: string) => value.toUpperCase().replace(/[\s-]/g, '')
 
-export async function listLeads(): Promise<UploadedLead[]> {
-  if (!remote) {
-    await pause(200)
-    return readLocal().leads ?? []
-  }
-  const { items } = await secure<{ items: UploadedLead[] }>('leads.list')
-  return items
+const cacheResets = new Set<() => void>()
+export const onCacheReset = (reset: () => void) => { cacheResets.add(reset) }
+
+// Signing out must not leave another person's data in memory or storage.
+export function clearCaches() {
+  leadsRequest = null
+  contentCache.clear()
+  cacheResets.forEach((reset) => reset())
+  try { localStorage.removeItem('k1-config-cache-v1') } catch { /* storage blocked */ }
+}
+
+// The Playground lead picker and the Leads page ask for the same list; share one request.
+let leadsRequest: { at: number; promise: Promise<UploadedLead[]> } | null = null
+const LEADS_FRESH = 20_000
+
+export function listLeads(): Promise<UploadedLead[]> {
+  if (leadsRequest && Date.now() - leadsRequest.at < LEADS_FRESH) return leadsRequest.promise
+  const promise = (async () => {
+    if (!remote) {
+      await pause(200)
+      return readLocal().leads ?? []
+    }
+    const { items } = await secure<{ items: UploadedLead[] }>('leads.list')
+    return items
+  })()
+  leadsRequest = { at: Date.now(), promise }
+  promise.catch(() => { if (leadsRequest?.promise === promise) leadsRequest = null })
+  return promise
 }
 
 export async function importLeads(rows: LeadRow[]): Promise<{ inserted: number; updated: number }> {
+  leadsRequest = null
   if (!remote) {
     await pause(500)
     const store = readLocal()
@@ -527,6 +570,54 @@ export type Actor = { name: string; email: string }
 let actor: Actor | null = null
 export const setActor = (next: Actor | null) => { actor = next }
 export const currentActor = () => actor
+
+export type VersionContent = Pick<VersionRecord, 'masterPrompt' | 'additionalInformation' | 'openingMessage' | 'reminders' | 'translations'>
+
+// Saved versions never change, so their content is cached for the session.
+const contentCache = new Map<string, Promise<VersionContent>>()
+
+export function getVersionContent(id: string): Promise<VersionContent> {
+  const cached = contentCache.get(id)
+  if (cached) return cached
+  const request = (async (): Promise<VersionContent> => {
+    if (remote) {
+      try {
+        const record = await call<(VersionContent & { id: string }) | null>(`/version?tenantKey=${TENANT_KEY}&id=${encodeURIComponent(id)}`)
+        if (record && typeof record.masterPrompt === 'string') return record
+      } catch { /* single-version lookup not available yet */ }
+    }
+    const state = await loadState({ full: true })
+    const version = state.versions.find((item) => item.id === id)
+    if (!version || typeof version.masterPrompt !== 'string') throw new Error('version_not_found')
+    return version
+  })()
+  contentCache.set(id, request)
+  request.catch(() => contentCache.delete(id))
+  return request
+}
+
+export async function resetVersions(): Promise<{ removedVersions: number; removedChats: number }> {
+  if (!remote) {
+    await pause(400)
+    const store = readLocal()
+    const kept = [...store.versions].sort((a, b) => b.versionNumber - a.versionNumber)[0]
+    if (!kept) throw new Error('no_versions')
+    const removedVersions = store.versions.length - 1
+    const removedChats = store.chats.length
+    store.versions = [{ ...kept, versionNumber: 1, isActive: true }]
+    store.chats = []
+    store.deployRequests = []
+    store.liveVersionId = null
+    store.liveSince = null
+    writeLocal(store)
+    contentCache.clear()
+    return { removedVersions, removedChats }
+  }
+  const result = await secure<{ ok: boolean; removedVersions?: number; removedChats?: number; error?: string }>('versions.reset')
+  if (!result.ok) throw new Error(result.error ?? 'reset_failed')
+  contentCache.clear()
+  return { removedVersions: result.removedVersions ?? 0, removedChats: result.removedChats ?? 0 }
+}
 
 export type MusterStation = { id: number; name: string }
 

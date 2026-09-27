@@ -942,3 +942,18 @@ body { overscroll-behavior: none; }
 .k1-multi__foot { display: flex; justify-content: flex-end; padding: 6px 8px 2px; border-top: 1px solid var(--k1-line-soft); }
 .k1-filter__drafts { margin-top: -10px; }
 .k1-versions__more { justify-self: start; font-size: 13px; }
+
+/* ---------- Danger zone ---------- */
+
+.k1-danger { margin-top: 40px; display: grid; gap: 12px; }
+.k1-danger__card { display: flex; align-items: center; gap: 16px; padding: 14px 14px 14px 16px; border: 1px solid #fecaca; border-radius: var(--k1-r-lg); background: #fffafa; }
+.k1-danger__text { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.k1-danger__text strong { font-size: 15px; font-weight: 600; }
+.k1-danger__text p { font-size: 13px; color: var(--k1-para); line-height: 1.5; }
+.k1-danger__button { color: var(--k1-danger-strong); border-color: #fecaca; }
+.k1-danger__button:hover:not(:disabled) { background: #fef2f2; }
+.k1-danger__list { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; color: var(--k1-para); line-height: 1.5; }
+.k1-danger__final { font-size: 14px; font-weight: 600; color: var(--k1-danger-strong); }
+@media (max-width: 900px) {
+  .k1-danger__card { flex-direction: column; align-items: stretch; }
+}

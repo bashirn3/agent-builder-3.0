@@ -40,10 +40,16 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
 }) {
   const t = useCopy()
   const version = config.versions.find((item) => item.id === pick) ?? null
+  const [loadFailed, setLoadFailed] = useState(false)
+  useEffect(() => {
+    setLoadFailed(false)
+    if (version && !version.loaded) void store.ensureVersion(version.id).catch(() => setLoadFailed(true))
+  }, [version?.id, version?.loaded])
   const target: TestTarget | null = useMemo(() => {
     if (pick === DRAFT) return store.draft ? draftTarget(config, store.draft) : null
-    return version ? versionTarget(version) : null
+    return version && version.loaded ? versionTarget(version) : null
   }, [pick, version, store.draft, config])
+  const contentPending = Boolean(version && !version.loaded)
   const chat = useTestChat(target, 'compare', store.lead)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
@@ -109,6 +115,15 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
             </motion.div>
           )}
         </AnimatePresence>
+        {contentPending && !loadFailed && (
+          <div className="k1-compare__loading" role="status" aria-label={t.compare.loadingVersion}><Skeleton width="72%" height={60} radius={20} /></div>
+        )}
+        {loadFailed && (
+          <div className="k1-tester__error" role="alert">
+            <span>{t.compare.versionFailed}</span>
+            <button type="button" className="k1-link" onClick={() => { setLoadFailed(false); if (version) void store.ensureVersion(version.id).catch(() => setLoadFailed(true)) }}>{t.common.tryAgain}</button>
+          </div>
+        )}
         {chat.error && (
           <div className="k1-tester__error" role="alert">
             <span>{chat.error}</span>

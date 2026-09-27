@@ -1,7 +1,7 @@
 import { useAuth, useClerk, useUser } from '@clerk/react'
 import { useJoinTeam } from './team'
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
-import { setActor, setSessionTokenProvider } from '../data/builderApi'
+import { clearCaches, setActor, setSessionTokenProvider } from '../data/builderApi'
 import { useCopy } from '../i18n'
 
 export const CLERK_PUBLISHABLE_KEY = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined)?.trim() || ''
@@ -50,7 +50,10 @@ function ClerkSession({ children }: { children: ReactNode }) {
       ready,
       signedIn,
       user: user ? { name, email, initials: initials(user.fullName ?? '', email), imageUrl: user.hasImage ? user.imageUrl : undefined } : null,
-      signOut: () => clerk.signOut(),
+      signOut: async () => {
+        clearCaches()
+        await clerk.signOut()
+      },
     }
   }, [clerk, ready, signedIn, user])
   useEffect(() => {
