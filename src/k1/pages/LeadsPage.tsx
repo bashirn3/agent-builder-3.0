@@ -155,9 +155,7 @@ export function LeadsPage({ id, compact, notify, onImported }: {
   const [status, setStatus] = useState<StationStatus>('open')
   const [dates, setDates] = useState<{ from: string | null; to: string | null }>(() => {
     const today = isoDay(new Date())
-    const end = new Date()
-    end.setDate(end.getDate() + 6)
-    return { from: today, to: isoDay(end) }
+    return { from: today, to: today }
   })
   const [applied, setApplied] = useState(dates)
   const [saving, setSaving] = useState(false)
