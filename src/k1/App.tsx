@@ -12,7 +12,8 @@ import { useSession } from './auth/session'
 import { useCopy } from './i18n'
 import { go, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
-import { Spinner, ToastStack, useToasts } from './ui/controls'
+import { ToastStack, useToasts } from './ui/controls'
+import { AppSkeleton } from './ui/skeletons'
 import { ErrorBoundary } from './shell/ErrorBoundary'
 import { LayerProvider } from './ui/overlay'
 
@@ -72,7 +73,7 @@ export default function App() {
             ? <SsoCallbackPage />
             : isAuth
               ? <AuthPage mode={route.page as 'signin' | 'signup'} />
-              : authed ? <ErrorBoundary><Workspace compact={compact} /></ErrorBoundary> : <div className="k1-boot" role="status" aria-label={t.common.loading}><Spinner size={18} /></div>}
+              : authed ? <ErrorBoundary><Workspace compact={compact} /></ErrorBoundary> : <AppSkeleton compact={compact} />}
         </LayerProvider>
       </div>
     </MotionConfig>

@@ -10,6 +10,7 @@ import { Menu, Select, Skeleton, type SelectOption } from '../ui/controls'
 import { ArrowUp, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
 import { Bubble, useAutoGrow } from './PlaygroundPage'
 import { useCopy } from '../i18n'
+import { CompareColumnSkeleton } from '../ui/skeletons'
 import { versionHint } from './versionText'
 
 const MAX_COLUMNS = 3
@@ -166,8 +167,8 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
       <div className="k1-compare" role="status" aria-label={t.compare.loading}>
         <div className="k1-compare__bar"><Skeleton width={120} height={28} /></div>
         <div className="k1-compare__grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-          <div className="k1-compare__col"><Skeleton height={36} /><Skeleton width="70%" height={60} radius={20} /></div>
-          <div className="k1-compare__col"><Skeleton height={36} /><Skeleton width="70%" height={60} radius={20} /></div>
+          <CompareColumnSkeleton />
+          <CompareColumnSkeleton />
         </div>
       </div>
     )

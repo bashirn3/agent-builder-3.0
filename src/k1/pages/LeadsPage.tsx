@@ -14,6 +14,7 @@ import { LeadUploadDialog } from './LeadUpload'
 import { DateRangeField, isoDay } from '../ui/DateRange'
 import { Drawer } from '../ui/overlay'
 import { Facts, SampleBadge, Thread } from './SplitView'
+import { CardListSkeleton, TableSkeleton } from '../ui/skeletons'
 
 const day = (iso: string | null) => formatDate(iso, 'fi') || '—'
 
@@ -346,9 +347,9 @@ export function LeadsPage({ id, compact, notify, onImported }: {
 
       <div className="k1-table-card">
         {(view === 'saved' && loading) || busy ? (
-          <div className="k1-table__skeleton" role="status" aria-label={t.leads.loading}>
-            {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} height={48} />)}
-          </div>
+          compact
+            ? <CardListSkeleton label={t.leads.loading} />
+            : <TableSkeleton label={t.leads.loading} columns={[c.plate, c.station, c.next, c.last, c.language, c.phone, c.reason]} />
         ) : compact ? (
           rows.length ? (
             <ul className="k1-lead-cards">

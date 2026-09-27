@@ -70,6 +70,10 @@ try {
     } else if (step.wait) await sleep(step.wait)
     else if (step.eval) await evaluate(step.eval)
     else if (step.viewport) await viewport(...step.viewport)
+    else if (step.latency !== undefined) {
+      await send('Network.enable')
+      await send('Network.emulateNetworkConditions', { offline: false, latency: step.latency, downloadThroughput: -1, uploadThroughput: -1 })
+    }
     else if (step.click) {
       const ok = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(step.click)}); if (!el) return false; el.scrollIntoView({block:'nearest'}); const r = el.getBoundingClientRect(); return [r.x + r.width/2, r.y + r.height/2] })()`)
       if (!ok) throw new Error(`click target missing: ${step.click}`)

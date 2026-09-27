@@ -14,6 +14,7 @@ import { Bubble } from './PlaygroundPage'
 import { copy, useCopy } from '../i18n'
 import { onCacheReset } from '../data/builderApi'
 import { Spinner } from '../ui/controls'
+import { ThreadSkeleton } from '../ui/skeletons'
 import { orderVersions, versionHint } from './versionText'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
 
@@ -386,7 +387,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
 
   const conversation = selected?.conversation?.id === id ? selected.conversation : null
   const detail = detailLoading && !conversation ? (
-    <div className="k1-detail k1-detail--empty" role="status" aria-label={t.chats.loadingChat}><Skeleton width="60%" height={60} radius={20} /></div>
+    <ThreadSkeleton label={t.chats.loadingChat} />
   ) : conversation ? (
     <DetailPane
       paneKey={conversation.id}

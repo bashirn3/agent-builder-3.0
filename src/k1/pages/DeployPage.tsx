@@ -12,6 +12,7 @@ import { formatStamp } from './SplitView'
 import { locale, useCopy } from '../i18n'
 import { localizeNote } from '../data/changes'
 import { ResetVersions } from './ResetVersions'
+import { RowCardsSkeleton } from '../ui/skeletons'
 
 // Flip once the email step in the Deploy Request workflow sends to Wasup.
 const EMAIL_CONNECTED = true
@@ -123,7 +124,7 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
         <section className="k1-deploy__versions" aria-labelledby="k1-versions-title">
           <h2 id="k1-versions-title" className="k1-section-title">{t.deploy.versions}</h2>
           {!config ? (
-            <div className="k1-table__skeleton">{[0, 1, 2].map((key) => <Skeleton key={key} height={64} />)}</div>
+            <RowCardsSkeleton label={t.deploy.versions} />
           ) : config.versions.length ? (
             <>
             <ul className="k1-versions">

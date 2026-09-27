@@ -957,3 +957,23 @@ body { overscroll-behavior: none; }
 @media (max-width: 900px) {
   .k1-danger__card { flex-direction: column; align-items: stretch; }
 }
+
+/* ---------- Page skeletons ---------- */
+
+.k1-header .k1-skel, .k1-sidebar .k1-skel { background: #ebebed; }
+.k1-skel-crumbs { display: flex; align-items: center; gap: 14px; margin-left: 20px; }
+.k1-skel-header-end { margin-left: auto; display: flex; }
+.k1-skel-nav { display: grid; gap: 18px; padding: 16px 14px; }
+.k1-skel-page { display: grid; align-content: start; gap: 18px; padding: 32px; }
+.k1-skel-page__bar { max-width: 420px; }
+.k1-skel-page .k1-skel-card--editor { max-width: 640px; }
+.k1-skel-tabs { display: flex; gap: 24px; padding-top: 14px; }
+.k1-skel-thread { display: grid; gap: 14px; padding: 24px; align-content: start; }
+.k1-skel-bubble { display: flex; }
+.k1-skel-bubble--user { justify-content: flex-end; }
+.k1-skel-version { gap: 16px; }
+.k1-skel-table tbody tr { cursor: default; }
+.k1-skel-table tbody tr:hover { background: transparent; }
+.k1-skel-lead-card { display: grid; gap: 8px; }
+.k1-skel-compare .k1-compare__head { display: flex; align-items: center; gap: 8px; }
+.k1-skel-compare .k1-compare__thread { padding: 16px; }
