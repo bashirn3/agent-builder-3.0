@@ -1,0 +1,338 @@
+{
+  "base": "http://127.0.0.1:5174/",
+  "outDir": "/tmp/k1shots/regression",
+  "width": 1440,
+  "height": 900,
+  "scale": 1.3333333,
+  "steps": [
+    {
+      "go": "#/signin"
+    },
+    {
+      "eval": "localStorage.clear(); sessionStorage.clear(); location.reload()"
+    },
+    {
+      "wait": 1500
+    },
+    {
+      "expect": "!!(document.documentElement.lang === 'fi' && document.querySelector('.k1-auth__form h1').textContent === 'Tervetuloa takaisin')",
+      "label": "Login opens in Finnish"
+    },
+    {
+      "eval": "sessionStorage.setItem('k1-preview-session', '1'); location.hash = '#/playground'"
+    },
+    {
+      "wait": 1200
+    },
+    {
+      "eval": "if (location.hash !== '#/playground') location.hash = '#/playground'"
+    },
+    {
+      "waitFor": "document.querySelector('.k1-editor__cm .cm-content')",
+      "timeout": 15000
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-page-title').textContent === 'Testaus' && document.querySelector('.k1-tester__thread .k1-msg__bubble'))",
+      "label": "Playground loads with the opener in the test chat"
+    },
+    {
+      "eval": "(() => { const cm = document.querySelector('.k1-editor__cm .cm-content'); cm.focus(); document.execCommand('insertText', false, ' Ensimmäinen muutos.') })()"
+    },
+    {
+      "waitFor": "document.querySelector('.k1-unsaved')",
+      "timeout": 5000
+    },
+    {
+      "eval": "[...document.querySelectorAll('.k1-unsaved button')].find(b => b.textContent.trim() === 'Tallenna').click()"
+    },
+    {
+      "waitFor": "!document.querySelector('.k1-unsaved') && document.querySelector('.k1-inspector .k1-select').textContent.includes('Versio 1')",
+      "timeout": 8000
+    },
+    {
+      "expect": "true",
+      "label": "Saving creates version 1"
+    },
+    {
+      "eval": "(() => { const cm = document.querySelector('.k1-editor__cm .cm-content'); cm.focus(); document.execCommand('insertText', false, ' Toinen muutos.') })()"
+    },
+    {
+      "eval": "[...document.querySelectorAll('.k1-unsaved button')].find(b => b.textContent.trim() === 'Tallenna').click()"
+    },
+    {
+      "waitFor": "!document.querySelector('.k1-unsaved') && document.querySelector('.k1-inspector .k1-select').textContent.includes('Versio 2')",
+      "timeout": 8000
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-editor__cm .cm-content').textContent.includes('Toinen muutos.'))",
+      "label": "Saving again creates version 2 with the new text"
+    },
+    {
+      "click": ".k1-inspector .k1-inspector__row .k1-select",
+      "settle": 400
+    },
+    {
+      "eval": "[...document.querySelectorAll('[role=option]')].find(o => o.textContent.startsWith('Versio 1')).click()"
+    },
+    {
+      "waitFor": "!document.querySelector('.k1-editor__cm .cm-content').textContent.includes('Toinen muutos.')",
+      "timeout": 5000
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-editor__cm .cm-content').textContent.includes('Ensimmäinen muutos.') && document.querySelector('.k1-unsaved'))",
+      "label": "Opening version 1 loads its text as a draft"
+    },
+    {
+      "eval": "[...document.querySelectorAll('.k1-unsaved button')].find(b => b.textContent.trim() === 'Hylkää').click()"
+    },
+    {
+      "wait": 400
+    },
+    {
+      "eval": "(() => { const ta = document.querySelector('.k1-tester__composer textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, 'Voinko varata ajan?'); ta.dispatchEvent(new Event('input', { bubbles: true })) })()"
+    },
+    {
+      "click": ".k1-tester__composer .k1-send",
+      "settle": 300
+    },
+    {
+      "waitFor": "document.querySelectorAll('.k1-tester__thread .k1-msg--agent').length >= 2 && !document.querySelector('.k1-typing')",
+      "timeout": 8000
+    },
+    {
+      "expect": "!!(document.querySelectorAll('.k1-tester__thread .k1-msg--user').length === 1)",
+      "label": "Test chat sends a message and gets a reply"
+    },
+    {
+      "eval": "document.querySelector('.k1-tester__thread .k1-msg--agent:last-child button[aria-label=\"Hyvä vastaus\"]')?.click()"
+    },
+    {
+      "click": ".k1-inspector .k1-segmented button:nth-child(2)",
+      "settle": 300
+    },
+    {
+      "expect": "!!([...document.querySelectorAll('.k1-opener-lang .k1-segmented button')].map(b => b.textContent).join(',') === 'Suomi,Ruotsi,Englanti')",
+      "label": "Opener tabs are Finnish, Swedish, English"
+    },
+    {
+      "click": ".k1-tester__lead",
+      "settle": 400
+    },
+    {
+      "eval": "[...document.querySelectorAll('[role=option]')].find(o => o.textContent.startsWith('KLM-908')).click()"
+    },
+    {
+      "wait": 600
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-opener-lang [aria-selected=true]').textContent === 'Ruotsi')",
+      "label": "Picking a Swedish lead switches the Opener to Swedish"
+    },
+    {
+      "go": "#/compare",
+      "settle": 1200
+    },
+    {
+      "waitFor": "document.querySelectorAll('.k1-compare__col').length >= 2",
+      "timeout": 8000
+    },
+    {
+      "expect": "!!(document.querySelectorAll('.k1-compare__col .k1-msg__bubble').length >= 2)",
+      "label": "Compare shows two chats with openers"
+    },
+    {
+      "go": "#/activity/chats",
+      "settle": 1500
+    },
+    {
+      "waitFor": "document.querySelectorAll('.k1-list__items a').length >= 1",
+      "timeout": 8000
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-detail h2'))",
+      "label": "Test chats lists the chat and opens it"
+    },
+    {
+      "eval": "(() => { const input = document.querySelector('.k1-list-search input'); input.focus(); document.execCommand('insertText', false, 'zzzz-no-match') })()"
+    },
+    {
+      "wait": 150
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-list-search svg') !== null)",
+      "label": "Search shows its icon or spinner while typing"
+    },
+    {
+      "waitFor": "document.body.innerText.includes('Ei osumia')",
+      "timeout": 5000
+    },
+    {
+      "expect": "true",
+      "label": "A search with no match says so"
+    },
+    {
+      "eval": "(() => { const input = document.querySelector('.k1-list-search input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(input, ''); input.dispatchEvent(new Event('input', { bubbles: true })) })()"
+    },
+    {
+      "waitFor": "document.querySelectorAll('.k1-list__items a').length >= 1",
+      "timeout": 5000
+    },
+    {
+      "go": "#/playground",
+      "settle": 600
+    },
+    {
+      "go": "#/activity/chats",
+      "settle": 150
+    },
+    {
+      "expect": "!!(document.querySelectorAll('.k1-list__items a').length >= 1 && !document.querySelector('.k1-list__items--skeleton'))",
+      "label": "Coming back to Test chats shows the list at once"
+    },
+    {
+      "go": "#/activity/leads",
+      "settle": 1500
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-leads__views [aria-selected=true]').textContent === 'Muster')",
+      "label": "Leads opens on the live Muster view"
+    },
+    {
+      "waitFor": "!document.querySelector('.k1-fetch')",
+      "timeout": 10000
+    },
+    {
+      "eval": "document.querySelector('.k1-leads__views button:nth-child(2)').click()"
+    },
+    {
+      "wait": 600
+    },
+    {
+      "eval": "(() => { const a = [...document.querySelectorAll('.k1-table tbody th a')].find(x => x.textContent === 'ABC-123'); a.click() })()"
+    },
+    {
+      "wait": 700
+    },
+    {
+      "expect": "!!([...document.querySelectorAll('.k1-lead .k1-facts__heading')].some(h => h.textContent === 'Esimerkkikeskustelu'))",
+      "label": "Sample lead shows an example conversation"
+    },
+    {
+      "key": "Escape"
+    },
+    {
+      "wait": 300
+    },
+    {
+      "go": "#/deploy",
+      "settle": 1200
+    },
+    {
+      "waitFor": "document.querySelectorAll('.k1-version').length >= 2",
+      "timeout": 8000
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-danger') && document.querySelector('.k1-danger__button') && !document.querySelector('.k1-danger__button').disabled)",
+      "label": "Deploy shows the reset action in a danger zone"
+    },
+    {
+      "click": ".k1-danger__button",
+      "settle": 500
+    },
+    {
+      "expect": "!!(document.querySelector('[role=dialog] .k1-btn--danger').disabled && document.querySelector('[role=dialog] .k1-danger__list').textContent.includes('v2'))",
+      "label": "Reset dialog explains what happens and stays disabled until confirmed"
+    },
+    {
+      "type": [
+        "[role=dialog] input",
+        "nollaa"
+      ]
+    },
+    {
+      "expect": "!!(!document.querySelector('[role=dialog] .k1-btn--danger').disabled)",
+      "label": "Typing the confirmation word enables reset"
+    },
+    {
+      "shot": "reset-dialog"
+    },
+    {
+      "click": "[role=dialog] .k1-btn--danger",
+      "settle": 1500
+    },
+    {
+      "waitFor": "!document.querySelector('[role=dialog]') && document.querySelectorAll('.k1-version').length === 1",
+      "timeout": 8000
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-version strong').textContent === 'v1' && document.querySelector('.k1-danger__button').disabled)",
+      "label": "After reset only v1 is left"
+    },
+    {
+      "go": "#/activity/chats",
+      "settle": 1500
+    },
+    {
+      "waitFor": "document.body.innerText.includes('Ei vielä testikeskusteluja')",
+      "timeout": 6000
+    },
+    {
+      "expect": "true",
+      "label": "Reset removed the test chats"
+    },
+    {
+      "go": "#/playground",
+      "settle": 1200
+    },
+    {
+      "expect": "!!(document.querySelector('.k1-inspector .k1-select').textContent.includes('Versio 1') && document.querySelector('.k1-editor__cm .cm-content').textContent.includes('Toinen muutos.'))",
+      "label": "Playground keeps the latest text as v1"
+    },
+    {
+      "click": ".k1-header .k1-avatar",
+      "settle": 400
+    },
+    {
+      "expect": "!!([...document.querySelectorAll('.k1-menu__item')].map(b => b.textContent.trim()).join('|') === 'Tiimi|Kirjaudu ulos')",
+      "label": "Account menu has Team and Sign out"
+    },
+    {
+      "click": ".k1-header .k1-langs button:nth-child(2)",
+      "settle": 400
+    },
+    {
+      "expect": "!!(document.documentElement.lang === 'en' && document.querySelector('.k1-page-title').textContent === 'Playground' && document.querySelector('.k1-editor__cm .cm-content').getAttribute('aria-label') === 'Base prompt')",
+      "label": "Switching to English works, including the prompt editor label"
+    },
+    {
+      "click": ".k1-header .k1-langs button:nth-child(1)",
+      "settle": 300
+    },
+    {
+      "viewport": [
+        390,
+        844,
+        3,
+        true
+      ]
+    },
+    {
+      "wait": 800
+    },
+    {
+      "go": "#/playground",
+      "settle": 1000
+    },
+    {
+      "click": ".k1-header__toggle",
+      "settle": 500
+    },
+    {
+      "expect": "!!([...document.querySelectorAll('.k1-mobile-nav__foot a')].some(a => a.textContent.trim() === 'Tiimi') && document.querySelector('.k1-mobile-nav__lang .k1-langs'))",
+      "label": "Mobile menu has Team and the language switch"
+    },
+    {
+      "shot": "mobile-nav"
+    }
+  ]
+}

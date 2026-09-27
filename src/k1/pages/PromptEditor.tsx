@@ -58,6 +58,15 @@ export function PromptEditor({ id, value, onChange, readOnly, describedBy, onExp
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const editable = useRef(new Compartment())
+  const attributes = useRef(new Compartment())
+  const contentAttributes = () => EditorView.contentAttributes.of({
+    id,
+    role: 'textbox',
+    'aria-multiline': 'true',
+    spellcheck: 'true',
+    ...(label ? { 'aria-label': label } : {}),
+    ...(describedBy ? { 'aria-describedby': describedBy } : {}),
+  })
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -88,14 +97,7 @@ export function PromptEditor({ id, value, onChange, readOnly, describedBy, onExp
           EditorView.lineWrapping,
           editorTheme,
           editable.current.of([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
-          EditorView.contentAttributes.of({
-            id,
-            role: 'textbox',
-            'aria-multiline': 'true',
-            spellcheck: 'true',
-            ...(label ? { 'aria-label': label } : {}),
-            ...(describedBy ? { 'aria-describedby': describedBy } : {}),
-          }),
+          attributes.current.of(contentAttributes()),
           ...(placeholder ? [placeholderExt(placeholder)] : []),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) onChangeRef.current(update.state.doc.toString())
@@ -117,6 +119,11 @@ export function PromptEditor({ id, value, onChange, readOnly, describedBy, onExp
   useEffect(() => {
     viewRef.current?.dispatch({ effects: editable.current.reconfigure([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]) })
   }, [readOnly])
+
+  // The label follows the interface language.
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: attributes.current.reconfigure(contentAttributes()) })
+  }, [label, describedBy, id])
 
   const t = useCopy()
   return (

@@ -12,12 +12,28 @@ import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, Thum
 import { Dialog } from '../ui/overlay'
 import { Bubble } from './PlaygroundPage'
 import { copy, useCopy } from '../i18n'
+import { onCacheReset } from '../data/builderApi'
+import { Spinner } from '../ui/controls'
 import { orderVersions, versionHint } from './versionText'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
 
 export type ChatFilters = Omit<TestChatFilters, 'from' | 'to' | 'query'> & { from: string | null; to: string | null; query: string }
 
 export const EMPTY_CHAT_FILTERS: ChatFilters = { versions: [], includeDraft: true, feedback: null, source: null, from: null, to: null, query: '' }
+
+// Lists and chats already seen this session are shown at once while fresh ones load.
+const listCache = new Map<string, TestChatSummary[]>()
+const chatCache = new Map<string, TestChat>()
+onCacheReset(() => { listCache.clear(); chatCache.clear() })
+
+const listKey = (filters: TestChatFilters) => JSON.stringify(filters)
+
+// Instant results while typing: match what is already on screen until the full search answers.
+function quickMatch(items: TestChatSummary[], query: string) {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return items
+  return items.filter((item) => `${item.title} ${item.lastReply}`.toLowerCase().includes(needle))
+}
 
 export function chatFilterCount(filters: ChatFilters) {
   return (filters.versions.length || !filters.includeDraft ? 1 : 0) + (filters.feedback ? 1 : 0) + (filters.source ? 1 : 0) + (filters.from ? 1 : 0)
@@ -182,8 +198,12 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 }) {
   const t = useCopy()
-  const [items, setItems] = useState<TestChatSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState<TestChatSummary[]>(() => listCache.get(listKey(toApi(filters))) ?? [])
+  const [loading, setLoading] = useState(() => !listCache.has(listKey(toApi(filters))))
+  const [searching, setSearching] = useState(false)
+  // The search text the items on screen belong to; until results for a new search arrive, the old items are narrowed locally.
+  const [itemsQuery, setItemsQuery] = useState(() => (listCache.has(listKey(toApi(filters))) ? filters.query : ''))
+  const running = useRef<AbortController | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [spin, setSpin] = useState(0)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -196,19 +216,53 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
 
   const refresh = () => {
     const ticket = ++request.current
-    setLoading(true)
+    const api = toApi(filters)
+    const key = listKey(api)
+    const cached = listCache.get(key)
+    running.current?.abort()
+    const controller = new AbortController()
+    running.current = controller
     setLoadError(null)
-    listTestChats(toApi(filters))
-      .then((list) => { if (ticket === request.current) setItems(list) })
-      .catch(() => { if (ticket === request.current) { setItems([]); setLoadError(copy().chats.loadFailed) } })
-      .finally(() => { if (ticket === request.current) setLoading(false) })
+    if (cached) {
+      setItems(cached)
+      setItemsQuery(filters.query)
+      setLoading(false)
+    } else {
+      setLoading((current) => current && !items.length)
+    }
+    setSearching(true)
+    listTestChats(api, controller.signal)
+      .then((list) => {
+        if (ticket !== request.current) return
+        listCache.set(key, list)
+        setItems(list)
+        setItemsQuery(filters.query)
+      })
+      .catch(() => {
+        if (ticket !== request.current || controller.signal.aborted) return
+        if (!cached) { setItems([]); setLoadError(copy().chats.loadFailed) }
+      })
+      .finally(() => {
+        if (ticket !== request.current) return
+        setLoading(false)
+        setSearching(false)
+      })
   }
   useEffect(refresh, [filters])
+  useEffect(() => () => running.current?.abort(), [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => { if (query !== filters.query) onFilters({ ...filters, query }) }, 300)
     return () => window.clearTimeout(timer)
   }, [query])
+
+  // Leaving the page before the pause ends still keeps what was typed.
+  const latest = useRef({ query, filters, onFilters })
+  latest.current = { query, filters, onFilters }
+  useEffect(() => () => {
+    const { query: typed, filters: applied, onFilters: apply } = latest.current
+    if (typed !== applied.query) apply({ ...applied, query: typed })
+  }, [])
 
   useEffect(() => {
     if (!compact && !id && items[0]) go({ page: 'chats', id: items[0].id }, true)
@@ -217,14 +271,20 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   useEffect(() => {
     if (!id) { setSelected(null); return }
     let cancelled = false
-    setDetailLoading(true)
+    const cached = chatCache.get(id)
+    if (cached) {
+      setSelected(cached)
+      setMessages(toMessages(cached))
+    }
+    setDetailLoading(!cached)
     void getTestChat(id)
       .then((chat) => {
         if (cancelled) return
+        if (chat) chatCache.set(id, chat)
         setSelected(chat)
         setMessages(chat ? toMessages(chat) : [])
       })
-      .catch(() => { if (!cancelled) setSelected(null) })
+      .catch(() => { if (!cancelled && !cached) setSelected(null) })
       .finally(() => { if (!cancelled) setDetailLoading(false) })
     return () => { cancelled = true }
   }, [id])
@@ -234,11 +294,16 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     if (!message?.serverId) return
     const next = message.feedback === value ? null : value
     setMessages((list) => list.map((item) => (item.id === messageId ? { ...item, feedback: next } : item)))
+    const cachedChat = id ? chatCache.get(id) : undefined
+    if (cachedChat && id) chatCache.set(id, { ...cachedChat, messages: cachedChat.messages.map((item) => (item.id === message.serverId ? { ...item, feedback: next } : item)) })
+    listCache.clear()
     const delta = (kind: 'up' | 'down') => (next === kind ? 1 : 0) - (message.feedback === kind ? 1 : 0)
     setItems((list) => list.map((item) => (item.id === id ? { ...item, thumbsUp: item.thumbsUp + delta('up'), thumbsDown: item.thumbsDown + delta('down') } : item)))
     void setFeedback(message.serverId, next).catch(() => notify({ tone: 'error', title: copy().chats.feedbackFailed, body: copy().chats.feedbackFailedBody }))
   }
 
+  const pendingQuery = query.trim() !== filters.query.trim()
+  const shown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
   const count = chatFilterCount(filters)
   const tracking = config?.tracking !== false
 
@@ -260,7 +325,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const list = (
     <ListPane
       title={t.chats.title}
-      loading={loading}
+      loading={loading || (!shown.length && (pendingQuery || searching))}
       selectedId={id}
       actions={(
         <>
@@ -281,14 +346,14 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       chips={(
         <>
           <label className="k1-list-search">
-            <Search size={14} />
+            {searching && !loading ? <Spinner size={14} /> : <Search size={14} />}
             <input className="k1-input" value={query} placeholder={t.chats.search} aria-label={t.chats.searchLabel} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Chips filters={filters} onChange={(next) => { setQuery(next.query); onFilters(next) }} />
-          {!loading && items.length > 0 && <Totals items={items} />}
+          {!loading && shown.length > 0 && <Totals items={shown} />}
         </>
       )}
-      items={items.map((item) => ({
+      items={shown.map((item) => ({
         id: item.id,
         title: item.title || t.chats.openerOnly,
         subtitle: item.lastReply || t.chats.noReply,

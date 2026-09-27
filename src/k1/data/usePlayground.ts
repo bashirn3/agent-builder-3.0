@@ -1,7 +1,7 @@
 import { copy } from '../i18n'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, type AgentConfig, type Draft, type TestLead } from './agentConfig'
-import { listLeads, type UploadedLead } from './builderApi'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, withContent, type AgentConfig, type Draft, type TestLead } from './agentConfig'
+import { getVersionContent, listLeads, remote, type UploadedLead } from './builderApi'
 import { LEADS } from './fixtures'
 import { useTestChat } from './useTestChat'
 
@@ -26,11 +26,54 @@ const toOption = (lead: TestLead & { id: string; isClosed: boolean }, sample: bo
 
 const SAMPLE_OPTIONS: LeadOption[] = LEADS.filter((lead) => !lead.isClosed).map((lead) => toOption(lead, true))
 
+// The last loaded configuration (prompts and version list only, no customer data) is kept so
+// the Playground can show it at once while the backend is asked for the current one.
+const CACHE_KEY = 'k1-config-cache-v1'
+const REFRESH_GAP = 15_000
+
+function readCachedConfig(): AgentConfig | null {
+  if (!remote) return null
+  try {
+    const value = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as AgentConfig | null
+    return value && Array.isArray(value.versions) ? value : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedConfig(config: AgentConfig) {
+  if (!remote) return
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(config)) } catch { /* storage full or blocked */ }
+}
+
 export function usePlayground(notify: Notify) {
-  const [config, setConfig] = useState<AgentConfig | null>(null)
+  const cachedConfig = useMemo(readCachedConfig, [])
+  const [config, setConfigState] = useState<AgentConfig | null>(cachedConfig)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [versionId, setVersionId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(cachedConfig ? toDraft(cachedConfig) : null)
+  const [versionId, setVersionId] = useState<string | null>(cachedConfig ? (cachedConfig.versions.find((item) => item.active)?.id ?? cachedConfig.versions[0]?.id ?? null) : null)
+  const configRef = useRef(config)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const lastLoaded = useRef(0)
+
+  const setConfig = useCallback((next: AgentConfig) => {
+    configRef.current = next
+    lastLoaded.current = Date.now()
+    setConfigState(next)
+    writeCachedConfig(next)
+  }, [])
+
+  // Replace the configuration without discarding edits: the draft follows only if it was unchanged.
+  const adopt = useCallback((next: AgentConfig) => {
+    const previous = configRef.current
+    const untouched = !previous || !draftRef.current || sameDraft(draftRef.current, toDraft(previous))
+    setConfig(next)
+    if (untouched) {
+      setDraft(toDraft(next))
+      setVersionId(next.versions.find((item) => item.active)?.id ?? next.versions[0]?.id ?? null)
+    }
+  }, [setConfig])
   const [saving, setSaving] = useState(false)
   const [uploaded, setUploaded] = useState<UploadedLead[]>([])
   const [leadId, setLeadId] = useState<string | null>(null)
@@ -39,15 +82,10 @@ export function usePlayground(notify: Notify) {
     let cancelled = false
     setLoadError(null)
     loadConfig()
-      .then((next) => {
-        if (cancelled) return
-        setConfig(next)
-        setDraft(toDraft(next))
-        setVersionId(next.versions.find((item) => item.active)?.id ?? next.versions[0]?.id ?? null)
-      })
-      .catch((error: Error) => { if (!cancelled) setLoadError(describeError(error)) })
+      .then((next) => { if (!cancelled) adopt(next) })
+      .catch((error: Error) => { if (!cancelled && !configRef.current) setLoadError(describeError(error)) })
     return () => { cancelled = true }
-  }, [])
+  }, [adopt])
 
   useEffect(load, [load])
 
@@ -62,15 +100,27 @@ export function usePlayground(notify: Notify) {
   ], [uploaded])
   const lead = leads.find((option) => option.id === leadId) ?? leads[0]
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ force = false }: { force?: boolean } = {}) => {
+    if (!force && configRef.current && Date.now() - lastLoaded.current < REFRESH_GAP) return configRef.current
     try {
       const next = await loadConfig()
-      setConfig(next)
+      adopt(next)
       return next
     } catch {
       return null
     }
-  }, [])
+  }, [adopt])
+
+  // Versions in the light state carry no prompt text until they are opened.
+  const ensureVersion = useCallback(async (id: string) => {
+    const current = configRef.current?.versions.find((item) => item.id === id)
+    if (!current || current.loaded) return current ?? null
+    const content = await getVersionContent(id)
+    const loaded = withContent(current, content)
+    const latest = configRef.current
+    if (latest) setConfig({ ...latest, versions: latest.versions.map((item) => (item.id === id ? loaded : item)) })
+    return loaded
+  }, [setConfig])
 
   const saved: Draft | null = config ? toDraft(config) : null
   const dirty = Boolean(draft && saved && !sameDraft(draft, saved))
@@ -86,16 +136,27 @@ export function usePlayground(notify: Notify) {
     setVersionId(config.versions.find((item) => item.active)?.id ?? null)
   }
 
-  const loadVersion = (id: string) => {
+  const [opening, setOpening] = useState<string | null>(null)
+  const loadVersion = async (id: string) => {
     if (!config || !draft) return
-    const version = config.versions.find((item) => item.id === id)
-    if (!version) return
-    if (draft.locked && version.masterPrompt !== draft.masterPrompt) {
+    setOpening(id)
+    let version
+    try {
+      version = await ensureVersion(id)
+    } catch (error) {
+      notify({ tone: 'error', title: copy().playground.openFailed, body: copy().playground.openFailedBody(describeError(error)) })
+      return
+    } finally {
+      setOpening(null)
+    }
+    const current = draftRef.current
+    if (!version || !current) return
+    if (current.locked && version.masterPrompt !== current.masterPrompt) {
       notify({ tone: 'error', title: copy().playground.lockedToast, body: copy().playground.lockedToastBody(version.number) })
       return
     }
     setVersionId(id)
-    setDraft({ ...draft, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener, reminders: version.reminders, translations: version.translations })
+    setDraft({ ...current, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener, reminders: version.reminders, translations: version.translations })
   }
 
   const save = async () => {
@@ -115,7 +176,7 @@ export function usePlayground(notify: Notify) {
   }
 
   return {
-    config, loadError, reload: load, refresh, draft, dirty, saving, versionId,
+    config, loadError, reload: load, refresh, ensureVersion, draft, dirty, saving, versionId, opening,
     edit, discard, save, loadVersion,
     messages: chat.messages,
     pending: chat.pending,

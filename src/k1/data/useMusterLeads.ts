@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { AccessError, fetchMusterDay, type LeadRow } from './builderApi'
+import { AccessError, fetchMusterDay, onCacheReset, type LeadRow } from './builderApi'
 import { describeError } from './agentConfig'
 
 export const MUSTER_MAX_DAYS = 15
 
 // Days already fetched this session, per station. Customer data stays in memory only.
 const cache = new Map<string, LeadRow[]>()
+onCacheReset(() => cache.clear())
 const keyOf = (stationId: number, day: string) => `${stationId}:${day}`
 
 export function daysBetween(from: string, to: string, max = MUSTER_MAX_DAYS) {
