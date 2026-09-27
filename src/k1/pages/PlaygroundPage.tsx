@@ -93,7 +93,9 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
   const [ownTab, setTab] = useState<PanelTab>('overview')
   const tab = controlledTab ?? ownTab
   const [expanded, setExpanded] = useState(false)
-  const [lang, setLang] = useState<Lang>('en')
+  const leadLang = detectLanguage(store.lead?.language)
+  const [lang, setLang] = useState<Lang>(leadLang)
+  useEffect(() => { setLang(leadLang) }, [leadLang, store.lead?.id])
   const [extraOpen, setExtraOpen] = useState(false)
   const ids = {
     master: useId(), expanded: useId(), additional: useId(),

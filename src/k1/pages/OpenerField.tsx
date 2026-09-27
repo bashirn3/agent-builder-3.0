@@ -107,7 +107,6 @@ export function LanguageTabs({ value, onChange }: { value: Lang; onChange: (lang
           )
         })}
       </div>
-      <p className="k1-hint">{t.opener.languageHint}</p>
     </div>
   )
 }

@@ -1,9 +1,9 @@
 export type Lang = 'en' | 'fi' | 'sv'
 
 export const LANGUAGES: Array<{ code: Lang; label: string }> = [
-  { code: 'en', label: 'English' },
   { code: 'fi', label: 'Finnish' },
   { code: 'sv', label: 'Swedish' },
+  { code: 'en', label: 'English' },
 ]
 
 export const TRANSLATED: Array<Exclude<Lang, 'en'>> = ['fi', 'sv']
