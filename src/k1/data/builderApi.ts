@@ -129,6 +129,7 @@ export type TurnInput = {
   opener: string
   masterPrompt: string
   additionalInformation: string
+  leadContext?: string
   history: Array<{ role: 'agent' | 'user'; text: string }>
 }
 
@@ -405,6 +406,7 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
       opener: input.opener,
       masterPrompt: input.masterPrompt,
       additionalInformation: input.additionalInformation,
+      leadContext: input.leadContext ?? '',
       messages: input.history.map((message) => ({ role: message.role === 'agent' ? 'assistant' : 'user', content: message.text })),
     }),
   })

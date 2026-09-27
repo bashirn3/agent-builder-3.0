@@ -46,3 +46,21 @@ export function fillTemplate(text: string, lead: TemplateLead, lang: Lang = dete
     .replace(/{{\s*last[-_\s]?inspection\s*}}/gi, formatDate(lead.lastInspection, lang))
     .replace(/{{\s*station\s*}}/gi, lead.stationName)
 }
+
+const LANGUAGE_NAMES: Record<Lang, string> = { fi: 'Finnish', sv: 'Swedish', en: 'English' }
+
+// Sent with every test turn so the agent knows who it is talking to; the saved prompt is never changed.
+export function leadContext(lead: TemplateLead, openerLang: Lang) {
+  const lang = detectLanguage(lead.language)
+  const station = lead.stationName.replace(/^SULJETTU\s+/i, '').trim()
+  const lines = [
+    "LEAD CONTEXT (from K1's lead data for this customer)",
+    `- Customer's language: ${LANGUAGE_NAMES[lang]}. Reply in ${LANGUAGE_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.`,
+    openerLang !== lang && `- The opening message was sent in ${LANGUAGE_NAMES[openerLang]} because no ${LANGUAGE_NAMES[lang]} version exists yet.`,
+    station && `- Station: ${station}. Offer this station first for bookings.`,
+    lead.plateNumber && `- Registration: ${lead.plateNumber}`,
+    lead.nextInspection && `- Inspection due by: ${formatDate(lead.nextInspection, 'fi')}`,
+    lead.lastInspection && `- Last inspection: ${formatDate(lead.lastInspection, 'fi')}`,
+  ]
+  return lines.filter(Boolean).join('\n')
+}

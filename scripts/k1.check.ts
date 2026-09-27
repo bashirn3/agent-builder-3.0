@@ -14,7 +14,7 @@ import { matchesFilters, type TestChatSummary } from '../src/k1/data/builderApi.
 import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
-import { detectLanguage, fillTemplate } from '../src/k1/data/language.ts'
+import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message)
@@ -124,3 +124,8 @@ assert(fillTemplate('{{due_date}}', { ...lead, language: 'English' }) === '23 Se
 assert(describeChanges({ ...base, translations: { fi: { opener: '', reminders: [] } } }, { ...base, translations: { fi: { opener: 'Hei', reminders: [] } } }) === 'Changed Finnish opener', 'change note names the language')
 
 console.log('k1 checks passed')
+
+const swedish = leadContext({ plateNumber: 'ABC-123', stationName: 'SULJETTU K1 Katsastus Turku Itäharju', nextInspection: '2026-10-05', lastInspection: '2025-10-05', language: 'Ruotsi' }, 'en')
+assert(swedish.includes("Customer's language: Swedish. Reply in Swedish") && swedish.includes('sent in English because no Swedish version') && swedish.includes('Station: K1 Katsastus Turku Itäharju. Offer this station first') && swedish.includes('Inspection due by: 5.10.2026'), 'lead context names the language, the fallback opener and the station')
+assert(!leadContext({ plateNumber: 'X-1', stationName: '', nextInspection: null, lastInspection: null, language: 'Suomi' }, 'fi').includes('opening message was sent'), 'no fallback note when the opener matched the language')
+console.log('lead context checks passed')
