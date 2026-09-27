@@ -1,7 +1,7 @@
 import { copy } from '../i18n'
 import { DEFAULT_INSTRUCTIONS } from '../../lib/playgroundService'
 import { LEADS } from './fixtures'
-import { detectLanguage, fillTemplate, TRANSLATED, type Lang, type TemplateLead } from './language'
+import { detectLanguage, fillTemplate, leadContext, TRANSLATED, type Lang, type TemplateLead } from './language'
 import {
   currentActor,
   loadState,
@@ -205,15 +205,17 @@ export async function sendTest(
   meta: { conversationId: string; source: ChatSource; lead: TestLead },
 ) {
   const fallback = DEMO_REPLIES[demoIndex++ % DEMO_REPLIES.length]
+  const used = localized(target, meta.lead)
   return sendTurn({
     conversationId: meta.conversationId,
     versionId: target.versionId,
     versionNumber: target.versionNumber,
     isDraft: target.isDraft,
     source: meta.source,
-    opener: (() => { const used = localized(target, meta.lead); return openerPreview(used.opener, meta.lead, used.lang) })(),
+    opener: openerPreview(used.opener, meta.lead, used.lang),
     masterPrompt: target.masterPrompt,
     additionalInformation: target.additional,
+    leadContext: leadContext(meta.lead, used.lang),
     history,
   }, fallback)
 }
