@@ -128,19 +128,12 @@ export function withMessages(draft: Draft, lang: Lang, patch: { opener?: string;
   }
 }
 
-// Uses the lead's language when it has an opener, then Finnish, then English.
+// Uses the lead's language when it has an opener, then Finnish, then English; reminders come from the same language.
 export function localized(target: Messages, lead: TestLead): { lang: Lang; opener: string; reminders: Reminder[] } {
   const order = [...new Set<Lang>([detectLanguage(lead.language), PRIMARY_LANG, 'en'])].map((code) => ({ code, ...messagesIn(target, code) }))
   const chosen = order.find((entry) => entry.opener.trim()) ?? order.find((entry) => entry.code === PRIMARY_LANG)!
-  const rest = [chosen, ...order.filter((entry) => entry !== chosen)]
-  return {
-    lang: chosen.code,
-    opener: chosen.opener,
-    reminders: target.reminders.map((reminder, index) => ({
-      text: rest.map((entry) => entry.reminders[index]?.text ?? '').find((text) => text.trim()) ?? '',
-      days: reminder.days,
-    })),
-  }
+  // An empty reminder in the chosen language is skipped, not filled from another language.
+  return { lang: chosen.code, opener: chosen.opener, reminders: chosen.reminders }
 }
 
 export const backendConnected = remote
