@@ -18,6 +18,7 @@ import { localized, normalizeReminders } from '../data/agentConfig'
 import { shortStation } from '../data/fixtures'
 import { PromptEditor } from './PromptEditor'
 import { versionHint } from './versionText'
+import { EditorSkeleton } from '../ui/skeletons'
 import { copy, locale, useCopy, type Copy } from '../i18n'
 
 function relative(at: number) {
@@ -146,15 +147,17 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
                     <RotateCcw size={15} strokeWidth={1.75} />
                   </button>
                 </div>
-                <PromptEditor
-                  id={ids.master}
-                  label={t.playground.basePrompt}
-                  value={draft.masterPrompt}
-                  onChange={editPrompt}
-                  readOnly={draft.locked}
-                  describedBy={ids.lockNote}
-                  onExpand={() => setExpanded(true)}
-                />
+                {store.opening ? <EditorSkeleton label={t.playground.openingVersion} /> : (
+                  <PromptEditor
+                    id={ids.master}
+                    label={t.playground.basePrompt}
+                    value={draft.masterPrompt}
+                    onChange={editPrompt}
+                    readOnly={draft.locked}
+                    describedBy={ids.lockNote}
+                    onExpand={() => setExpanded(true)}
+                  />
+                )}
                 <div className="k1-switch-row">
                   <span className="k1-switch-row__label" id={ids.lockLabel}>
                     {draft.locked ? <Lock size={14} strokeWidth={1.75} /> : <LockOpen size={14} strokeWidth={1.75} />}

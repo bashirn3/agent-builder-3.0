@@ -10,6 +10,7 @@ import { Skeleton, Spinner } from '../ui/controls'
 import { UserAdd } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { formatStamp } from './SplitView'
+import { RowCardsSkeleton } from '../ui/skeletons'
 import { copy, useCopy } from '../i18n'
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
@@ -157,7 +158,7 @@ function ClerkTeam({ notify }: { notify: Notify }) {
   const [removing, setRemoving] = useState<{ member: OrganizationMembershipResource; name: string } | null>(null)
 
   if (!isLoaded || (organization && (!memberships?.data || !invitations?.data))) {
-    return <div className="k1-table__skeleton">{[0, 1, 2].map((key) => <Skeleton key={key} height={64} />)}</div>
+    return <RowCardsSkeleton avatar label={t.team.members} />
   }
 
   if (!organization) {

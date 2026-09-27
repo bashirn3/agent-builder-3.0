@@ -139,7 +139,8 @@ export function usePlayground(notify: Notify) {
   const [opening, setOpening] = useState<string | null>(null)
   const loadVersion = async (id: string) => {
     if (!config || !draft) return
-    setOpening(id)
+    const known = config.versions.find((item) => item.id === id)
+    if (known && !known.loaded) setOpening(id)
     let version
     try {
       version = await ensureVersion(id)
