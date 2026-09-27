@@ -199,7 +199,6 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
                         reminders={message.reminders}
                         onChange={(reminders) => store.edit(withMessages(draft, lang, { reminders }))}
                         timing={primary ? undefined : draft.reminders}
-                        fallback={!primary}
                       />
                     </Accordion>
                   </>
