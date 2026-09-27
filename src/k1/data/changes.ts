@@ -10,7 +10,7 @@ export function describeChanges(before: DraftFields, after: DraftFields) {
   if (before.masterPrompt !== after.masterPrompt) changes.push('Edited base prompt')
   if (before.locked !== after.locked) changes.push(after.locked ? 'Locked base prompt' : 'Unlocked base prompt')
   if (before.additional !== after.additional) changes.push('Edited additional instructions')
-  if (before.opener !== after.opener) changes.push('Changed opener')
+  if (before.opener !== after.opener) changes.push('Changed English opener')
   const was = before.reminders ?? []
   const now = after.reminders ?? []
   const changed = Array.from({ length: Math.max(was.length, now.length) }, (_, index) => index)
@@ -31,6 +31,7 @@ export function localizeNote(note: string, t: Copy) {
     'Unlocked base prompt': t.changes.unlocked,
     'Edited additional instructions': t.changes.additional,
     'Changed opener': t.changes.opener,
+    'Changed English opener': t.changes.english,
     'Changed Finnish opener': t.changes.finnish,
     'Changed Swedish opener': t.changes.swedish,
     'Saved without changes': t.changes.none,

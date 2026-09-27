@@ -1,0 +1,47 @@
+{
+  "base": "http://127.0.0.1:5174/",
+  "outDir": "/Users/bashirsani/Desktop/Projects/agent-builder-3.0/design/chatbase-parity/finnish-primary",
+  "width": 1440,
+  "height": 900,
+  "scale": 1.3333333,
+  "steps": [
+    { "go": "#/signin" },
+    { "eval": "localStorage.clear(); sessionStorage.clear(); sessionStorage.setItem('k1-preview-session', '1'); location.hash = '#/playground'; location.reload()" },
+    { "waitFor": "document.querySelector('.k1-editor__cm .cm-content')", "timeout": 15000 },
+    { "click": ".k1-inspector .k1-segmented button:nth-child(2)", "settle": 400 },
+    { "eval": "[...document.querySelectorAll('.k1-opener-lang button')].find(b => b.textContent === 'Suomi').click()" },
+    { "wait": 300 },
+    {
+      "expect": "!!(document.querySelectorAll('.k1-reminder__days').length === 3 && document.querySelectorAll('.k1-accordions .k1-hint')[0].textContent.startsWith('Enintään kaksi') && ![...document.querySelectorAll('.k1-accordions textarea')].some(t => t.placeholder.includes('lähetetään')))",
+      "label": "Finnish tab is the main one: timing inputs and the main reminder hint"
+    },
+    { "eval": "(() => { const ta = document.querySelector('.k1-accordions textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, 'Hei, suomi testi'); ta.dispatchEvent(new Event('input', { bubbles: true })) })()" },
+    { "eval": "(() => { const input = document.querySelector('.k1-reminder__days'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '4'); input.dispatchEvent(new Event('input', { bubbles: true })) })()" },
+    { "wait": 300 },
+    { "shot": "finnish-tab" },
+    { "eval": "[...document.querySelectorAll('.k1-opener-lang button')].find(b => b.textContent === 'Englanti').click()" },
+    { "wait": 300 },
+    {
+      "expect": "!!(document.querySelectorAll('.k1-reminder__days').length === 0 && document.querySelectorAll('.k1-accordions .k1-hint')[0].textContent.includes('suomenkielisiä') && document.querySelector('.k1-accordions textarea').placeholder.includes('suomenkielinen') && document.querySelector('.k1-reminder__timing').textContent.includes('4'))",
+      "label": "English tab falls back to Finnish and shows the Finnish timing"
+    },
+    { "eval": "document.querySelectorAll('.k1-accordion')[1]?.scrollIntoView()" },
+    { "shot": "english-tab" },
+    { "eval": "[...document.querySelectorAll('.k1-opener-lang button')].find(b => b.textContent === 'Ruotsi').click()" },
+    { "wait": 300 },
+    {
+      "expect": "!!(document.querySelectorAll('.k1-reminder__days').length === 0 && document.querySelectorAll('.k1-accordions .k1-hint')[0].textContent.includes('suomenkielisiä'))",
+      "label": "Swedish tab falls back to Finnish too"
+    },
+    { "click": ".k1-tester__lead", "settle": 400 },
+    { "eval": "[...document.querySelectorAll('[role=option]')].find(o => o.textContent.startsWith('KLM-908')).click()" },
+    { "wait": 600 },
+    { "eval": "(() => { const ta = document.querySelector('.k1-accordions textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, ''); ta.dispatchEvent(new Event('input', { bubbles: true })) })()" },
+    { "wait": 500 },
+    {
+      "expect": "!!(document.querySelector('.k1-tester__context .k1-tag').textContent === 'Suomi' && document.querySelector('.k1-tester__thread .k1-msg__bubble').textContent.includes('Hei, suomi testi'))",
+      "label": "A Swedish lead with no Swedish opener gets the Finnish one"
+    },
+    { "shot": "swedish-lead-fallback" }
+  ]
+}

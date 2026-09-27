@@ -145,7 +145,7 @@ export function ReminderFields({ reminders, onChange, timing, fallback }: {
             placeholder={fallback ? t.opener.reminderFallback : t.opener.reminderPlaceholder}
             tag={index === 2 ? <span className="k1-tag k1-tag--pink">{t.opener.afterExpiry}</span> : undefined}
             footer={timing ? (
-              <p className="k1-reminder__timing">{days ? t.opener.sentAfter(days, TIMING[index]) : t.opener.timingOnEnglish}</p>
+              <p className="k1-reminder__timing">{days ? t.opener.sentAfter(days, TIMING[index]) : t.opener.timingOnPrimary}</p>
             ) : (
               <label className="k1-reminder__timing">
                 {t.opener.send}

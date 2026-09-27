@@ -90,7 +90,7 @@ assert(!matchesFilters(chat({}), { ...none, source: 'compare' }), 'source filter
 assert(matchesFilters(chat({}), { ...none, query: 'SATURDAY' }) && !matchesFilters(chat({}), { ...none, query: 'price' }), 'search matches the title, ignoring case')
 assert(!matchesFilters(chat({}), { ...none, from: '2026-09-21T00:00:00.000Z' }), 'date filter')
 const base = { locked: false, masterPrompt: 'a', additional: '', opener: 'hi' }
-assert(describeChanges(base, { ...base, masterPrompt: 'b', opener: 'hey' }) === 'Edited base prompt · Changed opener', 'change note lists edits')
+assert(describeChanges(base, { ...base, masterPrompt: 'b', opener: 'hey' }) === 'Edited base prompt · Changed English opener', 'change note lists edits')
 assert(describeChanges(base, { ...base, additional: 'Open Mon–Fri.' }) === 'Edited additional instructions', 'change note mentions additional instructions')
 
 const rem = (texts: string[]) => texts.map((text) => ({ text, days: text ? 3 : null }))
@@ -118,7 +118,7 @@ const missing = (a: Record<string, unknown>, b: Record<string, unknown>, path = 
   return left && typeof left === 'object' && !Array.isArray(left) ? missing(left as Record<string, unknown>, right as Record<string, unknown>, `${path}${key}.`) : []
 })
 assert(!missing(en, fi).length, `Finnish copy is missing: ${missing(en, fi).join(', ')}`)
-assert(detectLanguage('Suomi') === 'fi' && detectLanguage('svenska') === 'sv' && detectLanguage('Deutsch') === 'en' && detectLanguage('') === 'en', 'language detection falls back to English')
+assert(detectLanguage('Suomi') === 'fi' && detectLanguage('svenska') === 'sv' && detectLanguage('Deutsch') === 'en' && detectLanguage('') === 'fi', 'a missing language is Finnish and other languages get English')
 assert(fillTemplate('Hi {{first_name}}, {{registration_number}} is due by {{due_date}} at {{station}} (last {{last_inspection}}).', lead) === 'Hi, JJ-190 is due by 23.9.2026 at K1 Katsastus Kouvola (last 23.9.2025).', 'placeholders fill from the lead; first name is dropped')
 assert(fillTemplate('{{due_date}}', { ...lead, language: 'English' }) === '23 Sep 2026', 'English dates are written out')
 assert(describeChanges({ ...base, translations: { fi: { opener: '', reminders: [] } } }, { ...base, translations: { fi: { opener: 'Hei', reminders: [] } } }) === 'Changed Finnish opener', 'change note names the language')

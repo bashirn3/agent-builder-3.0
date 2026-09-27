@@ -14,7 +14,7 @@ import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
 import { LanguageTabs, OpenerField, ReminderFields } from './OpenerField'
 import { detectLanguage, type Lang } from '../data/language'
-import { localized, normalizeReminders } from '../data/agentConfig'
+import { localized, messagesIn, PRIMARY_LANG, withMessages } from '../data/agentConfig'
 import { shortStation } from '../data/fixtures'
 import { PromptEditor } from './PromptEditor'
 import { versionHint } from './versionText'
@@ -185,27 +185,22 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
           ) : (
             <div className="k1-accordions">
               <LanguageTabs value={lang} onChange={setLang} />
-              {lang === 'en' ? (
-                <>
-                  <Accordion title={t.playground.content} defaultOpen>
-                    <OpenerField value={draft.opener} onChange={(opener) => store.edit({ opener })} />
-                  </Accordion>
-                  <Accordion title={t.playground.reminders} defaultOpen>
-                    <p className="k1-hint">{t.playground.remindersHint}</p>
-                    <ReminderFields reminders={draft.reminders} onChange={(reminders) => store.edit({ reminders })} />
-                  </Accordion>
-                </>
-              ) : (() => {
-                const translation = draft.translations[lang] ?? { opener: '', reminders: normalizeReminders([]) }
-                const setTranslation = (patch: Partial<typeof translation>) => store.edit({ translations: { ...draft.translations, [lang]: { ...translation, ...patch } } })
+              {(() => {
+                const primary = lang === PRIMARY_LANG
+                const message = messagesIn(draft, lang)
                 return (
                   <>
                     <Accordion title={t.playground.content} defaultOpen>
-                      <OpenerField value={translation.opener} onChange={(opener) => setTranslation({ opener })} fallback />
+                      <OpenerField value={message.opener} onChange={(opener) => store.edit(withMessages(draft, lang, { opener }))} fallback={!primary} />
                     </Accordion>
                     <Accordion title={t.playground.reminders} defaultOpen>
-                      <p className="k1-hint">{t.playground.remindersFallbackHint}</p>
-                      <ReminderFields reminders={translation.reminders} onChange={(reminders) => setTranslation({ reminders })} timing={draft.reminders} fallback />
+                      <p className="k1-hint">{primary ? t.playground.remindersHint : t.playground.remindersFallbackHint}</p>
+                      <ReminderFields
+                        reminders={message.reminders}
+                        onChange={(reminders) => store.edit(withMessages(draft, lang, { reminders }))}
+                        timing={primary ? undefined : draft.reminders}
+                        fallback={!primary}
+                      />
                     </Accordion>
                   </>
                 )
@@ -337,7 +332,7 @@ function Tester({ store }: { store: PlaygroundStore }) {
   }
 
   const canSend = store.composer.trim().length > 0 && !store.pending && Boolean(store.draft)
-  const reminders = (store.draft?.reminders ?? [])
+  const reminders = (store.draft ? (store.lead ? localized(store.draft, store.lead).reminders : store.draft.reminders) : [])
     .map((reminder, index) => ({ index, days: reminder.days, text: reminder.text }))
     .filter((reminder) => reminder.text.trim())
 
@@ -374,7 +369,7 @@ function Tester({ store }: { store: PlaygroundStore }) {
           const wanted = detectLanguage(store.lead.language)
           const name = (code: Lang) => t.opener.languages[code]
           return (
-            <span className="k1-tag" title={used === wanted ? t.tester.languageUsed : t.tester.languageFallback(name(wanted))}>
+            <span className="k1-tag" title={used === wanted ? t.tester.languageUsed : t.tester.languageFallback(wanted, used)}>
               {name(used)}
             </span>
           )

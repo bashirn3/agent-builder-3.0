@@ -14,10 +14,10 @@ const ALIASES: Record<Lang, string[]> = {
   sv: ['svenska', 'swedish', 'sv', 'swe', 'ruotsi', 'ruotsiksi'],
 }
 
-// Anything that is not recognisably Finnish or Swedish gets English.
+// A missing language means Finnish; any other language that is not Finnish or Swedish gets English.
 export function detectLanguage(value: string | null | undefined): Lang {
   const text = (value ?? '').trim().toLowerCase()
-  if (ALIASES.fi.includes(text)) return 'fi'
+  if (!text || ALIASES.fi.includes(text)) return 'fi'
   if (ALIASES.sv.includes(text)) return 'sv'
   return 'en'
 }
