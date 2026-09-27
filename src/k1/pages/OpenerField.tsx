@@ -123,11 +123,10 @@ export function OpenerField({ value, onChange, fallback }: { value: string; onCh
   )
 }
 
-export function ReminderFields({ reminders, onChange, timing, fallback }: {
+export function ReminderFields({ reminders, onChange, timing }: {
   reminders: Reminder[]
   onChange: (reminders: Reminder[]) => void
   timing?: Reminder[]
-  fallback?: boolean
 }) {
   const t = useCopy()
   const TIMING = t.opener.timing
@@ -142,7 +141,7 @@ export function ReminderFields({ reminders, onChange, timing, fallback }: {
             label={t.opener.reminder(index + 1)}
             value={reminder.text}
             onChange={(text) => update(index, { text })}
-            placeholder={fallback ? t.opener.reminderFallback : t.opener.reminderPlaceholder}
+            placeholder={t.opener.reminderPlaceholder}
             tag={index === 2 ? <span className="k1-tag k1-tag--pink">{t.opener.afterExpiry}</span> : undefined}
             footer={timing ? (
               <p className="k1-reminder__timing">{days ? t.opener.sentAfter(days, TIMING[index]) : t.opener.timingOnPrimary}</p>
