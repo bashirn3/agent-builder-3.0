@@ -94,17 +94,52 @@ export function normalizeTranslations(value: unknown): Translations {
   }])) as Translations
 }
 
-// Picks the lead's language when that version has text, otherwise English.
-export function localized(target: Pick<TestTarget, 'opener' | 'reminders' | 'translations'>, lead: TestLead): { lang: Lang; opener: string; reminders: Reminder[] } {
-  const lang = detectLanguage(lead.language)
-  const translation = lang === 'en' ? undefined : target.translations[lang]
+// Finnish is the main language: timing is set on it and empty languages fall back to it.
+export const PRIMARY_LANG: Lang = 'fi'
+
+type Messages = Pick<TestTarget, 'opener' | 'reminders' | 'translations'>
+
+// English lives in the top-level opener and reminders, which also hold every reminder's timing.
+export function messagesIn(target: Messages, lang: Lang): { opener: string; reminders: Reminder[] } {
+  if (lang === 'en') return { opener: target.opener, reminders: target.reminders }
+  const translation = target.translations[lang]
   return {
-    lang: translation?.opener.trim() ? lang : 'en',
-    opener: translation?.opener.trim() ? translation.opener : target.opener,
-    reminders: target.reminders.map((reminder, index) => {
-      const text = translation?.reminders[index]?.text.trim() ? translation.reminders[index].text : reminder.text
-      return { text, days: reminder.days }
-    }),
+    opener: translation?.opener ?? '',
+    reminders: target.reminders.map((reminder, index) => ({ text: translation?.reminders[index]?.text ?? '', days: reminder.days })),
+  }
+}
+
+export function withMessages(draft: Draft, lang: Lang, patch: { opener?: string; reminders?: Reminder[] }): Partial<Draft> {
+  const reminders = draft.reminders.map((reminder, index) => ({
+    text: lang === 'en' && patch.reminders ? patch.reminders[index].text : reminder.text,
+    days: lang === PRIMARY_LANG && patch.reminders ? patch.reminders[index].days : reminder.days,
+  }))
+  if (lang === 'en') return { opener: patch.opener ?? draft.opener, reminders }
+  const current = draft.translations[lang] ?? { opener: '', reminders: normalizeReminders([]) }
+  return {
+    reminders,
+    translations: {
+      ...draft.translations,
+      [lang]: {
+        opener: patch.opener ?? current.opener,
+        reminders: patch.reminders ? patch.reminders.map((reminder) => ({ text: reminder.text, days: null })) : current.reminders,
+      },
+    },
+  }
+}
+
+// Uses the lead's language when it has an opener, then Finnish, then English.
+export function localized(target: Messages, lead: TestLead): { lang: Lang; opener: string; reminders: Reminder[] } {
+  const order = [...new Set<Lang>([detectLanguage(lead.language), PRIMARY_LANG, 'en'])].map((code) => ({ code, ...messagesIn(target, code) }))
+  const chosen = order.find((entry) => entry.opener.trim()) ?? order.find((entry) => entry.code === PRIMARY_LANG)!
+  const rest = [chosen, ...order.filter((entry) => entry !== chosen)]
+  return {
+    lang: chosen.code,
+    opener: chosen.opener,
+    reminders: target.reminders.map((reminder, index) => ({
+      text: rest.map((entry) => entry.reminders[index]?.text ?? '').find((text) => text.trim()) ?? '',
+      days: reminder.days,
+    })),
   }
 }
 
