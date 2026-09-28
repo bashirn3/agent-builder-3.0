@@ -456,6 +456,7 @@ function TesterSkeleton() {
   return (
     <div className="k1-tester k1-tester--skeleton" role="status" aria-label={t.tester.loading}>
       <div className="k1-tester__head"><Skeleton width={26} height={26} radius={999} /><Skeleton width={180} height={14} /></div>
+      <div className="k1-tester__context"><Skeleton width={80} height={12} /><Skeleton width={170} height={14} /></div>
       <div className="k1-tester__thread">
         <Skeleton width="72%" height={76} radius={20} />
       </div>
@@ -469,7 +470,7 @@ function InspectorSkeleton({ showTitle = true }: { showTitle?: boolean }) {
   return (
     <div className="k1-inspector__inner" role="status" aria-label={t.playground.loadingConfig}>
       {showTitle && <h1 className="k1-page-title">{t.playground.title}</h1>}
-      <Skeleton height={36} radius={10} className="k1-skel--tabs" />
+      {showTitle && <Skeleton height={36} radius={10} className="k1-skel--tabs" />}
       <div className="k1-inspector__panel">
         <section className="k1-inspector__section">
           <h2 className="k1-section-title">{t.playground.instructions}</h2>
@@ -477,6 +478,9 @@ function InspectorSkeleton({ showTitle = true }: { showTitle?: boolean }) {
           <div className="k1-skel-card k1-skel-card--editor">
             {[92, 78, 86, 64, 90, 70, 82].map((width, index) => <Skeleton key={index} height={12} width={`${width}%`} />)}
           </div>
+          <div className="k1-switch-row"><Skeleton width={130} height={12} /><Skeleton width={36} height={20} radius={999} /></div>
+          <Skeleton height={10} width="88%" />
+          <Skeleton height={10} width="52%" />
         </section>
         <section className="k1-inspector__section">
           <h2 className="k1-section-title">{t.playground.additional}</h2>

@@ -1,7 +1,7 @@
 import { copy } from '../i18n'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, withContent, type AgentConfig, type Draft, type TestLead } from './agentConfig'
-import { getVersionContent, listLeads, remote, type UploadedLead } from './builderApi'
+import { getVersionContent, listLeads, type UploadedLead } from './builderApi'
 import { LEADS } from './fixtures'
 import { useTestChat } from './useTestChat'
 
@@ -26,32 +26,21 @@ const toOption = (lead: TestLead & { id: string; isClosed: boolean }, sample: bo
 
 const SAMPLE_OPTIONS: LeadOption[] = LEADS.filter((lead) => !lead.isClosed).map((lead) => toOption(lead, true))
 
-// The last loaded configuration (prompts and version list only, no customer data) is kept so
-// the Playground can show it at once while the backend is asked for the current one.
-const CACHE_KEY = 'k1-config-cache-v1'
 const REFRESH_GAP = 15_000
+const LEAD_KEY = 'k1-test-lead'
 
-function readCachedConfig(): AgentConfig | null {
-  if (!remote) return null
-  try {
-    const value = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null') as AgentConfig | null
-    return value && Array.isArray(value.versions) ? value : null
-  } catch {
-    return null
-  }
-}
+// A stored copy of the configuration showed stale text that was then swapped out, so it is no longer kept.
+try { localStorage.removeItem('k1-config-cache-v1') } catch { /* storage blocked */ }
 
-function writeCachedConfig(config: AgentConfig) {
-  if (!remote) return
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(config)) } catch { /* storage full or blocked */ }
+function readLeadId() {
+  try { return localStorage.getItem(LEAD_KEY) } catch { return null }
 }
 
 export function usePlayground(notify: Notify) {
-  const cachedConfig = useMemo(readCachedConfig, [])
-  const [config, setConfigState] = useState<AgentConfig | null>(cachedConfig)
+  const [config, setConfigState] = useState<AgentConfig | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(cachedConfig ? toDraft(cachedConfig) : null)
-  const [versionId, setVersionId] = useState<string | null>(cachedConfig ? (cachedConfig.versions.find((item) => item.active)?.id ?? cachedConfig.versions[0]?.id ?? null) : null)
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [versionId, setVersionId] = useState<string | null>(null)
   const configRef = useRef(config)
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -61,7 +50,6 @@ export function usePlayground(notify: Notify) {
     configRef.current = next
     lastLoaded.current = Date.now()
     setConfigState(next)
-    writeCachedConfig(next)
   }, [])
 
   // Replace the configuration without discarding edits: the draft follows only if it was unchanged.
@@ -76,7 +64,12 @@ export function usePlayground(notify: Notify) {
   }, [setConfig])
   const [saving, setSaving] = useState(false)
   const [uploaded, setUploaded] = useState<UploadedLead[]>([])
-  const [leadId, setLeadId] = useState<string | null>(null)
+  const [leadsReady, setLeadsReady] = useState(false)
+  const [leadId, setLeadIdState] = useState<string | null>(readLeadId)
+  const setLeadId = useCallback((id: string | null) => {
+    setLeadIdState(id)
+    try { if (id) localStorage.setItem(LEAD_KEY, id); else localStorage.removeItem(LEAD_KEY) } catch { /* storage blocked */ }
+  }, [])
 
   const load = useCallback(() => {
     let cancelled = false
@@ -90,7 +83,7 @@ export function usePlayground(notify: Notify) {
   useEffect(load, [load])
 
   const refreshLeads = useCallback(() => {
-    void listLeads().then(setUploaded).catch(() => setUploaded([]))
+    void listLeads().then(setUploaded).catch(() => setUploaded([])).finally(() => setLeadsReady(true))
   }, [])
   useEffect(refreshLeads, [refreshLeads])
 
@@ -98,7 +91,10 @@ export function usePlayground(notify: Notify) {
     ...uploaded.filter((lead) => !lead.isClosed).map((lead) => toOption(lead, false)),
     ...SAMPLE_OPTIONS,
   ], [uploaded])
-  const lead = leads.find((option) => option.id === leadId) ?? leads[0]
+  // Without a pick the first sample lead is used, so leads arriving later never change it.
+  const lead = leads.find((option) => option.id === leadId) ?? SAMPLE_OPTIONS[0]
+  // Pages wait for both the configuration and the leads so nothing changes once they show.
+  const ready = Boolean(config) && leadsReady
 
   const refresh = useCallback(async ({ force = false }: { force?: boolean } = {}) => {
     if (!force && configRef.current && Date.now() - lastLoaded.current < REFRESH_GAP) return configRef.current
@@ -125,7 +121,7 @@ export function usePlayground(notify: Notify) {
   const saved: Draft | null = config ? toDraft(config) : null
   const dirty = Boolean(draft && saved && !sameDraft(draft, saved))
 
-  const target = useMemo(() => (config && draft ? draftTarget(config, draft) : null), [config, draft])
+  const target = useMemo(() => (ready && config && draft ? draftTarget(config, draft) : null), [ready, config, draft])
   const chat = useTestChat(target, 'playground', lead)
 
   const edit = (patch: Partial<Draft>) => setDraft((current) => (current ? { ...current, ...patch } : current))
@@ -177,7 +173,7 @@ export function usePlayground(notify: Notify) {
   }
 
   return {
-    config, loadError, reload: load, refresh, ensureVersion, draft, dirty, saving, versionId, opening,
+    config: ready ? config : null, loadError, reload: load, refresh, ensureVersion, draft, dirty, saving, versionId, opening,
     edit, discard, save, loadVersion,
     messages: chat.messages,
     pending: chat.pending,
