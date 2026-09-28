@@ -16,6 +16,7 @@ import { ToastStack, useToasts } from './ui/controls'
 import { AppSkeleton } from './ui/skeletons'
 import { ErrorBoundary } from './shell/ErrorBoundary'
 import { LayerProvider } from './ui/overlay'
+import { HelpDemo } from './ui/HelpDemo'
 
 function Workspace({ compact }: { compact: boolean }) {
   const route = useRoute()
@@ -72,7 +73,7 @@ export default function App() {
           {isCallback
             ? <SsoCallbackPage />
             : isAuth
-              ? <AuthPage mode={route.page as 'signin' | 'signup'} />
+              ? <><AuthPage mode={route.page as 'signin' | 'signup'} /><HelpDemo /></>
               : !authed || session.team === 'loading'
                 ? <AppSkeleton compact={compact} />
                 : session.team === 'none' ? <NoTeamPage /> : <ErrorBoundary><Workspace compact={compact} /></ErrorBoundary>}
