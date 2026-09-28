@@ -9,7 +9,8 @@ import { Collapse } from '../ui/overlay'
 import { Spinner } from '../ui/controls'
 import { go, href } from '../routes'
 import { authError, useClerkFlow, type AuthFlow, type CodePurpose } from '../auth/flow'
-import { clerkEnabled, previewSession } from '../auth/session'
+import { clerkEnabled, previewSession, useSession } from '../auth/session'
+import { TEAM_NAME } from '../auth/team'
 
 type Mode = 'signin' | 'signup'
 type Step = { kind: 'form' } | { kind: 'code'; purpose: CodePurpose } | { kind: 'forgot' } | { kind: 'reset' }
@@ -154,6 +155,46 @@ export function SsoCallbackPage() {
             <Spinner />
             <p>{t.auth.signingIn}</p>
             {clerkEnabled && <AuthenticateWithRedirectCallback signInForceRedirectUrl="/#/playground" signUpForceRedirectUrl="/#/playground" />}
+          </div>
+        </section>
+        <section className="k1-auth__art" aria-hidden="true">
+          <TypingComposer />
+        </section>
+      </div>
+      <p className="k1-auth__copy">© 2026 Wasup · A-Katsastus</p>
+    </div>
+  )
+}
+
+// Signed in, but not a member of the team: nothing from the workspace is shown until someone invites them.
+export function NoTeamPage() {
+  const t = useCopy()
+  const session = useSession()
+  const [leaving, setLeaving] = useState(false)
+  return (
+    <div className="k1-auth">
+      <div className="k1-auth__lang"><LangSwitch /></div>
+      <span className="k1-auth__brand"><BrandLogo height={28} /></span>
+      <div className="k1-auth__card">
+        <section className="k1-auth__form-side">
+          <div className="k1-auth__form">
+            <h1>{t.team.noTeam}</h1>
+            <p className="k1-auth__lede">
+              {t.team.noTeamBody(TEAM_NAME)}
+              {session.user?.email && <> {t.team.signedInAs} <strong>{session.user.email}</strong>.</>}
+            </p>
+            <div className="k1-auth__actions">
+              <button type="button" className="k1-btn k1-btn--primary k1-btn--block" onClick={() => window.location.reload()}>{t.team.checkAgain}</button>
+              <button
+                type="button"
+                className="k1-btn k1-btn--outline k1-btn--block"
+                disabled={leaving}
+                aria-busy={leaving}
+                onClick={() => { setLeaving(true); void session.signOut().finally(() => setLeaving(false)) }}
+              >
+                {leaving && <Spinner />}{t.nav.signOut}
+              </button>
+            </div>
           </div>
         </section>
         <section className="k1-auth__art" aria-hidden="true">
