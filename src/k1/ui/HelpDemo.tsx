@@ -3,7 +3,7 @@ import { useCopy } from '../i18n'
 import { Dialog } from './overlay'
 
 // Supademo needs /embed/ with embed_v=2 inside the iframe; /demo/ is the full-page share link.
-const DEMO_ID = 'cmsj33ffg0czjqm5sg4t058dh'
+const DEMO_ID = 'cmukzff181159qmbad82vgf5f'
 const EMBED_URL = `https://app.supademo.com/embed/${DEMO_ID}?embed_v=2&utm_source=embed`
 const OPEN_URL = `https://app.supademo.com/demo/${DEMO_ID}?utm_source=embed`
 
