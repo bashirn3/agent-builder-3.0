@@ -8,6 +8,7 @@ export type Route =
   | { page: 'compare' }
   | { page: 'chats'; id: string | null }
   | { page: 'leads'; id: string | null }
+  | { page: 'calendar' }
   | { page: 'deploy'; version?: string }
   | { page: 'team' }
 
@@ -21,6 +22,7 @@ export function parse(hash: string): Route {
     case 'compare': return { page: 'compare' }
     case 'team': return { page: 'team' }
     case 'deploy': return parts[1] ? { page: 'deploy', version: parts[1] } : { page: 'deploy' }
+    case 'calendar': return { page: 'calendar' }
     case 'activity':
       if (parts[1] === 'leads') return { page: 'leads', id: parts[2] ?? null }
       return { page: 'chats', id: parts[2] ?? null }
@@ -32,6 +34,7 @@ export function href(route: Route) {
   switch (route.page) {
     case 'chats': return route.id ? `#/activity/chats/${route.id}` : '#/activity/chats'
     case 'leads': return route.id ? `#/activity/leads/${route.id}` : '#/activity/leads'
+    case 'calendar': return '#/calendar'
     case 'deploy': return route.version ? `#/deploy/${route.version}` : '#/deploy'
     default: return `#/${route.page}`
   }

@@ -1,0 +1,611 @@
+This Api is used to create or update online reservations.
+
+## Creating a new reservation
+
+* Create a pending reservation (a pending reservation is valid for only 15 minutes)
+* Create a B2C Customer
+* Create the actual reservation
+
+## Reservation group ID
+
+groupId identifies a booking and groups its reservations together. It is returned by POST /v3/{chainId}/PendingReservations and by GET /v3/{chainId}/Reservations/search/{bookingNumber}.
+Use the returned groupId when handling reservation. Reuse the same groupId for every reservation that belongs to the same booking.
+groupId is required even when the booking contains only one reservation.
+
+## Updating an existing reservation
+
+* Get a reservation by Uid
+* If station or time changed, create pending reservation (a pending reservation is valid for only 15 minutes)
+* Update the B2C Customer
+* Update the actual reservation
+
+## Calendar free times
+
+Calendar returns slots available for station in groups of full hours. For example:
+* A station opens at 8:30
+* The first hour returned is 8:00
+* But the first slot starts 8:30 (assuming it's available)
+
+Single time can contain multiple slots. Like 8:00 can have two resources and both of those are returned.
+Different resources might have different slot durations.
+
+## Creating an online payment
+
+* Retrieve online payment methods
+* After the user has selected a method, update the B2C Customer with the selected payment method
+* Create the actual payment
+* Create a form POST based on the returned URL and form parameters
+* The user will be redirected to the online payment provider
+* Once the payment is complete (or has ended in a cancellation/rejection/error), the user will be directed back to the URL defined in the station's online booking settings
+
+===== GET /v3/{chainId}/Analytics/global | Returns analytics settings for booking which are used on all the pages except confirmation.
+  param chainId path req integer int64 Which chain's settings to fetch.
+  RESP 200 Baja.Core.Models.BookingApi.Analytics.GlobalAnalyticsSettingsModel {
+  googleTagManagerId: string?  // Google Tag Manager Id
+  googleTrackingId: string?  // Google Tracking Id
+  facebookMarketingId: string?  // Facebook Marketing Id
+  snoobiAccountId: string?  // Snoobi Account Id
+}
+  RESP 204 Chain doesn't contain analytics settings.
+
+===== GET /v3/{chainId}/Analytics/{stationId}/confirmation | Returns analytics settings for confirmation page including Katsastushinnat settings.
+  param chainId path req integer int64 Which chain's settings to fetch.
+  param stationId path req integer int64 Which station's Katsastushinnat settings to fetch.
+  RESP 200 Baja.Core.Models.BookingApi.Analytics.ConfirmationAnalyticsSettingsModel {
+  bingAccountId: string?  // Bing Account Id
+  googleConversionId: string?  // Google Conversion Id
+  googleConversionLabel: string?  // Google Conversion Label.
+  facebookConversionId: string?  // Facebook Conversion Id
+  dfpNetworkId: string?  // Dfp (DoubleClick for Publishers) Network Id
+  dfpSegmentId: string?  // Dfp (DoubleClick for Publishers) Segment Id
+  dfpActivityId: string?  // Dfp (DoubleClick for Publishers) Activity Id
+  allerLeikiCampaignId: string?  // Aller Leiki Campaign Id
+  katsastushinnatStationKey: string?  // Katsastushinnat Station Key
+  katsastushinnatChainKey: string?  // Katsastushinnat Chain Key
+}
+  RESP 204 Both chain and station don't have any analytics settings.
+
+===== GET /v3/{chainId}/B2BCustomer/{customerNumber} | Method returns B2B Customer Uid which can be used for reservation.
+  param chainId path req integer int64 Chain Id
+  param customerNumber path req string  Customer Number
+  param stationId query  integer int64 Station Id
+  RESP 200 Muster.Common.Models.BookingApi.Customer.B2BCustomerModel {
+  customerUid: string?  
+  name: string?  
+  email: string?  
+}
+  RESP 204 No Content
+
+===== GET /v3/{chainId}/B2CCustomer/{stationId}/settings | Method returns station specific B2C settings for which information is gathered etc.
+  param chainId path req integer int64 Id of the chain
+  param stationId path req integer int64 Id of the station
+  RESP 200 Muster.Common.Models.BookingApi.B2C.B2CSettingsModel {
+  marketingAuthorizationInUse: boolean  // True if marketing authorization is asked for in station's online booking page
+  privacyPolicy: string?  
+  marketingAuthorizations: [Muster.Common.Models.BookingApi.B2C.MarketingAuthorizationModel {
+    id: integer int64 
+    content: map<{"type": "string", "nullable": true}>?  
+  }]?  
+  requireName: boolean  
+  requireEmail: boolean  
+  requirePhoneNumber: boolean  
+  requireAddress: boolean  
+  requirePostalCodeAndCity: boolean  
+}
+
+===== POST /v3/{chainId}/B2CCustomer | Creates a new B2C Customer. Returns the created customer's Uid.
+  param chainId path req string  
+  BODY Muster.Common.Models.BookingApi.B2C.B2CCustomerRequestModelV3 {
+  firstName: string?  // First name
+  lastName: string?  // Last name
+  email: string?  // Email
+  phoneNumber: string?  // Phone number
+  address: string?  // Street address
+  postalCode: string?  // Postal code
+  city: string?  // City
+  acceptedMarketingAuthorizations: [integer]?  
+  receiveSms: boolean  // Receive reminder via Sms
+  receiveEmail: boolean  // Receive reminder via Email
+  language: Muster.Common.Enum.Language enum ['English', 'Finnish', 'Swedish', 'French', 'German', 'Estonian']  
+  plateNumber: string?  
+  stationId: integer int64 
+}
+  RESP 200 Muster.Common.Models.BookingApi.B2C.B2CCustomerResponseModelV3 {
+  uid: string?  
+}
+  RESP 400 Model is not valid.
+  RESP 500 Creating B2C customer failed (internal error).
+
+===== PUT /v3/{chainId}/B2CCustomer/{uid} | Updates a B2C Customer. Returns the updated customer's Uid.
+  param uid path req string  B2C customer to update
+  param chainId path req string  
+  BODY Muster.Common.Models.BookingApi.B2C.B2CCustomerRequestModelV3 {
+  firstName: string?  // First name
+  lastName: string?  // Last name
+  email: string?  // Email
+  phoneNumber: string?  // Phone number
+  address: string?  // Street address
+  postalCode: string?  // Postal code
+  city: string?  // City
+  acceptedMarketingAuthorizations: [integer]?  
+  receiveSms: boolean  // Receive reminder via Sms
+  receiveEmail: boolean  // Receive reminder via Email
+  language: Muster.Common.Enum.Language enum ['English', 'Finnish', 'Swedish', 'French', 'German', 'Estonian']  
+  plateNumber: string?  
+  stationId: integer int64 
+}
+  RESP 200 Muster.Common.Models.BookingApi.B2C.B2CCustomerResponseModelV3 {
+  uid: string?  
+}
+  RESP 400 Model is not valid.
+  RESP 500 Updating B2C customer failed (internal error).
+
+===== GET /v3/{chainId}/Calendar/{stationId} | Returns free times for a station.
+  param stationId path req integer int64 Which station's free times to fetch.
+  param StartDate query req string date-time The first date for which to get free times in UTC. Must be in ISO 8601 format (yyyy-mm-ddTHH:MM:SS.000Z) Example: 2019-06-09T21:00:00.000Z
+  param EndDate query req string date-time The last date for which to get free times in UTC and should not exceed 60 days from the start date. Must be in ISO 8601 format (yyyy-mm-ddTHH:MM:SS.000Z). Example: 2019-06-10T20:59:59.999Z
+  param ProductIds query req array  Which product's prices are returned.
+  param VehicleCategory query req string  Vehicle category
+  param CampaignCodeUid query  string  Optional campaign code uid for calculating discounted prices for calendar event slots
+  param chainId path req string  
+  RESP 200 [ Muster.Common.Models.BookingApi.Calendar.CalendarDayModel {
+  day: string date-time // Day (in UTC)
+  localDay: string date-time // Day (in local)
+  closed: boolean  // Is station closed on this day.
+  externalPriceId: string? uuid // External price id. Provide id when creating reservation to get correct price.
+  hours: map<{"type": "array", "items": {"$ref": "#/components/schemas/Muster.Common.Models.BookingApi.Calendar.CalendarSlotModel"}, "nullable": true}>?  // Hours for date (hours are in UTC)
+} ]
+  RESP 400 Invalid date range (start and end date exceeding 60 days limit) or product items not found.
+  RESP 500 Getting free times failed.
+
+===== GET /v3/{chainId}/CampaignCodes | Returns campaign code information with discounts.
+  param chainId path req integer int64 Chain Id
+  param Code query req string  Campaign code
+  param StationId query  integer int64 Which station's campaign code to fetch. If empty, no prices are returned
+  param ReservationTime query  string date-time Reservation time in UTC format. If empty, no prices are returned
+  param ExternalPriceId query  string uuid External price id from calendar endpoint.
+  param ProductIds query  array  Product ids. If empty, no prices are returned
+  RESP 200 Muster.Common.Models.Campaign.CampaignCodeOnlineBookingModel {
+  uid: string?  // Campaign code uid.
+  name: string?  // Campaign name.
+  code: string?  // Campaign code.
+  discounts: [Muster.Common.Models.Campaign.CampaignCodeOnlineBookingDiscountModel {
+    onlineReservationDiscount: number double // Sum how much discount is given from the product if reservation is made online.
+    onlinePaymentDiscount: number double // Sum how much discount is given from the product if reservation is paid online.
+    productId: integer int64 // Product id.
+    discountType: Muster.Common.Enum.DiscountType enum ['Percent', 'Sum', 'FixedPrice']  
+  }]?  // Discounts for the given products.
+}
+  RESP 204 No campaign code found.
+  RESP 500 Getting campaign failed.
+
+===== GET /v3/{chainId}/OnlinePaymentMethods/{stationId}/{language} | Returns online payment methods
+  param chainId path req integer int64 Chain id
+  param stationId path req integer int64 Station id
+  param language path req Muster.Common.Enum.Language  Language
+  RESP 200 [ Baja.Common.Dto.PaymentService.OnlineProvidersbyGroup {
+  type: string?  
+  onlinePaymentProviders: [Baja.Common.Dto.PaymentService.OnlinePaymentProvider {
+    method: string?  
+    name: string?  
+    svg: string?  
+  }]?  
+} ]
+
+===== POST /v3/{chainId}/OnlinePayments | Creates an online payment for given reservation.
+  param chainId path req integer int64 Chain id
+  BODY Muster.Common.Models.BookingApi.Payment.CreatePaymentCommandV3 {
+  reservations: [Muster.Common.Models.BookingApi.Reservation.CreateReservationCommandV3 {
+    pendingReservationUid: string?  // Pending reservation uid. (Pending reservation is required for create or when updating existing reservation station or time)
+    originalReservationUid: string?  // Original reservation uid to edit. Needed only when updating existing reservation. NOTE: Old reservation is refunded if it's already paid.
+    plateNumber*: string  // Vehicle's plate number
+    vehicleCategory*: string  // Vehicle category
+    productIds: [integer]?  // Which products reservation contains. If not given existing products are used. If paying pending reservation then products are needed.
+    vehicleBrandAndModel: string?  // Vehicle brand and model
+    additionalInformation: string?  // Additional information for the reservation
+    meta: map<{"$ref": "#/components/schemas/System.Text.Json.Nodes.JsonNode"}>?  // Meta information. Format is JSON object. Example: { "key": "value" }
+  }]?  // Reservations information. If not given existing reservations from group are used.
+  groupId*: string uuid // Reservation group id. Group is used to group multiple reservations together. A group ID is required even when the booking contains only one reservation.
+  b2BCustomerUid: string?  // B2B Customer Uid
+  b2CCustomerUid: string?  // B2C Customer Uid
+  campaignCodeUid: string?  // Campaign code Uid
+  language: Muster.Common.Enum.Language enum ['English', 'Finnish', 'Swedish', 'French', 'German', 'Estonian']  
+  externalPriceId: string? uuid // External price id. Use value provided from calendar endpoint.
+  providerGroup: string?  
+  providerId: string?  
+  sendConfirmation: boolean  
+}
+  RESP 200 Baja.Common.Dto.PaymentService.OnlinePaymentFormProviderModel {
+  id: string?  
+  name: string?  
+  icon: string?  
+  svg: string?  
+  url: string?  
+  backupUrl: string?  
+  group: string?  
+  parameters: [Baja.Common.Dto.PaymentService.OnlinePaymentProviderParameter {
+    name: string?  
+    value: string?  
+  }]?  
+}
+  RESP 408 Muster.Common.Models.BookingApi.Payment.CreatePaymentErrorResponseV3 {
+  error: string?  
+}
+  RESP 400 Reservation cannot be fetched.
+
+===== POST /v3/{chainId}/PendingReservations | Creates or updates pending reservation. Pending reservation's Uid is returned. A pending reservation is valid for 15 minutes. After that, a new pending reservation must be created.
+  param chainId path req string  
+  BODY Muster.Common.Models.BookingApi.Reservation.UpsertPendingReservationCommandV3 {
+  uid: string?  // The pending reservation uid. Empty if new pending reservation is created.
+  plateNumber: string?  // Vehicle's plate number
+  time*: string date-time // Pending reservation time. Must be in ISO 8601 format (yyyy-mm-ddTHH:MM:SS.000Z)
+  vehicleCategory: string?  // Vehicle category
+  stationId*: integer int64 // The station for which the pending reservation is created
+  productIds*: [integer]  // Which products pending reservation contains. Reservation duration is calculated from products.
+  groupId: string? uuid // The group id for which the previous pending reservation was created. Use when reserving multiple vehicles at the same time. Send as null for the single / first vehicle in the group.
+  resourceNumber: integer? int32 // The resource number for which the pending reservation is created. Only needed if the reservation is created for a specific resource.
+}
+  RESP 200 Muster.Common.Models.BookingApi.Reservation.PendingReservationModel {
+  reservationUid: string?  // The pending reservation uid.
+  groupId: string uuid // The event group id. Use this to identify the group of vehicles in a group reservation.
+  reservedDateTime: string date-time // The date time when the reservation starts.
+  reservationEndDateTime: string date-time // The estimated date time when the reservation ends.
+  resourceNumber: integer int32 // The reserved slot resource number.
+}
+  RESP 400 Pending reservation cannot be created. Example no resources available anymore.
+  RESP 500 Creating or updating pending reservation failed (internal error or wrong parameters).
+
+===== DELETE /v3/{chainId}/PendingReservations/{groupId} | Deletes pending reservations in a group. Only reservations with pending status are deleted; other statuses are left unchanged. If an online payment is associated with the pending reservations, it must be successfully cancelled before deletion proceeds. The operation will fail if payment cancellation fails.
+  param groupId path req string  Reservation group id
+  param chainId path req string  
+  RESP 200 Muster.Common.Models.BookingApi.Reservation.CalendarEventInformationModel {
+  uid: string?  // Reservation Uid.
+  bookingNumber: string?  // Reservation booking number.
+  hasOnlinePayment: boolean?  // Indicates whether the reservation has an associated online payment.
+}
+  RESP 204 No pending reservations found in the group.
+  RESP 500 Failed to cancel the associated online payment.
+
+===== GET /v3/{chainId}/Products/{stationId} | Returns a list of products for a given station and vehicle category.
+  param stationId path req integer int64 Station Id
+  param vehicleCategory query req string  Vehicle category
+  param chainId path req string  
+  RESP 200 [ Muster.Common.Models.BookingApi.Product.OnlineBookingProductModel {
+  id: integer int64 
+  productType: Muster.Common.Enum.ProductType enum ['Inspection', 'Registration', 'Sale', 'CheckUp', 'Payout', 'PostInspection', 'BillingCharge', 'Insurance', 'RegistrationInspection', 'AlterationInspection', 'IndividualApproval', 'CashAddition', 'Measurement', 'ReminderFee', 'PartnerContactFee', 'ControlFee', 'ServiceRefund', 'InsuranceConditionCheckUp', 'ConditionInspection', 'UnregisteredRegistrationInspection', 'FleInspection', 'LämplighetInspection', 'MopedInspection', 'ControlInspection', 'CashRounding']  
+  name: map<{"type": "string", "nullable": true}>?  
+  description: map<{"type": "string", "nullable": true}>?  
+  info: map<{"type": "string", "nullable": true}>?  
+} ]
+
+===== GET /v3/{chainId}/Products/{stationId}/prices | Returns prices for a list of products at a specific station for a given reservation time.
+  param stationId path req integer int64 Station id
+  param ProductIds query req array  Product ids to get prices for.
+  param ReservationTime query req string date-time Reservation time in utc time. Example: '2025-09-09T10:30:00.000Z'
+  param ExternalPriceId query  string uuid External price id.
+  param chainId path req string  
+  RESP 200 [ Muster.Common.Models.BookingApi.Product.OnlineBookingProductPriceModel {
+  productId: integer int64 // Product id
+  onlinePaymentPrice: number double // Online payment price
+  onlineReservationPrice: number double // Online reservation price
+} ]
+
+===== POST /v3/{chainId}/Reservations | Updates an existing pending reservation.
+  param chainId path req string  
+  BODY Muster.Common.Models.BookingApi.Reservation.CreateGroupReservationCommandV3 {
+  reservations: [Muster.Common.Models.BookingApi.Reservation.CreateReservationCommandV3 {
+    pendingReservationUid: string?  // Pending reservation uid. (Pending reservation is required for create or when updating existing reservation station or time)
+    originalReservationUid: string?  // Original reservation uid to edit. Needed only when updating existing reservation. NOTE: Old reservation is refunded if it's already paid.
+    plateNumber*: string  // Vehicle's plate number
+    vehicleCategory*: string  // Vehicle category
+    productIds: [integer]?  // Which products reservation contains. If not given existing products are used. If paying pending reservation then products are needed.
+    vehicleBrandAndModel: string?  // Vehicle brand and model
+    additionalInformation: string?  // Additional information for the reservation
+    meta: map<{"$ref": "#/components/schemas/System.Text.Json.Nodes.JsonNode"}>?  // Meta information. Format is JSON object. Example: { "key": "value" }
+  }]?  // Reservations information. If not given existing reservations from group are used.
+  groupId*: string uuid // Reservation group id. Group is used to group multiple reservations together. A group ID is required even when the booking contains only one reservation.
+  b2BCustomerUid: string?  // B2B Customer Uid
+  b2CCustomerUid: string?  // B2C Customer Uid
+  campaignCodeUid: string?  // Campaign code Uid
+  language: Muster.Common.Enum.Language enum ['English', 'Finnish', 'Swedish', 'French', 'German', 'Estonian']  
+  externalPriceId: string? uuid // External price id. Use value provided from calendar endpoint.
+}
+  RESP 200 Muster.Common.Models.BookingApi.Reservation.ReservationsUpdateResponseV3 {
+  groupId: string uuid // Reservation group id. Group is used to group multiple reservations together.
+  reservations: [Muster.Common.Models.BookingApi.Reservation.CalendarEventInformationModel {
+    uid: string?  // Reservation Uid.
+    bookingNumber: string?  // Reservation booking number.
+    hasOnlinePayment: boolean?  // Indicates whether the reservation has an associated online payment.
+  }]?  // Reservations information.
+}
+  RESP 408 Muster.Common.Models.BookingApi.Payment.CreatePaymentErrorResponseV3 {
+  error: string?  
+}
+  RESP 400 Could not find pending or the original reservation.
+  RESP 500 Creating reservation failed (internal error or wrong parameters).
+
+===== POST /v3/{chainId}/Reservations/confirm | Confirm reservation
+  param chainId path req integer int64 Chain id
+  BODY Muster.Common.Models.BookingApi.Reservation.ConfirmGroupReservationCommandV3 {
+  reservations*: [Muster.Common.Models.BookingApi.Reservation.ConfirmReservationCommandV3 {
+    pendingReservationUid: string?  // Pending reservation uid. (Pending reservation is required for create or when updating existing reservation station or time)
+    originalReservationUid: string?  // Original reservation uid to edit. Needed only when updating existing reservation.
+  }]  // Reservations to confirm.
+  groupId*: string uuid // Reservation group id. Group is used to group multiple reservations together. A group ID is required even when the booking contains only one reservation.
+  sendConfirmation: boolean  // If an email/sms confirmation should be sent to customer
+}
+  RESP 200 Everything went ok.
+  RESP 400 Could not find the reservation.
+  RESP 500 If fetching information fails (internal error).
+
+===== POST /v3/{chainId}/Reservations/{stationId}/{uid}/sendConfirmation | Send confirm reservation email/sms
+  param stationId path req integer int64 Station id
+  param uid path req string  Reservation uid
+  param chainId path req string  
+  RESP 200 Everything went ok.
+  RESP 400 Could not find the reservation.
+  RESP 500 If fetching information fails (internal error).
+
+===== GET /v3/{chainId}/Reservations/search/{bookingNumber} | Returns reservation information by booking number using B2C customer's last name and/or B2B customer's customer number. At least one of customerLastname or customerNumber is required. If both are provided, both are used and must match the same reservation.
+  param bookingNumber path req string  Reservation booking number
+  param customerLastname query  string  B2C customer's last name. Optional if customerNumber is provided.
+  param customerNumber query  string  B2B customer number. Optional if customerLastname is provided.
+  param chainId path req string  
+  RESP 200 Muster.Common.Models.BookingApi.Reservation.ReservationGroupResponseModelV3 {
+  groupId: string uuid // Reservation group id. Group is used to group multiple reservations together.
+  reservations: [Muster.Common.Models.BookingApi.Reservation.ReservationResponseModelV3 {
+    uid: string?  // Reservation uid
+    bookingNumber: string?  // Reservation booking number
+    plateNumber: string?  // Plate number
+    vehicleCategory: string?  // Vehicle category
+    vehicleBrandAndModel: string?  // Vehicle brand and model
+    reservedDateTime: string date-time // Reservation date time
+    reservationEndDateTime: string date-time // Reservation end date time
+    products: [Muster.Common.Models.BookingApi.Reservation.ReservationProductModel {
+      productId: integer int64 // Product id.
+      price: number double // Price
+      discount: number double // Discount
+      name: string?  // Product name
+      productType: Muster.Common.Enum.ProductType enum ['Inspection', 'Registration', 'Sale', 'CheckUp', 'Payout', 'PostInspection', 'BillingCharge', 'Insurance', 'RegistrationInspection', 'AlterationInspection', 'IndividualApproval', 'CashAddition', 'Measurement', 'ReminderFee', 'PartnerContactFee', 'ControlFee', 'ServiceRefund', 'InsuranceConditionCheckUp', 'ConditionInspection', 'UnregisteredRegistrationInspection', 'FleInspection', 'LämplighetInspection', 'MopedInspection', 'ControlInspection', 'CashRounding']  
+      discountedPrice: number double // Price - Discount
+    }]?  // Products
+    meta: map<{"$ref": "#/components/schemas/System.Text.Json.Nodes.JsonNode"}>?  // Meta information
+  }]?  // Reservations information.
+  b2CCustomer: Muster.Common.Models.BookingApi.B2C.B2CCustomerResponseModel {
+    firstName: string?  // First name
+    lastName: string?  // Last name
+    email: string?  // Email
+    phoneNumber: string?  // Phone number
+    address: string?  // Street address
+    postalCode: string?  // Postal code
+    city: string?  // City
+    hasMarketingAuthorization: boolean  // True if customer has agreed that his information can  be used for marketing.
+    acceptedMarketingAuthorizations: [integer]?  
+    receiveSms: boolean  // Receive reminder via Sms
+    receiveEmail: boolean  // Receive reminder via Email
+    language: Muster.Common.Enum.Language enum ['English', 'Finnish', 'Swedish', 'French', 'German', 'Estonian']  
+    uid: string?  // This is the Encode CalendarEvent B2CCustomer ID
+  }  
+  b2BCustomerUid: string?  // B2B Customer Uid
+  b2CCustomerUid: string?  // B2C Customer Uid
+  campaignCodeUid: string?  // Campaign code Uid
+  station: Muster.Common.Models.BookingApi.Station.StationModel {
+    id: integer int64 // Station Id
+    name: string?  // Station name
+    nameLocalized: map<{"type": "string", "nullable": true}>?  
+    city: string?  // City
+    cityLocalized: map<{"type": "string", "nullable": true}>?  
+    postalCode: string?  // Postal code
+    streetAddress: string?  // Street address
+    streetAddressLocalized: map<{"type": "string", "nullable": true}>?  
+    coordinateLng: number? double // Longitude coordinate
+    coordinateLat: number? double // Latitude coordinate
+    slotDurationMinutes: integer int32 // Slot duration in calendar (minutes)
+    productId: integer? int64 // Product id to use in reservation
+    vehicleSearchEnabled: boolean  
+    onlinePaymentMethod: string?  // Define the type of online payment used. Front-end needs to enable that type if found.
+    phoneNumber: string?  
+    email: string?  
+    logoUrl: string?  
+    unsupportedVehicleCategoryNote: map<{"type": "string", "nullable": true}>?  
+    stationAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    vehicleAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    paymentAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    timeAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    settings: Muster.Common.Models.OnlineBooking.StationOnlineBookingSettingSettingsBookingApiModel {
+      vehicleCategoryEnabled: boolean  // When vechicle Search is enabled, this list will be used to show the categories supported at the station.
+      supportedVehicleCategories: [string]?  // An array of Supported Vehicle Categories like M1, N1, M2G, etc.
+      vehicleCategoryMapLocalized: [Muster.Common.Models.OnlineBooking.VehicleCategoryMapLocalized {
+        category: string?  
+        translations: map<{"type": "string", "nullable": true}>?  // Currently supporting "fi" for Finnish, "sv" for Swedish and "en" for English.
+      }]?  // For each Vehicle Category like M1, N1, O2, this stores the  localized translations in the Different Languages.
+    }  
+  }  
+  paymentStatus: Muster.Common.Enum.CalendarEventPaymentStatus enum ['NotPaid', 'Paid', 'Refunded', 'PrePaid', 'Pending']  
+}
+  RESP 204 Could not find reservation.
+  RESP 400 B2C lastname or B2B customer number missing.
+  RESP 500 Getting reservation failed (internal error).
+
+===== GET /v3/{chainId}/Reservations/{groupId} | Returns reservation information by reservation group id. Gets only reservations which are confirmed.
+  param groupId path req string  Reservation group id
+  param chainId path req string  
+  RESP 200 Muster.Common.Models.BookingApi.Reservation.ReservationGroupResponseModelV3 {
+  groupId: string uuid // Reservation group id. Group is used to group multiple reservations together.
+  reservations: [Muster.Common.Models.BookingApi.Reservation.ReservationResponseModelV3 {
+    uid: string?  // Reservation uid
+    bookingNumber: string?  // Reservation booking number
+    plateNumber: string?  // Plate number
+    vehicleCategory: string?  // Vehicle category
+    vehicleBrandAndModel: string?  // Vehicle brand and model
+    reservedDateTime: string date-time // Reservation date time
+    reservationEndDateTime: string date-time // Reservation end date time
+    products: [Muster.Common.Models.BookingApi.Reservation.ReservationProductModel {
+      productId: integer int64 // Product id.
+      price: number double // Price
+      discount: number double // Discount
+      name: string?  // Product name
+      productType: Muster.Common.Enum.ProductType enum ['Inspection', 'Registration', 'Sale', 'CheckUp', 'Payout', 'PostInspection', 'BillingCharge', 'Insurance', 'RegistrationInspection', 'AlterationInspection', 'IndividualApproval', 'CashAddition', 'Measurement', 'ReminderFee', 'PartnerContactFee', 'ControlFee', 'ServiceRefund', 'InsuranceConditionCheckUp', 'ConditionInspection', 'UnregisteredRegistrationInspection', 'FleInspection', 'LämplighetInspection', 'MopedInspection', 'ControlInspection', 'CashRounding']  
+      discountedPrice: number double // Price - Discount
+    }]?  // Products
+    meta: map<{"$ref": "#/components/schemas/System.Text.Json.Nodes.JsonNode"}>?  // Meta information
+  }]?  // Reservations information.
+  b2CCustomer: Muster.Common.Models.BookingApi.B2C.B2CCustomerResponseModel {
+    firstName: string?  // First name
+    lastName: string?  // Last name
+    email: string?  // Email
+    phoneNumber: string?  // Phone number
+    address: string?  // Street address
+    postalCode: string?  // Postal code
+    city: string?  // City
+    hasMarketingAuthorization: boolean  // True if customer has agreed that his information can  be used for marketing.
+    acceptedMarketingAuthorizations: [integer]?  
+    receiveSms: boolean  // Receive reminder via Sms
+    receiveEmail: boolean  // Receive reminder via Email
+    language: Muster.Common.Enum.Language enum ['English', 'Finnish', 'Swedish', 'French', 'German', 'Estonian']  
+    uid: string?  // This is the Encode CalendarEvent B2CCustomer ID
+  }  
+  b2BCustomerUid: string?  // B2B Customer Uid
+  b2CCustomerUid: string?  // B2C Customer Uid
+  campaignCodeUid: string?  // Campaign code Uid
+  station: Muster.Common.Models.BookingApi.Station.StationModel {
+    id: integer int64 // Station Id
+    name: string?  // Station name
+    nameLocalized: map<{"type": "string", "nullable": true}>?  
+    city: string?  // City
+    cityLocalized: map<{"type": "string", "nullable": true}>?  
+    postalCode: string?  // Postal code
+    streetAddress: string?  // Street address
+    streetAddressLocalized: map<{"type": "string", "nullable": true}>?  
+    coordinateLng: number? double // Longitude coordinate
+    coordinateLat: number? double // Latitude coordinate
+    slotDurationMinutes: integer int32 // Slot duration in calendar (minutes)
+    productId: integer? int64 // Product id to use in reservation
+    vehicleSearchEnabled: boolean  
+    onlinePaymentMethod: string?  // Define the type of online payment used. Front-end needs to enable that type if found.
+    phoneNumber: string?  
+    email: string?  
+    logoUrl: string?  
+    unsupportedVehicleCategoryNote: map<{"type": "string", "nullable": true}>?  
+    stationAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    vehicleAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    paymentAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    timeAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+    settings: Muster.Common.Models.OnlineBooking.StationOnlineBookingSettingSettingsBookingApiModel {
+      vehicleCategoryEnabled: boolean  // When vechicle Search is enabled, this list will be used to show the categories supported at the station.
+      supportedVehicleCategories: [string]?  // An array of Supported Vehicle Categories like M1, N1, M2G, etc.
+      vehicleCategoryMapLocalized: [Muster.Common.Models.OnlineBooking.VehicleCategoryMapLocalized {
+        category: string?  
+        translations: map<{"type": "string", "nullable": true}>?  // Currently supporting "fi" for Finnish, "sv" for Swedish and "en" for English.
+      }]?  // For each Vehicle Category like M1, N1, O2, this stores the  localized translations in the Different Languages.
+    }  
+  }  
+  paymentStatus: Muster.Common.Enum.CalendarEventPaymentStatus enum ['NotPaid', 'Paid', 'Refunded', 'PrePaid', 'Pending']  
+}
+  RESP 204 Could not find reservation.
+  RESP 500 Getting reservation failed (internal error).
+
+===== DELETE /v3/{chainId}/Reservations/{groupId} | Cancels the reservation. Cancels all reservations from the group reservation.
+  param chainId path req integer int64 Chain id
+  param groupId path req string  Reservation group id
+  param sendConfirmation query  boolean  Send email to about the cancelling of the booking
+  RESP 200 Reservation is cancelled.
+  RESP 204 Reservation is not found.
+
+===== GET /v3/{chainId}/Reservations/valid/{groupId} | Returns is reservation still valid or not.
+  param groupId path req string  Reservation group id
+  param chainId path req string  
+  RESP 200 Reservation is valid.
+  RESP 204 Reservation is not valid.
+
+===== DELETE /v3/{chainId}/Reservations/{stationId}/{uid} | Cancels the reservation.
+  param stationId path req integer int64 Station id
+  param uid path req string  Reservation uid
+  param sendConfirmation query  boolean  Send email to about the cancelling of the booking
+  param chainId path req string  
+  RESP 200 Reservation is cancelled.
+  RESP 204 Reservation is not found.
+  RESP 405 Paid/Prepaid reservations cannot be cancelled.
+
+===== GET /v3/{chainId}/Settings | Returns general settings for a chain for booking.
+  param chainId path req integer int64 Which chain's settings are fetched
+  RESP 200 Baja.Core.Models.BookingApi.Settings.SettingsModel {
+  termsOfService: string?  // Can contain either Terms of service url or Finnish version of CancellationTerms. CancellationTerms has replaced TermsOfService as TermsOfService is split into CancellationTerms and PaymentAgreementTerms
+  cancellationTerms: map<{"type": "string", "nullable": true}>?  // Terms of service texts in different languages {"fi": ..., "sv": ..., ...}
+  paymentAgreementTerms: map<{"type": "string", "nullable": true}>?  
+  showPricesOnCalendar: boolean  
+  showBookedSlotsOnCalendar: boolean  
+  chainLogoUrl: string?  
+  customization: Muster.Common.DataAccess.Booking.BookingCustomization {
+    headerBackgroundColor: string?  
+    headerColor: string?  
+    infoTextBackgroundColor: string?  
+    infoTextColor: string?  
+    buttonBackgroundColor: string?  
+    buttonColor: string?  
+    fontFamily: string?  
+  }  
+  slotDurationMinutes: integer int32 // Default slot duration in calendar
+  defaultProductId: integer int64 // Default product id. This product id is used to get free times
+}
+  RESP 204 Station doesn't contain booking settings.
+
+===== GET /v3/{chainId}/Stations | Returns a chain's stations. Optional productType and productId filters can be used to filter stations that provide these services
+  param chainId path req integer int64 Chain Id
+  param ProductType query  Muster.Common.Enum.ProductType  Product type to use for the reservation
+  param ProductIds query  array  Multiple product ids for the reservation. Stations needs to have all productIds for the reservation. Used for multiple products endpoint.
+  param VehicleCategory query  string  Vehicle category for the reservation
+  RESP 200 [ Muster.Common.Models.BookingApi.Station.StationModel {
+  id: integer int64 // Station Id
+  name: string?  // Station name
+  nameLocalized: map<{"type": "string", "nullable": true}>?  
+  city: string?  // City
+  cityLocalized: map<{"type": "string", "nullable": true}>?  
+  postalCode: string?  // Postal code
+  streetAddress: string?  // Street address
+  streetAddressLocalized: map<{"type": "string", "nullable": true}>?  
+  coordinateLng: number? double // Longitude coordinate
+  coordinateLat: number? double // Latitude coordinate
+  slotDurationMinutes: integer int32 // Slot duration in calendar (minutes)
+  productId: integer? int64 // Product id to use in reservation
+  vehicleSearchEnabled: boolean  
+  onlinePaymentMethod: string?  // Define the type of online payment used. Front-end needs to enable that type if found.
+  phoneNumber: string?  
+  email: string?  
+  logoUrl: string?  
+  unsupportedVehicleCategoryNote: map<{"type": "string", "nullable": true}>?  
+  stationAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+  vehicleAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+  paymentAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+  timeAdditionalInformation: map<{"type": "string", "nullable": true}>?  
+  settings: Muster.Common.Models.OnlineBooking.StationOnlineBookingSettingSettingsBookingApiModel {
+    vehicleCategoryEnabled: boolean  // When vechicle Search is enabled, this list will be used to show the categories supported at the station.
+    supportedVehicleCategories: [string]?  // An array of Supported Vehicle Categories like M1, N1, M2G, etc.
+    vehicleCategoryMapLocalized: [Muster.Common.Models.OnlineBooking.VehicleCategoryMapLocalized {
+      category: string?  
+      translations: map<{"type": "string", "nullable": true}>?  // Currently supporting "fi" for Finnish, "sv" for Swedish and "en" for English.
+    }]?  // For each Vehicle Category like M1, N1, O2, this stores the  localized translations in the Different Languages.
+  }  
+} ]
+  RESP 500 Getting station failed (internal error or wrong parameters)
+
+===== GET /v3/{chainId}/Vehicle | Returns information about vehicle
+  param chainId path req integer int64 Chain Id
+  param PlateNumber query  string  Plate number. Must be in format: AAA-111
+  RESP 200 Baja.Core.Models.BookingApi.Vehicle.VehicleModel {
+  plateNumber: string?  
+  vehicleCategory: string?  
+  motivePower: string?  
+  motivePowerCode: string?  
+  vehicleBrandAndModel: string?  
+  inspectionPeriodEnd: string? date-time 
+  postInspection: boolean  // Displays if post inspection should be sold to this vehicle instead of normal inspection. Does not force you to do anything
+  deploymentDate: string? date-time 
+  deploymentDateAsString: string?  // Formatted deployment date
+  model: string?  
+  brand: string?  
+  registrationYear: integer int32 
+  inspectionPeriodStart: string? date-time 
+  requiredProducts: [string]?  // displays products required for inspection to pass. Does not display products that must be sold to this vehicle
+}
+  RESP 204 No information was found for plate number

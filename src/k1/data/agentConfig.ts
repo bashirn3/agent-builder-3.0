@@ -1,7 +1,7 @@
 import { copy } from '../i18n'
 import { DEFAULT_INSTRUCTIONS } from '../../lib/playgroundService'
 import { LEADS } from './fixtures'
-import { detectLanguage, fillTemplate, leadContext, TRANSLATED, type Lang, type TemplateLead } from './language'
+import { bookingStationId, detectLanguage, fillTemplate, leadContext, TRANSLATED, type Lang, type TemplateLead } from './language'
 import {
   currentActor,
   loadState,
@@ -259,6 +259,8 @@ export async function sendTest(
     masterPrompt: target.masterPrompt,
     additionalInformation: target.additional,
     leadContext: leadContext(meta.lead, used.lang),
+    phone: meta.lead.phoneNumber ?? '',
+    stationId: bookingStationId(meta.lead.stationName),
     history,
   }, fallback)
 }

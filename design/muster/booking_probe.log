@@ -1,0 +1,89 @@
+
+### GET /Calendar/256?StartDate=2026-10-05T21:00:00.000Z&EndDate=2026-10-06T21:00:00.000Z&VehicleCategory=M1&ProductIds=2246
+status: 200
+response: [{"day":"2026-10-05T21:00:00Z","localDay":"2026-10-06T00:00:00Z","closed":false,"externalPriceId":null,"hours":{"8":[{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T05:15:00Z","localTime":"2026-10-06T08:15:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T05:30:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T05:30:00Z","localTime":"2026-10-06T08:30:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T05:45:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T05:45:00Z","localTime":"2026-10-06T08:45:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:00:00Z","priceGroupId":10}],"9":[{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:00:00Z","localTime":"2026-10-06T09:00:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:15:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:15:00Z","localTime":"2026-10-06T09:15:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:30:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:30:00Z","localTime":"2026-10-06T09:30:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:45:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:45:00Z","localTime":"2026-10-06T09:45:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T07:00:00Z","priceGroupId":10}],"10":[{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T07:00:00Z","localTime":"2026-10-06T10:00:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T07:15:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T07:15:00Z","localTime":"2026-10-06T10:15:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T07:30:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T07:3
+
+### POST /PendingReservations
+request: {"time": "2026-10-06T06:15:00.000Z", "stationId": 256, "productIds": [2246], "plateNumber": "WSP-001", "vehicleCategory": "M1", "groupId": null}
+status: 200
+response: {"reservationUid":"4aa166fbb6a8db1623727f82286f1f28","groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservedDateTime":"2026-10-06T06:15:00Z","reservationEndDateTime":"2026-10-06T06:30:00Z","resourceNumber":1}
+
+### POST /B2CCustomer
+request: {"firstName": "Wasup", "lastName": "Testi", "receiveSms": false, "receiveEmail": false, "language": "Finnish", "plateNumber": "WSP-001", "stationId": 256}
+status: 200
+response: {"uid":"a549018407d06ea5bd8be53604e9defd"}
+
+### POST /Reservations
+request: {"groupId": "2f941228-9ab7-45a9-81da-3c02399823f3", "reservations": [{"pendingReservationUid": "4aa166fbb6a8db1623727f82286f1f28", "plateNumber": "WSP-001", "vehicleCategory": "M1", "productIds": [2246]}], "b2CCustomerUid": "a549018407d06ea5bd8be53604e9defd", "language": "Finnish", "externalPriceId": null}
+status: 200
+response: {"groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservations":[{"uid":"4aa166fbb6a8db1623727f82286f1f28","bookingNumber":"MMUJPRT9","hasOnlinePayment":null}]}
+
+### GET /Reservations/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 204
+response: 
+
+### GET /Reservations/valid/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 204
+response: 
+
+### POST /Reservations/confirm
+request: {"groupId": "2f941228-9ab7-45a9-81da-3c02399823f3", "reservations": [{"pendingReservationUid": "4aa166fbb6a8db1623727f82286f1f28"}], "sendConfirmation": false}
+status: 200
+response: 
+
+### GET /Reservations/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 200
+response: {"groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservations":[{"uid":"4aa166fbb6a8db1623727f82286f1f28","bookingNumber":"MMUJPRT9","plateNumber":"WSP-001","vehicleCategory":"M1","vehicleBrandAndModel":null,"reservedDateTime":"2026-10-06T06:15:00Z","reservationEndDateTime":"2026-10-06T06:30:00Z","products":[{"productId":2246,"price":46.00000,"discount":0.00,"name":"Katsastus (auto max. 3500 kg, nelipyörä)","productType":"Inspection","discountedPrice":46.00000}],"meta":null}],"b2CCustomer":{"firstName":"Wasup","lastName":"Testi","email":null,"phoneNumber":null,"address":null,"postalCode":null,"city":null,"hasMarketingAuthorization":false,"acceptedMarketingAuthorizations":[],"receiveSms":false,"receiveEmail":false,"language":"Finnish","uid":"a549018407d06ea5bd8be53604e9defd"},"b2BCustomerUid":null,"b2CCustomerUid":"a549018407d06ea5bd8be53604e9defd","campaignCodeUid":null,"station":{"id":256,"name":"K1 Katsastus Jyväskylä Palokka","nameLocalized":{"fi":"K1 Katsastus Jyväskylä Palokka","sv":"K1 Katsastus Jyväskylä Palokka"},"city":"Palokka","cityLocalized":{"fi":"Palokka","sv":"Palokka"},"postalCode":"40270","streetAddress":"Palokanorsi 1","streetAddressLocalized":{"fi":"Palokanorsi 1","sv":"Palokanorsi 1"},"coordinateLng":25.716464138623,"coordinateLat":62.2875996070563,"slotDurationMinutes":0,"productId":null,"vehicleSearchEnabled":false,"onlinePaymentMethod":null,"phoneNumber":null,"email":null,"logoUrl":null,"unsupportedVehicleCategoryNote":null,"stationAdditionalInformation":null,"vehicleAdditionalInformation":null,"paymentAdditionalInformation":null,"timeAdditionalInformation":null,"settings":null},"paymentStatus":"NotPaid"}
+
+### GET /Reservations/search/MMUJPRT9?customerLastname=Testi
+status: 200
+response: {"groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservations":[{"uid":"4aa166fbb6a8db1623727f82286f1f28","bookingNumber":"MMUJPRT9","plateNumber":"WSP-001","vehicleCategory":"M1","vehicleBrandAndModel":null,"reservedDateTime":"2026-10-06T06:15:00Z","reservationEndDateTime":"2026-10-06T06:30:00Z","products":[{"productId":2246,"price":46.00000,"discount":0.00,"name":"Katsastus (auto max. 3500 kg, nelipyörä)","productType":"Inspection","discountedPrice":46.00000}],"meta":null}],"b2CCustomer":{"firstName":"Wasup","lastName":"Testi","email":null,"phoneNumber":null,"address":null,"postalCode":null,"city":null,"hasMarketingAuthorization":false,"acceptedMarketingAuthorizations":[],"receiveSms":false,"receiveEmail":false,"language":"Finnish","uid":"a549018407d06ea5bd8be53604e9defd"},"b2BCustomerUid":null,"b2CCustomerUid":"a549018407d06ea5bd8be53604e9defd","campaignCodeUid":null,"station":{"id":256,"name":"K1 Katsastus Jyväskylä Palokka","nameLocalized":{"fi":"K1 Katsastus Jyväskylä Palokka","sv":"K1 Katsastus Jyväskylä Palokka"},"city":"Palokka","cityLocalized":{"fi":"Palokka","sv":"Palokka"},"postalCode":"40270","streetAddress":"Palokanorsi 1","streetAddressLocalized":{"fi":"Palokanorsi 1","sv":"Palokanorsi 1"},"coordinateLng":25.716464138623,"coordinateLat":62.2875996070563,"slotDurationMinutes":0,"productId":null,"vehicleSearchEnabled":false,"onlinePaymentMethod":null,"phoneNumber":null,"email":null,"logoUrl":null,"unsupportedVehicleCategoryNote":null,"stationAdditionalInformation":null,"vehicleAdditionalInformation":null,"paymentAdditionalInformation":null,"timeAdditionalInformation":null,"settings":null},"paymentStatus":"NotPaid"}
+
+### GET /Reservations/valid/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 200
+response: 
+
+### GET /Calendar/256?StartDate=2026-10-05T21:00:00.000Z&EndDate=2026-10-06T21:00:00.000Z&VehicleCategory=M1&ProductIds=2246
+status: 200
+response: [{"day":"2026-10-05T21:00:00Z","localDay":"2026-10-06T00:00:00Z","closed":false,"externalPriceId":null,"hours":{"8":[{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T05:15:00Z","localTime":"2026-10-06T08:15:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T05:30:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T05:30:00Z","localTime":"2026-10-06T08:30:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T05:45:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T05:45:00Z","localTime":"2026-10-06T08:45:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:00:00Z","priceGroupId":10}],"9":[{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:00:00Z","localTime":"2026-10-06T09:00:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:15:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":false,"time":"2026-10-06T06:15:00Z","localTime":"2026-10-06T09:15:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:30:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:30:00Z","localTime":"2026-10-06T09:30:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T06:45:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T06:45:00Z","localTime":"2026-10-06T09:45:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T07:00:00Z","priceGroupId":10}],"10":[{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T07:00:00Z","localTime":"2026-10-06T10:00:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T07:15:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T07:15:00Z","localTime":"2026-10-06T10:15:00Z","resourceNumber":1,"bookingEndTime":"2026-10-06T07:30:00Z","priceGroupId":10},{"originalOnlinePaymentPrice":null,"originalOnlineReservationPrice":null,"onlineReservationPrice":46.00000,"onlinePaymentPrice":46.00000,"isAvailable":true,"time":"2026-10-06T07:
+
+### POST /PendingReservations
+request: {"time": "2026-10-06T06:15:00.000Z", "stationId": 256, "productIds": [2246], "plateNumber": "WSP-002", "vehicleCategory": "M1", "groupId": null}
+status: 400
+response: {"error":"No resource for slot (#stationId 256 #productIds 2246 #startTime 10/06/2026 06:15:00 #endTime 10/06/2026 06:30:00","type":"ArgumentException"}
+
+### POST /PendingReservations
+request: {"time": "2026-10-06T08:15:00.000Z", "stationId": 256, "productIds": [2246], "plateNumber": "WSP-001", "vehicleCategory": "M1", "groupId": "2f941228-9ab7-45a9-81da-3c02399823f3"}
+status: 200
+response: {"reservationUid":"23ec3cd52175c967ed1e6eb4d611ff12","groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservedDateTime":"2026-10-06T08:15:00Z","reservationEndDateTime":"2026-10-06T08:30:00Z","resourceNumber":1}
+
+### PUT /B2CCustomer/a549018407d06ea5bd8be53604e9defd
+request: {"firstName": "Wasup", "lastName": "Testi", "receiveSms": false, "receiveEmail": false, "language": "Finnish", "plateNumber": "WSP-001", "stationId": 256}
+status: 200
+response: {"uid":"a549018407d06ea5bd8be53604e9defd"}
+
+### POST /Reservations
+request: {"groupId": "2f941228-9ab7-45a9-81da-3c02399823f3", "reservations": [{"pendingReservationUid": "23ec3cd52175c967ed1e6eb4d611ff12", "originalReservationUid": "4aa166fbb6a8db1623727f82286f1f28", "plateNumber": "WSP-001", "vehicleCategory": "M1", "productIds": [2246]}], "b2CCustomerUid": "a549018407d06ea5bd8be53604e9defd", "language": "Finnish", "externalPriceId": null}
+status: 200
+response: {"groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservations":[{"uid":"23ec3cd52175c967ed1e6eb4d611ff12","bookingNumber":"MMUJPRT9","hasOnlinePayment":null}]}
+
+### POST /Reservations/confirm
+request: {"groupId": "2f941228-9ab7-45a9-81da-3c02399823f3", "reservations": [{"pendingReservationUid": "23ec3cd52175c967ed1e6eb4d611ff12", "originalReservationUid": "4aa166fbb6a8db1623727f82286f1f28"}], "sendConfirmation": false}
+status: 200
+response: 
+
+### GET /Reservations/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 200
+response: {"groupId":"2f941228-9ab7-45a9-81da-3c02399823f3","reservations":[{"uid":"23ec3cd52175c967ed1e6eb4d611ff12","bookingNumber":"MMUJPRT9","plateNumber":"WSP-001","vehicleCategory":"M1","vehicleBrandAndModel":null,"reservedDateTime":"2026-10-06T08:15:00Z","reservationEndDateTime":"2026-10-06T08:30:00Z","products":[{"productId":2246,"price":46.00000,"discount":0.00,"name":"Katsastus (auto max. 3500 kg, nelipyörä)","productType":"Inspection","discountedPrice":46.00000}],"meta":null}],"b2CCustomer":{"firstName":"Wasup","lastName":"Testi","email":null,"phoneNumber":null,"address":null,"postalCode":null,"city":null,"hasMarketingAuthorization":false,"acceptedMarketingAuthorizations":[],"receiveSms":false,"receiveEmail":false,"language":"Finnish","uid":"a549018407d06ea5bd8be53604e9defd"},"b2BCustomerUid":null,"b2CCustomerUid":"a549018407d06ea5bd8be53604e9defd","campaignCodeUid":null,"station":{"id":256,"name":"K1 Katsastus Jyväskylä Palokka","nameLocalized":{"fi":"K1 Katsastus Jyväskylä Palokka","sv":"K1 Katsastus Jyväskylä Palokka"},"city":"Palokka","cityLocalized":{"fi":"Palokka","sv":"Palokka"},"postalCode":"40270","streetAddress":"Palokanorsi 1","streetAddressLocalized":{"fi":"Palokanorsi 1","sv":"Palokanorsi 1"},"coordinateLng":25.716464138623,"coordinateLat":62.2875996070563,"slotDurationMinutes":0,"productId":null,"vehicleSearchEnabled":false,"onlinePaymentMethod":null,"phoneNumber":null,"email":null,"logoUrl":null,"unsupportedVehicleCategoryNote":null,"stationAdditionalInformation":null,"vehicleAdditionalInformation":null,"paymentAdditionalInformation":null,"timeAdditionalInformation":null,"settings":null},"paymentStatus":"NotPaid"}
+
+### DELETE /Reservations/2f941228-9ab7-45a9-81da-3c02399823f3?sendConfirmation=false
+status: 200
+response: 
+
+### GET /Reservations/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 204
+response: 
+
+### GET /Reservations/valid/2f941228-9ab7-45a9-81da-3c02399823f3
+status: 204
+response: 
