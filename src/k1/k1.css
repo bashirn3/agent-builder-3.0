@@ -573,6 +573,7 @@ body { overscroll-behavior: none; }
 .k1-auth__form { width: min(456px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 .k1-auth__form h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 32px; }
 .k1-auth__lede { font-size: 13px; color: var(--k1-ink-2); margin: 8px 0 31px; }
+.k1-auth__providers { display: grid; gap: 8px; }
 .k1-or { position: relative; display: grid; place-items: center; height: 58px; font-size: 11px; color: var(--k1-muted); }
 .k1-or::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--k1-line); }
 .k1-or span { position: relative; padding: 0 12px; background: var(--k1-surface); }

@@ -7,9 +7,10 @@ type SignInAttempt = NonNullable<ReturnType<typeof useSignIn>['signIn']>
 type SignUpAttempt = NonNullable<ReturnType<typeof useSignUp>['signUp']>
 
 export type CodePurpose = 'signup' | 'device'
+export type OAuthProvider = 'google' | 'microsoft'
 
 export type AuthFlow = {
-  google: (signup: boolean) => Promise<void>
+  oauth: (provider: OAuthProvider, signup: boolean) => Promise<void>
   signIn: (email: string, password: string) => Promise<'done' | 'device'>
   signUp: (email: string, password: string) => Promise<void>
   verify: (purpose: CodePurpose, code: string) => Promise<void>
@@ -59,8 +60,8 @@ export function useClerkFlow(): AuthFlow | null {
     }
 
     return {
-      google: async (signup) => {
-        const params = { strategy: 'oauth_google' as const, redirectUrl: callbackUrl(), redirectUrlComplete: homeUrl() }
+      oauth: async (provider, signup) => {
+        const params = { strategy: `oauth_${provider}` as const, redirectUrl: callbackUrl(), redirectUrlComplete: homeUrl() }
         if (signup) await signUp.authenticateWithRedirect(params)
         else await signIn.authenticateWithRedirect(params)
       },

@@ -8,7 +8,7 @@ import { useCopy, type Copy } from '../i18n'
 import { Collapse } from '../ui/overlay'
 import { Spinner } from '../ui/controls'
 import { go, href } from '../routes'
-import { authError, useClerkFlow, type AuthFlow, type CodePurpose } from '../auth/flow'
+import { authError, useClerkFlow, type AuthFlow, type CodePurpose, type OAuthProvider } from '../auth/flow'
 import { clerkEnabled, previewSession, useSession } from '../auth/session'
 import { TEAM_NAME } from '../auth/team'
 
@@ -36,6 +36,17 @@ function GoogleMark() {
       <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
       <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1z" />
       <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+    </svg>
+  )
+}
+
+function MicrosoftMark() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+      <path fill="#F25022" d="M0 0h10v10H0z" />
+      <path fill="#7FBA00" d="M11 0h10v10H11z" />
+      <path fill="#00A4EF" d="M0 11h10v10H0z" />
+      <path fill="#FFB900" d="M11 11h10v10H11z" />
     </svg>
   )
 }
@@ -215,11 +226,11 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [code, setCode] = useState('')
-  const [busy, setBusy] = useState<null | 'google' | 'submit' | 'resend'>(null)
+  const [busy, setBusy] = useState<null | OAuthProvider | 'submit' | 'resend'>(null)
   const [resent, setResent] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [serverError, setServerError] = useState('')
-  const [deferred, setDeferred] = useState<null | 'google' | 'email'>(null)
+  const [deferred, setDeferred] = useState<null | OAuthProvider | 'email'>(null)
   const noticeRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const ids = { email: useId(), password: useId(), confirm: useId(), code: useId(), rules: useId(), error: useId() }
@@ -269,7 +280,7 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
   ).filter(Boolean) as string[]
   const shownError = attempted && errors.length ? errors[0] : serverError
 
-  const run = async (kind: 'google' | 'submit' | 'resend', task: () => Promise<void>) => {
+  const run = async (kind: OAuthProvider | 'submit' | 'resend', task: () => Promise<void>) => {
     setBusy(kind)
     setServerError('')
     try {
@@ -281,12 +292,12 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
     }
   }
 
-  const google = () => {
+  const oauth = (provider: OAuthProvider) => {
     if (!flow) {
-      if (!live) setDeferred('google')
+      if (!live) setDeferred(provider)
       return
     }
-    void run('google', () => flow.google(signup))
+    void run(provider, () => flow.oauth(provider, signup))
   }
 
   const submit = (event: FormEvent) => {
@@ -406,10 +417,16 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
 
             {step.kind === 'form' && (
               <>
-                <button type="button" className="k1-btn k1-btn--outline k1-btn--block" onClick={google} disabled={locked} aria-busy={busy === 'google'}>
-                  {busy === 'google' ? <Spinner /> : <GoogleMark />}
-                  {signup ? t.auth.googleSignup : t.auth.googleSignin}
-                </button>
+                <div className="k1-auth__providers">
+                  <button type="button" className="k1-btn k1-btn--outline k1-btn--block" onClick={() => oauth('google')} disabled={locked} aria-busy={busy === 'google'}>
+                    {busy === 'google' ? <Spinner /> : <GoogleMark />}
+                    {signup ? t.auth.googleSignup : t.auth.googleSignin}
+                  </button>
+                  <button type="button" className="k1-btn k1-btn--outline k1-btn--block" onClick={() => oauth('microsoft')} disabled={locked} aria-busy={busy === 'microsoft'}>
+                    {busy === 'microsoft' ? <Spinner /> : <MicrosoftMark />}
+                    {signup ? t.auth.microsoftSignup : t.auth.microsoftSignin}
+                  </button>
+                </div>
                 <div className="k1-or"><span>{t.auth.or}</span></div>
               </>
             )}
@@ -480,7 +497,7 @@ function AuthView({ mode, flow }: { mode: Mode; flow: AuthFlow | null }) {
             {!live && (
               <Collapse open={deferred !== null}>
                 <div className="k1-auth__notice" ref={noticeRef} tabIndex={-1} role="status">
-                  <strong>{deferred === 'google' ? t.auth.deferredGoogle : t.auth.deferredEmail}</strong>
+                  <strong>{deferred === 'google' ? t.auth.deferredGoogle : deferred === 'microsoft' ? t.auth.deferredMicrosoft : t.auth.deferredEmail}</strong>
                   <p>{t.auth.deferredBody(signup)}</p>
                   <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={enterPreview}>{t.auth.openPreview}</button>
                 </div>
