@@ -1,7 +1,7 @@
 import { MotionConfig } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { usePlayground } from './data/usePlayground'
-import { AuthPage, SsoCallbackPage } from './pages/AuthPage'
+import { AuthPage, NoTeamPage, SsoCallbackPage } from './pages/AuthPage'
 import { ComparePage } from './pages/ComparePage'
 import { DeployPage } from './pages/DeployPage'
 import { LeadsPage } from './pages/LeadsPage'
@@ -73,7 +73,9 @@ export default function App() {
             ? <SsoCallbackPage />
             : isAuth
               ? <AuthPage mode={route.page as 'signin' | 'signup'} />
-              : authed ? <ErrorBoundary><Workspace compact={compact} /></ErrorBoundary> : <AppSkeleton compact={compact} />}
+              : !authed || session.team === 'loading'
+                ? <AppSkeleton compact={compact} />
+                : session.team === 'none' ? <NoTeamPage /> : <ErrorBoundary><Workspace compact={compact} /></ErrorBoundary>}
         </LayerProvider>
       </div>
     </MotionConfig>

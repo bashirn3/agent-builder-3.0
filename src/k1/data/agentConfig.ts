@@ -269,6 +269,8 @@ export function describeError(error: unknown) {
   if (status) return copy().common.serverError(status[1])
   if (message === 'network_failed') return copy().common.networkError
   if (message === 'muster_failed') return copy().common.musterError
+  if (message === 'signin_required') return copy().common.signinRequired
+  if (message === 'team_required') return copy().common.teamRequired
   return message.replace(/n8n[_\s-]*/gi, '')
 }
 

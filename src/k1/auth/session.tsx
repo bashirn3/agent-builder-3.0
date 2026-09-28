@@ -1,5 +1,5 @@
 import { useAuth, useClerk, useUser } from '@clerk/react'
-import { useJoinTeam } from './team'
+import { useJoinTeam, type TeamStatus } from './team'
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { clearCaches, setActor, setSessionTokenProvider } from '../data/builderApi'
 import { useCopy } from '../i18n'
@@ -13,6 +13,7 @@ export type Session = {
   mode: 'clerk' | 'preview'
   ready: boolean
   signedIn: boolean
+  team: TeamStatus
   user: SessionUser | null
   signOut: () => Promise<void>
 }
@@ -36,12 +37,16 @@ function ClerkSession({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
   const clerk = useClerk()
-  useJoinTeam()
+  const liveTeam = useJoinTeam()
   // Clerk briefly reports "not loaded" while it switches team or session; keep the last known state so the workspace stays mounted.
   const settled = useRef<{ ready: boolean; signedIn: boolean }>({ ready: false, signedIn: false })
   if (isLoaded) settled.current = { ready: true, signedIn: Boolean(isSignedIn) }
   const ready = settled.current.ready
   const signedIn = isLoaded ? Boolean(isSignedIn) : settled.current.signedIn
+  const member = useRef(false)
+  if (!signedIn) member.current = false
+  else if (liveTeam === 'member') member.current = true
+  const team: TeamStatus = member.current ? 'member' : liveTeam
   const value = useMemo<Session>(() => {
     const email = user?.primaryEmailAddress?.emailAddress ?? ''
     const name = user?.fullName?.trim() || email
@@ -49,13 +54,14 @@ function ClerkSession({ children }: { children: ReactNode }) {
       mode: 'clerk',
       ready,
       signedIn,
+      team,
       user: user ? { name, email, initials: initials(user.fullName ?? '', email), imageUrl: user.hasImage ? user.imageUrl : undefined } : null,
       signOut: async () => {
         clearCaches()
         await clerk.signOut()
       },
     }
-  }, [clerk, ready, signedIn, user])
+  }, [clerk, ready, signedIn, team, user])
   useEffect(() => {
     setActor(value.signedIn && value.user ? { name: value.user.name, email: value.user.email } : null)
   }, [value])
@@ -92,6 +98,7 @@ function PreviewSession({ children }: { children: ReactNode }) {
     mode: 'preview',
     ready: true,
     signedIn: active,
+    team: 'member',
     user: active ? { name: t.nav.previewName, email: t.nav.previewNote, initials: 'K1' } : null,
     signOut: async () => previewSession.end(),
   }), [active, t])

@@ -206,15 +206,25 @@ async function secure<T>(action: string, body: Record<string, unknown> = {}, sig
   return data
 }
 
+// Every builder endpoint checks the Clerk session and team, like the customer data endpoint.
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  let token: string | null = null
+  try {
+    token = sessionToken ? await sessionToken() : null
+  } catch {
+    throw new AccessError('signin_required')
+  }
   const response = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
+      ...(token ? { 'X-K1-Session': token } : {}),
       ...init?.headers,
     },
   })
+  if (response.status === 401) throw new AccessError('signin_required')
+  if (response.status === 403) throw new AccessError('team_required')
   if (!response.ok) throw new Error(`request_failed:${response.status}`)
   return await response.json() as T
 }
@@ -327,14 +337,18 @@ export async function loadState({ full = false }: { full?: boolean } = {}): Prom
     try {
       const light = await call<Omit<BuilderState, 'tracking'> | null>(`/state?tenantKey=${TENANT_KEY}&lite=1`)
       if (light && Array.isArray(light.versions)) return { ...light, tracking: true }
-    } catch {
+    } catch (error) {
+      if (error instanceof AccessError) throw error
       markLightUnavailable()
     }
   }
   try {
     const state = await call<Omit<BuilderState, 'tracking'> | null>(`/state?tenantKey=${TENANT_KEY}`)
     if (state && Array.isArray(state.versions)) return { ...state, tracking: true }
-  } catch { /* migration not applied yet: use the original endpoint */ }
+  } catch (error) {
+    if (error instanceof AccessError) throw error
+    /* migration not applied yet: use the original endpoint */
+  }
   const legacy = await call<LegacyConfig>(`/config?tenantKey=${TENANT_KEY}`)
   const versions = legacy.versions.map((version) => ({
     id: version.id,

@@ -325,7 +325,7 @@ export function LeadsPage({ id, compact, notify, onImported }: {
           <div className="k1-leads__status" role="status" aria-live="polite">
             {muster.loading ? (
               <div className="k1-fetch">
-                <div className="k1-fetch__bar" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>
+                <div className="k1-fetch__bar" aria-hidden="true"><span style={{ transform: `scaleX(${percent / 100})` }} /></div>
                 <p className="k1-hint">{t.muster.fetching(formatDate(muster.progress.day, 'fi'), Math.min(muster.progress.done + 1, muster.progress.total), muster.progress.total)}</p>
               </div>
             ) : muster.problem ? (
