@@ -27,7 +27,8 @@ export function HelpDemo({ placement = 'floating' }: { placement?: 'floating' | 
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
       >
-        ?
+        <span aria-hidden="true">?</span>
+        {placement === 'header' && <span className="k1-help-trigger__label" aria-hidden="true">{t.help.open}</span>}
       </button>
       <Dialog open={open} title={t.help.title} onClose={() => setOpen(false)} width={920}>
         <div className="k1-help__embed">
