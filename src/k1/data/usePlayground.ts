@@ -21,6 +21,7 @@ const toOption = (lead: TestLead & { id: string; isClosed: boolean }, sample: bo
   nextInspection: lead.nextInspection,
   lastInspection: lead.lastInspection,
   language: lead.language,
+  phoneNumber: lead.phoneNumber,
   sample,
 })
 

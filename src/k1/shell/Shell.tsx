@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, Users, X } from '../ui/icons'
+import { CalendarDays, ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, Users, X } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { useSession } from '../auth/session'
 import { setUiLang, useCopy, useUiLang } from '../i18n'
@@ -149,6 +149,7 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
           {activityChildren.map((child) => link(child.to, route.page === child.key, t.nav[child.label], true))}
         </div>
       </Collapse>
+      {link({ page: 'calendar' }, route.page === 'calendar', <><CalendarDays size={16} strokeWidth={1.75} />{t.nav.calendar}</>)}
       {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />{t.nav.compare}</>)}
       {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />{t.nav.deploy}</>)}
     </nav>

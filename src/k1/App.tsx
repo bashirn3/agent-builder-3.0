@@ -2,6 +2,7 @@ import { MotionConfig } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { usePlayground } from './data/usePlayground'
 import { AuthPage, NoTeamPage, SsoCallbackPage } from './pages/AuthPage'
+import { CalendarPage } from './pages/CalendarPage'
 import { ComparePage } from './pages/ComparePage'
 import { DeployPage } from './pages/DeployPage'
 import { LeadsPage } from './pages/LeadsPage'
@@ -25,7 +26,7 @@ function Workspace({ compact }: { compact: boolean }) {
   const [filters, setFilters] = useState<ChatFilters>(EMPTY_CHAT_FILTERS)
 
   const t = useCopy()
-  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, deploy: t.nav.deploy, team: t.nav.team }
+  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, calendar: t.nav.calendar, deploy: t.nav.deploy, team: t.nav.team }
   useEffect(() => {
     document.title = `${titles[route.page] ?? 'A-Katsastus'} · A-Katsastus`
   }, [route.page, t])
@@ -35,6 +36,7 @@ function Workspace({ compact }: { compact: boolean }) {
   else if (route.page === 'compare') page = <ComparePage store={playground} />
   else if (route.page === 'chats') page = <TestChatsPage id={route.id} compact={compact} config={playground.config} filters={filters} onFilters={setFilters} notify={push} />
   else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} onImported={playground.refreshLeads} />
+  else if (route.page === 'calendar') page = <CalendarPage notify={push} />
   else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} versionId={route.version} onChanged={(force) => void playground.refresh({ force })} />
 
   else if (route.page === 'team') page = <TeamPage notify={push} />

@@ -36,6 +36,15 @@ export type TemplateLead = {
   nextInspection: string | null
   lastInspection: string | null
   language: string
+  phoneNumber?: string
+}
+
+// Staging chain 91. Only the two K1 stations can be booked.
+export function bookingStationId(name: string): number | null {
+  const text = name.replace(/^SULJETTU\s+/i, '')
+  if (/palokka/i.test(text)) return 256
+  if (/it[aä]harju/i.test(text)) return 241
+  return null
 }
 
 export function fillTemplate(text: string, lead: TemplateLead, lang: Lang = detectLanguage(lead.language)) {
@@ -58,6 +67,8 @@ export function leadContext(lead: TemplateLead, openerLang: Lang) {
     `- Customer's language: ${LANGUAGE_NAMES[lang]}. Reply in ${LANGUAGE_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.`,
     openerLang !== lang && `- The opening message was sent in ${LANGUAGE_NAMES[openerLang]} because no ${LANGUAGE_NAMES[lang]} version exists yet.`,
     station && `- Station: ${station}. Offer this station first for bookings.`,
+    bookingStationId(station) ? `- station_id: ${bookingStationId(station)}` : '- station_id: unknown. Ask whether they want Palokka (256) or Itäharju (241).',
+    lead.phoneNumber && `- Phone: ${lead.phoneNumber}. This phone is the customer's history.`,
     lead.plateNumber && `- Registration: ${lead.plateNumber}`,
     lead.nextInspection && `- Inspection due by: ${formatDate(lead.nextInspection, 'fi')}`,
     lead.lastInspection && `- Last inspection: ${formatDate(lead.lastInspection, 'fi')}`,

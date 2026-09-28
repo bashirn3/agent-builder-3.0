@@ -14,7 +14,8 @@ import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
 import { LanguageTabs, OpenerField, ReminderFields } from './OpenerField'
 import { detectLanguage, type Lang } from '../data/language'
-import { localized, messagesIn, PRIMARY_LANG, withMessages } from '../data/agentConfig'
+import { describeError, localized, messagesIn, PRIMARY_LANG, withMessages } from '../data/agentConfig'
+import { resetCustomer } from '../data/builderApi'
 import { shortStation } from '../data/fixtures'
 import { PromptEditor } from './PromptEditor'
 import { versionHint } from './versionText'
@@ -299,6 +300,75 @@ export function Bubble({ message, onRate }: { message: TestMessage; onRate: (val
   )
 }
 
+function CustomerReset({ phone, onCleared }: { phone: string; onCleared: () => void }) {
+  const t = useCopy()
+  const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const word = t.reset.word
+  const matches = typed.trim().toUpperCase() === word
+
+  const close = () => {
+    if (busy) return
+    setOpen(false)
+    setTyped('')
+    setError('')
+  }
+
+  const confirm = async () => {
+    if (!matches || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const result = await resetCustomer(phone)
+      if (!result.ok) throw new Error('reset_failed')
+      setOpen(false)
+      setTyped('')
+      onCleared()
+    } catch (failure) {
+      setError(t.tester.resetFailed(describeError(failure)))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setOpen(true)}>
+        {t.tester.resetCustomer}
+      </button>
+      <Dialog open={open} title={t.tester.resetTitle} onClose={close} width={480} initialFocus={inputRef}>
+        <div className="k1-form-stack">
+          <p>{t.tester.resetBody}</p>
+          <p className="k1-hint">{phone}</p>
+          <div className="k1-field">
+            <label htmlFor="k1-customer-reset">{t.reset.typeLabel(word)}</label>
+            <input
+              ref={inputRef}
+              id="k1-customer-reset"
+              className="k1-input"
+              value={typed}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => setTyped(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') void confirm() }}
+            />
+          </div>
+          {error && <p className="k1-auth__error" role="alert">{error}</p>}
+        </div>
+        <footer className="k1-dialog__foot">
+          <button type="button" className="k1-btn k1-btn--outline" onClick={close} disabled={busy}>{t.common.cancel}</button>
+          <button type="button" className="k1-btn k1-btn--danger" onClick={() => void confirm()} disabled={!matches || busy} aria-busy={busy}>
+            {busy && <Spinner />}{t.tester.resetConfirm}
+          </button>
+        </footer>
+      </Dialog>
+    </>
+  )
+}
+
 function Tester({ store }: { store: PlaygroundStore }) {
   const t = useCopy()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -374,6 +444,14 @@ function Tester({ store }: { store: PlaygroundStore }) {
           )
         })()}
       </div>
+      {store.lead?.phoneNumber && (
+        <div className="k1-tester__customer">
+          <CustomerReset
+            phone={store.lead.phoneNumber}
+            onCleared={() => { store.resetConversation(); inputRef.current?.focus() }}
+          />
+        </div>
+      )}
       <div className="k1-tester__thread" ref={scrollRef} onScroll={onScroll} aria-live="polite" aria-label={t.tester.conversation}>
         {store.messages.map((message) => (
           <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} />

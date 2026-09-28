@@ -131,6 +131,8 @@ export type TurnInput = {
   masterPrompt: string
   additionalInformation: string
   leadContext?: string
+  phone?: string
+  stationId?: number | null
   history: Array<{ role: 'agent' | 'user'; text: string }>
 }
 
@@ -428,7 +430,7 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     writeLocal(store)
     return { reply: fallbackReply, demo: true, recorded: true, messageId: agentMessage.id, userMessageId: userMessage.id }
   }
-  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null }>('/chat/test', {
+  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null }>('/booking-chat', {
     method: 'POST',
     body: JSON.stringify({
       tenantKey: TENANT_KEY,
@@ -442,6 +444,9 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
       masterPrompt: input.masterPrompt,
       additionalInformation: input.additionalInformation,
       leadContext: input.leadContext ?? '',
+      phone: input.phone ?? '',
+      stationId: input.stationId ?? null,
+      text: [...input.history].reverse().find((message) => message.role === 'user')?.text ?? '',
       messages: input.history.map((message) => ({ role: message.role === 'agent' ? 'assistant' : 'user', content: message.text })),
     }),
   })
@@ -452,6 +457,43 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     messageId: result.messageId ?? null,
     userMessageId: result.userMessageId ?? null,
   }
+}
+
+export type StoredBooking = {
+  id: string
+  phone: string
+  plate: string
+  stationId: number
+  stationName: string
+  groupId: string
+  reservationUid: string
+  bookingNumber: string | null
+  customerUid: string | null
+  startsAt: string
+  endsAt: string | null
+  status: string
+  language: string
+}
+
+export async function listBookings(from: string, to: string, stationId?: number | null) {
+  return call<{ ok: boolean; bookings?: StoredBooking[]; error?: string }>('/booking', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'list', from, to, stationId: stationId ?? null }),
+  })
+}
+
+export async function cancelBooking(eventId: string) {
+  return call<{ ok: boolean; success?: boolean; error?: unknown }>('/booking', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'cancel', event_id: eventId }),
+  })
+}
+
+export async function resetCustomer(phone: string) {
+  return call<{ ok: boolean; cancelled?: Array<{ groupId: string; ok: boolean }>; local?: { removedBookings?: number }; error?: unknown }>('/booking', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'reset', phone }),
+  })
 }
 
 export async function setFeedback(messageId: string, feedback: Feedback): Promise<void> {
