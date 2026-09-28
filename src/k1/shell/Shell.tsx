@@ -7,6 +7,7 @@ import { setUiLang, useCopy, useUiLang } from '../i18n'
 import { go, href, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
+import { HelpDemo } from '../ui/HelpDemo'
 
 export function BrandLogo({ height = 22 }: { height?: number }) {
   return <img className="k1-brand-logo" src="/brand/a-katsastus-logo.jpg" alt="A-Katsastus" height={height} width={Math.round(height * 1024 / 279)} />
@@ -33,16 +34,19 @@ function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () =>
       <a className="k1-header__brand" href={href({ page: 'playground' })} aria-label={t.nav.home}>
         <BrandLogo />
       </a>
-      <button
-        type="button"
-        className="k1-icon-btn k1-header__toggle"
-        aria-label={navOpen ? t.nav.closeNavigation : t.nav.openNavigation}
-        aria-expanded={navOpen}
-        aria-controls="k1-mobile-nav"
-        onClick={onToggle}
-      >
-        {navOpen ? <X size={20} /> : <MenuIcon size={20} />}
-      </button>
+      <div className="k1-header__actions">
+        <HelpDemo placement="header" />
+        <button
+          type="button"
+          className="k1-icon-btn k1-header__toggle"
+          aria-label={navOpen ? t.nav.closeNavigation : t.nav.openNavigation}
+          aria-expanded={navOpen}
+          aria-controls="k1-mobile-nav"
+          onClick={onToggle}
+        >
+          {navOpen ? <X size={20} /> : <MenuIcon size={20} />}
+        </button>
+      </div>
     </header>
   )
 }
@@ -79,6 +83,7 @@ export function Header() {
         <span className="k1-badge">{t.nav.agent}</span>
       </nav>
       <div className="k1-header__end">
+        <HelpDemo placement="header" />
         <LangSwitch />
         <Menu
           label={t.nav.account}

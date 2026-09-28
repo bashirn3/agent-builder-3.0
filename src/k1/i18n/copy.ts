@@ -570,6 +570,13 @@ export const en = {
     swedish: 'Changed Swedish opener',
     none: 'Saved without changes',
   },
+  help: {
+    open: 'Help',
+    title: 'Product demo',
+    frame: 'Interactive product demo',
+    loading: 'Loading demo…',
+    newTab: 'Open in a new tab',
+  },
 }
 
 export type Copy = typeof en
@@ -1137,5 +1144,12 @@ export const fi: Copy = {
     finnish: 'Muutettu suomenkielistä avausviestiä',
     swedish: 'Muutettu ruotsinkielistä avausviestiä',
     none: 'Tallennettu ilman muutoksia',
+  },
+  help: {
+    open: 'Ohje',
+    title: 'Tuote-esittely',
+    frame: 'Interaktiivinen tuote-esittely',
+    loading: 'Ladataan esittelyä…',
+    newTab: 'Avaa uudessa välilehdessä',
   },
 }
