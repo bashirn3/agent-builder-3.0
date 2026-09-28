@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cancelBooking, listBookings, type StoredBooking } from '../data/builderApi'
 import { useCopy } from '../i18n'
-import { Spinner } from '../ui/controls'
+import { Skeleton, Spinner } from '../ui/controls'
 import { describeError as explain } from '../data/agentConfig'
 
 const STATIONS = [
@@ -77,7 +77,6 @@ export function CalendarPage({ notify }: { notify: (toast: { title: string; body
     <div className="k1-page">
       <header className="k1-page__head">
         <h1 className="k1-page-title">{t.calendar.title}</h1>
-        <p className="k1-hint">{t.calendar.note}</p>
       </header>
       <div className="k1-calendar__bar">
         <button type="button" className="k1-btn k1-btn--outline" onClick={() => setWeek(addDays(week, -7))}>{t.calendar.previous}</button>
@@ -92,7 +91,17 @@ export function CalendarPage({ notify }: { notify: (toast: { title: string; body
         </div>
       </div>
       {error && <p className="k1-hint" role="alert">{error}</p>}
-      {loading ? <p className="k1-hint" role="status"><Spinner /> {t.calendar.loading}</p> : (
+      {loading ? (
+        <div className="k1-calendar" role="status" aria-label={t.calendar.loading}>
+          {days.map((day) => (
+            <section key={day.toISOString()} className="k1-calendar__day" aria-hidden="true">
+              <h2>{day.toLocaleDateString('fi-FI', { weekday: 'short', day: 'numeric', month: 'numeric' })}</h2>
+              <Skeleton height={14} width="72%" />
+              <Skeleton height={12} width="48%" />
+            </section>
+          ))}
+        </div>
+      ) : (
         <div className="k1-calendar">
           {days.map((day) => {
             const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Helsinki', year: 'numeric', month: '2-digit', day: '2-digit' }).format(day)
