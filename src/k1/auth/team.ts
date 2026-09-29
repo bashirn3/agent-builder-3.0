@@ -2,8 +2,8 @@ import { useAuth, useOrganizationList } from '@clerk/react'
 import { useEffect, useRef, useState } from 'react'
 
 export const TEAM_NAME = 'K1 Katsastus'
-// Invitations are ordinary members; admin privileges must be granted explicitly in Clerk.
-export const TEAM_ROLE = 'org:member'
+// Everyone invited through the app joins as an admin, so they can invite the next person.
+export const TEAM_ROLE = 'org:admin'
 
 export type TeamStatus = 'loading' | 'member' | 'none'
 
