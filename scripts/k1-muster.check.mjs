@@ -77,7 +77,7 @@ function makeRun(overrides = {}) {
   }
   return async (body) => {
     const input = { first: () => ({ json: { now: NOW, ...body } }) }
-    const out = await node.call({ helpers: { httpRequest } }, input, () => ({ k1_cache: {} }))
+    const out = await node.call({ helpers: { httpRequest } }, input, () => overrides.staticData || { k1_cache: {} })
     return { result: out[0].json, calls }
   }
 }
@@ -284,6 +284,27 @@ test('cancel and reschedule: the agent path only touches bookings the caller own
   assert.equal(move.calls.filter((c) => c.method !== 'GET').length, 0)
   const staff = await makeRun({ handler: ok })({ action: 'cancel', event_id: 'g2|r2|c2' })
   assert.equal(staff.result.ok, true, 'the gated staff path is unchanged')
+})
+
+test('a failed refresh serves the last good station list instead of turning bookable stations into read-only ones', async () => {
+  const staticData = { k1_cache: {} }
+  const first = await makeRun({ staticData })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+  assert.equal(first.result.bookable_by_assistant, true)
+  for (const entry of Object.values(staticData.k1_cache)) entry.at -= 2 * 3600 * 1000
+  const later = await makeRun({ staticData, handler: (o) => { if (o.url.endsWith('/v3/91/Stations')) throw Object.assign(new Error('HTTP 503'), { statusCode: 503 }) } })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+  assert.equal(later.result.bookable_by_assistant, true)
+})
+
+test('rate limits (429) are retried; a persistent one is reported, and a write is never repeated after a real error', async () => {
+  let limited = 0
+  const flaky = await makeRun({ handler: (o) => { if (o.url.includes('/v3/91/Calendar/') && limited++ < 2) throw Object.assign(new Error('HTTP 429'), { statusCode: 429 }) } })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+  assert.equal(flaky.result.ok, true)
+  assert.equal(flaky.calls.filter((c) => c.url.includes('/Calendar/')).length, 3)
+  const stuck = await makeRun({ handler: (o) => { if (o.url.includes('/v3/91/Calendar/')) throw Object.assign(new Error('HTTP 429'), { statusCode: 429 }) } })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+  assert.equal(stuck.result.ok, false)
+  assert.equal(stuck.calls.filter((c) => c.url.includes('/Calendar/')).length, 4)
+  const gone = await makeRun({ handler: (o) => { if (o.method === 'DELETE') throw Object.assign(new Error('HTTP 500'), { statusCode: 500 }) } })({ action: 'cancel', event_id: 'g2|r2|c2' })
+  assert.equal(gone.calls.filter((c) => c.method === 'DELETE').length, 1, 'a 500 on a write is not repeated')
 })
 
 test('station names: Swedish exonyms and Finnish inflections resolve', async () => {

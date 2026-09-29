@@ -424,7 +424,8 @@ def main():
     if args.suite != 'all':
         scenarios = [s for s in scenarios if s['suite'] == args.suite]
     if args.only:
-        scenarios = [s for s in scenarios if args.only in s['id']]
+        wanted = [part for part in args.only.split(',') if part]
+        scenarios = [s for s in scenarios if any(part in s['id'] for part in wanted)]
     if args.repeat > 1:
         scenarios = [dict(s, id=f"{s['id']}#{k}") for s in scenarios for k in range(args.repeat)]
     print(f'{len(scenarios)} scenarios', flush=True)

@@ -50,6 +50,17 @@ def success(turns, tool):
     return None
 
 
+def count_success(turns, tool):
+    total = 0
+    for t in turns:
+        for step in t['steps']:
+            if step['tool'] == tool:
+                data = ok_output(step)
+                if data and (data.get('success') or data.get('ok')) and (tool != 'book_inspection_invite' or data.get('booking_number')):
+                    total += 1
+    return total
+
+
 TIME_COLON = re.compile(r'(?<![\d:.])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])')
 TIME_KLO = re.compile(r'(?:klo|kl\.?|at)\s*([01]?\d|2[0-3])\.([0-5]\d)(?![\d.])', re.I)
 PRICE = re.compile(r'(\d+(?:[.,]\d+)?)\s?(?:€|eur\b|euroa|euros|euro\b)', re.I)
@@ -96,8 +107,9 @@ def evaluate(scenario, turns):
             flags.append(f'{tag} LONG({len(reply)})')
         if '**' in reply or re.search(r'^#{1,4}\s', reply, re.M) or BULLET.search(reply):
             flags.append(f'{tag} MARKDOWN')
-        if BANNED.search(reply):
-            flags.append(f'{tag} BANNED:{BANNED.search(reply).group(0)}')
+        banned = BANNED.search(reply)
+        if banned and not re.search(r"(can(?:'|’)?t|cannot|no|not|don(?:'|’)?t|en voi|ei ole|kan inte|finns inte)\W+(?:\w+\W+){0,4}?(unverified\W+)?" + re.escape(banned.group(0)), reply, re.I):
+            flags.append(f'{tag} BANNED:{banned.group(0)}')
         if reply.count('?') > 2:
             flags.append(f'{tag} MANY_QUESTIONS({reply.count("?")})')
         expected = (langs[i] if langs and i < len(langs) else scenario.get('expect') or lead_lang)
@@ -132,6 +144,8 @@ def evaluate(scenario, turns):
             flags.append(f'CHECK expected one of tools {check[1]}')
         elif kind == 'no_success' and success(turns, check[1]):
             flags.append(f'CHECK {check[1]} succeeded')
+        elif kind == 'max_success' and count_success(turns, check[1]) > check[2]:
+            flags.append(f'CHECK {check[1]} succeeded {count_success(turns, check[1])} times, expected at most {check[2]}')
         elif kind == 'no_tool' and check[1] in used:
             flags.append(f'CHECK unexpected tool {check[1]}')
         elif kind == 'reply' and not any(re.search(check[1], r, re.I) for r in replies):

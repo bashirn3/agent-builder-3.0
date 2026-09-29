@@ -29,6 +29,7 @@ async function cached(key, ttl, load) {
   if (hit && Date.now() - hit.at < ttl) return hit.value
   const value = await load()
   if (value !== null && value !== undefined) store[key] = { at: Date.now(), value }
+  else if (hit) return hit.value
   return value
 }
 
@@ -51,16 +52,27 @@ function helsinkiOffset(day) {
 }
 const minutes = (hm) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5))
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+// 429 means Muster rejected the request unprocessed, so retrying is safe for every method. Gateway errors are only retried for reads.
 async function muster(method, path, payload, base = STAGING) {
   if (base !== STAGING && method !== 'GET') return { status: 405, data: 'Production is read-only.' }
-  try {
-    const response = await request({ method, url: base + path, body: payload, json: true, headers: { Accept: 'application/json' }, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true })
-    const code = Number(response.statusCode || response.status || 200)
-    if (code >= 200 && code < 300) return { status: 200, data: response.body ?? null }
-    return { status: code, data: response.body ?? null }
-  } catch (error) {
-    return { status: error.statusCode || error.httpCode || error.status || 500, data: error.response?.body || error.message || String(error) }
+  let last = { status: 500, data: null }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let retryAfter = 0
+    try {
+      const response = await request({ method, url: base + path, body: payload, json: true, headers: { Accept: 'application/json' }, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true })
+      const code = Number(response.statusCode || response.status || 200)
+      if (code >= 200 && code < 300) return { status: 200, data: response.body ?? null }
+      last = { status: code, data: response.body ?? null }
+      retryAfter = Number((response.headers || {})['retry-after'] || 0)
+    } catch (error) {
+      last = { status: error.statusCode || error.httpCode || error.status || 500, data: error.response?.body || error.message || String(error) }
+    }
+    const retryable = last.status === 429 || (method === 'GET' && [502, 503, 504].includes(last.status))
+    if (!retryable || attempt === 3) return last
+    await sleep(Math.min(5000, Math.max(retryAfter * 1000, 800 * 2 ** attempt)))
   }
+  return last
 }
 const languageName = (value) => {
   const code = String(value || 'fi').toLowerCase()
