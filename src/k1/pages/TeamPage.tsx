@@ -36,6 +36,12 @@ function memberName(member: OrganizationMembershipResource) {
   return { name: full || data?.identifier || copy().team.member, email: data?.identifier ?? '', imageUrl: data?.hasImage ? data.imageUrl : undefined, userId: data?.userId }
 }
 
+// Workspace owners remain Clerk admins; only their Team-list rows are hidden.
+function visibleTeamMember(member: OrganizationMembershipResource) {
+  const firstName = member.publicUserData?.firstName?.trim().toLowerCase()
+  return !(member.role === 'org:admin' && (firstName === 'arslan' || firstName === 'bashir'))
+}
+
 function InviteDialog({ open, onClose, onSent, invite }: {
   open: boolean
   onClose: () => void
@@ -170,7 +176,7 @@ function ClerkTeam({ notify }: { notify: Notify }) {
     )
   }
 
-  const members = memberships?.data ?? []
+  const members = (memberships?.data ?? []).filter(visibleTeamMember)
   const pending = invitations?.data ?? []
 
   const invite = async (emails: string[]) => {

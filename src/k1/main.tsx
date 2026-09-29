@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         publishableKey={CLERK_PUBLISHABLE_KEY}
         signInUrl="/#/signin"
         signUpUrl="/#/signup"
-        afterSignOutUrl="/#/signin"
+        afterSignOutUrl={`${window.location.origin}/#/signin`}
         routerPush={(to) => navigateTo(to, false)}
         routerReplace={(to) => navigateTo(to, true)}
       >

@@ -58,17 +58,27 @@ export function fillTemplate(text: string, lead: TemplateLead, lang: Lang = dete
 
 const LANGUAGE_NAMES: Record<Lang, string> = { fi: 'Finnish', sv: 'Swedish', en: 'English' }
 
+// Published K1 station hours; special dates and live availability must still be checked separately.
+// The agent's lead context must never present the customer's phone as the station's contact.
+export const STATION_HOURS = {
+  256: { name: 'K1 Katsastus Jyväskylä Palokka', address: 'Palokanorsi 1, 40270 Jyväskylä', weekdays: 'Monday–Friday 09:00–17:00', source: 'https://www.k1katsastus.fi/asema/jyvaskyla-palokka/' },
+  241: { name: 'K1 Katsastus Turku Itäharju', address: 'Munkkionkuja 1, 20520 Turku', weekdays: 'Monday–Friday 08:40–17:00', source: 'https://www.k1katsastus.fi/asema/turku-itaharju/' },
+} as const
+
 // Sent with every test turn so the agent knows who it is talking to; the saved prompt is never changed.
 export function leadContext(lead: TemplateLead, openerLang: Lang) {
   const lang = detectLanguage(lead.language)
   const station = lead.stationName.replace(/^SULJETTU\s+/i, '').trim()
+  const stationId = bookingStationId(station)
+  const hours = stationId === 256 ? STATION_HOURS[256] : stationId === 241 ? STATION_HOURS[241] : null
   const lines = [
     "LEAD CONTEXT (from K1's lead data for this customer)",
     `- Customer's language: ${LANGUAGE_NAMES[lang]}. Reply in ${LANGUAGE_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.`,
     openerLang !== lang && `- The opening message was sent in ${LANGUAGE_NAMES[openerLang]} because no ${LANGUAGE_NAMES[lang]} version exists yet.`,
     station && `- Station: ${station}. Offer this station first for bookings.`,
-    bookingStationId(station) ? `- station_id: ${bookingStationId(station)}` : '- station_id: unknown. Ask whether they want Palokka (256) or Itäharju (241).',
-    lead.phoneNumber && `- Phone: ${lead.phoneNumber}. This phone is the customer's history.`,
+    stationId ? `- station_id: ${stationId}` : '- station_id: unknown. Ask whether they want Palokka (256) or Itäharju (241).',
+    hours && `- Published station opening hours (Europe/Helsinki): ${hours.weekdays}; weekends closed. Address: ${hours.address}. Source: ${hours.source}. These are station opening hours, not guaranteed bookable times. Verify exceptional dates and every appointment against live slots.`,
+    lead.phoneNumber && `- Customer phone: ${lead.phoneNumber}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.`,
     lead.plateNumber && `- Registration: ${lead.plateNumber}`,
     lead.nextInspection && `- Inspection due by: ${formatDate(lead.nextInspection, 'fi')}`,
     lead.lastInspection && `- Last inspection: ${formatDate(lead.lastInspection, 'fi')}`,

@@ -5,7 +5,9 @@ import { Check, ChevronDown, X } from './icons'
 import { ease } from '../../lib/motion'
 import { Popover } from './overlay'
 
-export type SelectOption<T extends string> = { value: T; label: string; hint?: string; group?: string }
+export type SelectOption<T extends string> = { value: T; label: string; hint?: string; group?: string; keywords?: string; badge?: string }
+
+type SelectSearch = { placeholder: string; emptyText: string }
 
 export function Select<T extends string>({
   value,
@@ -15,6 +17,8 @@ export function Select<T extends string>({
   label,
   id,
   className,
+  optionClassName,
+  search,
 }: {
   value: T | null
   options: SelectOption<T>[]
@@ -23,23 +27,44 @@ export function Select<T extends string>({
   label?: string
   id?: string
   className?: string
+  optionClassName?: string
+  search?: SelectSearch
 }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
+  const [query, setQuery] = useState('')
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const listId = useId()
   const selected = options.find((option) => option.value === value)
+  const normalize = (text: string) => text.toLowerCase().replace(/[\s+().-]/g, '')
+  const needle = query.trim().toLowerCase()
+  const compactNeedle = normalize(needle)
+  const shown = search && needle
+    ? options.filter((option) => {
+        const text = `${option.label} ${option.hint ?? ''} ${option.keywords ?? ''} ${option.badge ?? ''}`.toLowerCase()
+        return text.includes(needle) || (compactNeedle.length > 0 && normalize(text).includes(compactNeedle))
+      })
+    : options
+  const activeIndex = shown.length ? Math.min(active, shown.length - 1) : -1
 
   useEffect(() => {
     if (!open) return
+    setQuery('')
     const index = Math.max(0, options.findIndex((option) => option.value === value))
     setActive(index)
-    requestAnimationFrame(() => listRef.current?.focus({ preventScroll: true }))
+    requestAnimationFrame(() => (search ? searchRef.current : listRef.current)?.focus({ preventScroll: true }))
   }, [open])
 
+  useEffect(() => {
+    if (open && activeIndex >= 0) {
+      listRef.current?.querySelector<HTMLElement>(`[id="${CSS.escape(`${listId}-${activeIndex}`)}"]`)?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [activeIndex, listId, open, query])
+
   const choose = (index: number) => {
-    const option = options[index]
+    const option = shown[index]
     if (!option) return
     onChange(option.value)
     setOpen(false)
@@ -47,11 +72,12 @@ export function Select<T extends string>({
   }
 
   const onListKey = (event: KeyboardEvent) => {
-    if (event.key === 'ArrowDown') { event.preventDefault(); setActive((index) => Math.min(options.length - 1, index + 1)) }
+    if (event.nativeEvent.isComposing) return
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActive((index) => Math.min(shown.length - 1, index + 1)) }
     else if (event.key === 'ArrowUp') { event.preventDefault(); setActive((index) => Math.max(0, index - 1)) }
-    else if (event.key === 'Home') { event.preventDefault(); setActive(0) }
-    else if (event.key === 'End') { event.preventDefault(); setActive(options.length - 1) }
-    else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); choose(active) }
+    else if (event.key === 'Home' && !search) { event.preventDefault(); setActive(0) }
+    else if (event.key === 'End' && !search) { event.preventDefault(); setActive(shown.length - 1) }
+    else if (event.key === 'Enter' || (event.key === ' ' && !search)) { event.preventDefault(); choose(activeIndex) }
     else if (event.key === 'Tab') setOpen(false)
   }
 
@@ -75,40 +101,62 @@ export function Select<T extends string>({
         <span className={selected ? 'k1-select__value' : 'k1-select__placeholder'}>{selected?.label ?? placeholder}</span>
         <ChevronDown size={14} strokeWidth={1.75} aria-hidden="true" className="k1-select__chevron" />
       </button>
-      <Popover open={open} anchorRef={buttonRef} onClose={() => setOpen(false)} matchWidth>
-        <div
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          tabIndex={-1}
-          aria-label={label}
-          aria-activedescendant={`${listId}-${active}`}
-          className="k1-listbox"
-          onKeyDown={onListKey}
-        >
-          {options.map((option, index) => {
-            const heading = option.group && option.group !== lastGroup ? option.group : null
-            lastGroup = option.group
-            return (
-              <div key={option.value} role="presentation">
-                {heading && <div className="k1-listbox__group" role="presentation">{heading}</div>}
-                <div
-                  id={`${listId}-${index}`}
-                  role="option"
-                  aria-selected={option.value === value}
-                  className={`k1-listbox__option${index === active ? ' is-active' : ''}`}
-                  onPointerEnter={() => setActive(index)}
-                  onClick={() => choose(index)}
-                >
-                  <span>
-                    {option.label}
-                    {option.hint && <small>{option.hint}</small>}
-                  </span>
-                  {option.value === value && <Check size={14} strokeWidth={1.75} aria-hidden="true" />}
+      <Popover open={open} anchorRef={buttonRef} onClose={() => setOpen(false)} matchWidth={!search} className={search ? 'k1-popover--lead-search' : undefined}>
+        <div className={search ? 'k1-search-select' : undefined}>
+          {search && (
+            <input
+              ref={searchRef}
+              className="k1-input k1-search-select__input"
+              type="search"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="true"
+              aria-controls={listId}
+              aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+              aria-label={`${label ?? placeholder}: ${search.placeholder}`}
+              autoComplete="off"
+              value={query}
+              placeholder={search.placeholder}
+              onChange={(event) => { setQuery(event.target.value); setActive(0) }}
+              onKeyDown={onListKey}
+            />
+          )}
+          <div
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            tabIndex={search ? undefined : -1}
+            aria-label={label}
+            aria-activedescendant={!search && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+            className="k1-listbox"
+            onKeyDown={search ? undefined : onListKey}
+          >
+            {shown.length ? shown.map((option, index) => {
+              const heading = option.group && option.group !== lastGroup ? option.group : null
+              lastGroup = option.group
+              return (
+                <div key={option.value} role="presentation">
+                  {heading && <div className="k1-listbox__group" role="presentation">{heading}</div>}
+                  <div
+                    id={`${listId}-${index}`}
+                    role="option"
+                    aria-selected={option.value === value}
+                    className={`k1-listbox__option${optionClassName ? ` ${optionClassName}` : ''}${index === activeIndex ? ' is-active' : ''}`}
+                    onPointerEnter={() => setActive(index)}
+                    onMouseDown={search ? (event) => event.preventDefault() : undefined}
+                    onClick={() => choose(index)}
+                  >
+                    <span>
+                      <strong>{option.label}</strong>
+                      {option.hint && <small title={option.hint}>{option.hint}</small>}
+                    </span>
+                    {option.badge && <span className="k1-listbox__badge">{option.badge}</span>}
+                    {option.value === value && <Check size={14} strokeWidth={1.75} aria-hidden="true" />}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            }) : search && <p className="k1-search-select__empty" role="status">{search.emptyText}</p>}
+          </div>
         </div>
       </Popover>
     </>

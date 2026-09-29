@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
-  ArrowUp, ChevronDown, ChevronRight, FileText, Lock, LockOpen, RefreshCw, RotateCcw, ThumbsDown, ThumbsUp,
+  ArrowUp, ChevronDown, ChevronRight, FileText, Info, Lock, LockOpen, RefreshCw, RotateCcw, ThumbsDown, ThumbsUp,
 } from '../ui/icons'
 import { ease } from '../../lib/motion'
 
@@ -141,6 +141,7 @@ function Inspector({ store, showTitle = true, tab: controlledTab }: { store: Pla
                     label={t.playground.instructionVersion}
                     value={store.versionId ?? 'default'}
                     options={versionOptions}
+                    optionClassName="k1-listbox__option--version"
                     placeholder={t.playground.chooseVersion}
                     onChange={(value) => value !== 'default' && store.loadVersion(value)}
                   />
@@ -268,8 +269,10 @@ const REMINDER_INDEX: Record<string, number> = { reminder_1: 0, reminder_2: 1, r
 
 export function Bubble({ message, onRate }: { message: TestMessage; onRate: (value: 'up' | 'down') => void }) {
   const t = useCopy()
+  const [traceOpen, setTraceOpen] = useState(false)
   const agent = message.role === 'agent'
   const reminder = message.kind && message.kind in REMINDER_INDEX ? t.tester.reminderLabel(REMINDER_INDEX[message.kind]) : null
+  if (!message.text?.trim()) return null
   return (
     <motion.div
       className={`k1-msg k1-msg--${message.role}`}
@@ -287,6 +290,11 @@ export function Bubble({ message, onRate }: { message: TestMessage; onRate: (val
       {agent && !message.opener && !reminder && (
         <div className="k1-msg__meta">
           <span>{relative(message.at)}{message.demo ? t.tester.demoReply : ''}</span>
+          {Boolean(message.toolCalls?.length) && (
+            <button type="button" className="k1-msg__trace-toggle" aria-label={t.tester.toolCalls} aria-expanded={traceOpen} title={t.tester.toolCalls} onClick={() => setTraceOpen((open) => !open)}>
+              <Info size={14} />
+            </button>
+          )}
           <span className="k1-msg__rule" aria-hidden="true" />
           <button type="button" aria-label={t.tester.goodReply} aria-pressed={message.feedback === 'up'} className={message.feedback === 'up' ? 'is-on' : undefined} onClick={() => onRate('up')}>
             <ThumbsUp size={13} strokeWidth={1.75} />
@@ -296,11 +304,21 @@ export function Bubble({ message, onRate }: { message: TestMessage; onRate: (val
           </button>
         </div>
       )}
+      {traceOpen && Boolean(message.toolCalls?.length) && (
+        <div className="k1-msg__trace" aria-label={t.tester.toolCalls}>
+          {message.toolCalls?.map((call, index) => (
+            <div className="k1-msg__trace-item" key={`${call.name}-${index}`}>
+              <strong>{call.name}</strong>
+              {Object.keys(call.params).length ? <dl>{Object.entries(call.params).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl> : <p>{t.tester.noToolParams}</p>}
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   )
 }
 
-function CustomerReset({ phone, onCleared }: { phone: string; onCleared: () => void }) {
+function CustomerReset({ phone, onCleared, spin }: { phone: string | null; onCleared: () => void; spin: number }) {
   const t = useCopy()
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = useState('')
@@ -308,7 +326,7 @@ function CustomerReset({ phone, onCleared }: { phone: string; onCleared: () => v
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const word = t.reset.word
-  const matches = typed.trim().toUpperCase() === word
+  const matches = !phone || typed.trim().toUpperCase() === word
 
   const close = () => {
     if (busy) return
@@ -322,8 +340,10 @@ function CustomerReset({ phone, onCleared }: { phone: string; onCleared: () => v
     setBusy(true)
     setError('')
     try {
-      const result = await resetCustomer(phone)
-      if (!result.ok) throw new Error('reset_failed')
+      if (phone) {
+        const result = await resetCustomer(phone)
+        if (!result.ok) throw new Error('reset_failed')
+      }
       setOpen(false)
       setTyped('')
       onCleared()
@@ -336,32 +356,36 @@ function CustomerReset({ phone, onCleared }: { phone: string; onCleared: () => v
 
   return (
     <>
-      <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setOpen(true)}>
-        {t.tester.resetCustomer}
+      <button type="button" className="k1-icon-btn k1-tester__reset" aria-label={t.tester.resetCustomer} title={t.tester.resetCustomer} onClick={() => setOpen(true)}>
+        <motion.span animate={{ rotate: spin * 180 }} transition={{ duration: 0.4, ease }} style={{ display: 'inline-flex' }}>
+          <RefreshCw size={16} strokeWidth={1.75} />
+        </motion.span>
       </button>
-      <Dialog open={open} title={t.tester.resetTitle} onClose={close} width={480} initialFocus={inputRef}>
+      <Dialog open={open} title={phone ? t.tester.resetTitle : t.tester.newConversation} onClose={close} width={480} initialFocus={phone ? inputRef : undefined}>
         <div className="k1-form-stack">
-          <p>{t.tester.resetBody}</p>
-          <p className="k1-hint">{phone}</p>
-          <div className="k1-field">
-            <label htmlFor="k1-customer-reset">{t.reset.typeLabel(word)}</label>
-            <input
-              ref={inputRef}
-              id="k1-customer-reset"
-              className="k1-input"
-              value={typed}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => setTyped(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter') void confirm() }}
-            />
-          </div>
+          <p>{phone ? t.tester.resetBody : t.tester.resetLocalBody}</p>
+          {phone && <>
+            <p className="k1-hint">{phone}</p>
+            <div className="k1-field">
+              <label htmlFor="k1-customer-reset">{t.reset.typeLabel(word)}</label>
+              <input
+                ref={inputRef}
+                id="k1-customer-reset"
+                className="k1-input"
+                value={typed}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setTyped(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') void confirm() }}
+              />
+            </div>
+          </>}
           {error && <p className="k1-auth__error" role="alert">{error}</p>}
         </div>
         <footer className="k1-dialog__foot">
           <button type="button" className="k1-btn k1-btn--outline" onClick={close} disabled={busy}>{t.common.cancel}</button>
           <button type="button" className="k1-btn k1-btn--danger" onClick={() => void confirm()} disabled={!matches || busy} aria-busy={busy}>
-            {busy && <Spinner />}{t.tester.resetConfirm}
+            {busy && <Spinner />}{phone ? t.tester.resetConfirm : t.tester.resetCustomer}
           </button>
         </footer>
       </Dialog>
@@ -411,47 +435,44 @@ function Tester({ store }: { store: PlaygroundStore }) {
         <span className="k1-tester__avatar"><img src="/brand/k1-katsastus.jpg" alt="" width={26} height={26} /></span>
         <h2>K1 Katsastus</h2>
         {store.dirty && <span className="k1-badge k1-badge--draft" title={t.tester.draftTitle}>{t.common.draft}</span>}
-        <button
-          type="button"
-          className="k1-icon-btn k1-tester__reset"
-          aria-label={t.tester.newConversation}
-          title={t.tester.newConversationShort}
-          onClick={() => { setSpin((turns) => turns + 1); store.resetConversation(); inputRef.current?.focus() }}
-        >
-          <motion.span animate={{ rotate: spin * 180 }} transition={{ duration: 0.4, ease }} style={{ display: 'inline-flex' }}>
-            <RefreshCw size={16} strokeWidth={1.75} />
-          </motion.span>
-        </button>
+        <CustomerReset
+          key={store.lead?.id ?? 'none'}
+          phone={store.lead?.phoneNumber || null}
+          spin={spin}
+          onCleared={() => { setSpin((turns) => turns + 1); store.resetConversation(); inputRef.current?.focus() }}
+        />
       </header>
       <div className="k1-tester__context">
-        <span id="k1-test-lead">{t.tester.testingAs}</span>
-        <Select
-          label={t.tester.leadPicker}
-          className="k1-tester__lead"
-          value={store.lead?.id ?? null}
-          placeholder={t.tester.chooseLead}
-          options={store.leads.map((lead) => ({ value: lead.id, label: `${lead.plateNumber} · ${shortStation(lead.stationName) || t.tester.noStation}`, hint: lead.language || undefined, group: lead.sample ? t.tester.sampleLeads : t.tester.uploadedLeads }))}
-          onChange={(id) => store.setLeadId(id)}
-        />
-        {store.lead && store.draft && (() => {
-          const used = localized(store.draft, store.lead).lang
-          const wanted = detectLanguage(store.lead.language)
-          const name = (code: Lang) => t.opener.languages[code]
-          return (
-            <span className="k1-tag" title={used === wanted ? t.tester.languageUsed : t.tester.languageFallback(wanted, used)}>
-              {name(used)}
-            </span>
-          )
-        })()}
-      </div>
-      {store.lead?.phoneNumber && (
-        <div className="k1-tester__customer">
-          <CustomerReset
-            phone={store.lead.phoneNumber}
-            onCleared={() => { store.resetConversation(); inputRef.current?.focus() }}
+        <span className="k1-tester__context-label">{t.tester.testingAs}</span>
+        <div className="k1-tester__lead-row">
+          <Select
+            label={t.tester.leadPicker}
+            className="k1-tester__lead"
+            optionClassName="k1-listbox__option--lead"
+            value={store.lead?.id ?? null}
+            placeholder={t.tester.chooseLead}
+            search={{ placeholder: t.tester.searchLeads, emptyText: t.tester.noMatchingLeads }}
+            options={store.leads.map((lead) => {
+              const language = detectLanguage(lead.language)
+              return {
+                value: lead.id,
+                label: `${lead.plateNumber} · ${shortStation(lead.stationName) || t.tester.noStation}`,
+                hint: lead.phoneNumber || undefined,
+                badge: t.opener.languages[language],
+                keywords: `${lead.plateNumber} ${lead.phoneNumber ?? ''} ${lead.language ?? ''} ${language}`,
+                group: lead.sample ? t.tester.sampleLeads : t.tester.uploadedLeads,
+              }
+            })}
+            onChange={(id) => store.setLeadId(id)}
           />
+          {store.lead && (() => {
+            const wanted = detectLanguage(store.lead.language)
+            const used = store.draft ? localized(store.draft, store.lead).lang : wanted
+            const status = used === wanted ? t.tester.languageUsed : t.tester.languageFallback(wanted, used)
+            return <span className="k1-tag k1-tester__language" title={status} aria-label={`${t.opener.messageLanguage}: ${t.opener.languages[used]}. ${status}`}>{t.opener.languages[used]}</span>
+          })()}
         </div>
-      )}
+      </div>
       <div className="k1-tester__thread" ref={scrollRef} onScroll={onScroll} aria-live="polite" aria-label={t.tester.conversation}>
         {store.messages.map((message) => (
           <Bubble key={message.id} message={message} onRate={(value) => store.rate(message.id, value)} />

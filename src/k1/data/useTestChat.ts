@@ -1,7 +1,7 @@
 import { copy } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import { describeError, localized, openerPreview, personalize, SAMPLE_LEAD, sendTest, type TestLead, type TestTarget } from './agentConfig'
-import { newId, recordReminder, setFeedback, type ChatSource, type ReminderKind } from './builderApi'
+import { hasVisibleReply, newId, recordReminder, setFeedback, type ChatSource, type ReminderKind, type ToolCall } from './builderApi'
 
 export type TestMessage = {
   id: string
@@ -14,6 +14,7 @@ export type TestMessage = {
   feedback?: 'up' | 'down' | null
   // Id of the stored reply; null when the backend did not record the turn.
   serverId?: string | null
+  toolCalls?: ToolCall[]
 }
 
 function openerMessages(target: TestTarget | null, lead: TestLead): TestMessage[] {
@@ -67,8 +68,9 @@ export function useTestChat(target: TestTarget | null, source: ChatSource, lead:
     try {
       const result = await sendTest(target, history.map(({ role, text: line }) => ({ role, text: line })), { conversationId, source, lead })
       if (conversationId !== conversationRef.current) return
+      if (!hasVisibleReply(result.reply)) throw new Error('empty_agent_reply')
       setMessages((list) => [...list, {
-        id: newId(), role: 'agent', text: result.reply, at: Date.now(), demo: result.demo, feedback: null, serverId: result.messageId,
+        id: newId(), role: 'agent', text: result.reply, at: Date.now(), demo: result.demo, feedback: null, serverId: result.messageId, toolCalls: result.toolCalls,
       }])
     } catch (failure) {
       if (conversationId !== conversationRef.current) return

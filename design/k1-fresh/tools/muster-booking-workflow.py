@@ -1,6 +1,7 @@
 """Creates the K1 Muster booking workflow (staging chain 91) and activates it.
 
 The webhook is public until n8n-gate.py is applied. Run the gate immediately after the staging test.
+Do not rerun this creator against a live workflow; patch the existing gated workflow in place.
 """
 import json, os, re, urllib.request
 
@@ -25,20 +26,51 @@ def request(method, path, body=None):
 
 SHAPE = r"""
 const muster = $('Muster').first().json
+const request = (options) => this.helpers.httpRequest.call(this, options)
 let recorded = false
 let recordError = null
 try {
   const saved = $('Record booking').isExecuted ? $('Record booking').first().json : null
   if (saved) {
-    recordError = saved.message || saved.error || saved.hint || null
+    const raw = saved.message || saved.error || saved.hint || null
+    recordError = raw && typeof raw === 'object' ? (raw.message || raw.description || 'save failed') : raw
     recorded = !recordError && Boolean(saved.id || saved.phoneKey)
   }
 } catch (error) {
   recordError = String(error)
 }
+if (muster.record && !recorded && muster.group_id) {
+  try {
+    await request({ method: 'DELETE', url: 'https://staging-booking-api.muster.fi/v3/91/Reservations/' + muster.group_id + '?sendConfirmation=false', json: true })
+  } catch (error) {}
+  return [{ json: { ok: false, success: false, compensated: true, error: 'The booking was made in Muster but could not be saved, so it was cancelled.', recordError: String(recordError).slice(0, 400) } }]
+}
 const copy = { ...muster }
 delete copy.record
-return [{ json: { ...copy, recorded, recordError } }]
+delete copy.cancelLocal
+return [{ json: { ...copy, recorded, recordError: recordError ? String(recordError).slice(0, 400) : null } }]
+"""
+
+CANCELLATION_RESULT = r"""
+const muster = $('Muster').first().json
+const saved = $input.first().json
+const raw = saved && (saved.message || saved.error || saved.hint)
+const value = typeof saved === 'number' ? saved : saved && (saved.updated ?? saved.count ?? saved.data ?? saved.body ?? saved.result ?? saved.value ?? saved.json)
+let updated = NaN
+try {
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value
+  updated = Number(Array.isArray(parsed) ? parsed[0]?.mark_booking_cancelled : parsed && typeof parsed === 'object' ? parsed.mark_booking_cancelled : parsed)
+} catch (error) {}
+if (raw || !Number.isInteger(updated) || updated < 1) {
+  return [{ json: {
+    ...muster,
+    ok: false,
+    success: false,
+    step: 'mark_booking_cancelled',
+    error: raw ? String(typeof raw === 'object' ? raw.message || raw.description || 'save failed' : raw).slice(0, 400) : 'Booking cancelled in Muster, but the stored booking was not marked cancelled.',
+  } }]
+}
+return [{ json: { ...muster, recorded: true, updated } }]
 """
 
 nodes = [
@@ -53,6 +85,13 @@ nodes = [
     {'id': 'k1-booking-record', 'name': 'Record booking', 'type': 'n8n-nodes-base.httpRequest', 'typeVersion': 4.2, 'position': [1040, 260],
      'onError': 'continueRegularOutput', 'credentials': SUPABASE,
      'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/record_booking', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi', 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ $json.record }}', 'options': {}}},
+    {'id': 'k1-booking-cancel-if', 'name': 'Cancelled in Muster?', 'type': 'n8n-nodes-base.if', 'typeVersion': 2.2, 'position': [1040, 500],
+     'parameters': {'conditions': {'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2}, 'conditions': [{'id': 'cancel', 'leftValue': '={{ $json.cancelLocal && $json.ok ? "yes" : "no" }}', 'rightValue': 'yes', 'operator': {'type': 'string', 'operation': 'equals'}}], 'combinator': 'and'}, 'options': {}}},
+    {'id': 'k1-booking-mark-cancelled', 'name': 'Mark booking cancelled', 'type': 'n8n-nodes-base.httpRequest', 'typeVersion': 4.2, 'position': [1290, 480],
+     'onError': 'continueRegularOutput', 'credentials': SUPABASE,
+     'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/mark_booking_cancelled', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi', 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ { p_tenant_key: "k1_katsastus_demo", p_group_id: $json.group_id } }}', 'options': {}}},
+    {'id': 'k1-booking-cancel-result', 'name': 'Confirm cancellation', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [1500, 480],
+     'parameters': {'mode': 'runOnceForAllItems', 'jsCode': CANCELLATION_RESULT}},
     {'id': 'k1-booking-shape', 'name': 'Shape', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [1300, 360],
      'parameters': {'mode': 'runOnceForAllItems', 'jsCode': SHAPE}},
     {'id': 'k1-booking-web-if', 'name': 'From webhook?', 'type': 'n8n-nodes-base.if', 'typeVersion': 2.2, 'position': [1540, 360],
@@ -66,8 +105,11 @@ connections = {
     'Webhook': {'main': [link('Muster')]},
     'When called by the agent': {'main': [link('Muster')]},
     'Muster': {'main': [link('Save it?')]},
-    'Save it?': {'main': [link('Record booking'), link('Shape')]},
+    'Save it?': {'main': [link('Record booking'), link('Cancelled in Muster?')]},
     'Record booking': {'main': [link('Shape')]},
+    'Cancelled in Muster?': {'main': [link('Mark booking cancelled'), link('Shape')]},
+    'Mark booking cancelled': {'main': [link('Confirm cancellation')]},
+    'Confirm cancellation': {'main': [link('From webhook?')]},
     'Shape': {'main': [link('From webhook?')]},
     'From webhook?': {'main': [link('Respond'), link('Done')]},
 }

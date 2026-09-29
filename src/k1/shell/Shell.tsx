@@ -7,8 +7,6 @@ import { setUiLang, useCopy, useUiLang } from '../i18n'
 import { go, href, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
-import { HelpDemo } from '../ui/HelpDemo'
-
 export function BrandLogo({ height = 22 }: { height?: number }) {
   return <img className="k1-brand-logo" src="/brand/a-katsastus-logo.jpg" alt="A-Katsastus" height={height} width={Math.round(height * 1024 / 279)} />
 }
@@ -35,7 +33,6 @@ function MobileHeader({ navOpen, onToggle }: { navOpen: boolean; onToggle: () =>
         <BrandLogo />
       </a>
       <div className="k1-header__actions">
-        <HelpDemo placement="header" />
         <button
           type="button"
           className="k1-icon-btn k1-header__toggle"
@@ -62,7 +59,7 @@ function useSignOut() {
   const session = useSession()
   return async () => {
     await session.signOut()
-    go({ page: 'signin' })
+    if (window.location.pathname === '/') go({ page: 'signin' }, true)
   }
 }
 
@@ -83,7 +80,6 @@ export function Header() {
         <span className="k1-badge">{t.nav.agent}</span>
       </nav>
       <div className="k1-header__end">
-        <HelpDemo placement="header" />
         <LangSwitch />
         <Menu
           label={t.nav.account}
@@ -149,8 +145,8 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
           {activityChildren.map((child) => link(child.to, route.page === child.key, t.nav[child.label], true))}
         </div>
       </Collapse>
-      {link({ page: 'calendar' }, route.page === 'calendar', <><CalendarDays size={16} strokeWidth={1.75} />{t.nav.calendar}</>)}
       {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />{t.nav.compare}</>)}
+      {link({ page: 'calendar' }, route.page === 'calendar', <><CalendarDays size={16} strokeWidth={1.75} />{t.nav.calendar}</>)}
       {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />{t.nav.deploy}</>)}
     </nav>
   )

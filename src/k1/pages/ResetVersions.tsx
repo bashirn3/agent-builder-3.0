@@ -24,6 +24,9 @@ export function ResetVersions({ config, dirty, notify, onReset }: {
 
   const count = config.versions.length
   const latest = config.versions[0]?.number ?? 1
+  // The existing reset RPC clears the old deployment marker along with requests.
+  // It must not remove a version other than the current saved one.
+  const blockedByLive = count > 1 && config.versions[0]?.id !== config.versions.find((version) => version.active)?.id
   const chats = config.versions.reduce((sum, version) => sum + version.conversations, 0)
   const word = t.reset.word
   const matches = typed.trim().toUpperCase() === word
@@ -36,7 +39,7 @@ export function ResetVersions({ config, dirty, notify, onReset }: {
   }
 
   const confirm = async () => {
-    if (!matches || busy) return
+    if (!matches || busy || blockedByLive) return
     setBusy(true)
     setError('')
     try {
@@ -59,9 +62,9 @@ export function ResetVersions({ config, dirty, notify, onReset }: {
       <div className="k1-danger__card">
         <div className="k1-danger__text">
           <strong>{t.reset.title}</strong>
-          <p>{count > 1 ? t.reset.body : t.reset.onlyOne}</p>
+          <p>{blockedByLive ? t.reset.blockedByLive : count > 1 ? t.reset.body : t.reset.onlyOne}</p>
         </div>
-        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm k1-danger__button" aria-haspopup="dialog" disabled={count <= 1} onClick={() => setOpen(true)}>
+        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm k1-danger__button" aria-haspopup="dialog" disabled={count <= 1 || blockedByLive} onClick={() => setOpen(true)}>
           {t.reset.button}
         </button>
       </div>

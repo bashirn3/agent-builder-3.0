@@ -44,6 +44,7 @@ function Workspace({ compact }: { compact: boolean }) {
   return (
     <>
       <Shell route={route} compact={compact}>{page}</Shell>
+      <HelpDemo />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
   )

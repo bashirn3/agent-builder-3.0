@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cancelBooking, listBookings, type StoredBooking } from '../data/builderApi'
-import { useCopy } from '../i18n'
+import { locale, useCopy } from '../i18n'
+import { ChevronLeft, ChevronRight } from '../ui/icons'
 import { Skeleton, Spinner } from '../ui/controls'
 import { describeError as explain } from '../data/agentConfig'
 
@@ -32,6 +33,15 @@ function helsinkiTime(iso: string) {
   return new Intl.DateTimeFormat('fi-FI', { timeZone: 'Europe/Helsinki', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
 }
 
+// ISO 8601: the Thursday determines the week-numbering year, including year boundaries.
+export function isoWeek(date: Date) {
+  const thursday = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate() + 3 - ((date.getDay() + 6) % 7)))
+  const year = thursday.getUTCFullYear()
+  const firstThursday = new Date(Date.UTC(year, 0, 4))
+  const week = 1 + Math.round(((thursday.getTime() - firstThursday.getTime()) / 86400000 - (3 - ((firstThursday.getUTCDay() + 6) % 7))) / 7)
+  return { year, week }
+}
+
 export function CalendarPage({ notify }: { notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void }) {
   const t = useCopy()
   const [week, setWeek] = useState(() => monday(new Date()))
@@ -42,6 +52,11 @@ export function CalendarPage({ notify }: { notify: (toast: { title: string; body
   const [cancelling, setCancelling] = useState<string | null>(null)
 
   const days = Array.from({ length: 7 }, (_, index) => addDays(week, index))
+  const { year, week: weekNumber } = isoWeek(week)
+  const today = helsinkiDay(new Date().toISOString())
+  const currentWeek = monday(new Date()).getTime() === week.getTime()
+  const startLabel = days[0].toLocaleDateString(locale(), { day: 'numeric', month: 'short', ...(days[0].getFullYear() !== year ? { year: 'numeric' } : {}) })
+  const endLabel = days[6].toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })
 
   const load = () => {
     setLoading(true)
@@ -79,9 +94,15 @@ export function CalendarPage({ notify }: { notify: (toast: { title: string; body
         <h1 className="k1-page-title">{t.calendar.title}</h1>
       </header>
       <div className="k1-calendar__bar">
-        <button type="button" className="k1-btn k1-btn--outline" onClick={() => setWeek(addDays(week, -7))}>{t.calendar.previous}</button>
-        <button type="button" className="k1-btn k1-btn--outline" onClick={() => setWeek(monday(new Date()))}>{t.calendar.thisWeek}</button>
-        <button type="button" className="k1-btn k1-btn--outline" onClick={() => setWeek(addDays(week, 7))}>{t.calendar.next}</button>
+        <div className="k1-calendar__period" aria-live="polite">
+          <h2>{t.calendar.week(weekNumber)} <span>{year}</span></h2>
+          <p>{startLabel} – {endLabel}</p>
+        </div>
+        <div className="k1-calendar__navigation" role="group" aria-label={t.calendar.weekNavigation}>
+          <button type="button" className="k1-calendar__nav-button" aria-label={t.calendar.previous} title={t.calendar.previous} onClick={() => setWeek(addDays(week, -7))}><ChevronLeft size={17} /></button>
+          <button type="button" className="k1-calendar__nav-button" aria-label={t.calendar.next} title={t.calendar.next} onClick={() => setWeek(addDays(week, 7))}><ChevronRight size={17} /></button>
+        </div>
+        <button type="button" className="k1-calendar__today-button" disabled={currentWeek} onClick={() => setWeek(monday(new Date()))}>{t.calendar.thisWeek}</button>
         <div className="k1-segmented" role="group" aria-label={t.calendar.station}>
           {STATIONS.map((option) => (
             <button key={option.label} type="button" className={station === option.id ? 'is-active' : undefined} aria-pressed={station === option.id} onClick={() => setStation(option.id)}>
@@ -90,14 +111,13 @@ export function CalendarPage({ notify }: { notify: (toast: { title: string; body
           ))}
         </div>
       </div>
-      {error && <p className="k1-hint" role="alert">{error}</p>}
+      {error && <p className="k1-calendar__error" role="alert">{error}</p>}
       {loading ? (
         <div className="k1-calendar" role="status" aria-label={t.calendar.loading}>
           {days.map((day) => (
             <section key={day.toISOString()} className="k1-calendar__day" aria-hidden="true">
-              <h2>{day.toLocaleDateString('fi-FI', { weekday: 'short', day: 'numeric', month: 'numeric' })}</h2>
+              <div className="k1-calendar__day-head"><h3><span className="k1-calendar__weekday">{day.toLocaleDateString(locale(), { weekday: 'short' })}</span> <span className="k1-calendar__date">{day.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })}</span></h3></div>
               <Skeleton height={14} width="72%" />
-              <Skeleton height={12} width="48%" />
             </section>
           ))}
         </div>
@@ -105,17 +125,20 @@ export function CalendarPage({ notify }: { notify: (toast: { title: string; body
         <div className="k1-calendar">
           {days.map((day) => {
             const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Helsinki', year: 'numeric', month: '2-digit', day: '2-digit' }).format(day)
-            const items = bookings.filter((booking) => helsinkiDay(booking.startsAt) === key)
+            const items = bookings.filter((booking) => helsinkiDay(booking.startsAt) === key).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
             return (
-              <section key={key} className="k1-calendar__day" aria-label={day.toLocaleDateString('fi-FI', { weekday: 'long', day: 'numeric', month: 'numeric' })}>
-                <h2>{day.toLocaleDateString('fi-FI', { weekday: 'short', day: 'numeric', month: 'numeric' })}</h2>
-                {items.length === 0 && <p className="k1-hint">{t.calendar.empty}</p>}
+              <section key={key} className={`k1-calendar__day${key === today ? ' is-today' : ''}`} aria-label={day.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}>
+                <div className="k1-calendar__day-head">
+                  <h3><span className="k1-calendar__weekday">{day.toLocaleDateString(locale(), { weekday: 'short' })}</span> <span className="k1-calendar__date">{day.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })}</span></h3>
+                  {items.length > 0 && <span className="k1-calendar__count" aria-label={t.calendar.bookingCount(items.length)}>{items.length}</span>}
+                </div>
+                {items.length === 0 && !error && <p className="k1-calendar__empty">{t.calendar.empty}</p>}
                 {items.map((booking) => (
                   <article key={booking.id} className="k1-calendar__booking">
-                    <strong>{helsinkiTime(booking.startsAt)} · {booking.plate}</strong>
-                    <span>{booking.stationName}</span>
-                    <span>{booking.bookingNumber}</span>
-                    <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" disabled={cancelling === booking.id} onClick={() => void cancel(booking)}>
+                    <div className="k1-calendar__booking-head"><time dateTime={booking.startsAt}>{helsinkiTime(booking.startsAt)}</time><strong>{booking.plate}</strong></div>
+                    <span className="k1-calendar__station" title={booking.stationName}>{booking.stationName}</span>
+                    {booking.bookingNumber && <span className="k1-calendar__reference">{booking.bookingNumber}</span>}
+                    <button type="button" className="k1-calendar__cancel" disabled={cancelling === booking.id} aria-label={`${t.calendar.cancel}: ${booking.plate}, ${helsinkiTime(booking.startsAt)}`} onClick={() => void cancel(booking)}>
                       {cancelling === booking.id && <Spinner />}{t.calendar.cancel}
                     </button>
                   </article>

@@ -17,8 +17,6 @@ import { RowCardsSkeleton } from '../ui/skeletons'
 // Flip once the email step in the Deploy Request workflow sends to Wasup.
 const EMAIL_CONNECTED = true
 
-const RECENT = 5
-
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 
 export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
@@ -30,19 +28,19 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
 }) {
   const t = useCopy()
   const [target, setTarget] = useState<AgentVersion | null>(null)
-  const [showAll, setShowAll] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showPastRequests, setShowPastRequests] = useState(false)
   const [sent, setSent] = useState<DeployRequest | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', goLive: '', notes: '', confirmed: false })
+  const [form, setForm] = useState({ name: '', email: '', notes: '', confirmed: false })
   const [attempted, setAttempted] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
-  const goLiveRef = useRef<HTMLInputElement>(null)
-  const { mode, user } = useSession()
+  const { mode, user, isAdmin } = useSession()
   const account = mode === 'clerk' && user ? user : null
-  const ids = { name: useId(), email: useId(), goLive: useId(), notes: useId(), confirm: useId(), error: useId() }
+  const ids = { name: useId(), email: useId(), notes: useId(), confirm: useId(), error: useId() }
 
   const pendingFor = (version: AgentVersion) => config?.deployRequests.find((request) => request.versionId === version.id && request.status === 'requested')
-  const canRequest = (version: AgentVersion) => Boolean(config?.tracking) && !version.live && !pendingFor(version)
+  const canRequest = (version: AgentVersion) => Boolean(config?.tracking) && !pendingFor(version)
 
   useEffect(() => onChanged(), [])
 
@@ -76,11 +74,11 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
         versionId: target.id,
         requestedBy: requester.name,
         email: requester.email,
-        goLive: form.goLive,
+        goLive: '',
         notes: form.notes.trim(),
       })
       setSent(request)
-      setForm({ name: form.name, email: form.email, goLive: '', notes: '', confirmed: false })
+      setForm({ name: form.name, email: form.email, notes: '', confirmed: false })
       onChanged(true)
     } catch (error) {
       notify({ tone: 'error', title: t.deploy.failed, body: t.deploy.failedBody(describeError(error)) })
@@ -89,9 +87,11 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
     }
   }
 
-  const live = config?.liveVersion
-  const hiddenCount = config ? config.versions.filter((version, index) => index >= RECENT && !version.live).length : 0
-  const pending = config?.deployRequests.find((request) => request.status === 'requested')
+  const pending = config?.deployRequests.filter((request) => request.status === 'requested') ?? []
+  const active = config?.versions.find((version) => version.active)
+  const visibleVersions = config?.versions.filter((version) => showHistory || version.active || Boolean(pendingFor(version))) ?? []
+  const hiddenCount = (config?.versions.length ?? 0) - visibleVersions.length
+  const olderRequests = config?.deployRequests.filter((request) => request.status !== 'requested') ?? []
 
   return (
     <div className="k1-deploy">
@@ -99,22 +99,17 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
         <h1 className="k1-deploy__title">{t.deploy.title}</h1>
       </header>
       <div className="k1-deploy__body">
-        <div className="k1-channels">
-          <article className="k1-channel">
-            <div className="k1-channel__top">
-              <span className="k1-channel__tile" aria-hidden="true"><WhatsApp size={26} /></span>
-              {pending && <span className="k1-status k1-status--contacted">{t.deploy.requestedTag(pending.versionNumber)}</span>}
+        <section className="k1-deploy-summary" aria-label={t.deploy.currentStatus}>
+          <div className="k1-deploy-summary__identity"><span className="k1-deploy-summary__mark" aria-hidden="true"><WhatsApp size={21} /></span><span>{t.nav.bookingAgent}</span></div>
+          {!config ? <Skeleton width={220} height={22} /> : (
+            <div className="k1-deploy-summary__main">
+              <div className="k1-deploy-summary__live"><strong>{active ? t.deploy.savedVersion(active.number) : t.deploy.noVersions}</strong></div>
+              <p>{t.deploy.approvedBaseline}</p>
             </div>
-            <div className="k1-channel__text">
-              <h2>WhatsApp</h2>
-              {!config ? <Skeleton width={220} height={14} /> : live ? (
-                <p><span className="k1-live-dot" aria-hidden="true" />{t.deploy.live} <strong>v{live.number}</strong>{config.liveSince ? t.deploy.since(shortDate(config.liveSince)) : ''}</p>
-              ) : (
-                <p>{t.deploy.liveUnknown}</p>
-              )}
-            </div>
-          </article>
-        </div>
+          )}
+          {pending.length > 0 && <p className="k1-deploy-summary__pending">{t.deploy.pendingCount(pending.length)}</p>}
+          <p className="k1-deploy-summary__note">{t.deploy.liveDisclaimer}</p>
+        </section>
 
         {config && !config.tracking && (
           <p className="k1-hint k1-hint--warn">{t.deploy.needsBackend}</p>
@@ -128,14 +123,14 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
           ) : config.versions.length ? (
             <>
             <ul className="k1-versions">
-              {config.versions.filter((version, index) => showAll || index < RECENT || version.live).map((version) => {
+              {visibleVersions.map((version) => {
                 const request = pendingFor(version)
                 return (
-                  <li key={version.id} className={`k1-version${version.live ? ' is-live' : ''}`}>
+                  <li key={version.id} className={`k1-version${version.active ? ' is-live' : ''}`}>
                     <div className="k1-version__main">
                       <div className="k1-version__title">
                         <strong>v{version.number}</strong>
-                        {version.live && <span className="k1-vtag is-live">{t.common.live}</span>}
+                        {version.active && <span className="k1-vtag is-live">{t.deploy.currentVersion}</span>}
                         {request && <span className="k1-vtag is-draft">{t.common.requested}</span>}
                       </div>
                       <p className="k1-version__note">{version.note ? localizeNote(version.note, t) : t.deploy.noNote}</p>
@@ -150,18 +145,18 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                         )}
                       </p>
                     </div>
-                    {!version.live && (
+                    {!request && (
                       <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" aria-haspopup="dialog" disabled={!canRequest(version)} onClick={() => open(version)}>
-                        {request ? t.common.requested : t.deploy.request}
+                        {t.deploy.request}
                       </button>
                     )}
                   </li>
                 )
               })}
             </ul>
-            {hiddenCount > 0 && (
-              <button type="button" className="k1-link k1-versions__more" aria-expanded={showAll} onClick={() => setShowAll((value) => !value)}>
-                {showAll ? t.versions.showFewer : t.versions.showOlder(hiddenCount)}
+            {(hiddenCount > 0 || showHistory) && (
+              <button type="button" className="k1-link k1-versions__more" aria-expanded={showHistory} onClick={() => setShowHistory((value) => !value)}>
+                {showHistory ? t.versions.showFewer : t.versions.showOlder(hiddenCount)}
               </button>
             )}
             </>
@@ -171,9 +166,10 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
         {config && config.deployRequests.length > 0 && (
           <section className="k1-deploy__requests" aria-labelledby="k1-requests-title">
             <h2 id="k1-requests-title" className="k1-section-title">{t.deploy.requests}</h2>
+            {isAdmin && pending.length > 0 && <p className="k1-deploy__admin-note">{t.deploy.adminUnavailable}</p>}
             <ul>
               <AnimatePresence initial={false}>
-                {config.deployRequests.map((request) => (
+                {(showPastRequests ? config.deployRequests : pending).map((request) => (
                   <motion.li key={request.id} className="k1-row-card" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.2, ease }}>
                     <div className="k1-row-card__text">
                       <strong>v{request.versionNumber}</strong>
@@ -182,19 +178,21 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                         {request.goLive ? t.deploy.goLive(request.goLive) : ''}
                         {request.deployedAt ? t.deploy.deployedAt(formatStamp(request.deployedAt)) : ''}
                       </span>
+                      {request.notes && <small className="k1-row-card__note" title={request.notes}>{request.notes}</small>}
                     </div>
                     <span className={`k1-status k1-status--${request.status === 'deployed' ? 'booked' : request.status === 'requested' ? 'contacted' : 'new'}`}>{t.deploy.status[request.status]}</span>
                   </motion.li>
                 ))}
               </AnimatePresence>
             </ul>
+            {olderRequests.length > 0 && <button type="button" className="k1-link k1-versions__more" aria-expanded={showPastRequests} onClick={() => setShowPastRequests((value) => !value)}>{showPastRequests ? t.deploy.hidePastRequests : t.deploy.showPastRequests(olderRequests.length)}</button>}
           </section>
         )}
 
         {config && config.tracking && <ResetVersions config={config} dirty={dirty} notify={notify} onReset={() => onChanged(true)} />}
       </div>
 
-      <Dialog open={Boolean(target)} title={sent ? t.deploy.sentTitle : t.deploy.requestTitle(target?.number ?? '')} onClose={() => setTarget(null)} width={440} initialFocus={sent ? undefined : account ? goLiveRef : nameRef}>
+      <Dialog open={Boolean(target)} title={sent ? t.deploy.sentTitle : t.deploy.requestTitle(target?.number ?? '')} onClose={() => setTarget(null)} width={440} initialFocus={sent || account ? undefined : nameRef}>
         <AnimatePresence mode="wait" initial={false}>
           {sent ? (
             <motion.div key="done" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease }}>
@@ -234,10 +232,6 @@ export function DeployPage({ config, dirty, notify, versionId, onChanged }: {
                     </div>
                   </>
                 )}
-                <div className="k1-field">
-                  <label htmlFor={ids.goLive}>{t.deploy.goLiveDate}</label>
-                  <input ref={goLiveRef} id={ids.goLive} className="k1-input" type="date" value={form.goLive} onChange={(event) => setForm({ ...form, goLive: event.target.value })} />
-                </div>
                 <div className="k1-field">
                   <label htmlFor={ids.notes}>{t.deploy.notes}</label>
                   <textarea id={ids.notes} className="k1-textarea" rows={3} value={form.notes} placeholder={t.deploy.notesPlaceholder} onChange={(event) => setForm({ ...form, notes: event.target.value })} />

@@ -10,7 +10,7 @@ import {
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
-import { matchesFilters, type TestChatSummary } from '../src/k1/data/builderApi.ts'
+import { hasVisibleReply, matchesFilters, requireAgentReply, type TestChatSummary } from '../src/k1/data/builderApi.ts'
 import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
@@ -89,6 +89,13 @@ assert(matchesFilters(chat({}), { ...none, feedback: 'down' }) && !matchesFilter
 assert(!matchesFilters(chat({}), { ...none, source: 'compare' }), 'source filter')
 assert(matchesFilters(chat({}), { ...none, query: 'SATURDAY' }) && !matchesFilters(chat({}), { ...none, query: 'price' }), 'search matches the title, ignoring case')
 assert(!matchesFilters(chat({}), { ...none, from: '2026-09-21T00:00:00.000Z' }), 'date filter')
+for (const empty of [undefined, null, '', '   ', '\n\t', '\u200B\u200D\uFEFF']) {
+  assert(!hasVisibleReply(empty), 'empty and invisible agent replies must be rejected')
+  let rejected = false
+  try { requireAgentReply(empty) } catch (error) { rejected = (error as Error).message === 'empty_agent_reply' }
+  assert(rejected, 'an empty agent reply must trigger a recoverable error')
+}
+assert(requireAgentReply('  Sure, what day works for you?  ') === 'Sure, what day works for you?', 'visible replies are preserved and trimmed')
 const base = { locked: false, masterPrompt: 'a', additional: '', opener: 'hi' }
 assert(describeChanges(base, { ...base, masterPrompt: 'b', opener: 'hey' }) === 'Edited base prompt · Changed English opener', 'change note lists edits')
 assert(describeChanges(base, { ...base, additional: 'Open Mon–Fri.' }) === 'Edited additional instructions', 'change note mentions additional instructions')

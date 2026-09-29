@@ -14,6 +14,7 @@ export type Session = {
   ready: boolean
   signedIn: boolean
   team: TeamStatus
+  isAdmin: boolean
   user: SessionUser | null
   signOut: () => Promise<void>
 }
@@ -34,7 +35,7 @@ function initials(name: string, email: string) {
 }
 
 function ClerkSession({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, orgRole, orgId } = useAuth()
   const { user } = useUser()
   const clerk = useClerk()
   const liveTeam = useJoinTeam()
@@ -55,13 +56,14 @@ function ClerkSession({ children }: { children: ReactNode }) {
       ready,
       signedIn,
       team,
+      isAdmin: signedIn && Boolean(orgId) && orgRole === 'org:admin' && team === 'member',
       user: user ? { name, email, initials: initials(user.fullName ?? '', email), imageUrl: user.hasImage ? user.imageUrl : undefined } : null,
       signOut: async () => {
         clearCaches()
-        await clerk.signOut()
+        await clerk.signOut({ redirectUrl: `${window.location.origin}/#/signin` })
       },
     }
-  }, [clerk, ready, signedIn, team, user])
+  }, [clerk, ready, signedIn, team, user, orgRole, orgId])
   useEffect(() => {
     setActor(value.signedIn && value.user ? { name: value.user.name, email: value.user.email } : null)
   }, [value])
@@ -99,6 +101,7 @@ function PreviewSession({ children }: { children: ReactNode }) {
     ready: true,
     signedIn: active,
     team: 'member',
+    isAdmin: false,
     user: active ? { name: t.nav.previewName, email: t.nav.previewNote, initials: 'K1' } : null,
     signOut: async () => previewSession.end(),
   }), [active, t])

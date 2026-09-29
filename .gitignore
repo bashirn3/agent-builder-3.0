@@ -13,3 +13,5 @@ vite.config.d.ts
 .impeccable/tmp/
 .impeccable/review/
 .impeccable/hook.cache.json
+.vercel/
+design/k1-fresh/tools/__pycache__/

@@ -5,12 +5,13 @@ Usage:
   python3 n8n-gate.py clone <workflowId> <pathSuffix>       gated test copy with suffixed paths, prints its id
   python3 n8n-gate.py delete <workflowId>                   remove a test copy
 
-Reads the n8n API key from ~/.cursor/mcp.json. The check matches the customer data
+Reads the n8n API key from an environment variable or the ignored .env.local file.
+The check matches the customer data
 endpoint (GQP7PPLJQA1Mmz2B): a valid Clerk session from a trusted issuer and one of the allowed teams.
 """
 import json, os, re, sys, urllib.request, uuid
 
-BASE = 'https://n8n-rapid-czbff9cnafhkhmhf.eastus-01.azurewebsites.net/api/v1'
+DEFAULT_BASE = 'https://n8n-rapid-czbff9cnafhkhmhf.eastus-01.azurewebsites.net'
 ALLOWED_TEAMS = ['org_3JnrOo6wYLChqTm3DpvDZXlNgW7', 'org_3JnkbIdnkJiAQQo7qBAh2vtiXSa']
 PROD_ISSUER = 'https://clerk.a-katsastus.wasup.co'
 TRUSTED_ISSUERS = [PROD_ISSUER, 'https://maximum-beetle-5151.clerk.accounts.dev']
@@ -19,14 +20,24 @@ DEV_JWT = {'jwtAuth': {'id': 'NTjMVvR2Igb3bKWr', 'name': 'K1 Clerk sessions (dev
 MARK = ' · Check Access'
 
 
+def local_env():
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '.env.local'))
+    if not os.path.isfile(path):
+        return {}
+    return dict(line.strip().split('=', 1) for line in open(path) if line.startswith('N8N_RAPID_') and '=' in line)
+
+
 def api_key():
-    text = open(os.path.expanduser('~/.cursor/mcp.json')).read()
-    return re.search(r'N8N_API_KEY"?\s*:\s*"([^"]+)', text).group(1)
+    key = os.environ.get('N8N_RAPID_API_KEY') or local_env().get('N8N_RAPID_API_KEY')
+    if not key:
+        raise RuntimeError('N8N_RAPID_API_KEY is missing from environment or .env.local')
+    return key
 
 
 def request(method, path, body=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(BASE + path, data=data, method=method, headers={'X-N8N-API-KEY': api_key(), 'Content-Type': 'application/json'})
+    base = os.environ.get('N8N_RAPID_BASE_URL') or local_env().get('N8N_RAPID_BASE_URL') or DEFAULT_BASE
+    req = urllib.request.Request(base.rstrip('/') + '/api/v1' + path, data=data, method=method, headers={'X-N8N-API-KEY': api_key(), 'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=120) as res:
         raw = res.read()
         return json.loads(raw) if raw else None

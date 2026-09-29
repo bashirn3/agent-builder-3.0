@@ -136,12 +136,24 @@ export type TurnInput = {
   history: Array<{ role: 'agent' | 'user'; text: string }>
 }
 
+export type ToolCall = { name: string; params: Record<string, string> }
+
 export type TurnResult = {
   reply: string
   demo: boolean
   recorded: boolean
   messageId: string | null
   userMessageId: string | null
+  toolCalls: ToolCall[]
+}
+
+export function hasVisibleReply(value: unknown): value is string {
+  return typeof value === 'string' && /[^\s\u200B-\u200D\uFEFF]/u.test(value)
+}
+
+export function requireAgentReply(value: unknown): string {
+  if (!hasVisibleReply(value)) throw new Error('empty_agent_reply')
+  return value.trim()
 }
 
 export type SaveInput = {
@@ -428,9 +440,9 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     chat.messages.push(userMessage, agentMessage)
     chat.conversation.updatedAt = agentMessage.createdAt
     writeLocal(store)
-    return { reply: fallbackReply, demo: true, recorded: true, messageId: agentMessage.id, userMessageId: userMessage.id }
+    return { reply: fallbackReply, demo: true, recorded: true, messageId: agentMessage.id, userMessageId: userMessage.id, toolCalls: [] }
   }
-  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null }>('/booking-chat', {
+  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>('/booking-chat', {
     method: 'POST',
     body: JSON.stringify({
       tenantKey: TENANT_KEY,
@@ -451,11 +463,12 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     }),
   })
   return {
-    reply: result.reply,
+    reply: requireAgentReply(result.reply),
     demo: result.mode === 'demo',
     recorded: Boolean(result.recorded),
     messageId: result.messageId ?? null,
     userMessageId: result.userMessageId ?? null,
+    toolCalls: Array.isArray(result.toolCalls) ? result.toolCalls.filter((call) => call && typeof call.name === 'string' && call.params && typeof call.params === 'object') : [],
   }
 }
 
