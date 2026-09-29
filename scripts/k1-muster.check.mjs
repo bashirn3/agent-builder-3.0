@@ -44,7 +44,7 @@ function calendar() {
 
 function makeRun(overrides = {}) {
   const calls = []
-  const httpRequest = async (options) => {
+  const rawRequest = async (options) => {
     calls.push({ method: options.method, url: options.url, body: options.body })
     const { method, url } = options
     if (overrides.handler) {
@@ -65,6 +65,15 @@ function makeRun(overrides = {}) {
     if (url.endsWith('/Reservations') && method === 'POST') return { reservations: [{ uid: 'u1', bookingNumber: 'B-1' }] }
     if (url.endsWith('/Reservations/confirm')) return {}
     throw fail(404)
+  }
+  const httpRequest = async (options) => {
+    if (!options.returnFullResponse) return rawRequest(options)
+    try {
+      return { statusCode: 200, body: await rawRequest(options) }
+    } catch (error) {
+      if (options.ignoreHttpStatusErrors && error.statusCode) return { statusCode: error.statusCode, body: error.body }
+      throw error
+    }
   }
   return async (body) => {
     const input = { first: () => ({ json: { now: NOW, ...body } }) }
@@ -216,12 +225,23 @@ test('book: sends every product and the vehicle category, and returns a record',
 
 test('book: refuses times outside the opening hours and stations that are not bookable', async () => {
   const run = makeRun()
-  const early = await run({ action: 'book', start_time: '2026-09-30T05:00:00Z|256|2246+2254|M1', phone: '1', rek: 'ABC-123' })
+  const early = await run({ action: 'book', start_time: '2026-09-30T05:00:00Z|256|2246+2254|M1', phone: '1', rek: 'ABC-123', name: 'Test Person' })
   assert.equal(early.result.ok, false)
   assert.match(early.result.error, /outside the station opening hours/)
-  const foreign = await run({ action: 'book', start_time: '2026-09-30T07:00:00Z|1452|22+13|M1', phone: '1', rek: 'ABC-123' })
+  const foreign = await run({ action: 'book', start_time: '2026-09-30T07:00:00Z|1452|22+13|M1', phone: '1', rek: 'ABC-123', name: 'Test Person' })
   assert.equal(foreign.result.ok, false)
   assert.equal(foreign.calls.filter((c) => c.method !== 'GET').length, 0)
+})
+
+test('book: a slot that was just taken is reported as slot_unavailable and nothing else is written', async () => {
+  const taken = (o) => {
+    if (o.url.endsWith('/PendingReservations') && o.method === 'POST') throw Object.assign(new Error('HTTP 400'), { statusCode: 400, body: { error: 'No resource for slot (#stationId 256)', type: 'ArgumentException' } })
+  }
+  const { result, calls } = await makeRun({ handler: taken })({ action: 'book', start_time: '2026-09-30T07:00:00Z|256|2246+2254|M1', phone: '1', rek: 'ABC-123', name: 'Test Person' })
+  assert.equal(result.ok, false)
+  assert.equal(result.slot_unavailable, true)
+  assert.match(result.error, /get_slots again/)
+  assert.equal(calls.filter((c) => c.method !== 'GET' && !c.url.endsWith('/PendingReservations')).length, 0)
 })
 
 test('hours page unreadable: hours are reported as unverified, nothing is invented', async () => {
@@ -231,8 +251,31 @@ test('hours page unreadable: hours are reported as unverified, nothing is invent
   assert.match(result.hours.note, /could not be read/)
 })
 
+test('book: names and plates are sanitised before they reach Muster; garbage plates are refused', async () => {
+  const run = makeRun()
+  const id = '2026-09-30T07:00:00Z|256|2246+2254|M1'
+  const ok = await run({ action: 'book', start_time: id, phone: '1', rek: "abc-123'; DROP TABLE x;--", name: '<script>alert(1)</script> Bob' })
+  const customer = ok.calls.find((c) => c.url.endsWith('/B2CCustomer'))
+  const pending = ok.calls.find((c) => c.url.endsWith('/PendingReservations'))
+  assert.equal(customer.body.firstName, 'alert')
+  assert.ok(!/[<>;'()]/.test(JSON.stringify([customer.body, pending.body])))
+  const bad = await makeRun()({ action: 'book', start_time: id, phone: '1', rek: "';--", name: 'Bob' })
+  assert.equal(bad.result.ok, false)
+  assert.equal(bad.calls.filter((c) => c.method !== 'GET').length, 0)
+  const nameless = await run({ action: 'book', start_time: id, phone: '1', rek: 'ABC-123', name: '<>' })
+  assert.equal(nameless.result.ok, false)
+})
+
+test('station names: Swedish exonyms and Finnish inflections resolve', async () => {
+  const run = makeRun()
+  for (const [query, name] of [['Åbo Itäharju', 'K1 Katsastus Turku Itäharju'], ['Jyväskylän Palokka', 'K1 Katsastus Jyväskylä Palokka']]) {
+    const { result } = await run({ action: 'station_info', station: query, lead_station: PALOKKA })
+    assert.equal(result.station?.name, name, query)
+  }
+})
+
 test('legacy single-product slot ids still parse', async () => {
-  const { result } = await makeRun()({ action: 'book', start_time: '2026-09-30T07:00:00Z|256|2246|M1', phone: '1', rek: 'ABC-123' })
+  const { result } = await makeRun()({ action: 'book', start_time: '2026-09-30T07:00:00Z|256|2246|M1', phone: '1', rek: 'ABC-123', name: 'Test Person' })
   assert.equal(result.ok, true)
 })
 

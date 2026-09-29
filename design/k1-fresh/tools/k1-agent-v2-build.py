@@ -139,6 +139,10 @@ PLAYGROUND_PREAMBLE = (
     "const leadProduct = String(body.product || contextLine('Product on the reminder') || '').trim().toLowerCase()\n"
     "const leadCategory = String(body.vehicleCategory || contextLine('Vehicle category') || '').trim().toUpperCase()",
 )
+PLAYGROUND_OPENER = (
+    "  '[LEAD]',",
+    "  '[OPENER ALREADY SENT TO CUSTOMER]',\n  String(body.opener || ''),\n  'The customer is replying to this message. Do not send the opener again; answer what they said.',\n  '',\n  '[LEAD]',",
+)
 PLAYGROUND_RETURN = (
     "  station_id: body.stationId || null,",
     "  station_id: body.stationId || null,\n  lead_station: String(body.stationName || ''),\n  lead_station_id: body.stationId || '',\n  lead_product: leadProduct,\n  lead_vehicle_category: leadCategory,",
@@ -179,7 +183,7 @@ def build_agent(booking_id):
                 'system message')
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
-            for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
+            for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
                 code = replace_once(code, pair, f'Playground Turn {label}')
             node['parameters']['jsCode'] = code
         if node['name'] == 'Playground reply':

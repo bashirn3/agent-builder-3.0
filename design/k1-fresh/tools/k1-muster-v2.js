@@ -54,10 +54,12 @@ const minutes = (hm) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5))
 async function muster(method, path, payload, base = STAGING) {
   if (base !== STAGING && method !== 'GET') return { status: 405, data: 'Production is read-only.' }
   try {
-    const data = await request({ method, url: base + path, body: payload, json: true, headers: { Accept: 'application/json' }, timeout: 25000 })
-    return { status: 200, data: data ?? null }
+    const response = await request({ method, url: base + path, body: payload, json: true, headers: { Accept: 'application/json' }, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true })
+    const code = Number(response.statusCode || response.status || 200)
+    if (code >= 200 && code < 300) return { status: 200, data: response.body ?? null }
+    return { status: code, data: response.body ?? null }
   } catch (error) {
-    return { status: error.statusCode || error.httpCode || 500, data: error.response?.body || error.message || String(error) }
+    return { status: error.statusCode || error.httpCode || error.status || 500, data: error.response?.body || error.message || String(error) }
   }
 }
 const languageName = (value) => {
@@ -94,15 +96,21 @@ function sourceOf(entry) {
 }
 const bookingLink = (entry) => (entry.k1_id ? `${BOOKING_SITE}/?stationId=${entry.k1_id}&serviceId=1` : null)
 
+const EXONYMS = {
+  uleaborg: 'oulu', abo: 'turku', tammerfors: 'tampere', helsingfors: 'helsinki', bjorneborg: 'pori', vasa: 'vaasa', villmanstrand: 'lappeenranta', kajana: 'kajaani',
+  karleby: 'kokkola', borga: 'porvoo', lahtis: 'lahti', tavastehus: 'hameenlinna', vanda: 'vantaa', esbo: 'espoo', 'sankt michel': 'mikkeli', nystad: 'uusikaupunki',
+  tornea: 'tornio', jakobstad: 'pietarsaari', lovisa: 'loviisa', hango: 'hanko', ekenas: 'tammisaari', lojo: 'lohja', jyvaskyla: 'jyvaskyla', 'st michel': 'mikkeli', gamlakarleby: 'kokkola',
+}
 function candidatesFor(entries, query) {
-  const q = bare(query)
+  let q = bare(query)
+  for (const [from, to] of Object.entries(EXONYMS)) q = q.replace(new RegExp(`\\b${from}\\b`, 'g'), to)
   if (!q) return []
   const exact = entries.filter((e) => bare(e.name) === q || (e.aliases || []).some((a) => bare(a) === q) || fold(e.slug) === q)
   if (exact.length) return exact
   const tokens = q.split(' ').filter((t) => t.length >= 2)
   return entries.filter((e) => {
     const words = `${bare(e.name)} ${fold(e.city)} ${(e.aliases || []).map(bare).join(' ')}`.split(' ')
-    return tokens.every((t) => words.some((w) => w === t || (t.length >= 4 && w.startsWith(t))))
+    return tokens.every((t) => words.some((w) => w === t || (t.length >= 4 && w.startsWith(t)) || (w.length >= 4 && t.length > w.length && t.startsWith(w) && t.length - w.length <= 3)))
   })
 }
 // query: what the customer asked about ('' = their own station); prefer: the lead's station (name or id).
@@ -453,12 +461,14 @@ async function stationInfo() {
 }
 
 // ---------- Booking (staging only) ----------
+const cleanName = (value) => String(value || '').replace(/<[^>]*>/g, ' ').replace(/[^\p{L}\p{M}' .-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
+const cleanPlate = (value) => String(value || '').toUpperCase().replace(/[^A-Z0-9ÅÄÖ-]/g, '').slice(0, 10)
 function customerBody(fields, stationId) {
-  const name = String(fields.name || 'Wasup Testi').trim()
+  const name = cleanName(fields.name) || 'Wasup Testi'
   const bits = name.split(/\s+/)
   return {
     firstName: bits[0] || 'Wasup', lastName: bits.slice(1).join(' ') || 'Testi', email: fields.email || null, phoneNumber: null,
-    receiveSms: false, receiveEmail: false, language: languageName(fields.language), plateNumber: String(fields.rek || fields.plate || '').toUpperCase(), stationId,
+    receiveSms: false, receiveEmail: false, language: languageName(fields.language), plateNumber: cleanPlate(fields.rek || fields.plate), stationId,
   }
 }
 const stationNameById = async (id) => {
@@ -474,17 +484,25 @@ async function insideHours(slot) {
   if (hours.status === 'open') return minutes(local.hm) >= minutes(hours.open) && minutes(local.hm) < minutes(hours.close)
   return true
 }
+const SLOT_TAKEN = 'That time was just taken or is no longer available. Nothing was booked. Call get_slots again and offer the customer other free times (do not send them to the phone for this).'
+function holdFailure(held) {
+  const text = typeof held.data === 'string' ? held.data : JSON.stringify(held.data || '')
+  if (held.status === 400 && /No resource for slot/i.test(text)) return { ok: false, step: 'hold', status: 400, slot_unavailable: true, error: SLOT_TAKEN }
+  if (held.status === 400 && /not sold online/i.test(text)) return { ok: false, step: 'hold', status: 400, error: 'That product cannot be booked online at this station. Ask the customer about the vehicle again or offer another station.' }
+  return { ok: false, step: 'hold', status: held.status, error: text.slice(0, 300) }
+}
 async function book() {
   const slot = parseSlot(body.start_time || body.slot_id)
   if (!slot) return { ok: false, error: 'start_time must be an exact slot_id from get_slots.' }
   if (!(await directory()).some((e) => e.muster_id === slot.stationId)) return { ok: false, error: 'That station cannot be booked through this assistant. Use only slot_id values returned by get_slots.' }
   if (!body.phone) return { ok: false, error: 'phone is required' }
-  const plate = String(body.rek || body.plate || '').trim().toUpperCase()
-  if (!plate) return { ok: false, error: 'plate is required' }
+  const plate = cleanPlate(body.rek || body.plate)
+  if (plate.replace(/[^A-Z0-9ÅÄÖ]/g, '').length < 2) return { ok: false, error: 'A valid registration number is required. Ask the customer for the plate.' }
+  if (!cleanName(body.name)) return { ok: false, error: 'A name is required for the booking. Ask the customer for their name.' }
   if (!(await insideHours(slot))) return { ok: false, error: 'That time is outside the station opening hours. Call get_slots again and offer a listed time.' }
   const time = slot.time.replace('Z', '.000Z')
   const held = await muster('POST', '/PendingReservations', { time, stationId: slot.stationId, productIds: slot.productIds, plateNumber: plate, vehicleCategory: slot.category, groupId: null })
-  if (held.status !== 200) return { ok: false, step: 'hold', status: held.status, error: held.data }
+  if (held.status !== 200) return holdFailure(held)
   const customer = await muster('POST', '/B2CCustomer', customerBody(body, slot.stationId))
   if (customer.status !== 200) return { ok: false, step: 'customer', status: customer.status, error: customer.data, groupId: held.data.groupId }
   const reserved = await muster('POST', '/Reservations', {
@@ -519,10 +537,10 @@ async function moveBooking() {
   if (!slot || !groupId || !reservationUid || !customerUid) return { ok: false, error: 'reschedule needs a new slot_id and the event_id from the booking' }
   if (!(await directory()).some((e) => e.muster_id === slot.stationId)) return { ok: false, error: 'That station cannot be booked through this assistant. Use only slot_id values returned by get_slots.' }
   if (!(await insideHours(slot))) return { ok: false, error: 'That time is outside the station opening hours. Call get_slots again and offer a listed time.' }
-  const plate = String(body.rek || body.plate || '').trim().toUpperCase()
+  const plate = cleanPlate(body.rek || body.plate)
   const time = slot.time.replace('Z', '.000Z')
   const held = await muster('POST', '/PendingReservations', { time, stationId: slot.stationId, productIds: slot.productIds, plateNumber: plate, vehicleCategory: slot.category, groupId })
-  if (held.status !== 200) return { ok: false, step: 'hold', status: held.status, error: held.data }
+  if (held.status !== 200) return holdFailure(held)
   await muster('PUT', `/B2CCustomer/${customerUid}`, customerBody(body, slot.stationId))
   const reserved = await muster('POST', '/Reservations', {
     groupId: held.data.groupId,
