@@ -6,10 +6,13 @@ import assert from 'node:assert/strict'
 const root = new URL('../', import.meta.url)
 const source = fs.readFileSync(new URL('design/k1-fresh/tools/k1-muster-v2.js', root), 'utf8')
 const directory = fs.readFileSync(new URL('design/k1-fresh/data/k1-directory.json', root), 'utf8')
-const code = source.replace('const DIRECTORY = __DIRECTORY__', `const DIRECTORY = ${directory}`)
-assert.ok(!code.includes('__DIRECTORY__'), 'directory placeholder was not replaced')
+const withDirectory = source.replace('const DIRECTORY = __DIRECTORY__', `const DIRECTORY = ${directory}`)
+const code = withDirectory.replace('__STAGING_PROXY__', 'null')
+assert.ok(!code.includes('__DIRECTORY__') && !code.includes('__STAGING_PROXY__'), 'placeholders were not replaced')
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 const node = new AsyncFunction('$input', '$getWorkflowStaticData', code)
+const proxied = { protocol: 'http', host: 'proxy.example', port: 8080, auth: { username: 'u', password: 'p' } }
+const proxiedNode = new AsyncFunction('$input', '$getWorkflowStaticData', withDirectory.replace('__STAGING_PROXY__', JSON.stringify(proxied)))
 
 const NOW = '2026-09-29T08:00:00Z'
 const product = (id, productType, en, fi) => ({ id, productType, name: { en, fi: fi || en, sv: en } })
@@ -45,7 +48,7 @@ function calendar() {
 function makeRun(overrides = {}) {
   const calls = []
   const rawRequest = async (options) => {
-    calls.push({ method: options.method, url: options.url, body: options.body })
+    calls.push({ method: options.method, url: options.url, body: options.body, proxy: options.proxy })
     const { method, url } = options
     if (overrides.handler) {
       const custom = await overrides.handler(options)
@@ -77,7 +80,7 @@ function makeRun(overrides = {}) {
   }
   return async (body) => {
     const input = { first: () => ({ json: { now: NOW, ...body } }) }
-    const out = await node.call({ helpers: { httpRequest } }, input, () => overrides.staticData || { k1_cache: {} })
+    const out = await (overrides.proxy ? proxiedNode : node).call({ helpers: { httpRequest } }, input, () => overrides.staticData || { k1_cache: {} })
     return { result: out[0].json, calls }
   }
 }
@@ -305,6 +308,16 @@ test('rate limits (429) are retried; a persistent one is reported, and a write i
   assert.equal(stuck.calls.filter((c) => c.url.includes('/Calendar/')).length, 4)
   const gone = await makeRun({ handler: (o) => { if (o.method === 'DELETE') throw Object.assign(new Error('HTTP 500'), { statusCode: 500 }) } })({ action: 'cancel', event_id: 'g2|r2|c2' })
   assert.equal(gone.calls.filter((c) => c.method === 'DELETE').length, 1, 'a 500 on a write is not repeated')
+})
+
+test('staging calls go through the proxy when one is configured, production and the K1 site never do', async () => {
+  const direct = await makeRun()({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+  assert.ok(direct.calls.every((c) => !c.proxy))
+  const via = await makeRun({ proxy: true })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+  assert.equal(via.result.ok, true)
+  const staging = via.calls.filter((c) => c.url.includes('staging-booking-api'))
+  assert.ok(staging.length > 0 && staging.every((c) => c.proxy && c.proxy.host === 'proxy.example'))
+  assert.ok(via.calls.filter((c) => !c.url.includes('staging-booking-api')).every((c) => !c.proxy))
 })
 
 test('station names: Swedish exonyms and Finnish inflections resolve', async () => {

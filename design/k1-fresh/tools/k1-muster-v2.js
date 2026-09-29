@@ -5,8 +5,10 @@
 // Two Muster systems, deliberately separated:
 //   staging    (chain 91): the only place a booking is ever created, changed or cancelled.
 //   production (chain 5):  read-only calendar/products/prices, used to describe stations that are not bookable here yet.
-const request = (options) => this.helpers.httpRequest.call(this, options)
 const STAGING = 'https://staging-booking-api.muster.fi/v3/91'
+// Staging calls can be routed through an HTTP proxy (filled in at build time; null means direct).
+const STAGING_PROXY = __STAGING_PROXY__
+const request = (options) => this.helpers.httpRequest.call(this, STAGING_PROXY && String(options.url).startsWith(STAGING) ? { ...options, proxy: STAGING_PROXY } : options)
 const PROD = 'https://a-katsastus-booking-api.muster.fi/v3/5'
 const BOOKING_SITE = 'https://ajanvaraus.k1katsastus.fi'
 const NATIONAL_PHONE = '0306 100 100'

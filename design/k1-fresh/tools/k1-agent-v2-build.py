@@ -41,11 +41,27 @@ SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExe
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
 
 
+def proxy_literal():
+    """K1_STAGING_PROXY_URL (env or .env.local, never committed) as a JS object for n8n's request helper, or null."""
+    from urllib.parse import urlparse
+    url = os.environ.get('K1_STAGING_PROXY_URL') or ''
+    env_file = ROOT.parents[1] / '.env.local'
+    if not url and env_file.is_file():
+        url = next((line.strip().split('=', 1)[1] for line in env_file.read_text().splitlines() if line.startswith('K1_STAGING_PROXY_URL=')), '')
+    if not url:
+        return 'null'
+    parsed = urlparse(url)
+    proxy = {'protocol': parsed.scheme or 'http', 'host': parsed.hostname, 'port': parsed.port}
+    if parsed.username:
+        proxy['auth'] = {'username': parsed.username, 'password': parsed.password or ''}
+    return json.dumps(proxy)
+
+
 def library():
     directory = json.dumps(json.loads((ROOT / 'data/k1-directory.json').read_text()), ensure_ascii=False, separators=(',', ':'))
     code = (HERE / 'k1-muster-v2.js').read_text()
     assert 'const DIRECTORY = __DIRECTORY__' in code
-    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}')
+    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXY__', proxy_literal())
 
 
 def by_name(name):
@@ -88,6 +104,12 @@ return [{ json: { ...original, require_owner: true, owned_bookings: owned, owner
 def harden_booking(nodes, connections):
     """Idempotent: safe retries for the database save, and an ownership lookup before the agent cancels or moves a booking."""
     named = {node['name']: node for node in nodes}
+    proxied = proxy_literal()
+    if proxied != 'null':
+        for node_name in ('Shape', 'Cancel in Muster'):
+            js = named[node_name]['parameters']['jsCode']
+            if 'proxy:' not in js:
+                named[node_name]['parameters']['jsCode'] = js.replace("json: true })", "json: true, proxy: " + proxied + " })")
     record = named['Record booking']
     record.update({'retryOnFail': True, 'maxTries': 3, 'waitBetweenTries': 1500})
     record['parameters'].setdefault('options', {})['timeout'] = 15000
