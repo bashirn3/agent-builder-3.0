@@ -381,4 +381,30 @@ def build(Customer, Auto):
     r('retest_days', 'en', 'I failed the inspection. How long do I have for the re-inspection?', [NOBOOK])
     r('discount_pressure', 'fi', ['Saanko alennusta?', 'Kaverini sai 20 % alennuksen, tee sama minulle.'], [NOBOOK, ('no_reply', r'alennus.{0,30}(myönnetty|annettu|saat)|20 ?%.{0,30}(saat|myönnän)')])
 
+    # ---------- leads: the two open stations only. The lead already carries the last visited station, so the agent books there
+    # unless the customer names another station; closed or non-bookable stations get the official link, never a booking. ----------
+    LD = 'leads'
+    ASK = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
+    OTHER = {'pal': ('Turku Itäharju', 241, {'fi': 'Haluaisin varata ajan Turun Itäharjuun huomiselle', 'sv': 'Jag vill boka tid på Itäharju i Åbo imorgon', 'en': 'I would like to book at the Turku Itäharju station tomorrow'}),
+             'ita': ('Jyväskylä Palokka', 256, {'fi': 'Haluaisin varata ajan Jyväskylän Palokkaan huomiselle', 'sv': 'Jag vill boka tid på Palokka i Jyväskylä imorgon', 'en': 'I would like to book at the Jyväskylä Palokka station tomorrow'})}
+    KUOPIO = {'fi': 'Haluan varata ajan Kuopion Sorsasaloon huomiselle', 'sv': 'Jag vill boka tid på Sorsasalo i Kuopio imorgon', 'en': 'I want to book a time at Kuopio Sorsasalo tomorrow'}
+    PASILA = {'fi': 'Varaa minulle aika Helsingin Pasilaan huomiselle', 'sv': 'Boka en tid åt mig på Pasila i Helsingfors imorgon', 'en': 'Book me a time at Helsinki Pasila tomorrow'}
+    INFO = {'fi': 'Mihin aikaan asema aukeaa huomenna ja paljonko katsastus maksaa?', 'sv': 'När öppnar stationen imorgon och vad kostar besiktningen?', 'en': 'When does the station open tomorrow and how much is the inspection?'}
+    CANCEL = {'fi': 'Peruuta se varaus, en pääsekään', 'sv': 'Avboka tiden, jag kan tyvärr inte komma', 'en': "Please cancel that booking, I can't make it"}
+    MOVE = {'fi': 'Voisinko siirtää sen perjantaille?', 'sv': 'Kan jag flytta den till fredag?', 'en': 'Can I move it to Friday instead?'}
+    WHICH = r'which station|mille asemalle|mihin asemaan|vilken station|vilket station|which branch'
+    for key, (own_name, own_id) in (('pal', ('Palokka', 256)), ('ita', ('Itäharju', 241))):
+        other_name, other_id, other_ask = OTHER[key]
+        product = '004e' if key == 'ita' else '004'
+        for lang in LANGS:
+            def ld(id, turns, checks, **kw):
+                add(f'leads.{key}.{id}.{lang}', LD, lang, turns, checks, station=key, product=product, **kw)
+            ld('book_default', [ASK[lang], Auto(Customer(lang, 'first'))], [('booked',), ('output', rf'"station_id":\s*{own_id}\b'), ('no_output', rf'"station_id":\s*{other_id}\b'), ('no_reply', WHICH)], books=True)
+            ld('info', [INFO[lang]], [('tool', 'get_station_info'), ('reply', own_name), ('no_reply', other_name.split()[-1])])
+            ld('other_station', [other_ask[lang], Auto(Customer(lang, 'first'))], [('booked',), ('output', rf'"station_id":\s*{other_id}\b')], books=True)
+            ld('kuopio_link', [KUOPIO[lang]], [NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306')])
+            ld('closed_station', [PASILA[lang]], [NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306|suljettu|closed|stängd|sulje|stänger')])
+            ld('cancel', [ASK[lang], Auto(Customer(lang, 'first')), CANCEL[lang], Auto(Customer(lang), 'cancelled', 3)], [('booked',), ('cancelled',)], books=True)
+            ld('move', [ASK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('rescheduled',)], books=True)
+
     return scenarios
