@@ -405,6 +405,7 @@ def main():
     parser.add_argument('--only', default='')
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--out', default='')
+    parser.add_argument('--repeat', type=int, default=1)
     args = parser.parse_args()
     if args.command == 'cleanup':
         cleanup()
@@ -417,6 +418,8 @@ def main():
         scenarios = [s for s in scenarios if s['suite'] == args.suite]
     if args.only:
         scenarios = [s for s in scenarios if args.only in s['id']]
+    if args.repeat > 1:
+        scenarios = [dict(s, id=f"{s['id']}#{k}") for s in scenarios for k in range(args.repeat)]
     print(f'{len(scenarios)} scenarios', flush=True)
     state = create_copies(secrets.token_urlsafe(24))
     results = []

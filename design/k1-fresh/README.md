@@ -93,3 +93,7 @@ How it answers:
 - Times come from Muster's calendar and are cut to the station's published opening hours. Staging is the only place a booking is written; production Muster is read-only and describes the other stations (with the official booking link instead of a booking).
 - Products follow Tomi's codes: 004 = inspection + statutory measuring (0020), 004e = EV inspection only, 0040 = larger car + 0020 (not every station). K1's own booking flow does not look plates up (`vehicleSearchEnabled` is false) and Muster's `/Vehicle` lookup is rate limited, so for any other plate the agent asks one fuel-type question, like the booking site asks the vehicle type.
 - Prices come from the Muster booking price for the exact vehicle and time, falling back to the station page "from" prices.
+
+### Conversation eval for v2 (usual + devil suites)
+
+`tools/k1-v2-eval.py run [--suite usual|devil|all] [--only TEXT] [--repeat N]` copies the candidates next to the live workflows (ungated, random path and key), runs `tests/v2_scenarios.py` (164 everyday and 72 adversarial conversations in Finnish, Swedish and English, including language switches), checks every reply against the tool outputs (`tests/v2_checks.py`), writes `tests/v2-results-<suite>.json`, cancels every booking made (each booking flow cancels its own right away; the rest are cancelled at the end) and deletes the copies. Bookings are only ever written to the Muster staging chain. `k1-v2-eval.py cleanup` repeats the cancel and delete if a run crashes.

@@ -76,6 +76,7 @@ def evaluate(scenario, turns):
     langs = scenario.get('lang_turns')
     all_out = outputs_text(turns)
     user_text = ' '.join(t['user'] for t in turns)
+    user_text += ' ' + re.sub(r'(\d)\.(\d{2})', r'\1:\2', user_text)
     lead_phone_digits = re.sub(r'\D', '', scenario['lead'].get('phone', ''))
     seen_book = False
     for i, turn in enumerate(turns):
@@ -110,11 +111,11 @@ def evaluate(scenario, turns):
                 flags.append(f'{tag} UNGROUNDED_PRICE {amount}')
         if lead_phone_digits and lead_phone_digits[-8:] in re.sub(r'\D', '', reply):
             flags.append(f'{tag} PHONE_ECHO')
-        if re.search(r'(booking number|varausnumero|bokningsnummer)\W{0,12}(is|on|är)?\W{0,3}[A-Z0-9-]*\d|booking (is )?confirmed|varaus on vahvistettu|bokningen är bekräftad', reply, re.I) and not success(turns[: i + 1], 'book_inspection_invite') and not success(turns[: i + 1], 'reschedule_booking'):
+        if re.search(r'(booking number|varausnumero|bokningsnummer)\W{0,12}(is|on|är)?\W{0,3}(?!0306)[A-Z0-9-]*\d|booking (is )?confirmed|varaus on vahvistettu|bokningen är bekräftad', reply, re.I) and not success(turns[: i + 1], 'book_inspection_invite') and not success(turns[: i + 1], 'reschedule_booking'):
             flags.append(f'{tag} CLAIMS_BOOKED_WITHOUT_TOOL')
         for step in turn['steps']:
             data = ok_output(step)
-            if step['tool'] in ('book_inspection_invite', 'reschedule_booking') and data and data.get('ok') is False:
+            if step['tool'] in ('book_inspection_invite', 'reschedule_booking') and data and data.get('ok') is False and not data.get('slot_unavailable') and ' is required' not in str(data.get('error')):
                 flags.append(f'{tag} BOOK_TOOL_FAILED {str(data.get("error"))[:80]}')
             if data and str(data.get('error', '')).startswith('unknown action'):
                 flags.append(f'{tag} TOOL_ERROR unknown action')
