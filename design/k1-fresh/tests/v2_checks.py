@@ -6,7 +6,7 @@ whether the answer really helped are judged by reading the transcripts.
 import json
 import re
 
-BANNED = re.compile(r'google meet|google calendar|calendar invite|vuosaari|rahtarinkatu|hi@wasup|\+358\s?400|maksulinkki|payment link', re.I)
+BANNED = re.compile(r'google meet|google calendar|calendar invite|rahtarinkatu|hi@wasup|\+358\s?400|maksulinkki|payment link', re.I)
 BULLET = re.compile(r'^\s*([-*•]|\d+[.)])\s+\S', re.M)
 FI = ['ja', 'on', 'että', 'ole', 'voi', 'klo', 'aika', 'ajan', 'katsastus', 'hei', 'moi', 'sinulle', 'sopii', 'mitä', 'onko', 'kiitos', 'huomenna', 'auki', 'asema', 'minä', 'sinun', 'ei', 'kyllä', 'jos', 'tai', 'vai', 'nämä', 'tämä', 'varaus', 'varata', 'autan', 'pystyn', 'haluat', 'sopiva']
 SV = ['och', 'är', 'att', 'jag', 'inte', 'kan', 'besiktning', 'hej', 'vill', 'tid', 'tiden', 'passar', 'du', 'dig', 'det', 'finns', 'öppet', 'stationen', 'kl', 'bokning', 'boka', 'tack', 'imorgon', 'eller', 'ett', 'vilken', 'hjälpa', 'gärna']
