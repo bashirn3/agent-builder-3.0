@@ -97,3 +97,9 @@ How it answers:
 ### Conversation eval for v2 (usual + devil suites)
 
 `tools/k1-v2-eval.py run [--suite usual|devil|all] [--only TEXT] [--repeat N]` copies the candidates next to the live workflows (ungated, random path and key), runs `tests/v2_scenarios.py` (164 everyday and 72 adversarial conversations in Finnish, Swedish and English, including language switches), checks every reply against the tool outputs (`tests/v2_checks.py`), writes `tests/v2-results-<suite>.json`, cancels every booking made (each booking flow cancels its own right away; the rest are cancelled at the end) and deletes the copies. Bookings are only ever written to the Muster staging chain. `k1-v2-eval.py cleanup` repeats the cancel and delete if a run crashes.
+
+### Version 3 and going live
+
+- `tools/k1-platform-version.py render|show|save` writes the conversational head + business rules v2 as `prompts/k1-platform-v3.json` and saves it as the next platform version (done: version 3, active, lock flag kept).
+- `tools/k1-agent-v2-build.py promote` replaced the live booking and agent workflows with the tested candidates (same paths, ids and names); the previous live workflows are in `backups/`, `rollback` restores them.
+- The 25-scenario final suite (5 each for times, prices, measuring, vehicle type, stations and hours) passed 25/25 against the live workflows.

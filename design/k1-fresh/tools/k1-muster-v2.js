@@ -108,10 +108,14 @@ function candidatesFor(entries, query) {
   const exact = entries.filter((e) => bare(e.name) === q || (e.aliases || []).some((a) => bare(a) === q) || fold(e.slug) === q)
   if (exact.length) return exact
   const tokens = q.split(' ').filter((t) => t.length >= 2)
-  return entries.filter((e) => {
-    const words = `${bare(e.name)} ${fold(e.city)} ${(e.aliases || []).map(bare).join(' ')}`.split(' ')
-    return tokens.every((t) => words.some((w) => w === t || (t.length >= 4 && w.startsWith(t)) || (w.length >= 4 && t.length > w.length && t.startsWith(w) && t.length - w.length <= 3)))
-  })
+  const wordsOf = (e) => `${bare(e.name)} ${fold(e.city)} ${(e.aliases || []).map(bare).join(' ')}`.split(' ')
+  const hit = (words, t) => words.some((w) => w === t || (t.length >= 4 && w.startsWith(t)) || (w.length >= 4 && t.length > w.length && t.startsWith(w) && t.length - w.length <= 3))
+  const strict = entries.filter((e) => tokens.every((t) => hit(wordsOf(e), t)))
+  if (strict.length) return strict
+  // An inflected city ("Turun Itäharju") can fail the strict test while another word names exactly one station.
+  const distinctive = tokens.filter((t) => t.length >= 5 && entries.filter((e) => hit(wordsOf(e), t)).length === 1)
+  if (distinctive.length) return entries.filter((e) => distinctive.every((t) => hit(wordsOf(e), t)))
+  return []
 }
 // query: what the customer asked about ('' = their own station); prefer: the lead's station (name or id).
 async function resolveStation(query, prefer) {
@@ -274,7 +278,7 @@ function pageEstimate(prices, code) {
   const parts = []
   if (code === '004e') { if (electric) parts.push(electric) } else if (code === '0040') { if (large) parts.push(large); if (measuring) parts.push(measuring) } else if (code === '004') { if (base) parts.push(base); if (measuring) parts.push(measuring) }
   if (!parts.length) return null
-  return { eur: parts.reduce((sum, p) => sum + p.eur, 0), parts: parts.map((p) => `${p.service}: ${p.eur} EUR`), note: 'Price shown on the official station page ("from" price, drive-in). The final price is confirmed at the station.' }
+  return { total_from_eur: parts.reduce((sum, p) => sum + p.eur, 0), parts: parts.map((p) => `${p.service}: from ${p.eur} EUR`), note: 'These are "from" prices from the official station page (drive-in), not the price of a booking. Always say "from" / "alk." / "från" with the amount, for the total too. The final price is confirmed at the station.' }
 }
 const VEHICLE_QUESTION = 'The vehicle type is unknown. Ask ONE short question: is the car petrol/diesel/hybrid or fully electric (assume a normal passenger car unless they say van or camper)? Then call again with product 004 (petrol/diesel/hybrid), 004e (fully electric) or 0040 (camper or larger car), and vehicle_category M1 (car/camper) or N1 (van).'
 
@@ -428,9 +432,6 @@ async function stationInfo() {
   }
   if (!page) result.hours.note = 'The live station page could not be read. Say the hours could not be verified right now and point to the official station page.'
   const code = normalizeProduct(body.product || body.lead_product)
-  if (page && page.prices.length) {
-    result.prices_on_station_page = page.prices.slice(0, 10).map((p) => `${p.service}: ${p.eur} EUR`)
-  }
   if (src && !entry.closed) {
     const { category, plan } = await planFor(src, body)
     if (plan.ok) {
@@ -457,6 +458,7 @@ async function stationInfo() {
     const estimate = pageEstimate(page.prices, code)
     if (estimate) result.price_estimate_for_this_vehicle = estimate
   }
+  if (!result.price && page && page.prices.length) result.prices_on_station_page = page.prices.slice(0, 10).map((p) => `${p.service}: ${p.eur} EUR`)
   return result
 }
 

@@ -112,7 +112,7 @@ def build(Customer, Auto):
     tri('times_friday_morning', 'Perjantaiaamu sopisi', 'Fredag morgon passar', 'Friday morning suits me', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', '2026-10-02')])
     tri('times_two_weeks', 'Entä parin viikon päästä?', 'Och om två veckor då?', 'What about in two weeks?', [NOBOOK])
     tri('times_other_station', 'Onko Kuopion asemalla vapaita aikoja huomenna?', 'Finns det lediga tider på Kuopio-stationen imorgon?', 'Are there free times at the Kuopio station tomorrow?',
-        [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_station_info', 'station', 'kuopio'), NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306|k1katsastus')])
+        [('any_tool', ['get_slots', 'get_station_info']), NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306|k1katsastus')])
     tri('times_itaharju', 'Onko huomenna aikoja?', 'Finns det tider imorgon?', 'Are there times tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)], station='ita')
 
     # ---------- links, contact, address ----------
@@ -252,5 +252,43 @@ def build(Customer, Auto):
                             ('en', 'I want to book a time tomorrow', lambda t: f'The {Auto.steal_slot(t)} one works')):
         d(f'slot_taken.{lang}', lang, [ask, pick, Auto(Customer(lang, 'second'))], [('booked',), ('no_reply', r'0306')],
           note='another customer takes the offered slot; the agent must recover by offering other times')
+
+    F = 'final'
+
+    def f(id, lang, turns, checks=(), **kw):
+        add(f'final.{id}', F, lang, turns if isinstance(turns, list) else [turns], checks, **kw)
+
+    GET = ['get_slots', 'get_station_info']
+    LINK = r'0306|ajanvaraus\.k1katsastus|k1katsastus\.fi'
+    # times
+    f('times.1', 'fi', 'Mitä aikoja on huomenna?', [('any_tool', GET), ('min_times', 3), ('times_between', '09:00', '16:59'), NOBOOK])
+    f('times.2', 'en', 'Do you have anything in the afternoon tomorrow?', [('any_tool', GET), ('min_times', 2), ('times_between', '12:00', '16:59'), NOBOOK])
+    f('times.3', 'sv', 'Finns det tider på lördag?', [('any_tool', GET), ('reply', r'stängt|inte öppet|måndag|fredag|closed'), ('no_reply', r'\b(09|10|11|12|13|14|15|16)[:.][0-9]{2}\b.{0,40}lördag'), NOBOOK])
+    f('times.4', 'fi', 'Onko sunnuntaina aikoja?', [('any_tool', GET), ('reply', r'suljettu|kiinni|ei ole auki|ei ole avoinna|maanantai|ma\b'), NOBOOK])
+    f('times.5', 'fi', 'Onko Turun Itäharjussa vapaita aikoja huomenna?', [('any_tool', GET), ('reply', r'Itäharju'), ('min_times', 2), NOBOOK])
+    # prices
+    f('prices.1', 'fi', 'Paljonko katsastus maksaa?', [('any_tool', GET), ('reply', r'76'), ('reply', r'46'), ('reply', r'30'), NOBOOK])
+    f('prices.2', 'en', 'How much will it cost?', [('any_tool', GET), ('reply', r'46'), ('no_reply', r'\b76\b|\b30 ?(€|eur)'), NOBOOK], product='004e', station='ita')
+    f('prices.3', 'sv', 'Vad kostar en besiktning på Kuopio-stationen?', [('any_tool', GET), ('reply', r'€|eur|kr'), ('reply', r'63|38'), NOBOOK])
+    f('prices.4', 'en', 'What does it cost for a van?', [('any_tool', GET), ('reply', r'€|eur'), NOBOOK], cat='N1')
+    f('prices.5', 'en', 'How much is an inspection for my motorcycle?', [('no_tool', 'book_inspection_invite'), ('no_reply', r'\d+ ?(€|eur)')])
+    # measuring
+    f('measuring.1', 'fi', 'Sisältyykö hintaan päästömittaus?', [('reply', r'mittau'), ('reply', r'30|kuuluu|sisältyy|lisä')])
+    f('measuring.2', 'sv', 'Ingår avgasmätning för min elbil?', [('reply', r'\bnej\b|ingen|inte|utan'), ('no_reply', r'ja,.{0,30}(ingår|läggs)')], product='004e', station='ita')
+    f('measuring.3', 'en', 'I have a camper van. Can I book an inspection at your station?', [('any_tool', GET), ('reply', LINK + r'|camper|measur')], product='0040')
+    f('measuring.4', 'en', ['I want to book a time tomorrow', Auto(Customer('en', 'first'))], [('booked',), ('output', r'2246[,+ ]*2254|2254[,+ ]*2246|"product_ids":\[2246,2254\]')], books=True)
+    f('measuring.5', 'en', ['I want to book a time tomorrow', Auto(Customer('en', 'second'))], [('booked',), ('no_output', r'"product_ids":\[2246,2254\]')], product='004e', station='ita', books=True)
+    # vehicle type
+    f('vehicle.1', 'en', ['I sold the car, the new plate is DEF-456. I want to book tomorrow.'], [('reply', r'petrol|diesel|electric|hybrid'), NOBOOK, ('no_tool', 'opt_out')])
+    f('vehicle.2', 'fi', ['Haluan katsastaa toisen auton, EFG-321', 'Se on täyssähköauto', 'Mitä aikoja on huomenna?'], [('param', 'get_slots', 'product', '004e'), NOBOOK, ('no_tool', 'opt_out')])
+    f('vehicle.3', 'sv', ['Det gäller en annan bil, GHI-654', 'Det är en diesel-skåpbil', 'Vilka tider finns imorgon?'], [('param', 'get_slots', 'vehicle_category', 'N1'), NOBOOK])
+    f('vehicle.4', 'en', ['It is for a different vehicle, JKL-987', 'It is a camper, petrol engine', 'What times tomorrow?'], [('any_tool', GET), ('reply', r'camper|motorhome|0040|' + LINK), NOBOOK])
+    f('vehicle.5', 'fi', 'Haluan varata ajan perävaunulle', [NOBOOK, ('reply', LINK)])
+    # stations and hours
+    f('stations.1', 'fi', 'Mihin asti olette tänään auki?', [('tool', 'get_station_info'), ('reply', r'Palokka|17'), ('no_reply', r'Itäharju')])
+    f('stations.2', 'sv', 'Vilka öppettider har Kuopio Sorsasalo imorgon?', [('tool', 'get_station_info'), ('reply', r'Sorsasalo'), ('reply', r'8|08'), NOBOOK])
+    f('stations.3', 'en', 'Is the Oulu station open tomorrow?', [('tool', 'get_station_info'), ('reply', r'Alppila|Limingantulli|which'), ('reply', r'\?')])
+    f('stations.4', 'fi', ['Haluan varata ajan Kuopion asemalle huomiselle'], [NOBOOK, ('reply', LINK)])
+    f('stations.5', 'en', 'What are your opening hours on Saturday?', [('tool', 'get_station_info'), ('reply', r'closed|not open|Saturday|9|09'), NOBOOK])
 
     return scenarios

@@ -8,6 +8,9 @@ Usage:
   python3 k1-agent-v2-build.py build     create or update both candidates (idempotent, by name)
   python3 k1-agent-v2-build.py smoke     run the Code node inside n8n against staging, production (GET only) and the K1 site
   python3 k1-agent-v2-build.py delete    remove both candidates
+  python3 k1-agent-v2-build.py promote   REPLACE the live booking + agent workflows with the candidates (live paths, ids and names are kept);
+                                         the previous live workflows are saved to design/k1-fresh/backups/ first
+  python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -34,7 +37,7 @@ BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
 AGENT_NAME = 'K1 Muster agent v2 (candidate)'
 SUFFIX = '-v2'
 SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow')
-PROMPT_MARKER = '# K1 Muster staging assistant'
+PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
 
 
 def library():
@@ -128,6 +131,23 @@ SLOT_TOOLS = {
     'cancel_booking': 'Cancel an existing booking. event_id is required. sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
 
+LANGUAGE_JS = '''const LANGUAGE_WORDS = {
+  English: 'the a an and or is are was be you your can could would please do does have has what which when where how much many about after before tomorrow today times time day week next book booking me my we our to of for with on at in it this that yes no hi hello thanks thank want need move cancel price cost open close hours station',
+  Swedish: 'och jag det att är på för inte kan vill har vilken vilka vilket imorgon idag tid tider boka bokning vad kostar hur en ett till av som då fredag måndag tisdag onsdag torsdag lördag söndag hej tack ja nej öppet öppettider stationen avboka flytta pris',
+  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika haluan varata varaus kiitos voisinko voidaanko onko olen minä se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi olette',
+}
+const detectLanguage = (value) => {
+  const words = String(value || '').toLowerCase().match(/[\\p{L}]+/gu) || []
+  const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word)).length]).sort((a, b) => b[1] - a[1])
+  return scores[0][1] >= 2 && scores[0][1] > scores[1][1] ? scores[0][0] : ''
+}
+const languageText = String(body.text || (((Array.isArray(body.messages) ? body.messages : []).filter((message) => message.role === 'user').pop()) || {}).content || '')
+const languageHint = detectLanguage(languageText)
+'''
+PLAYGROUND_LANGUAGE = (
+    "  'turn_type: user_message',",
+    "  'turn_type: user_message',\n  languageHint ? `customer_latest_message_language: ${languageHint} (write the whole reply in ${languageHint}, even if earlier turns used another language)` : '',",
+)
 PLAYGROUND_PATCH = (
     "  `station_id: ${body.stationId || 'unknown'}`,",
     "  `station: ${body.stationName || 'unknown'}`,\n  `lead_product: ${leadProduct || 'unknown'}`,\n  `lead_vehicle_category: ${leadCategory || 'unknown'}`,\n  `lead_plate: ${body.plate || ''}`,",
@@ -137,7 +157,7 @@ PLAYGROUND_PREAMBLE = (
     "const phone = String(body.phone || '').trim()\n"
     "const contextLine = (label) => { const hit = String(body.leadContext || '').match(new RegExp(label + ':\\\\s*([A-Za-z0-9]+)', 'i')); return hit ? hit[1] : '' }\n"
     "const leadProduct = String(body.product || contextLine('Product on the reminder') || '').trim().toLowerCase()\n"
-    "const leadCategory = String(body.vehicleCategory || contextLine('Vehicle category') || '').trim().toUpperCase()",
+    "const leadCategory = String(body.vehicleCategory || contextLine('Vehicle category') || '').trim().toUpperCase()\n" + LANGUAGE_JS.rstrip(),
 )
 PLAYGROUND_OPENER = (
     "  '[LEAD]',",
@@ -157,7 +177,10 @@ def replace_once(text, pair, label):
 
 
 def business_prompt(current):
-    head = current.split(PROMPT_MARKER)[0].rstrip()
+    head = current
+    for marker in PROMPT_MARKERS:
+        head = head.split(marker)[0]
+    head = head.rstrip()
     rules = (ROOT / 'prompts/k1-business-prompt-v2.md').read_text().strip()
     return f'{head}\n\n{rules}\n'
 
@@ -183,7 +206,7 @@ def build_agent(booking_id):
                 'system message')
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
-            for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
+            for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
                 code = replace_once(code, pair, f'Playground Turn {label}')
             node['parameters']['jsCode'] = code
         if node['name'] == 'Playground reply':
@@ -290,6 +313,67 @@ def summarise(out):
     return trimmed
 
 
+BACKUPS = ROOT / 'backups'
+LIVE_BOOKING_NAME = 'K1 Muster Booking (staging)'
+
+
+def snapshot(wid):
+    workflow = gate.request('GET', f'/workflows/{wid}')
+    return {k: workflow[k] for k in ('id', 'name', 'nodes', 'connections', 'settings', 'active')}
+
+
+def put_live(wid, body, activate):
+    gate.request('POST', f'/workflows/{wid}/deactivate')
+    gate.request('PUT', f'/workflows/{wid}', {'name': body['name'], 'nodes': body['nodes'], 'connections': body['connections'], 'settings': {k: v for k, v in body['settings'].items() if k in SETTINGS_KEEP}})
+    if activate:
+        gate.request('POST', f'/workflows/{wid}/activate')
+
+
+def transplant(candidate, live, booking_target=None):
+    """Candidate content with the live workflow's webhook paths/ids, name and (for the agent) booking-tool target."""
+    live_hooks = {n['name']: n for n in live['nodes'] if n['type'] == 'n8n-nodes-base.webhook'}
+    nodes = json.loads(json.dumps(candidate['nodes']))
+    for node in nodes:
+        if node['type'] == 'n8n-nodes-base.webhook':
+            source = live_hooks[node['name']]
+            node['parameters']['path'] = source['parameters']['path']
+            node['webhookId'] = source['webhookId']
+        if booking_target and node['type'] == '@n8n/n8n-nodes-langchain.toolWorkflow':
+            node['parameters']['workflowId'].update({'value': booking_target[0], 'cachedResultName': booking_target[1]})
+    text = json.dumps(nodes)
+    assert booking_target is None or candidate_booking_id() not in text, 'candidate booking id left in the agent'
+    return {'name': live['name'], 'nodes': nodes, 'connections': candidate['connections'], 'settings': candidate['settings']}
+
+
+def candidate_booking_id():
+    return by_name(BOOKING_NAME)
+
+
+def promote():
+    booking_id, agent_id = by_name(BOOKING_NAME), by_name(AGENT_NAME)
+    assert booking_id and agent_id, 'build the candidates first'
+    live_booking, live_agent = snapshot(LIVE_BOOKING), snapshot(LIVE_AGENT)
+    BACKUPS.mkdir(exist_ok=True)
+    stamp = time.strftime('%Y%m%d-%H%M%S')
+    (BACKUPS / f'{stamp}-booking.json').write_text(json.dumps(live_booking, ensure_ascii=False))
+    (BACKUPS / f'{stamp}-agent.json').write_text(json.dumps(live_agent, ensure_ascii=False))
+    new_booking = transplant(snapshot(booking_id), live_booking)
+    new_agent = transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name']))
+    put_live(LIVE_BOOKING, new_booking, live_booking['active'])
+    put_live(LIVE_AGENT, new_agent, live_agent['active'])
+    print(f'promoted: backups {stamp}-*.json; live booking {LIVE_BOOKING}, live agent {LIVE_AGENT}')
+
+
+def rollback():
+    stamps = sorted({p.name.split('-booking')[0].split('-agent')[0] for p in BACKUPS.glob('*.json')})
+    assert stamps, 'no backups'
+    stamp = stamps[-1]
+    for wid, kind in ((LIVE_BOOKING, 'booking'), (LIVE_AGENT, 'agent')):
+        body = json.loads((BACKUPS / f'{stamp}-{kind}.json').read_text())
+        put_live(wid, body, body['active'])
+    print('rolled back to', stamp)
+
+
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'build'
     if command == 'build':
@@ -298,6 +382,10 @@ def main():
         print(f'booking candidate {booking}\nagent candidate   {agent}\nplayground path   booking-chat{SUFFIX}')
     elif command == 'smoke':
         smoke()
+    elif command == 'promote':
+        promote()
+    elif command == 'rollback':
+        rollback()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)

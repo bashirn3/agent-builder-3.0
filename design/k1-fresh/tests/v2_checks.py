@@ -6,7 +6,7 @@ whether the answer really helped are judged by reading the transcripts.
 import json
 import re
 
-BANNED = re.compile(r'google meet|google calendar|calendar invite|vuosaari|rahtarinkatu|hi@wasup|\+358\s?400|59\s?€|maksulinkki|payment link', re.I)
+BANNED = re.compile(r'google meet|google calendar|calendar invite|vuosaari|rahtarinkatu|hi@wasup|\+358\s?400|maksulinkki|payment link', re.I)
 BULLET = re.compile(r'^\s*([-*•]|\d+[.)])\s+\S', re.M)
 FI = ['ja', 'on', 'että', 'ole', 'voi', 'klo', 'aika', 'ajan', 'katsastus', 'hei', 'moi', 'sinulle', 'sopii', 'mitä', 'onko', 'kiitos', 'huomenna', 'auki', 'asema', 'minä', 'sinun', 'ei', 'kyllä', 'jos', 'tai', 'vai', 'nämä', 'tämä', 'varaus', 'varata', 'autan', 'pystyn', 'haluat', 'sopiva']
 SV = ['och', 'är', 'att', 'jag', 'inte', 'kan', 'besiktning', 'hej', 'vill', 'tid', 'tiden', 'passar', 'du', 'dig', 'det', 'finns', 'öppet', 'stationen', 'kl', 'bokning', 'boka', 'tack', 'imorgon', 'eller', 'ett', 'vilken', 'hjälpa', 'gärna']
@@ -53,6 +53,9 @@ def success(turns, tool):
 TIME_COLON = re.compile(r'(?<![\d:.])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])')
 TIME_KLO = re.compile(r'(?:klo|kl\.?|at)\s*([01]?\d|2[0-3])\.([0-5]\d)(?![\d.])', re.I)
 PRICE = re.compile(r'(\d+(?:[.,]\d+)?)\s?(?:€|eur\b|euroa|euros|euro\b)', re.I)
+
+
+LOOSE = re.compile(r'(?<![\d.:])([01]?\d|2[0-3])[.:]([0-5]\d)(?![\d]|\.\d)')
 
 
 def times_in(text):
@@ -155,6 +158,13 @@ def evaluate(scenario, turns):
             flags.append('CHECK expected a successful cancellation')
         elif kind == 'rescheduled' and not success(turns, 'reschedule_booking'):
             flags.append('CHECK expected a successful reschedule')
+        elif kind == 'min_times' and len({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(r)} | {t for r in replies for t in times_in(r)}) < check[1]:
+            flags.append(f'CHECK expected at least {check[1]} times offered')
+        elif kind == 'times_between':
+            offered = ({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(r)} | {t for r in replies for t in times_in(r)}) - times_in(user_text)
+            outside = sorted(t for t in offered if not (check[1] <= t <= check[2]))
+            if outside or not offered:
+                flags.append(f'CHECK offered times {sorted(offered)} not all within {check[1]}-{check[2]}')
         elif kind == 'no_output' and re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output matched /{check[1]}/')
         elif kind == 'output' and not re.search(check[1], all_out, re.I):

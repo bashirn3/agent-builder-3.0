@@ -17,6 +17,7 @@ import concurrent.futures
 import copy
 import importlib.util
 import json
+import os
 import threading
 import re
 import secrets
@@ -42,8 +43,8 @@ def load(path, name):
 
 
 gate = load(HERE / 'n8n-gate.py', 'n8n_gate')
-AGENT_NAME = 'K1 Muster agent v2 (candidate)'
-BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
+AGENT_NAME = os.environ.get('K1_EVAL_AGENT', 'K1 Muster agent v2 (candidate)')
+BOOKING_NAME = os.environ.get('K1_EVAL_BOOKING', 'K1 Muster Booking v2 (candidate)')
 
 
 def workflow_id(name):
@@ -190,6 +191,7 @@ OPENERS = {
     'sv': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {plate}. Vill du att jag hjälper dig hitta en tid?',
     'en': 'Hi, this is K1 Katsastus. Your vehicle {plate} is due for inspection soon. Would you like me to find you a time?',
 }
+PLATFORM_FILE = ROOT / 'prompts/k1-platform-v3.json'
 MASTER = """You are the appointment-booking assistant for K1 Katsastus, a Finnish vehicle inspection company.
 
 Ask whether the customer wants to book an inspection and collect the details needed to check availability: registration number, preferred K1 station, preferred date or time window, and contact details when needed.
@@ -197,6 +199,9 @@ Ask whether the customer wants to book an inspection and collect the details nee
 Use connected workflow results for available appointments and booking outcomes. Do not invent inspection deadlines, prices, available appointments, or booking confirmations.
 
 If a required detail is missing, ask one clear follow-up question. If workflow data is unavailable, say so and hand off to staff."""
+
+
+PLATFORM = json.loads(PLATFORM_FILE.read_text()) if os.environ.get('K1_EVAL_MASTER') != 'generic' else {'masterPrompt': MASTER, 'additionalInformation': ''}
 
 
 def lead_context(lead):
@@ -220,7 +225,7 @@ def payload_for(lead, text, conversation_id):
         'text': text, 'messages': [{'role': 'user', 'content': text}], 'phone': lead['phone'], 'stationId': lead.get('sid'), 'stationName': lead['station'],
         'product': lead['product'], 'vehicleCategory': lead['cat'], 'plate': lead['plate'], 'leadContext': lead_context(lead),
         'conversationId': conversation_id, 'versionId': None, 'isDraft': True, 'opener': OPENERS[lead['lang']].format(plate=lead['plate']),
-        'masterPrompt': MASTER, 'additionalInformation': '',
+        'masterPrompt': PLATFORM['masterPrompt'], 'additionalInformation': PLATFORM['additionalInformation'],
     }
 
 

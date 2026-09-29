@@ -131,7 +131,7 @@ test('station_info: with no bookable time the station page gives an approximate 
   const run = makeRun({ handler: (o) => (o.url.includes('/Calendar/') ? [] : undefined) })
   const { result } = await run({ action: 'station_info', station: 'Tampere Sarankulma', product: '004' })
   assert.ok(!result.price)
-  assert.equal(result.price_estimate_for_this_vehicle.eur, 72)
+  assert.equal(result.price_estimate_for_this_vehicle.total_from_eur, 72)
   assert.match(result.price_estimate_for_this_vehicle.note, /from/)
 })
 
@@ -268,7 +268,7 @@ test('book: names and plates are sanitised before they reach Muster; garbage pla
 
 test('station names: Swedish exonyms and Finnish inflections resolve', async () => {
   const run = makeRun()
-  for (const [query, name] of [['Åbo Itäharju', 'K1 Katsastus Turku Itäharju'], ['Jyväskylän Palokka', 'K1 Katsastus Jyväskylä Palokka']]) {
+  for (const [query, name] of [['Åbo Itäharju', 'K1 Katsastus Turku Itäharju'], ['Jyväskylän Palokka', 'K1 Katsastus Jyväskylä Palokka'], ['Turun Itäharju', 'K1 Katsastus Turku Itäharju']]) {
     const { result } = await run({ action: 'station_info', station: query, lead_station: PALOKKA })
     assert.equal(result.station?.name, name, query)
   }
