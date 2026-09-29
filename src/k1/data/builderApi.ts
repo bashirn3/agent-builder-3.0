@@ -32,6 +32,7 @@ export type LeadRow = {
   Language: string
   LastInspection: string
   Reason: string
+  VehicleCategory?: string
 }
 
 export type VersionRecord = {
@@ -133,6 +134,10 @@ export type TurnInput = {
   leadContext?: string
   phone?: string
   stationId?: number | null
+  stationName?: string
+  product?: string
+  vehicleCategory?: string
+  plate?: string
   history: Array<{ role: 'agent' | 'user'; text: string }>
 }
 
@@ -458,6 +463,10 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
       leadContext: input.leadContext ?? '',
       phone: input.phone ?? '',
       stationId: input.stationId ?? null,
+      stationName: input.stationName ?? '',
+      product: input.product ?? '',
+      vehicleCategory: input.vehicleCategory ?? '',
+      plate: input.plate ?? '',
       text: [...input.history].reverse().find((message) => message.role === 'user')?.text ?? '',
       messages: input.history.map((message) => ({ role: message.role === 'agent' ? 'assistant' : 'user', content: message.text })),
     }),
