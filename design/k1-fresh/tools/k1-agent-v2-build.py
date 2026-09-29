@@ -31,6 +31,7 @@ spec = importlib.util.spec_from_file_location('gate', HERE / 'n8n-gate.py')
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
+BACKUPS = ROOT / 'backups'
 LIVE_BOOKING = 'wAE7EHLyJk6JsMue'
 LIVE_AGENT = 'w8a9S1uxB5U9qnNO'
 BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
@@ -77,14 +78,55 @@ def suffix_webhooks(nodes, owner):
             node['webhookId'] = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{owner}/{node['name']}"))
 
 
+OWNER_ATTACH_JS = """const original = $('When called by the agent').first().json
+const rows = $input.all().flatMap((item) => (Array.isArray(item.json) ? item.json : [item.json]))
+const failed = rows.some((row) => row && (row.message || row.error || row.code) && !row.groupId)
+const owned = rows.filter((row) => row && row.groupId && row.status === 'confirmed').map((row) => row.groupId)
+return [{ json: { ...original, require_owner: true, owned_bookings: owned, owner_lookup_failed: failed } }]"""
+
+
+def harden_booking(nodes, connections):
+    """Idempotent: safe retries for the database save, and an ownership lookup before the agent cancels or moves a booking."""
+    named = {node['name']: node for node in nodes}
+    record = named['Record booking']
+    record.update({'retryOnFail': True, 'maxTries': 3, 'waitBetweenTries': 1500})
+    record['parameters'].setdefault('options', {})['timeout'] = 15000
+    if 'Needs ownership?' in named:
+        return
+    trigger = named['When called by the agent']
+    x, y = trigger['position']
+    uid = lambda name: str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-booking-owner/{name}'))
+    nodes.append({'id': uid('if'), 'name': 'Needs ownership?', 'type': 'n8n-nodes-base.if', 'typeVersion': 2.2, 'position': [x + 140, y + 200], 'parameters': {
+        'conditions': {'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
+                       'conditions': [{'id': 'own', 'leftValue': '={{ ["cancel", "reschedule"].includes($json.action) ? "yes" : "no" }}', 'rightValue': 'yes', 'operator': {'type': 'string', 'operation': 'equals'}}], 'combinator': 'and'}, 'options': {}}})
+    nodes.append({'id': uid('lookup'), 'name': 'Owned bookings', 'type': 'n8n-nodes-base.httpRequest', 'typeVersion': 4.2, 'position': [x + 300, y + 280], 'onError': 'continueRegularOutput', 'alwaysOutputData': True,
+                  'retryOnFail': True, 'maxTries': 2, 'waitBetweenTries': 1000,
+                  'credentials': {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}},
+                  'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/list_bookings_for_phone', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi',
+                                 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ { p_tenant_key: "k1_katsastus_demo", p_phone: String($json.phone || "") } }}', 'options': {'timeout': 15000}}})
+    nodes.append({'id': uid('attach'), 'name': 'Attach owner data', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [x + 460, y + 280], 'parameters': {'mode': 'runOnceForAllItems', 'jsCode': OWNER_ATTACH_JS}})
+    connections['When called by the agent'] = {'main': [[{'node': 'Needs ownership?', 'type': 'main', 'index': 0}]]}
+    connections['Needs ownership?'] = {'main': [[{'node': 'Owned bookings', 'type': 'main', 'index': 0}], [{'node': 'Muster', 'type': 'main', 'index': 0}]]}
+    connections['Owned bookings'] = {'main': [[{'node': 'Attach owner data', 'type': 'main', 'index': 0}]]}
+    connections['Attach owner data'] = {'main': [[{'node': 'Muster', 'type': 'main', 'index': 0}]]}
+
+
+def base_workflow(kind, wid):
+    """The live workflow as it was before the first promote (backups/), so builds stay reproducible after the live ones run v2."""
+    saved = sorted(BACKUPS.glob(f'*-{kind}.json'))
+    return json.loads(saved[0].read_text()) if saved else gate.request('GET', f'/workflows/{wid}')
+
+
 def build_booking():
-    live = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
+    live = base_workflow('booking', LIVE_BOOKING)
     nodes = json.loads(json.dumps(live['nodes']))
     suffix_webhooks(nodes, BOOKING_NAME)
     for node in nodes:
         if node['name'] == 'Muster':
             node['parameters']['jsCode'] = library()
-    return save(BOOKING_NAME, nodes, live['connections'], live, activate=True)
+    connections = json.loads(json.dumps(live['connections']))
+    harden_booking(nodes, connections)
+    return save(BOOKING_NAME, nodes, connections, live, activate=True)
 
 
 def from_ai(name, description):
@@ -131,22 +173,51 @@ SLOT_TOOLS = {
     'cancel_booking': 'Cancel an existing booking. event_id is required. sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
 
-LANGUAGE_JS = '''const LANGUAGE_WORDS = {
+LANGUAGE_CORE = '''const LANGUAGE_WORDS = {
   English: 'the a an and or is are was be you your can could would please do does have has what which when where how much many about after before tomorrow today times time day week next book booking me my we our to of for with on at in it this that yes no hi hello thanks thank want need move cancel price cost open close hours station',
   Swedish: 'och jag det att är på för inte kan vill har vilken vilka vilket imorgon idag tid tider boka bokning vad kostar hur en ett till av som då fredag måndag tisdag onsdag torsdag lördag söndag hej tack ja nej öppet öppettider stationen avboka flytta pris',
-  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika haluan varata varaus kiitos voisinko voidaanko onko olen minä se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi olette',
+  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette',
 }
+const LANGUAGE_STEMS = {
+  Finnish: ['peruu', 'peruut', 'varau', 'varat', 'tunniste', 'katsast', 'rekister', 'haluai', 'haluan', 'huomen', 'aukio', 'aikoj', 'maksa', 'suome', 'kiitos', 'tarvit', 'siirt', 'vapaa'],
+  Swedish: ['bokning', 'avbok', 'besikt', 'registrer', 'öppettid', 'lediga', 'kostar'],
+}
+const LANGUAGE_REQUESTS = [
+  ['Finnish', /suomeksi|suomen kiel|suomea\\b|på finska|\\bfinska\\b|\\bfinnish\\b|\\bpuhu suomea/i],
+  ['Swedish', /ruotsiksi|ruotsin kiel|ruotsia\\b|på svenska|\\bsvenska\\b|\\bswedish\\b/i],
+  ['English', /englanniksi|englannin kiel|englantia\\b|på engelska|\\bengelska\\b|\\benglish\\b/i],
+]
 const detectLanguage = (value) => {
-  const words = String(value || '').toLowerCase().match(/[\\p{L}]+/gu) || []
-  const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word)).length]).sort((a, b) => b[1] - a[1])
+  const asked = LANGUAGE_REQUESTS.filter(([, pattern]) => pattern.test(String(value || ''))).map(([name]) => name)
+  if (asked.length === 1) return asked[0]
+  const words = (String(value || '').toLowerCase().replace(/\\S*\\d\\S*/g, ' ').match(/[\\p{L}]+/gu) || []).filter((word) => word.length > 1)
+  const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word) || (LANGUAGE_STEMS[name] || []).some((stem) => word.length > stem.length && word.startsWith(stem))).length]).sort((a, b) => b[1] - a[1])
   return scores[0][1] >= 2 && scores[0][1] > scores[1][1] ? scores[0][0] : ''
 }
-const languageText = String(body.text || (((Array.isArray(body.messages) ? body.messages : []).filter((message) => message.role === 'user').pop()) || {}).content || '')
+const languageOrder = (language) => `REPLY LANGUAGE: ${language}. Write every word of your reply in ${language}, including the first sentence and any confirmation of the switch. The lead's stored language and the language of the opener or earlier turns no longer apply.`
+'''
+LANGUAGE_JS = LANGUAGE_CORE + '''const languageText = String(body.text || (((Array.isArray(body.messages) ? body.messages : []).filter((message) => message.role === 'user').pop()) || {}).content || '')
 const languageHint = detectLanguage(languageText)
 '''
 PLAYGROUND_LANGUAGE = (
     "  'turn_type: user_message',",
-    "  'turn_type: user_message',\n  languageHint ? `customer_latest_message_language: ${languageHint} (write the whole reply in ${languageHint}, even if earlier turns used another language)` : '',",
+    "  'turn_type: user_message',\n  languageHint ? `customer_latest_message_language: ${languageHint}` : '',",
+)
+PLAYGROUND_LEADLANG = (
+    "  String(body.leadContext || ''),",
+    "  languageHint ? String(body.leadContext || '').replace(/(Customer's language:)[^\\n]*/i, `$1 ${languageHint} (the customer is now writing in or asking for ${languageHint}; the stored lead language no longer applies)`) : String(body.leadContext || ''),",
+)
+PLAYGROUND_TAIL = (
+    "  text || (latest && latest.content) || ''\n].join('\\n')",
+    "  text || (latest && latest.content) || '',\n  languageHint ? '\\n[' + languageOrder(languageHint) + ']' : ''\n].join('\\n')",
+)
+BUILD_TURN_LANGUAGE = (
+    "const agent_input = [\n  '[TURN]',\n  'turn_type: user_message',",
+    LANGUAGE_CORE.rstrip() + "\nconst languageHint = detectLanguage(text)\nconst agent_input = [\n  '[TURN]',\n  'turn_type: user_message',\n  languageHint ? `customer_latest_message_language: ${languageHint}` : null,",
+)
+BUILD_TURN_TAIL = (
+    "  '[USER]',\n  text\n].filter(Boolean)",
+    "  '[USER]',\n  text,\n  languageHint ? '\\n[' + languageOrder(languageHint) + ']' : null\n].filter(Boolean)",
 )
 PLAYGROUND_PATCH = (
     "  `station_id: ${body.stationId || 'unknown'}`,",
@@ -186,7 +257,7 @@ def business_prompt(current):
 
 
 def build_agent(booking_id):
-    live = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    live = base_workflow('agent', LIVE_AGENT)
     nodes = json.loads(json.dumps(live['nodes']))
     connections = json.loads(json.dumps(live['connections']))
     suffix_webhooks(nodes, AGENT_NAME)
@@ -206,8 +277,13 @@ def build_agent(booking_id):
                 'system message')
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
-            for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
+            for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_LEADLANG, 'lead language'), (PLAYGROUND_TAIL, 'language order'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
                 code = replace_once(code, pair, f'Playground Turn {label}')
+            node['parameters']['jsCode'] = code
+        if node['name'] == 'Build Turn':
+            code = node['parameters']['jsCode']
+            for pair, label in ((BUILD_TURN_LANGUAGE, 'language'), (BUILD_TURN_TAIL, 'language order')):
+                code = replace_once(code, pair, f'Build Turn {label}')
             node['parameters']['jsCode'] = code
         if node['name'] == 'Playground reply':
             code = node['parameters']['jsCode']
@@ -313,7 +389,6 @@ def summarise(out):
     return trimmed
 
 
-BACKUPS = ROOT / 'backups'
 LIVE_BOOKING_NAME = 'K1 Muster Booking (staging)'
 
 

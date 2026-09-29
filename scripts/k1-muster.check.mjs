@@ -266,6 +266,26 @@ test('book: names and plates are sanitised before they reach Muster; garbage pla
   assert.equal(nameless.result.ok, false)
 })
 
+test('cancel and reschedule: the agent path only touches bookings the caller owns', async () => {
+  const ok = (o) => (o.method === 'DELETE' ? {} : undefined)
+  const owned = await makeRun({ handler: ok })({ action: 'cancel', event_id: 'g1|r1|c1', phone: '1', require_owner: true, owned_bookings: ['g1'] })
+  assert.equal(owned.result.ok, true)
+  assert.equal(owned.calls.filter((c) => c.method === 'DELETE').length, 1)
+  const stranger = await makeRun({ handler: ok })({ action: 'cancel', event_id: 'g2|r2|c2', phone: '1', require_owner: true, owned_bookings: ['g1'] })
+  assert.equal(stranger.result.ok, false)
+  assert.equal(stranger.result.not_owner, true)
+  assert.equal(stranger.calls.length, 0, 'nothing may be sent to Muster')
+  const unknown = await makeRun({ handler: ok })({ action: 'cancel', event_id: 'g1|r1|c1', phone: '1', require_owner: true, owned_bookings: [], owner_lookup_failed: true })
+  assert.equal(unknown.result.ok, false)
+  assert.equal(unknown.calls.length, 0)
+  const move = await makeRun({ handler: ok })({ action: 'reschedule', start_time: '2026-09-30T07:00:00Z|256|2246+2254|M1', event_id: 'g9|r9|c9', phone: '1', rek: 'ABC-123', name: 'Test Person', require_owner: true, owned_bookings: ['g1'] })
+  assert.equal(move.result.ok, false)
+  assert.equal(move.result.not_owner, true)
+  assert.equal(move.calls.filter((c) => c.method !== 'GET').length, 0)
+  const staff = await makeRun({ handler: ok })({ action: 'cancel', event_id: 'g2|r2|c2' })
+  assert.equal(staff.result.ok, true, 'the gated staff path is unchanged')
+})
+
 test('station names: Swedish exonyms and Finnish inflections resolve', async () => {
   const run = makeRun()
   for (const [query, name] of [['Åbo Itäharju', 'K1 Katsastus Turku Itäharju'], ['Jyväskylän Palokka', 'K1 Katsastus Jyväskylä Palokka'], ['Turun Itäharju', 'K1 Katsastus Turku Itäharju']]) {

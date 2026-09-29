@@ -302,9 +302,9 @@ def steal_slot(turns, pick='first'):
     """Book the slot the agent just offered as another customer, so the real customer's pick collides with it."""
     for t in reversed(turns):
         for step in t['steps']:
-            if step['tool'] == 'get_slots':
+            if step['tool'] in ('get_slots', 'get_station_info'):
                 data = parse_output(step['output']) or {}
-                times = [x for day in data.get('days', []) for x in day.get('all_times', [])]
+                times = [x for day in data.get('days', []) for x in day.get('all_times', [])] or [x for day in data.get('availability', []) for x in day.get('suggestions', [])]
                 if times:
                     chosen = times[0] if pick == 'first' else times[-1]
                     state = CTX.state
@@ -312,6 +312,7 @@ def steal_slot(turns, pick='first'):
                     if isinstance(out, list):
                         out = out[0] if out else {}
                     if isinstance(out, dict) and out.get('event_id'):
+                        CTX.last_event = out['event_id']
                         CTX.events.append(out['event_id'])
                         with STATE_LOCK:
                             state['events'].append(out['event_id'])
@@ -350,7 +351,7 @@ def release(state, scenario_id, events, turns):
 
 def run_scenario(state, scenario):
     events = []
-    CTX.state, CTX.events = state, events
+    CTX.state, CTX.events, CTX.last_event = state, events, ''
     turns = _run(state, scenario, events)
     release(state, scenario['id'], events, turns)
     return turns
@@ -418,6 +419,7 @@ def main():
     scenarios_module = load(ROOT / 'tests/v2_scenarios.py', 'v2_scenarios')
     checks_module = load(ROOT / 'tests/v2_checks.py', 'v2_checks')
     Auto.steal_slot = staticmethod(steal_slot)
+    Auto.last_event = staticmethod(lambda: getattr(CTX, 'last_event', ''))
     scenarios = scenarios_module.build(Customer, Auto)
     if args.suite != 'all':
         scenarios = [s for s in scenarios if s['suite'] == args.suite]

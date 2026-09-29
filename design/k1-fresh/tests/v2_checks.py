@@ -142,12 +142,14 @@ def evaluate(scenario, turns):
             flags.append(f'CHECK final reply /{check[1]}/')
         elif kind == 'param':
             _, tool, key, pattern = check
-            values = [p.get(key, '') for t in turns for name, p in zip(t['tools'], t['params']) if name == tool]
+            names = {tool, 'get_station_info'} if tool == 'get_slots' else {tool}
+            values = [p.get(key, '') for t in turns for name, p in zip(t['tools'], t['params']) if name in names]
             if not any(re.search(pattern, v, re.I) for v in values):
                 flags.append(f'CHECK {tool}.{key} /{pattern}/ not in {values}')
         elif kind == 'no_param':
             _, tool, key, pattern = check
-            values = [p.get(key, '') for t in turns for name, p in zip(t['tools'], t['params']) if name == tool]
+            names = {tool, 'get_station_info'} if tool == 'get_slots' else {tool}
+            values = [p.get(key, '') for t in turns for name, p in zip(t['tools'], t['params']) if name in names]
             if any(re.search(pattern, v, re.I) for v in values):
                 flags.append(f'CHECK {tool}.{key} /{pattern}/ used: {values}')
         elif kind == 'booked' and not success(turns, 'book_inspection_invite'):

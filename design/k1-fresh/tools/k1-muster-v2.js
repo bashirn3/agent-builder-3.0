@@ -533,10 +533,19 @@ async function book() {
     },
   }
 }
+// The agent tool path passes the caller's confirmed bookings (require_owner); staff calls through the gated webhook do not.
+function ownershipError(groupId) {
+  if (!input.require_owner) return null
+  if (input.owner_lookup_failed) return { ok: false, step: 'ownership', error: 'The customer\'s bookings could not be checked right now, so nothing was changed. Do not say anything was cancelled or moved; give the national number 0306 100 100.' }
+  if (!(input.owned_bookings || []).includes(groupId)) return { ok: false, step: 'ownership', not_owner: true, error: 'No confirmed booking with this event_id belongs to this customer, so nothing was changed. Ask what booking they mean or give the national number 0306 100 100.' }
+  return null
+}
 async function moveBooking() {
   const slot = parseSlot(body.start_time || body.slot_id)
   const [groupId, reservationUid, customerUid] = String(body.event_id || '').split('|')
   if (!slot || !groupId || !reservationUid || !customerUid) return { ok: false, error: 'reschedule needs a new slot_id and the event_id from the booking' }
+  const notOwner = ownershipError(groupId)
+  if (notOwner) return notOwner
   if (!(await directory()).some((e) => e.muster_id === slot.stationId)) return { ok: false, error: 'That station cannot be booked through this assistant. Use only slot_id values returned by get_slots.' }
   if (!(await insideHours(slot))) return { ok: false, error: 'That time is outside the station opening hours. Call get_slots again and offer a listed time.' }
   const plate = cleanPlate(body.rek || body.plate)
@@ -568,6 +577,8 @@ async function moveBooking() {
 async function cancel() {
   const groupId = String(body.event_id || body.group_id || '').split('|')[0]
   if (!groupId) return { ok: false, error: 'cancel needs the event_id from the booking' }
+  const notOwner = ownershipError(groupId)
+  if (notOwner) return notOwner
   const response = await muster('DELETE', `/Reservations/${groupId}?sendConfirmation=false`)
   if (response.status !== 200 && response.status !== 204) return { ok: false, step: 'cancel', status: response.status, error: response.data }
   return { ok: true, success: true, already_cancelled: response.status === 204, group_id: groupId, cancelLocal: true }
