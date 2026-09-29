@@ -114,7 +114,16 @@ test('station_info: a station that is not bookable here gives hours and the offi
   assert.equal(result.booking.assistant_can_book, false)
   assert.match(result.booking.official_booking_link, /stationId=1452/)
   assert.equal(result.hours.display, '09:00-17:00')
-  assert.ok(result.price_estimate_for_this_vehicle.eur === 72)
+  assert.equal(result.price.total_eur, 76)
+  assert.equal(result.price_estimate_for_this_vehicle, undefined, 'one price per answer')
+})
+
+test('station_info: with no bookable time the station page gives an approximate "from" price', async () => {
+  const run = makeRun({ handler: (o) => (o.url.includes('/Calendar/') ? [] : undefined) })
+  const { result } = await run({ action: 'station_info', station: 'Tampere Sarankulma', product: '004' })
+  assert.ok(!result.price)
+  assert.equal(result.price_estimate_for_this_vehicle.eur, 72)
+  assert.match(result.price_estimate_for_this_vehicle.note, /from/)
 })
 
 test('station_info: closed stations are flagged and suggest open ones in the same city', async () => {

@@ -422,8 +422,6 @@ async function stationInfo() {
   const code = normalizeProduct(body.product || body.lead_product)
   if (page && page.prices.length) {
     result.prices_on_station_page = page.prices.slice(0, 10).map((p) => `${p.service}: ${p.eur} EUR`)
-    const estimate = code ? pageEstimate(page.prices, code) : null
-    if (estimate) result.price_estimate_for_this_vehicle = estimate
   }
   if (src && !entry.closed) {
     const { category, plan } = await planFor(src, body)
@@ -446,6 +444,10 @@ async function stationInfo() {
     } else if (plan.needs_product) result.availability_note = VEHICLE_QUESTION
     else if (plan.load_failed) result.availability_error = 'Live availability could not be loaded right now.'
     else result.availability_note = plan.reason
+  }
+  if (!result.price && page && page.prices.length && code) {
+    const estimate = pageEstimate(page.prices, code)
+    if (estimate) result.price_estimate_for_this_vehicle = estimate
   }
   return result
 }

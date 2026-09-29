@@ -1,5 +1,7 @@
 const BASE = import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
 const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefined
+// Points the tester at another agent workflow (for example /booking-chat-v2) without changing the saved setup.
+const CHAT_PATH = (import.meta.env?.VITE_K1_CHAT_PATH as string | undefined)?.trim() || '/booking-chat'
 export const TENANT_KEY = 'k1_katsastus_demo'
 export const remote = Boolean(BASE)
 
@@ -447,7 +449,7 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     writeLocal(store)
     return { reply: fallbackReply, demo: true, recorded: true, messageId: agentMessage.id, userMessageId: userMessage.id, toolCalls: [] }
   }
-  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>('/booking-chat', {
+  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>(CHAT_PATH, {
     method: 'POST',
     body: JSON.stringify({
       tenantKey: TENANT_KEY,
