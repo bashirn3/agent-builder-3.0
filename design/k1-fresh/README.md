@@ -73,3 +73,23 @@ Verified with scripted headless runs:
 - `result/` — implementation at 1440×900 @ 4/3; `result/mobile/` at 390×844 @ 2.
 - `compare/` — reference (left) vs result (right).
 - `tools/shoot.mjs` — reproducible capture + interaction checks.
+
+
+## Agent v2: live stations, hours, products, prices (candidate workflows)
+
+Built from Tomi's two emails (reminders API spec, and the feedback: more available times, prices, statutory measuring for combustion engines, vehicle type). Nothing live was replaced: the candidates sit beside the live workflows and the playground reaches them with `VITE_K1_CHAT_PATH=/booking-chat-v2`.
+
+| Piece | Where |
+|---|---|
+| Station table (54 site pages, 55 production ids, closed and reminder-only names) | `data/k1-directory.json` from `tools/k1-stations.py` + `tools/k1-directory.py` |
+| Booking/Muster Code node (hours, products, slots, prices, booking) | `tools/k1-muster-v2.js` |
+| Candidate workflows (booking v2 + agent v2, idempotent) | `tools/k1-agent-v2-build.py build` (`smoke` runs the Code node inside n8n, GET only; `delete` removes both) |
+| Business prompt v2 | `prompts/k1-business-prompt-v2.md` |
+| Offline checks (mocked HTTP) | `scripts/k1-muster.check.mjs`, part of `npm run check` |
+| Customer data keeps `VehicleCategory` | `tools/k1-shape-vehicle-category.py` (additive, already applied) |
+
+How it answers:
+- Hours are read live from the K1 station page (a rolling date table) per question, never stored. Default station is the lead's; another station or city is looked up on request; ambiguous cities return the candidates.
+- Times come from Muster's calendar and are cut to the station's published opening hours. Staging is the only place a booking is written; production Muster is read-only and describes the other stations (with the official booking link instead of a booking).
+- Products follow Tomi's codes: 004 = inspection + statutory measuring (0020), 004e = EV inspection only, 0040 = larger car + 0020 (not every station). K1's own booking flow does not look plates up (`vehicleSearchEnabled` is false) and Muster's `/Vehicle` lookup is rate limited, so for any other plate the agent asks one fuel-type question, like the booking site asks the vehicle type.
+- Prices come from the Muster booking price for the exact vehicle and time, falling back to the station page "from" prices.

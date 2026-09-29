@@ -728,6 +728,7 @@ function sampleMusterDay(day: string, stationIds: number[], closed: StationStatu
         Language: ['Suomi', 'Suomi', 'Ruotsi', 'Englanti'][(seed + index + offset) % 4],
         LastInspection: `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`,
         Reason: 'Customer relationship',
+        VehicleCategory: 'M1',
       }
     }))
   const filtered = items.filter((row) => closed === 'all' || (closed === 'closed') === row.isClosed)
