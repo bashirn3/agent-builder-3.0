@@ -6,9 +6,15 @@
 //   staging    (chain 91): the only place a booking is ever created, changed or cancelled.
 //   production (chain 5):  read-only calendar/products/prices, used to describe stations that are not bookable here yet.
 const STAGING = 'https://staging-booking-api.muster.fi/v3/91'
-// Staging calls can be routed through an HTTP proxy (filled in at build time; null means direct).
-const STAGING_PROXY = __STAGING_PROXY__
-const request = (options) => this.helpers.httpRequest.call(this, STAGING_PROXY && String(options.url).startsWith(STAGING) ? { ...options, proxy: STAGING_PROXY } : options)
+// Staging calls go through a random proxy from this pool (filled in at build time; an empty pool means direct).
+const STAGING_PROXIES = __STAGING_PROXIES__
+let lastProxy = null
+const pickProxy = () => {
+  const pool = STAGING_PROXIES.length > 1 ? STAGING_PROXIES.filter((proxy) => proxy !== lastProxy) : STAGING_PROXIES
+  lastProxy = pool[Math.floor(Math.random() * pool.length)]
+  return lastProxy
+}
+const request = (options) => this.helpers.httpRequest.call(this, STAGING_PROXIES.length && String(options.url).startsWith(STAGING) ? { ...options, proxy: pickProxy() } : options)
 const PROD = 'https://a-katsastus-booking-api.muster.fi/v3/5'
 const BOOKING_SITE = 'https://ajanvaraus.k1katsastus.fi'
 const NATIONAL_PHONE = '0306 100 100'
@@ -69,10 +75,14 @@ async function muster(method, path, payload, base = STAGING) {
       retryAfter = Number((response.headers || {})['retry-after'] || 0)
     } catch (error) {
       last = { status: error.statusCode || error.httpCode || error.status || 500, data: error.response?.body || error.message || String(error) }
+      const code = String(error.code || (error.cause && error.cause.code) || '')
+      // The proxy could not be reached or refused us, so Muster never saw the request: safe to retry with another proxy for any method.
+      if (!error.statusCode && /ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN/.test(code)) last.unsent = true
+      else if (!error.statusCode && /ETIMEDOUT|ECONNRESET|ECONNABORTED|EPIPE|socket hang up/i.test(code + ' ' + (error.message || ''))) last.transient = true
     }
-    const retryable = last.status === 429 || (method === 'GET' && [502, 503, 504].includes(last.status))
+    const retryable = last.status === 429 || last.unsent || (method === 'GET' && (last.transient || [502, 503, 504].includes(last.status))) || (STAGING_PROXIES.length > 0 && last.status === 407)
     if (!retryable || attempt === 3) return last
-    await sleep(Math.min(5000, Math.max(retryAfter * 1000, 800 * 2 ** attempt)))
+    await sleep(last.unsent || last.status === 407 ? 100 : Math.min(5000, Math.max(retryAfter * 1000, 800 * 2 ** attempt)))
   }
   return last
 }

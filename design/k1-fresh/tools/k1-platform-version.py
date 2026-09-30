@@ -3,7 +3,7 @@
 
 A version is the builder prompt, additional information, opener, reminders and translations that the playground sends with every turn.
 
-  k1-platform-version.py render          write prompts/k1-platform-v3.json (conversational head + business rules v2) from the repo
+  k1-platform-version.py render          write prompts/k1-platform-v4.json (conversational head + business rules v2) from the repo
   k1-platform-version.py show            print the latest saved versions (numbers, notes, who saved them)
   k1-platform-version.py save FILE       save FILE (as written by render) as the next version; keeps the current lock flag
 
@@ -28,11 +28,12 @@ spec.loader.exec_module(gate)
 SUPABASE = 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/'
 CREDENTIAL = {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}}
 TENANT = 'k1_katsastus_demo'
-OUT = ROOT / 'prompts/k1-platform-v3.json'
-NOTE = 'Agent v2: live station hours and opening times for every K1 station, prices per vehicle and time (inspection + statutory measuring), products 004/0040/004e, vehicle-type questions, recovery when a slot is taken'
+OUT = ROOT / 'prompts/k1-platform-v4.json'
+NOTE = ('Agent v4: books at the lead\'s station unless the customer asks for another, replies in the language of the customer\'s latest message, cancel and move only for the phone that made the booking, '
+        'retry-safe booking save, live hours, prices and times for every K1 station, vehicle-type questions; checked on 350+ adversarial and 270+ everyday conversations')
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
-              'Use the lead\'s station, product and vehicle category unless the customer talks about another vehicle. Never quote prices or confirm bookings without a tool result.')
+              'Book at the lead\'s station unless the customer asks for another one or it is closed; use the lead\'s product and vehicle category unless the customer talks about another vehicle. A booking can only be cancelled or moved from the phone that made it. Never quote prices or confirm bookings without a tool result.')
 
 
 def call(method, path, body=None):
@@ -103,7 +104,7 @@ def save(path):
     print('current', config)
     result = call('POST', 'rpc/save_agent_builder_version', {
         'p_tenant_key': TENANT, 'p_master_prompt': data['masterPrompt'], 'p_opening_message': data['openingMessage'], 'p_additional_information': data['additionalInformation'],
-        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v2 handoff', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
+        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v4 handoff', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
     })
     print('saved', json.dumps(result, ensure_ascii=False))
 

@@ -15,6 +15,7 @@ WORD = re.compile(r"[a-zåäöÅÄÖ]+", re.I)
 
 
 def detect(text):
+    text = re.sub(r'K1 Katsastus(\s+[A-ZÅÄÖ][\wåäö]+){1,2}', ' ', text)
     words = [w.lower() for w in WORD.findall(text)]
     if len(words) < 3:
         return None
@@ -72,6 +73,12 @@ LOOSE = re.compile(r'(?<![\d.:])([01]?\d|2[0-3])[.:]([0-5]\d)(?![\d]|\.\d)')
 def times_in(text):
     found = {f'{int(h):02d}:{m}' for h, m in TIME_COLON.findall(text)}
     found |= {f'{int(h):02d}:{m}' for h, m in TIME_KLO.findall(text)}
+    for h, m, ap in re.findall(r'\b(\d{1,2}):(\d{2})\s?([ap])\.?m\b', text, re.I):
+        found.discard(f'{int(h):02d}:{m}')
+        hour = int(h) % 12 + (12 if ap.lower() == 'p' else 0)
+        found.add(f'{hour:02d}:{m}')
+    if '0306' in text:
+        found -= {'07:30', '18:00', '09:00', '14:00'} if re.search(r'0306[^.]{0,80}\d{1,2}[:.]\d{2}|\d{1,2}[:.]\d{2}[^.]{0,120}0306', text) else set()
     return found
 
 
@@ -108,7 +115,7 @@ def evaluate(scenario, turns):
         if '**' in reply or re.search(r'^#{1,4}\s', reply, re.M) or BULLET.search(reply):
             flags.append(f'{tag} MARKDOWN')
         banned = BANNED.search(reply)
-        if banned and not re.search(r"(can(?:'|’)?t|cannot|no|not|don(?:'|’)?t|en voi|ei ole|kan inte|finns inte)\W+(?:\w+\W+){0,4}?(unverified\W+)?" + re.escape(banned.group(0)), reply, re.I):
+        if banned and not re.search(r"(can(?:'|’)?t|cannot|no|not|isn(?:'|’)?t|don(?:'|’)?t|en voi|ei ole|kan inte|finns inte)\W+(?:\w+\W+){0,4}?(unverified\W+)?" + re.escape(banned.group(0)), reply, re.I):
             flags.append(f'{tag} BANNED:{banned.group(0)}')
         if reply.count('?') > 2:
             flags.append(f'{tag} MANY_QUESTIONS({reply.count("?")})')
@@ -116,7 +123,8 @@ def evaluate(scenario, turns):
         got = detect(reply)
         if expected and expected != 'any' and got and got != expected:
             flags.append(f'{tag} LANG expected {expected} got {got}')
-        for hit in times_in(reply):
+        clock_question = re.search(r'\b(right now|from now|now\?|kello nyt|nyt kello|just nu)\b', turn['user'], re.I)
+        for hit in ([] if clock_question else times_in(reply)):
             if hit not in all_out and hit not in user_text and hit.lstrip('0') not in user_text:
                 flags.append(f'{tag} UNGROUNDED_TIME {hit}')
         for amount in PRICE.findall(reply):

@@ -41,27 +41,36 @@ SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExe
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
 
 
-def proxy_literal():
-    """K1_STAGING_PROXY_URL (env or .env.local, never committed) as a JS object for n8n's request helper, or null."""
+def proxy_pool():
+    """K1_STAGING_PROXY_URLS (comma separated; env or .env.local, never committed), falling back to K1_STAGING_PROXY_URL."""
     from urllib.parse import urlparse
-    url = os.environ.get('K1_STAGING_PROXY_URL') or ''
     env_file = ROOT.parents[1] / '.env.local'
-    if not url and env_file.is_file():
-        url = next((line.strip().split('=', 1)[1] for line in env_file.read_text().splitlines() if line.startswith('K1_STAGING_PROXY_URL=')), '')
-    if not url:
-        return 'null'
-    parsed = urlparse(url)
-    proxy = {'protocol': parsed.scheme or 'http', 'host': parsed.hostname, 'port': parsed.port}
-    if parsed.username:
-        proxy['auth'] = {'username': parsed.username, 'password': parsed.password or ''}
-    return json.dumps(proxy)
+    values = {}
+    if env_file.is_file():
+        for line in env_file.read_text().splitlines():
+            if line.startswith('K1_STAGING_PROXY_URL') and '=' in line:
+                key, value = line.strip().split('=', 1)
+                values[key] = value
+    raw = os.environ.get('K1_STAGING_PROXY_URLS') or values.get('K1_STAGING_PROXY_URLS') or os.environ.get('K1_STAGING_PROXY_URL') or values.get('K1_STAGING_PROXY_URL') or ''
+    pool = []
+    for url in [item.strip() for item in raw.split(',') if item.strip()]:
+        parsed = urlparse(url)
+        proxy = {'protocol': parsed.scheme or 'http', 'host': parsed.hostname, 'port': parsed.port}
+        if parsed.username:
+            proxy['auth'] = {'username': parsed.username, 'password': parsed.password or ''}
+        pool.append(proxy)
+    return pool
+
+
+def proxy_literal():
+    return json.dumps(proxy_pool(), separators=(',', ':'))
 
 
 def library():
     directory = json.dumps(json.loads((ROOT / 'data/k1-directory.json').read_text()), ensure_ascii=False, separators=(',', ':'))
     code = (HERE / 'k1-muster-v2.js').read_text()
     assert 'const DIRECTORY = __DIRECTORY__' in code
-    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXY__', proxy_literal())
+    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal())
 
 
 def by_name(name):
@@ -104,14 +113,16 @@ return [{ json: { ...original, require_owner: true, owned_bookings: owned, owner
 def harden_booking(nodes, connections):
     """Idempotent: safe retries for the database save, and an ownership lookup before the agent cancels or moves a booking."""
     named = {node['name']: node for node in nodes}
-    proxied = proxy_literal()
-    if proxied != 'null':
+    pool = proxy_literal()
+    if pool != '[]':
         for node_name in ('Shape', 'Cancel in Muster'):
             js = named[node_name]['parameters']['jsCode']
-            if 'proxy:' not in js:
-                named[node_name]['parameters']['jsCode'] = js.replace("json: true })", "json: true, proxy: " + proxied + " })")
+            js = re.sub(r"^const PROXIES = .*\n", '', js, flags=re.M)
+            js = re.sub(r", proxy: PROXIES\[[^\]]*\]", '', js)
+            js = js.replace("json: true })", "json: true, proxy: PROXIES[Math.floor(Math.random() * PROXIES.length)] })")
+            named[node_name]['parameters']['jsCode'] = f'const PROXIES = {pool}\n' + js
     record = named['Record booking']
-    record.update({'retryOnFail': True, 'maxTries': 3, 'waitBetweenTries': 1500})
+    record.update({'retryOnFail': True, 'maxTries': 4, 'waitBetweenTries': 2000})
     record['parameters'].setdefault('options', {})['timeout'] = 15000
     if 'Needs ownership?' in named:
         return
@@ -210,7 +221,8 @@ const LANGUAGE_REQUESTS = [
   ['English', /englanniksi|englannin kiel|englantia\\b|på engelska|\\bengelska\\b|\\benglish\\b/i],
 ]
 const detectLanguage = (value) => {
-  const asked = LANGUAGE_REQUESTS.filter(([, pattern]) => pattern.test(String(value || ''))).map(([name]) => name)
+  const translating = /k[aä]ännä|kääntä|translate|översätt|\\böversätta/i.test(String(value || ''))
+  const asked = translating ? [] : LANGUAGE_REQUESTS.filter(([, pattern]) => pattern.test(String(value || ''))).map(([name]) => name)
   if (asked.length === 1) return asked[0]
   const words = (String(value || '').toLowerCase().replace(/\\S*\\d\\S*/g, ' ').match(/[\\p{L}]+/gu) || []).filter((word) => word.length > 1)
   const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word) || (LANGUAGE_STEMS[name] || []).some((stem) => word.length > stem.length && word.startsWith(stem))).length]).sort((a, b) => b[1] - a[1])
@@ -414,6 +426,15 @@ def summarise(out):
 LIVE_BOOKING_NAME = 'K1 Muster Booking (staging)'
 
 
+def scrub_secrets(text):
+    """Backups are committed; proxy passwords in the live nodes must not be."""
+    for proxy in proxy_pool():
+        for secret in (proxy.get('auth') or {}).values():
+            if secret:
+                text = text.replace(secret, 'REDACTED')
+    return text
+
+
 def snapshot(wid):
     workflow = gate.request('GET', f'/workflows/{wid}')
     return {k: workflow[k] for k in ('id', 'name', 'nodes', 'connections', 'settings', 'active')}
@@ -452,8 +473,8 @@ def promote():
     live_booking, live_agent = snapshot(LIVE_BOOKING), snapshot(LIVE_AGENT)
     BACKUPS.mkdir(exist_ok=True)
     stamp = time.strftime('%Y%m%d-%H%M%S')
-    (BACKUPS / f'{stamp}-booking.json').write_text(json.dumps(live_booking, ensure_ascii=False))
-    (BACKUPS / f'{stamp}-agent.json').write_text(json.dumps(live_agent, ensure_ascii=False))
+    (BACKUPS / f'{stamp}-booking.json').write_text(scrub_secrets(json.dumps(live_booking, ensure_ascii=False)))
+    (BACKUPS / f'{stamp}-agent.json').write_text(scrub_secrets(json.dumps(live_agent, ensure_ascii=False)))
     new_booking = transplant(snapshot(booking_id), live_booking)
     new_agent = transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name']))
     put_live(LIVE_BOOKING, new_booking, live_booking['active'])
