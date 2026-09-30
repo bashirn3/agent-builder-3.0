@@ -7,7 +7,7 @@ import type { PlaygroundStore } from '../data/usePlayground'
 import { useTestChat } from '../data/useTestChat'
 import { go } from '../routes'
 import { Menu, Select, Skeleton, type SelectOption } from '../ui/controls'
-import { ArrowUp, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
+import { ArrowUp, Lock, LockOpen, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
 import { Bubble, useAutoGrow } from './PlaygroundPage'
 import { useCopy } from '../i18n'
 import { CompareColumnSkeleton } from '../ui/skeletons'
@@ -18,6 +18,11 @@ const DRAFT = 'draft'
 
 type Column = { key: string; pick: string }
 
+// How a column's message box behaves: its own, the shared one that feeds every chat, or none because chat 1 sends for it.
+type ComposerMode = 'own' | 'shared' | 'none'
+type Handle = { ready: boolean; pending: boolean; send: (text: string) => Promise<void> }
+type Shared = { text: string; setText: (text: string) => void; canSend: boolean; send: () => void }
+
 function defaultPicks(config: AgentConfig): string[] {
   const live = config.liveVersion?.id
   const latest = config.versions[0]?.id
@@ -27,7 +32,7 @@ function defaultPicks(config: AgentConfig): string[] {
   return [first, second]
 }
 
-function CompareColumn({ store, config, pick, onPick, options, index, total, onMove, onRemove, clearSignal }: {
+function CompareColumn({ store, config, pick, onPick, options, index, total, onMove, onRemove, clearSignal, mode, shared, register, unregister }: {
   store: PlaygroundStore
   config: AgentConfig
   pick: string
@@ -38,6 +43,10 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
   onMove: (delta: -1 | 1) => void
   onRemove: () => void
   clearSignal: number
+  mode: ComposerMode
+  shared: Shared
+  register: (handle: Handle) => void
+  unregister: () => void
 }) {
   const t = useCopy()
   const version = config.versions.find((item) => item.id === pick) ?? null
@@ -52,9 +61,14 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
   }, [pick, version, store.draft, config])
   const contentPending = Boolean(version && !version.loaded)
   const chat = useTestChat(target, 'compare', store.lead)
+  const chatRef = useRef(chat)
+  chatRef.current = chat
+  register({ ready: Boolean(target), pending: chat.pending, send: (text) => chatRef.current.send(text) })
+  useEffect(() => unregister, [])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
-  useAutoGrow(inputRef, chat.composer)
+  const text = mode === 'shared' ? shared.text : chat.composer
+  useAutoGrow(inputRef, text)
 
   useEffect(() => { if (clearSignal) chat.reset() }, [clearSignal])
   useEffect(() => {
@@ -62,11 +76,12 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
     if (node) node.scrollTo({ top: node.scrollHeight })
   }, [chat.messages.length, chat.pending])
 
-  const canSend = chat.composer.trim().length > 0 && !chat.pending && Boolean(target)
+  const canSend = mode === 'shared' ? shared.canSend : chat.composer.trim().length > 0 && !chat.pending && Boolean(target)
+  const submit = () => { if (mode === 'shared') shared.send(); else void chat.send() }
   const onKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
-      void chat.send()
+      submit()
     }
   }
   const deployable = version && !version.live
@@ -132,20 +147,22 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
           </div>
         )}
       </div>
-      <form className="k1-tester__composer k1-compare__composer" onSubmit={(event) => { event.preventDefault(); void chat.send() }}>
-        <textarea
-          ref={inputRef}
-          rows={1}
-          value={chat.composer}
-          placeholder={t.tester.placeholder}
-          aria-label={t.compare.messageFor(index + 1)}
-          onChange={(event) => chat.setComposer(event.target.value)}
-          onKeyDown={onKey}
-        />
-        <button type="submit" className="k1-send" aria-label={t.compare.sendTo(index + 1)} disabled={!canSend}>
-          <ArrowUp size={16} strokeWidth={2.25} />
-        </button>
-      </form>
+      {mode !== 'none' && (
+        <form className="k1-tester__composer k1-compare__composer" onSubmit={(event) => { event.preventDefault(); submit() }}>
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={text}
+            placeholder={t.tester.placeholder}
+            aria-label={mode === 'shared' ? t.compare.messageAll : t.compare.messageFor(index + 1)}
+            onChange={(event) => (mode === 'shared' ? shared.setText(event.target.value) : chat.setComposer(event.target.value))}
+            onKeyDown={onKey}
+          />
+          <button type="submit" className="k1-send" aria-label={mode === 'shared' ? t.compare.sendToAll : t.compare.sendTo(index + 1)} disabled={!canSend}>
+            <ArrowUp size={16} strokeWidth={2.25} />
+          </button>
+        </form>
+      )}
     </section>
   )
 }
@@ -155,12 +172,31 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
   const config = store.config
   const [columns, setColumns] = useState<Column[]>([])
   const [clearSignal, setClearSignal] = useState(0)
+  const [linked, setLinked] = useState(true)
+  const [sharedText, setSharedText] = useState('')
+  const handles = useRef(new Map<string, Handle>())
+  const [, refreshHandles] = useState(0)
 
   useEffect(() => { void store.refresh() }, [])
 
   useEffect(() => {
     if (config && !columns.length) setColumns(defaultPicks(config).map((pick) => ({ key: newId(), pick })))
   }, [config])
+
+  const sendAll = () => {
+    const body = sharedText.trim()
+    const live = [...handles.current.values()].filter((handle) => handle.ready)
+    if (!body || !live.length || live.some((handle) => handle.pending)) return
+    setSharedText('')
+    live.forEach((handle) => void handle.send(body))
+  }
+  const liveHandles = [...handles.current.values()]
+  const shared: Shared = {
+    text: sharedText,
+    setText: setSharedText,
+    canSend: sharedText.trim().length > 0 && liveHandles.some((handle) => handle.ready) && !liveHandles.some((handle) => handle.pending),
+    send: sendAll,
+  }
 
   if (!config) {
     return (
@@ -199,6 +235,16 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
           <h1 className="k1-page-title">{t.compare.title}</h1>
         </div>
         <div className="k1-compare__actions">
+          <button
+            type="button"
+            className="k1-btn k1-btn--outline k1-btn--sm"
+            aria-pressed={!linked}
+            title={linked ? t.compare.unlockTitle : t.compare.lockTitle}
+            onClick={() => setLinked((value) => !value)}
+          >
+            {linked ? <Lock size={14} strokeWidth={1.75} /> : <LockOpen size={14} strokeWidth={1.75} />}
+            {linked ? t.compare.unlock : t.compare.lock}
+          </button>
           <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setClearSignal((n) => n + 1)}>{t.compare.clearAll}</button>
           <button
             type="button"
@@ -210,7 +256,7 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
           </button>
         </div>
       </div>
-      <p className="k1-compare__hint">{t.compare.hint}</p>
+      <p className="k1-compare__hint">{t.compare.hint} {linked ? t.compare.linkedHint : t.compare.unlockedHint}</p>
       <div className="k1-compare__grid" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
         {columns.map((column, index) => (
           <CompareColumn
@@ -225,6 +271,14 @@ export function ComparePage({ store }: { store: PlaygroundStore }) {
             onMove={(delta) => move(index, delta)}
             onRemove={() => setColumns((list) => list.filter((_, i) => i !== index))}
             clearSignal={clearSignal}
+            mode={!linked ? 'own' : index === 0 ? 'shared' : 'none'}
+            shared={shared}
+            register={(handle) => {
+              const previous = handles.current.get(column.key)
+              handles.current.set(column.key, handle)
+              if (!previous || previous.pending !== handle.pending || previous.ready !== handle.ready) queueMicrotask(() => refreshHandles((n) => n + 1))
+            }}
+            unregister={() => { handles.current.delete(column.key); refreshHandles((n) => n + 1) }}
           />
         ))}
       </div>

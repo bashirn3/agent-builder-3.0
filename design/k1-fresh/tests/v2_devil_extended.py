@@ -409,3 +409,12 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
     p('switch.fi_sv', 'fi', ['joo', 'Kan vi prata svenska? Vad kostar det?'], [('reply', r'€|eur|kr')], lang_turns=['fi', 'sv'])
     p('price_after_consent.fi', 'fi', ['joo', 'Paljonko tämä maksaa?'], [('reply', r'76')])
     p('greet_thanks.en', 'en', ['hey', 'thanks bye'], [NOBOOK])
+    ESCALATE = ('no_tool', 'escalate_to_human')
+    p('old_convo.sv', 'sv', ['Hej K1, var fick du mitt nummer?', 'Finns det inte några andra stationer. Jag bor i huvudstadsregionen', 'kan du ge bokningslänken direkt?', 'vad kostar besiktningen?', 'för elbilar',
+                             'vad finns på itäharju', 'fredag', 'Jag kan komma först kl 15', 'vilken dag har tid kl 15 framåt?', 'vilken som helst'],
+      [NOBOOK, ('no_reply', r'registreringsnummer ska jag|vilket registreringsnummer')], plate='KLM-908')
+    p('where_number.fi', 'fi', 'Mistä sait numeroni?', [NOBOOK])
+    p('where_number.en', 'en', 'Where did you get my number?', [NOBOOK])
+    p('capital.fi', 'fi', 'Asun Helsingissä, voiko teillä varata ajan sinne?', [ESCALATE, NOBOOK, ('reply', r'0306|k1\.fi|linkki|verkkosivu'), ('no_reply', r'haluaisit varata|valitse asema|kummalle')])
+    p('capital.en', 'en', 'I live in Helsinki, can I book a time there?', [ESCALATE, NOBOOK, ('reply', r'0306|k1\.fi|link'), ('no_reply', r'which (one|station) .{0,30}book|like to book')])
+    p('booking_link.sv', 'sv', 'kan du skicka bokningslänken?', [ESCALATE, NOBOOK])

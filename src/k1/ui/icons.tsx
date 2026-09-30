@@ -7,7 +7,7 @@ import {
   Link01Icon, Logout01Icon, Menu01Icon, Message01Icon, MessageMultiple01Icon, PlayIcon,
   HistoryIcon, Refresh01Icon, RefreshIcon, Rocket01Icon, SquareLock02Icon, SquareUnlock02Icon, TextBoldIcon,
   TextItalicIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon,  WhatsappIcon, BookOpen01Icon,
-  Clock01Icon, UserMultipleIcon, UserAdd01Icon,
+  Clock01Icon, UserMultipleIcon, UserAdd01Icon, Delete02Icon,
 } from '@hugeicons/core-free-icons'
 import { Check as LucideCheck, ChevronsUpDown as LucideUpDown, Columns2 as LucideColumns, Eye as LucideEye, EyeOff as LucideEyeOff, MoreHorizontal as LucideMore, Plus as PlusLucide, Search as LucideSearch, Upload as UploadLucide, X as LucideX } from 'lucide-react'
 
@@ -43,6 +43,7 @@ export const ChevronsUpDown = lucide(LucideUpDown)
 export const Clock = huge(Clock01Icon)
 export const Copy = huge(Copy01Icon)
 export const Download = huge(Download04Icon)
+export const Trash = huge(Delete02Icon)
 export const Eye = lucide(LucideEye)
 export const EyeOff = lucide(LucideEyeOff)
 export const FileText = huge(FileEditIcon)

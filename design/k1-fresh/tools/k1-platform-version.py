@@ -3,8 +3,9 @@
 
 A version is the builder prompt, additional information, opener, reminders and translations that the playground sends with every turn.
 
-  k1-platform-version.py render          write prompts/k1-platform-v6.json (conversational head + business rules v2) from the repo
+  k1-platform-version.py render          write prompts/k1-platform-v5.json (conversational head + business rules v2) from the repo
   k1-platform-version.py show            print the latest saved versions (numbers, notes, who saved them)
+  k1-platform-version.py fold            write the rendered content into version 5, make it active, delete newer versions
   k1-platform-version.py save FILE       save FILE (as written by render) as the next version; keeps the current lock flag
 
 Saving runs one throwaway n8n workflow (created, called, deleted) that calls the same save_agent_builder_version function as the platform's Save Config.
@@ -28,9 +29,9 @@ spec.loader.exec_module(gate)
 SUPABASE = 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/'
 CREDENTIAL = {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}}
 TENANT = 'k1_katsastus_demo'
-OUT = ROOT / 'prompts/k1-platform-v6.json'
-NOTE = ('Agent v6: offers the next free times straight after "sure", books in three messages (plate taken from the reminder), weekday and date in every confirmation, no guessed times, one goodbye after a hand-off, '
-        'terse voice without filler or dashes, checks, cancels and moves the caller\'s own bookings; checked on 720+ conversations')
+OUT = ROOT / 'prompts/k1-platform-v5.json'
+NOTE = ('Agent v5: times straight after "sure", booking in three messages with the plate from the reminder, weekday and date in every confirmation, no guessed times, one goodbye after a hand-off, '
+        'terse voice without filler, capitalised sentences, honest about stations it cannot book at, checks, cancels and moves the caller\'s own bookings; checked on 720+ conversations')
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
               'Book at the lead\'s station unless the customer asks for another one or it is closed; use the lead\'s product and vehicle category unless the customer talks about another vehicle. A booking can only be cancelled or moved from the phone that made it; find it with get_my_bookings instead of asking the customer for details. Never quote prices or confirm bookings without a tool result.')
@@ -104,9 +105,30 @@ def save(path):
     print('current', config)
     result = call('POST', 'rpc/save_agent_builder_version', {
         'p_tenant_key': TENANT, 'p_master_prompt': data['masterPrompt'], 'p_opening_message': data['openingMessage'], 'p_additional_information': data['additionalInformation'],
-        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v6 handoff', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
+        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v5 handoff', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
     })
     print('saved', json.dumps(result, ensure_ascii=False))
+
+
+def fold(path=None, into=5):
+    """Writes FILE (as produced by render) into version `into`, makes it the active version and removes every newer version (their test chats move to `into`)."""
+    data = json.loads(Path(path or OUT).read_text())
+    top = call('GET', 'agent_builder_versions?select=version_number&order=version_number.desc&limit=1')['version_number']
+    rows = [call('GET', f'agent_builder_versions?version_number=eq.{number}&select=id,agent_id,version_number') for number in range(into, top + 1)]
+    rows = [row for row in rows if row.get('id')]
+    target = next((row for row in rows if row['version_number'] == into), None)
+    if not target:
+        raise SystemExit(f'v{into} does not exist')
+    newer = [row for row in rows if row['version_number'] > into]
+    content = {'master_prompt': data['masterPrompt'], 'additional_information': data['additionalInformation'], 'opening_message': data['openingMessage'],
+               'note': data['note'][:500], 'saved_by': 'Wasup agent v5 handoff', 'reminders': data['reminders'], 'translations': data['translations']}
+    for row in newer:
+        print('deactivate', row['version_number'], call('PATCH', f'agent_builder_versions?id=eq.{row["id"]}', {'is_active': False}))
+        print('retag chats', call('PATCH', f'agent_builder_test_conversations?version_id=eq.{row["id"]}', {'version_id': target['id'], 'version_number': into}))
+    print('update', call('PATCH', f'agent_builder_versions?id=eq.{target["id"]}', {**content, 'is_active': True}))
+    print('agent', call('PATCH', f'agent_builder_agents?id=eq.{target["agent_id"]}', {'active_version_id': target['id']}))
+    for row in newer:
+        print('remove', row['version_number'], call('DELETE', f'agent_builder_versions?id=eq.{row["id"]}'))
 
 
 if __name__ == '__main__':
@@ -115,6 +137,8 @@ if __name__ == '__main__':
         render()
     elif command == 'show':
         show()
+    elif command == 'fold':
+        fold(sys.argv[2] if len(sys.argv) > 2 else None)
     elif command == 'save' and len(sys.argv) > 2:
         save(sys.argv[2])
     else:

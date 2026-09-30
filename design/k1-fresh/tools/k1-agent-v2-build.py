@@ -282,7 +282,7 @@ PLAYGROUND_RETURN = (
 )
 
 
-DASH_CLEAN = "String(m ?? '').replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim()"
+DASH_CLEAN = "String(m ?? '').replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^\\p{Ll}/u, (c) => c.toUpperCase())"
 PLAN_DELIVERY_CLEAN = (
     "msgs = msgs.map(m => String(m ?? '').trim()).filter(Boolean).slice(0, maxBubbles);",
     "msgs = msgs.map(m => " + DASH_CLEAN + ").filter(Boolean).slice(0, maxBubbles);",
@@ -293,7 +293,7 @@ PLAN_FOLLOWUP_CLEAN = (
 )
 NORMALIZE_PATCHES = (
     ("const messages = lines.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean)",
-     "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim()).filter(Boolean)"),
+     "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^\\p{Ll}/u, (c) => c.toUpperCase())).filter(Boolean)"),
     ("fallback: !lines.some((line) => typeof line === 'string' && line.trim()) }", "fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly }"),
     ("if (!messages.length) {\n", "const reactionOnly = String(raw.reaction || '').trim()\nif (!messages.length && reactionOnly) messages.push(reactionOnly)\nif (!messages.length) {\n"),
     ("fi: 'Hyvä! Mille päivälle katsotaan katsastusaikaa?', sv: 'Absolut! Vilken dag passar dig för besiktningen?', en: 'Sure! Which day would suit you for the inspection?'",

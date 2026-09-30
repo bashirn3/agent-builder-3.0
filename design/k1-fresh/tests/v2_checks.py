@@ -147,6 +147,8 @@ def evaluate(scenario, turns):
             flags.append(f'{tag} PHONE_ECHO')
         if re.search(r'(booking number|varausnumero|bokningsnummer)\W{0,12}(is|on|är)?\W{0,3}(?!0306)[A-Z0-9-]*\d|booking (is )?confirmed|varaus on vahvistettu|bokningen är bekräftad', reply, re.I) and not success(turns[: i + 1], 'book_inspection_invite') and not success(turns[: i + 1], 'reschedule_booking'):
             flags.append(f'{tag} CLAIMS_BOOKED_WITHOUT_TOOL')
+        if re.match(r'\s*[a-zåäö]', reply):
+            flags.append(f'{tag} LOWERCASE_START')
         if any(step['tool'] in ('book_inspection_invite', 'reschedule_booking') and (ok_output(step) or {}).get('success') for step in turn['steps']):
             if not (re.search(DATE_WORDS, reply, re.I) and re.search(WEEKDAY_WORDS, reply, re.I)):
                 flags.append(f'{tag} CONFIRMATION_WITHOUT_WEEKDAY_DATE')
@@ -196,10 +198,10 @@ def evaluate(scenario, turns):
             flags.append('CHECK expected a successful cancellation')
         elif kind == 'rescheduled' and not success(turns, 'reschedule_booking'):
             flags.append('CHECK expected a successful reschedule')
-        elif kind == 'min_times' and len({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(re.sub(r'\d{1,2}\.\d{1,2}\.(?!\d)', ' ', r))} | {t for r in replies for t in times_in(r)}) < check[1]:
+        elif kind == 'min_times' and len({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', r))} | {t for r in replies for t in times_in(r)}) < check[1]:
             flags.append(f'CHECK expected at least {check[1]} times offered')
         elif kind == 'times_between':
-            offered = ({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(re.sub(r'\d{1,2}\.\d{1,2}\.(?!\d)', ' ', r))} | {t for r in replies for t in times_in(r)}) - times_in(user_text)
+            offered = ({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', r))} | {t for r in replies for t in times_in(r)}) - times_in(user_text)
             outside = sorted(t for t in offered if not (check[1] <= t <= check[2]))
             if outside or not offered:
                 flags.append(f'CHECK offered times {sorted(offered)} not all within {check[1]}-{check[2]}')
@@ -209,7 +211,7 @@ def evaluate(scenario, turns):
             first = next((i + 1 for i in range(len(turns)) if success(turns[: i + 1], 'book_inspection_invite')), None)
             if first is None or first > check[1]:
                 flags.append(f'CHECK booking took {first} turns, expected at most {check[1]}')
-        elif kind == 'first_reply_times' and len({f'{int(h):02d}:{m}' for h, m in LOOSE.findall(re.sub(r'\d{1,2}\.\d{1,2}\.', ' ', replies[0]))}) < check[1]:
+        elif kind == 'first_reply_times' and len({f'{int(h):02d}:{m}' for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', replies[0]))}) < check[1]:
             flags.append(f'CHECK first reply should offer at least {check[1]} times')
         elif kind == 'no_output' and re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output matched /{check[1]}/')
