@@ -260,7 +260,8 @@ class Customer:
             return self.fuel
         if re.search(r'plate|registration|rekisteri|registrering|reg\.', q):
             return self.plate or self.phrases['yes']
-        times = [f'{int(h):02d}:{m}' for h, m in TIME.findall(reply)]
+        undated = re.sub(r'(?<!klo )(?<!kl )(?<![\d.:])([1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(?!\d)', ' ', reply)
+        times = [f'{int(h):02d}:{m}' for h, m in TIME.findall(undated)]
         if times and re.search(r'time|kello|klo|tid|kl|which|kumpi|mikä|vilken|passar|sopii|works', q):
             choice = {'first': times[0], 'last': times[-1], 'second': times[min(1, len(times) - 1)]}[self.pick]
             return self.phrases['time'].format(t=choice)

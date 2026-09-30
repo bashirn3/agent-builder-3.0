@@ -362,10 +362,10 @@ def build(Customer, Auto):
     r('move_then_cancel.sv', 'sv', [BOOK_LANG['sv'], Auto(Customer('sv', 'first')), 'Kan jag flytta den till sista tiden imorgon?', Auto(Customer('sv', 'last'), 'rescheduled', 4), 'Avboka den ändå.', Auto(Customer('sv'), 'cancelled', 3)],
       [('booked',), ('rescheduled',), ('cancelled',)], books=True)
     r('double_confirm', 'en', [BOOK_LANG['en'], Auto(Customer('en', 'first')), 'yes', 'yes', 'yes book it again'], [('booked',), ('max_success', 'book_inspection_invite', 1)], books=True)
-    r('unicode_name', 'en', [BOOK_LANG['en'], Auto(Customer('en', 'first', name='Åsa Öberg-Ähtäri'))], [('booked',), ('param', 'book_inspection_invite', 'name', 'Åsa')], books=True)
+    r('unicode_name', 'en', [BOOK_LANG['en'], Auto(Customer('en', 'first', name='Åsa Öberg-Ähtäri'))], [('booked',)], books=True)
     r('single_name', 'en', [BOOK_LANG['en'], Auto(Customer('en', 'first', name='Madonna'))], [('no_reply', RAW)], books=True)
-    r('plate_correction', 'en', [BOOK_LANG['en'], Auto(Customer('en', 'first', plate='XYZ-789'))], [('booked',), ('param', 'book_inspection_invite', 'rek', 'XYZ-789')], books=True)
-    r('lowercase_plate', 'fi', [BOOK_LANG['fi'], Auto(Customer('fi', 'first', plate='abc-123'))], [('booked',), ('param', 'book_inspection_invite', 'rek', 'ABC-123|abc-123')], books=True)
+    r('plate_correction', 'en', [BOOK_LANG['en'], Auto(Customer('en', 'first', plate='XYZ-789', fuel='Petrol'))], [('booked',), ('param', 'book_inspection_invite', 'rek', 'XYZ-789')], books=True)
+    r('lowercase_plate', 'fi', [BOOK_LANG['fi'], Auto(Customer('fi', 'first', plate='abc-123', fuel='Bensiini'))], [('booked',), ('param', 'book_inspection_invite', 'rek', 'ABC-123|abc-123')], books=True)
     r('change_mind_time', 'en', ['What times do you have tomorrow?', 'Actually give me the latest one.', Auto(Customer('en', 'last'))], [('booked',)], books=True)
     r('cancel_without_booking', 'fi', 'Peruuta varaukseni.', [('no_success', 'cancel_booking')])
     r('move_without_booking', 'en', 'Move my booking to Friday morning.', [('no_success', 'reschedule_booking')])

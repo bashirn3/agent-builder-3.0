@@ -320,6 +320,16 @@ test('staging calls go through the proxy when one is configured, production and 
   assert.ok(via.calls.filter((c) => !c.url.includes('staging-booking-api')).every((c) => !c.proxy))
 })
 
+test('booking keeps accented names intact all the way to the Muster customer record', async () => {
+  const slotId = '2026-09-30T07:00:00Z|256|2246+2254|M1'
+  const { result, calls } = await makeRun()({ action: 'book', start_time: slotId, phone: '358401', rek: 'abc-123', name: 'Åsa Öberg-Ähtäri', language: 'fi' })
+  assert.equal(result.ok, true)
+  const customer = calls.find((c) => c.url.endsWith('/B2CCustomer'))
+  assert.match(JSON.stringify(customer.body), /Åsa/)
+  assert.match(JSON.stringify(customer.body), /Öberg-Ähtäri/)
+  assert.equal(result.plate, 'ABC-123')
+})
+
 test('station names: Swedish exonyms and Finnish inflections resolve', async () => {
   const run = makeRun()
   for (const [query, name] of [['Åbo Itäharju', 'K1 Katsastus Turku Itäharju'], ['Jyväskylän Palokka', 'K1 Katsastus Jyväskylä Palokka'], ['Turun Itäharju', 'K1 Katsastus Turku Itäharju']]) {
