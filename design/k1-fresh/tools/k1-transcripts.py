@@ -86,6 +86,7 @@ def write_pdf(results):
 
     def clean(text):
         text = str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
+        text = text.replace('👍', '[thumbs up]').replace('😄', '[smile]').replace('😅', '[sweat smile]').replace('🙏', '[thanks]').replace('👋', '[wave]').replace('😂', '[laughing]')
         return re.sub(r'[^\u0000-\u024F\u2010-\u2027\u20AC\u2190-\u21FF]', '?', text)
 
     index = {item['id']: item for item in results}

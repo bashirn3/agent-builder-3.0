@@ -375,3 +375,37 @@ def extend_voice(add, Auto, Customer, NOBOOK, GETS):
         v(f'mine.move.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('tool', 'get_my_bookings'), ('rescheduled',), ('max_success', 'book_inspection_invite', 1)], books=True)
         v(f'mine.cancel_none.{lang}', lang, CANCEL[lang], [('tool', 'get_my_bookings'), ('no_success', 'cancel_booking'), ('no_reply', NOCANT), ('no_reply', ASKS)])
         v(f'mine.move_none.{lang}', lang, MOVE[lang], [('tool', 'get_my_bookings'), ('no_success', 'reschedule_booking'), ('no_reply', NOCANT)])
+
+
+def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
+    """Pilot conditions from the dev review: times straight after consent, booking in three messages, weekday + date in confirmations,
+    no guessed times, one goodbye after a hand-off, the second car keeps its own product."""
+    def p(id, lang, turns, checks=(), **kw):
+        add(f'pilot.{id}', 'pilot', lang, turns if isinstance(turns, list) else [turns], checks, **kw)
+
+    NOPRICE = ('no_reply', r'€|eur\b')
+    ASKDAY = r'what day|which day|mille päivälle|minä päivänä|vilken dag|vilka dag'
+    OPENER_ASK = ('first_reply_times', 2)
+    for lang, word in (('en', 'sure'), ('fi', 'joo'), ('sv', 'visst'), ('en', 'yes please'), ('fi', 'kyllä kiitos'), ('sv', 'ja tack')):
+        station = 'ita' if word in ('yes please', 'kyllä kiitos') else 'pal'
+        p(f'consent.{lang}.{word.replace(" ", "_")}', lang, word, [('tool', 'get_slots'), OPENER_ASK, ('no_reply', ASKDAY), NOPRICE, NOBOOK], station=station)
+    CHOSEN_PLATE = r'correct plate|plate correct|right plate|rekisteritunnus.{0,20}(oikea|oikein)|registreringsnummer.{0,20}rätt|registreringsnumret.{0,20}rätt|vahvistatko.{0,30}TST'
+    for lang, word, station, pick in (('en', 'sure', 'pal', 'first'), ('fi', 'joo', 'pal', 'second'), ('sv', 'visst', 'pal', 'last'), ('en', 'yes', 'ita', 'first'), ('fi', 'kyllä', 'ita', 'last')):
+        p(f'fast_book.{lang}.{station}', lang, [word, Auto(Customer(lang, pick))], [('booked',), ('turns_to_book', 4), ('no_reply', CHOSEN_PLATE)], station=station, books=True)
+    p('ev_other_car.fi', 'fi', ['Haluan katsastaa toisen auton, EFG-321', 'Se on täyssähköauto', 'Mitä aikoja on huomenna?', Auto(Customer('fi', 'first', plate='EFG-321', fuel='Sähkö'))],
+      [('booked',), ('param', 'get_slots', 'product', '004e'), ('no_param', 'get_slots', 'product', r'^004$'), ('output', r'"product_ids":\s*\[2246\]'), ('no_output', r'2254')], books=True)
+    p('ev_other_car_ita.en', 'en', ['It is for my other car, ELE-777', 'It is fully electric', 'What times tomorrow?', Auto(Customer('en', 'first', plate='ELE-777', fuel='Electric'))],
+      [('booked',), ('param', 'get_slots', 'product', '004e'), ('no_param', 'get_slots', 'product', r'^004$')], station='ita', books=True)
+    p('past_hour.en', 'en', 'Book me today at 07:00.', [('any_tool', GETS), ('no_reply', r'19[:.]00'), NOBOOK])
+    p('evening.en', 'en', 'Book me tomorrow at 19:00.', [('any_tool', GETS), NOBOOK])
+    p('ambiguous_four.fi', 'fi', 'Varaa huomiselle klo 4.', [('any_tool', GETS), NOBOOK])
+    p('ambiguous_seven.sv', 'sv', 'Kan jag komma imorgon klockan 7?', [('any_tool', GETS), NOBOOK])
+    p('handoff_acks.en', 'en', ['I want to speak to a real person right now.', 'Yes', 'Yes', 'Yes'], [NOBOOK, ('reply', r'0306'), ('last_short', 2, 30)])
+    p('handoff_acks.fi', 'fi', ['Haluan puhua oikean ihmisen kanssa.', 'Joo', 'Joo', 'Joo'], [NOBOOK, ('reply', r'0306'), ('last_short', 2, 30)])
+    p('done_acks.sv', 'sv', ['visst', Auto(Customer('sv', 'first')), 'Tack', 'Ok', 'Ok'], [('booked',), ('last_short', 2, 30)], books=True)
+    p('cancel_after.en', 'en', ['sure', Auto(Customer('en', 'first')), 'cancel it', Auto(Customer('en'), 'cancelled', 3)], [('booked',), ('cancelled',)], books=True)
+    p('move_after.fi', 'fi', ['joo', Auto(Customer('fi', 'first')), 'Voisinko siirtää sen perjantaille?', Auto(Customer('fi', 'last'), 'rescheduled', 4)], [('booked',), ('rescheduled',)], books=True)
+    p('check_after.sv', 'sv', ['visst', Auto(Customer('sv', 'first')), 'Har jag en aktiv bokning?'], [('booked',), ('tool', 'get_my_bookings'), ('reply', r'\d{1,2}[:.]\d{2}')], books=True)
+    p('switch.fi_sv', 'fi', ['joo', 'Kan vi prata svenska? Vad kostar det?'], [('reply', r'€|eur|kr')], lang_turns=['fi', 'sv'])
+    p('price_after_consent.fi', 'fi', ['joo', 'Paljonko tämä maksaa?'], [('reply', r'76')])
+    p('greet_thanks.en', 'en', ['hey', 'thanks bye'], [NOBOOK])

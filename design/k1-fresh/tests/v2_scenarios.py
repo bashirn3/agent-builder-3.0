@@ -415,7 +415,8 @@ def build(Customer, Auto):
             ld('cancel', [ASK[lang], Auto(Customer(lang, 'first')), CANCEL[lang], Auto(Customer(lang), 'cancelled', 3)], [('booked',), ('cancelled',)], books=True)
             ld('move', [ASK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('rescheduled',)], books=True)
 
-    from v2_devil_extended import extend, extend_voice
+    from v2_devil_extended import extend, extend_voice, extend_pilot
     extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET)
     extend_voice(add, Auto, Customer, NOBOOK, GETS)
+    extend_pilot(add, Auto, Customer, NOBOOK, GETS)
     return scenarios

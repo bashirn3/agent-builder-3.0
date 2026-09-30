@@ -294,14 +294,16 @@ PLAN_FOLLOWUP_CLEAN = (
 NORMALIZE_PATCHES = (
     ("const messages = lines.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean)",
      "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim()).filter(Boolean)"),
+    ("fallback: !lines.some((line) => typeof line === 'string' && line.trim()) }", "fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly }"),
+    ("if (!messages.length) {\n", "const reactionOnly = String(raw.reaction || '').trim()\nif (!messages.length && reactionOnly) messages.push(reactionOnly)\nif (!messages.length) {\n"),
     ("fi: 'Hyvä! Mille päivälle katsotaan katsastusaikaa?', sv: 'Absolut! Vilken dag passar dig för besiktningen?', en: 'Sure! Which day would suit you for the inspection?'",
      "fi: 'Mille päivälle?', sv: 'Vilken dag passar?', en: 'What day works best?'"),
 )
 SYSTEM_STYLE_PATCHES = (
     (("Split like a person does: acknowledgement, then substance, then the question.", "Default to ONE bubble. Give the substance and the single question together; never add an acknowledgement bubble."), 'shape'),
-    (("Say something warm and ask for a day.", "Just ask for the day. Do not echo their word and do not open with an acknowledgement."), 'ack'),
+    (("Say something warm and ask for a day.", "Do not ask which day. Call get_slots from tomorrow and offer the first day's times. Do not echo their word and do not open with an acknowledgement."), 'ack'),
     (("(\"no rush — want me to leave this with you?\")", "(\"no rush, want me to leave this with you?\")"), 'dash example'),
-    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\", the reply is only the next question.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
+    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\" to your offer to find a time, the reply is the times themselves from get_slots.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
 )
 
 
