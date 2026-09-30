@@ -1,0 +1,2735 @@
+[
+ {
+  "id": "pilot.ambiguous_four.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-708"
+  },
+  "turns": [
+   {
+    "user": "Varaa huomiselle klo 4.",
+    "reply": "Palokassa on huomenna vapaa aika klo 16.00. Tarkoititko sitä?",
+    "status": 200,
+    "latency": 11.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-01",
+      "station": "",
+      "product": "",
+      "vehicle_category": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-01",
+       "station": "",
+       "product": "",
+       "vehicle_category": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":31,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T06:30:00Z|256|2246+2254|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-01T06:45:00Z|256|2246+2254|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-01T07:00:00Z|256|2246+2254|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-01T07:15:00Z|256|2246+2254|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-01T07:30:00Z|256|2246+2254|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-01T07:45:00Z|256|2246+2254|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-01T08:00:00Z|256|2246+2254|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-01T08:15:00Z|256|2246+2254|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-01T08:30:00Z|256|2246+2254|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-01T08:45:00Z|256|2246+2254|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-01T09:00:00Z|256|2246+2254|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-01T09:15:00Z|256|2246+2254|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-01T09:30:00Z|256|2246+2254|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-01T09:45:00Z|256|2246+2254|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T10:15:00Z|256|2246+2254|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-01T10:30:00Z|256|2246+2254|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-01T10:45:00Z|256|2246+2254|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-01T11:00:00Z|256|2246+2254|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-01T11:15:00Z|256|2246+2254|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-01T11:30:00Z|256|2246+2254|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-01T11:45:00Z|256|2246+2254|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-01T12:00:00Z|256|2246+2254|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-01T12:15:00Z|256|2246+2254|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-01T12:30:00Z|256|2246+2254|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-01T12:45:00Z|256|2246+2254|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-01T13:00:00Z|256|2246+2254|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-01T13:15:00Z|256|2246+2254|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-01T13:30:00Z|256|2246+2254|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.ambiguous_seven.sv",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-709"
+  },
+  "turns": [
+   {
+    "user": "Kan jag komma imorgon klockan 7?",
+    "reply": "K1 Katsastus Jyväskylä Palokka öppnar kl. 9.00 i morgon. Det finns tider 9.15, 13.00 och 16.45, vilken passar dig?",
+    "status": 200,
+    "latency": 11.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-01",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-01",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":31,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T06:30:00Z|256|2246+2254|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-01T06:45:00Z|256|2246+2254|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-01T07:00:00Z|256|2246+2254|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-01T07:15:00Z|256|2246+2254|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-01T07:30:00Z|256|2246+2254|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-01T07:45:00Z|256|2246+2254|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-01T08:00:00Z|256|2246+2254|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-01T08:15:00Z|256|2246+2254|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-01T08:30:00Z|256|2246+2254|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-01T08:45:00Z|256|2246+2254|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-01T09:00:00Z|256|2246+2254|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-01T09:15:00Z|256|2246+2254|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-01T09:30:00Z|256|2246+2254|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-01T09:45:00Z|256|2246+2254|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T10:15:00Z|256|2246+2254|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-01T10:30:00Z|256|2246+2254|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-01T10:45:00Z|256|2246+2254|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-01T11:00:00Z|256|2246+2254|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-01T11:15:00Z|256|2246+2254|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-01T11:30:00Z|256|2246+2254|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-01T11:45:00Z|256|2246+2254|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-01T12:00:00Z|256|2246+2254|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-01T12:15:00Z|256|2246+2254|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-01T12:30:00Z|256|2246+2254|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-01T12:45:00Z|256|2246+2254|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-01T13:00:00Z|256|2246+2254|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-01T13:15:00Z|256|2246+2254|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-01T13:30:00Z|256|2246+2254|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.booking_link.sv",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-724"
+  },
+  "turns": [
+   {
+    "user": "kan du skicka bokningslänken?",
+    "reply": "Här är bokningslänken för Palokka: https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1",
+    "status": 200,
+    "latency": 11.1,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:42\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.cancel_after.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-713"
+  },
+  "turns": [
+   {
+    "user": "sure",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?",
+    "status": 200,
+    "latency": 11.6,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots",
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     },
+     {
+      "station": "",
+      "date": "2026-10-01",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-10-01",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:46\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "The 09:00 one works for me",
+    "reply": "Thu 1 Oct at 09:00 for TST-713. What name should I put on it?",
+    "status": 200,
+    "latency": 6.1,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "You’re booked at K1 Katsastus Jyväskylä Palokka for Thu 1 Oct at 09:00. Booking number WG7XJPYX. Total: €76, payable at the station.",
+    "status": 200,
+    "latency": 15.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+      "rek": "TST-713",
+      "language": "en",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+       "name": "John Smith",
+       "rek": "TST-713",
+       "language": "en",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"WG7XJPYX\",\"event_id\":\"20411fef-0368-41dc-91cf-ebfb332b9c5f|2ecc3bcd06baf09bcda07bb6def3f3c7|30703c8eea53afef969d84313772df2d\",\"group_id\":\"20411fef-0368-41dc-91cf-ebfb332b9c5f\",\"reservation_uid\":\"2ecc3bcd06baf09bcda07bb6def3f3c7\",\"customer_uid\":\"30703c8eea53afef969d84313772df2d\",\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-713\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "cancel it",
+    "reply": "Your booking for Thu 1 Oct at 09:00 at K1 Katsastus Jyväskylä Palokka has been cancelled.",
+    "status": 200,
+    "latency": 15.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_my_bookings",
+     "cancel_booking"
+    ],
+    "params": [
+     {},
+     {
+      "event_id": "20411fef-0368-41dc-91cf-ebfb332b9c5f|2ecc3bcd06baf09bcda07bb6def3f3c7|30703c8eea53afef969d84313772df2d",
+      "date_from": "2026-10-01",
+      "start_time": "",
+      "rek": "TST-713",
+      "language": "en"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_my_bookings",
+      "input": {},
+      "output": "[{\"ok\":true,\"count\":1,\"bookings\":[{\"event_id\":\"20411fef-0368-41dc-91cf-ebfb332b9c5f|2ecc3bcd06baf09bcda07bb6def3f3c7|30703c8eea53afef969d84313772df2d\",\"booking_number\":\"WG7XJPYX\",\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-713\",\"date\":\"2026-10-01\",\"time\":\"09:00\",\"display_fi\":\"Thu 1.10. 09:00\"}],\"note\":\"Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "cancel_booking",
+      "input": {
+       "email": "",
+       "event_id": "20411fef-0368-41dc-91cf-ebfb332b9c5f|2ecc3bcd06baf09bcda07bb6def3f3c7|30703c8eea53afef969d84313772df2d",
+       "date_from": "2026-10-01",
+       "start_time": "",
+       "name": "John Smith",
+       "rek": "TST-713",
+       "language": "en"
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"already_cancelled\":false,\"group_id\":\"20411fef-0368-41dc-91cf-ebfb332b9c5f\",\"cancelLocal\":true,\"source\":\"tool\",\"recorded\":true,\"updated\":1}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.capital.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-723"
+  },
+  "turns": [
+   {
+    "user": "I live in Helsinki, can I book a time there?",
+    "reply": "I can’t book Helsinki appointments in this chat, but you can book by calling 0306 100 100. Helsinki has Konala and Vuosaari stations, which one do you mean?",
+    "status": 200,
+    "latency": 14.6,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "Helsinki",
+      "date": "2026-09-30",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "Helsinki",
+       "date": "2026-09-30",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":false,\"ambiguous\":true,\"candidates\":[{\"name\":\"K1 Katsastus Helsinki Konala\",\"address\":\"Ristipellontie 21, 00390 Helsinki\"},{\"name\":\"K1 Katsastus Helsinki Vuosaari\",\"address\":\"Rahtarinkatu 5, 00980 Helsinki\"},{\"name\":\"K1 Katsastus Helsinki Pasila\",\"address\":\"\",\"closed\":true}],\"error\":\"Several stations match. Ask the customer which one (name the options).\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.capital.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-722"
+  },
+  "turns": [
+   {
+    "user": "Asun Helsingissä, voiko teillä varata ajan sinne?",
+    "reply": "Helsingissä en voi tehdä varausta chatissa, vaan ajan voi varata numerosta 0306 100 100. Voin tarkistaa aseman tiedot, tarkoititko Konalaa vai Vuosaarta?",
+    "status": 200,
+    "latency": 13.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "Helsinki",
+      "date": "2026-09-30",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "Helsinki",
+       "date": "2026-09-30",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":false,\"ambiguous\":true,\"candidates\":[{\"name\":\"K1 Katsastus Helsinki Konala\",\"address\":\"Ristipellontie 21, 00390 Helsinki\"},{\"name\":\"K1 Katsastus Helsinki Vuosaari\",\"address\":\"Rahtarinkatu 5, 00980 Helsinki\"},{\"name\":\"K1 Katsastus Helsinki Pasila\",\"address\":\"\",\"closed\":true}],\"error\":\"Several stations match. Ask the customer which one (name the options).\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.check_after.sv",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-715"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 1.10.: 9.00, 13.00 eller 16.45. Vilken tid passar?",
+    "status": 200,
+    "latency": 11.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Kl 09:00 passar bra",
+    "reply": "Tors 1.10. kl. 09.00 för TST-715. Vilket namn ska jag skriva?",
+    "status": 200,
+    "latency": 5.0,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Anna Andersson",
+    "reply": "Tiden är bokad tors 1.10. kl. 09.00 på K1 Katsastus Jyväskylä Palokka. Bokningsnummer 3QJC6LCF, totalpris 76 €.",
+    "status": 200,
+    "latency": 12.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+      "rek": "TST-715",
+      "language": "sv",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+       "name": "Anna Andersson",
+       "rek": "TST-715",
+       "language": "sv",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"3QJC6LCF\",\"event_id\":\"1b4013e4-19fa-46cf-a5e4-38a143a94b1d|d17d0f41dadbe2703baa14ed9be6a916|db196ee44022512d578bc2c73ad25a19\",\"group_id\":\"1b4013e4-19fa-46cf-a5e4-38a143a94b1d\",\"reservation_uid\":\"d17d0f41dadbe2703baa14ed9be6a916\",\"customer_uid\":\"db196ee44022512d578bc2c73ad25a19\",\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-715\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Har jag en aktiv bokning?",
+    "reply": "Ja, du har en aktiv bokning tors 1.10. kl. 09.00 på K1 Katsastus Jyväskylä Palokka. Bokningsnummer 3QJC6LCF.",
+    "status": 200,
+    "latency": 9.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_my_bookings"
+    ],
+    "params": [
+     {}
+    ],
+    "steps": [
+     {
+      "tool": "get_my_bookings",
+      "input": {},
+      "output": "[{\"ok\":true,\"count\":1,\"bookings\":[{\"event_id\":\"1b4013e4-19fa-46cf-a5e4-38a143a94b1d|d17d0f41dadbe2703baa14ed9be6a916|db196ee44022512d578bc2c73ad25a19\",\"booking_number\":\"3QJC6LCF\",\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-715\",\"date\":\"2026-10-01\",\"time\":\"09:00\",\"display_fi\":\"Thu 1.10. 09:00\"}],\"note\":\"Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.consent.en.sure",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-693"
+  },
+  "turns": [
+   {
+    "user": "sure",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?",
+    "status": 200,
+    "latency": 15.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.consent.en.yes_please",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Turku Itäharju",
+   "sid": 241,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-696"
+  },
+  "turns": [
+   {
+    "user": "yes please",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?",
+    "status": 200,
+    "latency": 14.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.consent.fi.joo",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-694"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "latency": 16.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.consent.fi.kyllä_kiitos",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Turku Itäharju",
+   "sid": 241,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-697"
+  },
+  "turns": [
+   {
+    "user": "kyllä kiitos",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?",
+    "status": 200,
+    "latency": 9.7,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.consent.sv.ja_tack",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-698"
+  },
+  "turns": [
+   {
+    "user": "ja tack",
+    "reply": "Tors 1.10.: 9.00, 13.00 eller 16.45. Vilken tid passar?",
+    "status": 200,
+    "latency": 9.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.consent.sv.visst",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-695"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 1.10: 09.00, 13.00 eller 16.45. Vilken tid passar?",
+    "status": 200,
+    "latency": 12.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.done_acks.sv",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-712"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 1.10.: 9.00, 13.00 eller 16.45. Vilken tid passar?",
+    "status": 200,
+    "latency": 10.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "",
+      "vehicle_category": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "",
+       "vehicle_category": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Kl 09:00 passar bra",
+    "reply": "Tors 1.10. kl. 09.00 för TST-712. Vilket namn ska jag ange?",
+    "status": 200,
+    "latency": 5.0,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Anna Andersson",
+    "reply": "Besiktningen är bokad tors 1.10. kl. 09.00 på K1 Katsastus Jyväskylä Palokka. Bokningsnummer EH74344C, totalpris 76 €.",
+    "status": 200,
+    "latency": 13.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+      "rek": "TST-712",
+      "language": "sv",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+       "name": "Anna Andersson",
+       "rek": "TST-712",
+       "language": "sv",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"EH74344C\",\"event_id\":\"af17373e-28ca-4f71-963c-0ce642a4f6f8|b5a12cda6699647e590c06dea441be9e|ae415540dbdf3ebc75997c9d26109ada\",\"group_id\":\"af17373e-28ca-4f71-963c-0ce642a4f6f8\",\"reservation_uid\":\"b5a12cda6699647e590c06dea441be9e\",\"customer_uid\":\"ae415540dbdf3ebc75997c9d26109ada\",\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-712\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Tack",
+    "reply": "Varsågod, ta hand om dig!",
+    "status": 200,
+    "latency": 4.8,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Ok",
+    "reply": "👍",
+    "status": 200,
+    "latency": 5.1,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Ok",
+    "reply": "👍",
+    "status": 200,
+    "latency": 4.6,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.ev_other_car.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-704"
+  },
+  "turns": [
+   {
+    "user": "Haluan katsastaa toisen auton, EFG-321",
+    "reply": "Onko EFG-321 bensiini-, diesel- tai hybridiauto vai täyssähköauto?",
+    "status": 200,
+    "latency": 5.6,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Se on täyssähköauto",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii EFG-321:lle?",
+    "status": 200,
+    "latency": 10.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Mitä aikoja on huomenna?",
+    "reply": "Huomenna to 1.10. Palokassa on vapaita aikoja klo 9.00, 13.00 ja 16.45. Mikä niistä sopii? Sähköauton katsastus 46 €, maksu asemalla.",
+    "status": 200,
+    "latency": 18.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-01",
+      "station": "",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-01",
+       "station": "",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T06:30:00Z|256|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-01T06:45:00Z|256|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-01T07:00:00Z|256|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-01T07:15:00Z|256|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-01T07:30:00Z|256|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-01T07:45:00Z|256|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-01T08:00:00Z|256|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-01T08:15:00Z|256|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-01T08:30:00Z|256|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-01T08:45:00Z|256|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-01T09:00:00Z|256|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-01T09:15:00Z|256|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-01T09:30:00Z|256|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-01T09:45:00Z|256|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T10:15:00Z|256|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-01T10:30:00Z|256|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-01T10:45:00Z|256|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-01T11:00:00Z|256|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-01T11:15:00Z|256|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-01T11:30:00Z|256|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-01T11:45:00Z|256|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-01T12:00:00Z|256|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-01T12:15:00Z|256|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-01T12:30:00Z|256|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-01T12:45:00Z|256|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-01T13:00:00Z|256|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-01T13:15:00Z|256|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-01T13:30:00Z|256|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 09:00 sopii",
+    "reply": "To 1.10. klo 9.00 EFG-321:lle. Millä nimellä varaan ajan?",
+    "status": 200,
+    "latency": 5.2,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Aika on varattu EFG-321:lle to 1.10. klo 9.00 K1 Katsastus Jyväskylä Palokkaan. Varausnumero KY9YNTGH. Hinta 46 €, maksu asemalla.",
+    "status": 200,
+    "latency": 13.1,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|256|2246|M1",
+      "rek": "EFG-321",
+      "language": "fi",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|256|2246|M1",
+       "name": "Matti Meikäläinen",
+       "rek": "EFG-321",
+       "language": "fi",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"KY9YNTGH\",\"event_id\":\"095c7d95-bb26-4481-8d23-aa37096e2e1a|1e1a4d853afb52bc6231b9e32b097351|fc5ca3761567162eca97b509a21de42c\",\"group_id\":\"095c7d95-bb26-4481-8d23-aa37096e2e1a\",\"reservation_uid\":\"1e1a4d853afb52bc6231b9e32b097351\",\"customer_uid\":\"fc5ca3761567162eca97b509a21de42c\",\"slot_id\":\"2026-10-01T06:00:00Z|256|2246|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"EFG-321\",\"vehicle_category\":\"M1\",\"product_ids\":[2246],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.ev_other_car_ita.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Turku Itäharju",
+   "sid": 241,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-705"
+  },
+  "turns": [
+   {
+    "user": "It is for my other car, ELE-777",
+    "reply": "Is ELE-777 a petrol, diesel or hybrid car, or fully electric?",
+    "status": 200,
+    "latency": 4.1,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "It is fully electric",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for ELE-777? The electric-car inspection is €46, payable at the station.",
+    "status": 200,
+    "latency": 8.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "What times tomorrow?",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for ELE-777?",
+    "status": 200,
+    "latency": 10.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-01",
+      "station": "",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-01",
+       "station": "",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-01T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-01T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-01T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-01T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-01T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-01T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-01T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-01T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-01T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-01T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-01T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-01T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-01T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-01T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-01T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-01T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-01T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-01T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-01T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-01T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-01T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-01T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-01T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-01T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-01T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-01T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "The 09:00 one works for me",
+    "reply": "Thu 1 Oct at 09:00 for ELE-777. What name should I put on it?",
+    "status": 200,
+    "latency": 5.4,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "Booked for Thu 1 Oct at 09:00 at K1 Katsastus Turku Itäharju. Booking number: FK6MU4TU. Total: €46, payable at the station.",
+    "status": 200,
+    "latency": 11.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|241|2246|M1",
+      "rek": "ELE-777",
+      "language": "en",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|241|2246|M1",
+       "name": "John Smith",
+       "rek": "ELE-777",
+       "language": "en",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"FK6MU4TU\",\"event_id\":\"46cf5169-cca4-45a6-9224-0c6974144a30|00ad057b8fd9bafab00e925a5fb20481|ea779af465b2a87121e08e00de638421\",\"group_id\":\"46cf5169-cca4-45a6-9224-0c6974144a30\",\"reservation_uid\":\"00ad057b8fd9bafab00e925a5fb20481\",\"customer_uid\":\"ea779af465b2a87121e08e00de638421\",\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":241,\"station_name\":\"K1 Katsastus Turku Itäharju\",\"plate\":\"ELE-777\",\"vehicle_category\":\"M1\",\"product_ids\":[2246],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.evening.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-707"
+  },
+  "turns": [
+   {
+    "user": "Book me tomorrow at 19:00.",
+    "reply": "Palokka is open Thu 1 Oct from 09:00 to 17:00, so 19:00 isn’t available. I can offer 09:00, 13:00 or 16:45. Which time works?",
+    "status": 200,
+    "latency": 9.6,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-10-01",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-10-01",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:41\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.fast_book.en.ita",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Turku Itäharju",
+   "sid": 241,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-702"
+  },
+  "turns": [
+   {
+    "user": "yes",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time suits you?",
+    "status": 200,
+    "latency": 9.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "The 09:00 one works for me",
+    "reply": "Thu 1 Oct at 09:00 for TST-702. What name should I put on it?",
+    "status": 200,
+    "latency": 4.9,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "Booked for Thu 1 Oct at 09:00 at K1 Katsastus Turku Itäharju. Booking number XHL3CYH4, total €76, payable at the station.",
+    "status": 200,
+    "latency": 15.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|241|2246+2254|M1",
+      "rek": "TST-702",
+      "language": "en",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|241|2246+2254|M1",
+       "name": "John Smith",
+       "rek": "TST-702",
+       "language": "en",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"XHL3CYH4\",\"event_id\":\"881fdaa9-c4e8-41a3-aa1d-361ce7331a74|020f2f14b37f2603f0161995da794e14|157e074d70e73bc0089c7b3a355dfc4e\",\"group_id\":\"881fdaa9-c4e8-41a3-aa1d-361ce7331a74\",\"reservation_uid\":\"020f2f14b37f2603f0161995da794e14\",\"customer_uid\":\"157e074d70e73bc0089c7b3a355dfc4e\",\"slot_id\":\"2026-10-01T06:00:00Z|241|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":241,\"station_name\":\"K1 Katsastus Turku Itäharju\",\"plate\":\"TST-702\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.fast_book.en.pal",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-699"
+  },
+  "turns": [
+   {
+    "user": "sure",
+    "reply": "Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?",
+    "status": 200,
+    "latency": 13.7,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "The 09:00 one works for me",
+    "reply": "Thu 1 Oct at 09:00 for TST-699. What name should I put on the booking?",
+    "status": 200,
+    "latency": 4.8,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "Booked for Thu 1 Oct at 09:00 at K1 Katsastus Jyväskylä Palokka. Booking number NJTY3W4V, total 76 €, payable at the station.",
+    "status": 200,
+    "latency": 14.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+      "rek": "TST-699",
+      "language": "en",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+       "name": "John Smith",
+       "rek": "TST-699",
+       "language": "en",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"NJTY3W4V\",\"event_id\":\"453bc5cd-deb0-4898-8af4-c9d3c400f1c1|84f7cb7c6f54e070a660f3ee2f20fd91|0bd5e691b0199f9353061183d19454b6\",\"group_id\":\"453bc5cd-deb0-4898-8af4-c9d3c400f1c1\",\"reservation_uid\":\"84f7cb7c6f54e070a660f3ee2f20fd91\",\"customer_uid\":\"0bd5e691b0199f9353061183d19454b6\",\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-699\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.fast_book.fi.ita",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Turku Itäharju",
+   "sid": 241,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-703"
+  },
+  "turns": [
+   {
+    "user": "kyllä",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "latency": 8.6,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "",
+      "vehicle_category": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "",
+       "vehicle_category": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 16:45 sopii",
+    "reply": "To 1.10. klo 16.45 autolle TST-703. Millä nimellä teen varauksen?",
+    "status": 200,
+    "latency": 9.8,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Varaus onnistui, JQAWLN3J. K1 Katsastus Turku Itäharju, to 1.10. klo 16.45. Hinta yhteensä 76 €, maksu asemalla.",
+    "status": 200,
+    "latency": 12.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T13:45:00Z|241|2246+2254|M1",
+      "rek": "TST-703",
+      "language": "fi",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T13:45:00Z|241|2246+2254|M1",
+       "name": "Matti Meikäläinen",
+       "rek": "TST-703",
+       "language": "fi",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"JQAWLN3J\",\"event_id\":\"575bc7bb-cccb-4f56-9f94-5f066dd45f69|ab89133b7bfdee7da7fa37d9f115cf85|f4ab5015014349fde30c001f0aed23fa\",\"group_id\":\"575bc7bb-cccb-4f56-9f94-5f066dd45f69\",\"reservation_uid\":\"ab89133b7bfdee7da7fa37d9f115cf85\",\"customer_uid\":\"f4ab5015014349fde30c001f0aed23fa\",\"slot_id\":\"2026-10-01T13:45:00Z|241|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 16:45\",\"station_id\":241,\"station_name\":\"K1 Katsastus Turku Itäharju\",\"plate\":\"TST-703\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.fast_book.fi.pal",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?",
+    "status": 200,
+    "latency": 11.2,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 13:00 sopii",
+    "reply": "To 1.10. klo 13.00 TST-700:lle. Millä nimellä teen varauksen?",
+    "status": 200,
+    "latency": 7.2,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Katsastus on varattu to 1.10. klo 13.00 K1 Katsastus Jyväskylä Palokassa. Varausnumero NAW6GE7R, hinta yhteensä 76 €, maksu asemalla.",
+    "status": 200,
+    "latency": 17.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T10:00:00Z|256|2246+2254|M1",
+      "rek": "TST-700",
+      "language": "fi",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T10:00:00Z|256|2246+2254|M1",
+       "name": "Matti Meikäläinen",
+       "rek": "TST-700",
+       "language": "fi",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"NAW6GE7R\",\"event_id\":\"7b98c162-4b96-40a0-9801-8de61f598287|d78dc8327b81b48d48f6dd9dac8b974e|178d0c269e224baa89bff874933fe818\",\"group_id\":\"7b98c162-4b96-40a0-9801-8de61f598287\",\"reservation_uid\":\"d78dc8327b81b48d48f6dd9dac8b974e\",\"customer_uid\":\"178d0c269e224baa89bff874933fe818\",\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 13:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-700\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.fast_book.sv.pal",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-701"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 1.10.: 9.00, 13.00 eller 16.45. Vilken tid passar?",
+    "status": 200,
+    "latency": 9.2,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Kl 16:45 passar bra",
+    "reply": "Tors 1.10. kl. 16.45 för TST-701. Vilket namn ska jag ange?",
+    "status": 200,
+    "latency": 4.9,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Anna Andersson",
+    "reply": "Du är bokad tors 1.10. kl. 16.45 hos K1 Katsastus Jyväskylä Palokka. Bokningsnummer TCTJJPQT, totalpris 76 € betalas på stationen.",
+    "status": 200,
+    "latency": 11.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T13:45:00Z|256|2246+2254|M1",
+      "rek": "TST-701",
+      "language": "sv",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T13:45:00Z|256|2246+2254|M1",
+       "name": "Anna Andersson",
+       "rek": "TST-701",
+       "language": "sv",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"TCTJJPQT\",\"event_id\":\"d90c24aa-cbb1-40c5-b23a-6ccd17fb2cec|a2ff7a4f88e5e7619ab6cba377823f3a|f2134348ca529e3cee6e17bbcbbf1aab\",\"group_id\":\"d90c24aa-cbb1-40c5-b23a-6ccd17fb2cec\",\"reservation_uid\":\"a2ff7a4f88e5e7619ab6cba377823f3a\",\"customer_uid\":\"f2134348ca529e3cee6e17bbcbbf1aab\",\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 16:45\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-701\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.greet_thanks.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-718"
+  },
+  "turns": [
+   {
+    "user": "hey",
+    "reply": "Hey! I can help find a time for the inspection. Want me to check available times?",
+    "status": 200,
+    "latency": 5.6,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "thanks bye",
+    "reply": "Take care!",
+    "status": 200,
+    "latency": 5.3,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.handoff_acks.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-710"
+  },
+  "turns": [
+   {
+    "user": "I want to speak to a real person right now.",
+    "reply": "I can’t connect you directly here. Please call K1’s booking service on 0306 100 100 to speak with someone.",
+    "status": 200,
+    "latency": 11.6,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "escalate_to_human"
+    ],
+    "params": [
+     {}
+    ],
+    "steps": [
+     {
+      "tool": "escalate_to_human",
+      "input": {
+       "syy": "Customer requests to speak to a real person immediately."
+      },
+      "output": "[{\"response\":\"{\\\"success\\\":true,\\\"escalated\\\":true,\\\"syy\\\":\\\"Customer requests to speak to a real person immediately.\\\",\\\"message\\\":\\\"Handed to humans. Set handoff true and stop pushing booking.\\\"}\"}]"
+     }
+    ]
+   },
+   {
+    "user": "Yes",
+    "reply": "Take care.",
+    "status": 200,
+    "latency": 5.2,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Yes",
+    "reply": "👍",
+    "status": 200,
+    "latency": 6.3,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Yes",
+    "reply": "👍",
+    "status": 200,
+    "latency": 7.1,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.handoff_acks.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-711"
+  },
+  "turns": [
+   {
+    "user": "Haluan puhua oikean ihmisen kanssa.",
+    "reply": "Voit soittaa K1:n ajanvaraukseen numeroon 0306 100 100.",
+    "status": 200,
+    "latency": 8.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "escalate_to_human"
+    ],
+    "params": [
+     {}
+    ],
+    "steps": [
+     {
+      "tool": "escalate_to_human",
+      "input": {
+       "syy": "Asiakas pyytää puhumaan oikean ihmisen kanssa."
+      },
+      "output": "[{\"response\":\"{\\\"success\\\":true,\\\"escalated\\\":true,\\\"syy\\\":\\\"Asiakas pyytää puhumaan oikean ihmisen kanssa.\\\",\\\"message\\\":\\\"Handed to humans. Set handoff true and stop pushing booking.\\\"}\"}]"
+     }
+    ]
+   },
+   {
+    "user": "Joo",
+    "reply": "Hyvää illanjatkoa.",
+    "status": 200,
+    "latency": 6.5,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Joo",
+    "reply": "👍",
+    "status": 200,
+    "latency": 7.1,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Joo",
+    "reply": "👍",
+    "status": 200,
+    "latency": 5.6,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.move_after.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-714"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "latency": 11.6,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 09:00 sopii",
+    "reply": "To 1.10. klo 9.00 TST-714:lle. Millä nimellä teen varauksen?",
+    "status": 200,
+    "latency": 5.0,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Varaus on tehty to 1.10. klo 9.00 K1 Katsastus Jyväskylä Palokkaan. Varausnumero ATY9U6QG, hinta yhteensä 76 €.",
+    "status": 200,
+    "latency": 12.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+      "rek": "TST-714",
+      "language": "fi",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-10-01T06:00:00Z|256|2246+2254|M1",
+       "name": "Matti Meikäläinen",
+       "rek": "TST-714",
+       "language": "fi",
+       "event_id": ""
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"ATY9U6QG\",\"event_id\":\"c22f70ac-e2c8-45ba-a04b-2c1153aff710|817dc6487ca183b48bae335709c82f90|5b8d4f089f273d223dc51bcf42475127\",\"group_id\":\"c22f70ac-e2c8-45ba-a04b-2c1153aff710\",\"reservation_uid\":\"817dc6487ca183b48bae335709c82f90\",\"customer_uid\":\"5b8d4f089f273d223dc51bcf42475127\",\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"display_fi\":\"Thu 1.10. 09:00\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-714\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Voisinko siirtää sen perjantaille?",
+    "reply": "Pe 2.10. klo 9.00, 13.00 tai 16.45 ovat vapaina. Mikä aika sopii?",
+    "status": 200,
+    "latency": 14.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_my_bookings",
+     "get_slots"
+    ],
+    "params": [
+     {},
+     {
+      "date_to": "2026-10-02",
+      "product": "004",
+      "station": "",
+      "date_from": "2026-10-02",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_my_bookings",
+      "input": {},
+      "output": "[{\"ok\":true,\"count\":1,\"bookings\":[{\"event_id\":\"c22f70ac-e2c8-45ba-a04b-2c1153aff710|817dc6487ca183b48bae335709c82f90|5b8d4f089f273d223dc51bcf42475127\",\"booking_number\":\"ATY9U6QG\",\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-714\",\"date\":\"2026-10-01\",\"time\":\"09:00\",\"display_fi\":\"Thu 1.10. 09:00\"}],\"note\":\"Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_to": "2026-10-02",
+       "product": "004",
+       "station": "",
+       "date_from": "2026-10-02",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":32,\"days\":[{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-02T06:30:00Z|256|2246+2254|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-02T06:45:00Z|256|2246+2254|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-02T07:00:00Z|256|2246+2254|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-02T07:15:00Z|256|2246+2254|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-02T07:30:00Z|256|2246+2254|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-02T07:45:00Z|256|2246+2254|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-02T08:00:00Z|256|2246+2254|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-02T08:15:00Z|256|2246+2254|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-02T08:30:00Z|256|2246+2254|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-02T08:45:00Z|256|2246+2254|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-02T09:00:00Z|256|2246+2254|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-02T09:15:00Z|256|2246+2254|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-02T09:30:00Z|256|2246+2254|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-02T09:45:00Z|256|2246+2254|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T10:15:00Z|256|2246+2254|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-02T10:30:00Z|256|2246+2254|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-02T10:45:00Z|256|2246+2254|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-02T11:00:00Z|256|2246+2254|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-02T11:15:00Z|256|2246+2254|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-02T11:30:00Z|256|2246+2254|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-02T11:45:00Z|256|2246+2254|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-02T12:00:00Z|256|2246+2254|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-02T12:15:00Z|256|2246+2254|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-02T12:30:00Z|256|2246+2254|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-02T12:45:00Z|256|2246+2254|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-02T13:00:00Z|256|2246+2254|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-02T13:15:00Z|256|2246+2254|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-02T13:30:00Z|256|2246+2254|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 16:45 sopii",
+    "reply": "Varaus siirrettiin pe 2.10. klo 16.45 K1 Katsastus Jyväskylä Palokkaan. Varausnumero pysyy samana: ATY9U6QG, hinta yhteensä 76 €.",
+    "status": 200,
+    "latency": 14.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "reschedule_booking"
+    ],
+    "params": [
+     {
+      "rek": "TST-714",
+      "event_id": "c22f70ac-e2c8-45ba-a04b-2c1153aff710|817dc6487ca183b48bae335709c82f90|5b8d4f089f273d223dc51bcf42475127",
+      "language": "fi",
+      "start_time": "2026-10-02T13:45:00Z|256|2246+2254|M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "reschedule_booking",
+      "input": {
+       "rek": "TST-714",
+       "name": "Matti Meikäläinen",
+       "email": "",
+       "event_id": "c22f70ac-e2c8-45ba-a04b-2c1153aff710|817dc6487ca183b48bae335709c82f90|5b8d4f089f273d223dc51bcf42475127",
+       "language": "fi",
+       "start_time": "2026-10-02T13:45:00Z|256|2246+2254|M1"
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"ATY9U6QG\",\"event_id\":\"c22f70ac-e2c8-45ba-a04b-2c1153aff710|3c75495d1f62555e120d6eae90e8eef1|5b8d4f089f273d223dc51bcf42475127\",\"group_id\":\"c22f70ac-e2c8-45ba-a04b-2c1153aff710\",\"display_fi\":\"Fri 2.10. 16:45\",\"previous_reservation_uid\":\"817dc6487ca183b48bae335709c82f90\",\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.old_convo.sv",
+  "suite": "pilot",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "KLM-908"
+  },
+  "turns": [
+   {
+    "user": "Hej K1, var fick du mitt nummer?",
+    "reply": "Jag kan inte se exakt var numret hämtades ifrån här. Det är kopplat till besiktningspåminnelsen för KLM-908.",
+    "status": 200,
+    "latency": 7.5,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Finns det inte några andra stationer. Jag bor i huvudstadsregionen",
+    "reply": "Ja, det finns K1-stationer i huvudstadsregionen, men jag behöver orten eller stationsnamnet för att kunna ge rätt öppettider och pris. Bokning där görs via K1:s webbplats eller på 0306 100 100.",
+    "status": 200,
+    "latency": 14.7,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "huvudstadsregionen",
+      "date": "",
+      "product": "",
+      "vehicle_category": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "huvudstadsregionen",
+       "date": "",
+       "product": "",
+       "vehicle_category": ""
+      },
+      "output": "[{\"ok\":false,\"not_found\":true,\"error\":\"No K1 station matches that. Ask for the city or station name.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "kan du ge bokningslänken direkt?",
+    "reply": "Jag har ingen verifierad bokningslänk att skicka här. Du kan boka på 0306 100 100.",
+    "status": 200,
+    "latency": 6.4,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "vad kostar besiktningen?",
+    "reply": "På K1 Katsastus Jyväskylä Palokka kostar besiktningen 46 € och de lagstadgade mätningarna 30 €, totalt 76 €. Betalning sker på stationen.",
+    "status": 200,
+    "latency": 10.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:42\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "för elbilar",
+    "reply": "För elbil kostar besiktningen på K1 Katsastus Jyväskylä Palokka 46 € totalt. Inga lagstadgade mätningar tillkommer, och betalning sker på stationen.",
+    "status": 200,
+    "latency": 10.2,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:42\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:00\",\"last\":\"16:30\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T09:45:00Z|256|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T13:30:00Z|256|2246|M1\",\"time\":\"16:30\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "vad finns på itäharju",
+    "reply": "På K1 Katsastus Turku Itäharju finns tider för elbilsbesiktning tors 1.10. kl. 09.00, 13.00 eller 16.45. Vilken tid passar dig?",
+    "status": 200,
+    "latency": 19.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info",
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "Itäharju",
+      "date": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     },
+     {
+      "station": "Itäharju",
+      "date": "",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "Itäharju",
+       "date": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Turku Itäharju\",\"address\":\"Munkkionkuja 1, 20520 Turku\",\"city\":\"Turku\",\"page\":\"https://www.k1katsastus.fi/asema/turku-itaharju/\"},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"08:40\",\"closes\":\"17:00\",\"display\":\"08:40-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"08:40-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:42\",\"booking\":{\"assistant_can_book\":true,\"station_id\":241,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1450&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "Itäharju",
+       "date": "",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Turku Itäharju\",\"address\":\"Munkkionkuja 1, 20520 Turku\",\"city\":\"Turku\",\"page\":\"https://www.k1katsastus.fi/asema/turku-itaharju/\"},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"08:40\",\"closes\":\"17:00\",\"display\":\"08:40-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"08:40-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"08:40-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:42\",\"booking\":{\"assistant_can_book\":true,\"station_id\":241,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1450&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "fredag",
+    "reply": "På K1 Katsastus Turku Itäharju finns tider fre 2.10. kl. 09.00, 13.00 eller 16.45. Vilken tid passar dig?",
+    "status": 200,
+    "latency": 9.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-02",
+      "date_to": "2026-10-02",
+      "station": "Itäharju",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-02",
+       "date_to": "2026-10-02",
+       "station": "Itäharju",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-02T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-02T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-02T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-02T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-02T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-02T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-02T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-02T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-02T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-02T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-02T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-02T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-02T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-02T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-02T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-02T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-02T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-02T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-02T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-02T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-02T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-02T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-02T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-02T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-02T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-02T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-02T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Jag kan komma först kl 15",
+    "reply": "Fre 2.10. kl. 15.00 finns på K1 Katsastus Turku Itäharju. Gäller besiktningen elbilen eller KLM-908?",
+    "status": 200,
+    "latency": 10.4,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "vilken dag har tid kl 15 framåt?",
+    "reply": "Det finns tider från kl. 15.00 tors 1.10., fre 2.10. och mån 5.10. till ons 7.10. på K1 Katsastus Turku Itäharju. Vilken dag passar dig bäst?",
+    "status": 200,
+    "latency": 22.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots",
+     "get_slots",
+     "get_slots",
+     "get_slots",
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-01",
+      "station": "Itäharju",
+      "product": "004e",
+      "vehicle_category": "M1"
+     },
+     {
+      "date_from": "2026-10-02",
+      "date_to": "2026-10-02",
+      "station": "Itäharju",
+      "product": "004e",
+      "vehicle_category": "M1"
+     },
+     {
+      "date_from": "2026-10-05",
+      "date_to": "2026-10-05",
+      "station": "Itäharju",
+      "product": "004e",
+      "vehicle_category": "M1"
+     },
+     {
+      "date_from": "2026-10-06",
+      "date_to": "2026-10-06",
+      "station": "Itäharju",
+      "product": "004e",
+      "vehicle_category": "M1"
+     },
+     {
+      "date_from": "2026-10-07",
+      "date_to": "2026-10-07",
+      "station": "Itäharju",
+      "product": "004e",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-01",
+       "station": "Itäharju",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-01T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-01T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-01T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-01T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-01T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-01T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-01T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-01T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-01T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-01T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-01T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-01T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-01T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-01T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-01T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-01T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-01T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-01T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-01T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-01T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-01T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-01T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-01T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-01T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-01T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-01T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-01T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-01T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-02",
+       "date_to": "2026-10-02",
+       "station": "Itäharju",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-02T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-02T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-02T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-02T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-02T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-02T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-02T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-02T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-02T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-02T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-02T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-02T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-02T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-02T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-02T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-02T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-02T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-02T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-02T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-02T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-02T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-02T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-02T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-02T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-02T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-02T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-02T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-02T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-02T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-02T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-05",
+       "date_to": "2026-10-05",
+       "station": "Itäharju",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-05T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-05T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-05T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-05T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-05T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-05T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-05T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-05T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-05T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-05T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-05T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-05T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-05T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-05T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-05T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-05T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-05T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-05T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-05T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-05T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-05T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-05T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-05T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-05T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-05T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-05T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-05T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-05T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-05T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-05T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-06",
+       "date_to": "2026-10-06",
+       "station": "Itäharju",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-06T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-06T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-06T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-06T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-06T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-06T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-06T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-06T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-06T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-06T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-06T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-06T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-06T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-06T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-06T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-06T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-06T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-06T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-06T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-06T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-06T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-06T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-06T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-06T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-06T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-06T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-06T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-06T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-06T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-06T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-07",
+       "date_to": "2026-10-07",
+       "station": "Itäharju",
+       "product": "004e",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":241,\"name\":\"K1 Katsastus Turku Itäharju\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"assumption\":\"This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.\"},\"total_free\":32,\"days\":[{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"08:40-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-07T06:00:00Z|241|2246|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T06:15:00Z|241|2246|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-07T06:30:00Z|241|2246|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-07T06:45:00Z|241|2246|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-07T07:00:00Z|241|2246|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-07T07:15:00Z|241|2246|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-07T07:30:00Z|241|2246|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-07T07:45:00Z|241|2246|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-07T08:00:00Z|241|2246|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-07T08:15:00Z|241|2246|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-07T08:30:00Z|241|2246|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-07T08:45:00Z|241|2246|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-07T09:00:00Z|241|2246|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-07T09:15:00Z|241|2246|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-07T09:30:00Z|241|2246|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-07T09:45:00Z|241|2246|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-07T10:00:00Z|241|2246|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T10:15:00Z|241|2246|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-07T10:30:00Z|241|2246|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-07T10:45:00Z|241|2246|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-07T11:00:00Z|241|2246|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-07T11:15:00Z|241|2246|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-07T11:30:00Z|241|2246|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-07T11:45:00Z|241|2246|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-07T12:00:00Z|241|2246|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-07T12:15:00Z|241|2246|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-07T12:30:00Z|241|2246|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-07T12:45:00Z|241|2246|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-07T13:00:00Z|241|2246|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-07T13:15:00Z|241|2246|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-07T13:30:00Z|241|2246|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-07T13:45:00Z|241|2246|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":46,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "vilken som helst",
+    "reply": "Då kan vi ta tors 1.10. kl. 15.00, fre 2.10. kl. 15.00 eller mån 5.10. kl. 15.00 på Itäharju. Vilken tid passar bäst?",
+    "status": 200,
+    "latency": 9.0,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.past_hour.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-706"
+  },
+  "turns": [
+   {
+    "user": "Book me today at 07:00.",
+    "reply": "07:00 today has already passed, and Palokka is now closed. Thu 1 Oct: 09:15, 13:00 or 16:45. Which time works?",
+    "status": 200,
+    "latency": 18.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots",
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-09-30",
+      "date_to": "2026-09-30",
+      "station": "",
+      "product": "",
+      "vehicle_category": ""
+     },
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-01",
+      "station": "",
+      "product": "",
+      "vehicle_category": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-09-30",
+       "date_to": "2026-09-30",
+       "station": "",
+       "product": "",
+       "vehicle_category": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":0,\"days\":[{\"date\":\"2026-09-30\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":0,\"suggestions\":[],\"all_times\":[]}],\"price\":null,\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-01",
+       "station": "",
+       "product": "",
+       "vehicle_category": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":31,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}],\"all_times\":[{\"slot_id\":\"2026-10-01T06:15:00Z|256|2246+2254|M1\",\"time\":\"09:15\"},{\"slot_id\":\"2026-10-01T06:30:00Z|256|2246+2254|M1\",\"time\":\"09:30\"},{\"slot_id\":\"2026-10-01T06:45:00Z|256|2246+2254|M1\",\"time\":\"09:45\"},{\"slot_id\":\"2026-10-01T07:00:00Z|256|2246+2254|M1\",\"time\":\"10:00\"},{\"slot_id\":\"2026-10-01T07:15:00Z|256|2246+2254|M1\",\"time\":\"10:15\"},{\"slot_id\":\"2026-10-01T07:30:00Z|256|2246+2254|M1\",\"time\":\"10:30\"},{\"slot_id\":\"2026-10-01T07:45:00Z|256|2246+2254|M1\",\"time\":\"10:45\"},{\"slot_id\":\"2026-10-01T08:00:00Z|256|2246+2254|M1\",\"time\":\"11:00\"},{\"slot_id\":\"2026-10-01T08:15:00Z|256|2246+2254|M1\",\"time\":\"11:15\"},{\"slot_id\":\"2026-10-01T08:30:00Z|256|2246+2254|M1\",\"time\":\"11:30\"},{\"slot_id\":\"2026-10-01T08:45:00Z|256|2246+2254|M1\",\"time\":\"11:45\"},{\"slot_id\":\"2026-10-01T09:00:00Z|256|2246+2254|M1\",\"time\":\"12:00\"},{\"slot_id\":\"2026-10-01T09:15:00Z|256|2246+2254|M1\",\"time\":\"12:15\"},{\"slot_id\":\"2026-10-01T09:30:00Z|256|2246+2254|M1\",\"time\":\"12:30\"},{\"slot_id\":\"2026-10-01T09:45:00Z|256|2246+2254|M1\",\"time\":\"12:45\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T10:15:00Z|256|2246+2254|M1\",\"time\":\"13:15\"},{\"slot_id\":\"2026-10-01T10:30:00Z|256|2246+2254|M1\",\"time\":\"13:30\"},{\"slot_id\":\"2026-10-01T10:45:00Z|256|2246+2254|M1\",\"time\":\"13:45\"},{\"slot_id\":\"2026-10-01T11:00:00Z|256|2246+2254|M1\",\"time\":\"14:00\"},{\"slot_id\":\"2026-10-01T11:15:00Z|256|2246+2254|M1\",\"time\":\"14:15\"},{\"slot_id\":\"2026-10-01T11:30:00Z|256|2246+2254|M1\",\"time\":\"14:30\"},{\"slot_id\":\"2026-10-01T11:45:00Z|256|2246+2254|M1\",\"time\":\"14:45\"},{\"slot_id\":\"2026-10-01T12:00:00Z|256|2246+2254|M1\",\"time\":\"15:00\"},{\"slot_id\":\"2026-10-01T12:15:00Z|256|2246+2254|M1\",\"time\":\"15:15\"},{\"slot_id\":\"2026-10-01T12:30:00Z|256|2246+2254|M1\",\"time\":\"15:30\"},{\"slot_id\":\"2026-10-01T12:45:00Z|256|2246+2254|M1\",\"time\":\"15:45\"},{\"slot_id\":\"2026-10-01T13:00:00Z|256|2246+2254|M1\",\"time\":\"16:00\"},{\"slot_id\":\"2026-10-01T13:15:00Z|256|2246+2254|M1\",\"time\":\"16:15\"},{\"slot_id\":\"2026-10-01T13:30:00Z|256|2246+2254|M1\",\"time\":\"16:30\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.price_after_consent.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-717"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?",
+    "status": 200,
+    "latency": 12.2,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Paljonko tämä maksaa?",
+    "reply": "Palokan katsastuksen ja lakisääteisten mittausten yhteishinta on 76 €: katsastus 46 € ja mittaukset 30 €. Maksu asemalla.",
+    "status": 200,
+    "latency": 10.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-09-30",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-09-30",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:41\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.switch.fi_sv",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-716"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "latency": 15.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots",
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "date_from": "2026-10-01",
+      "date_to": "2026-10-07",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     },
+     {
+      "station": "",
+      "date": "2026-10-01",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-01",
+       "date_to": "2026-10-07",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"total_free\":160,\"days\":[{\"date\":\"2026-10-01\",\"weekday\":\"Thu\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"weekday\":\"Fri\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-03\",\"weekday\":\"Sat\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-04\",\"weekday\":\"Sun\",\"station_hours\":\"closed\",\"free_count\":0,\"suggestions\":[]},{\"date\":\"2026-10-05\",\"weekday\":\"Mon\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-05T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-05T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-05T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-06\",\"weekday\":\"Tue\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-06T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-06T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-06T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-07\",\"weekday\":\"Wed\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-07T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-07T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-07T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     },
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-10-01",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:41\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Kan vi prata svenska? Vad kostar det?",
+    "reply": "På K1 Katsastus Jyväskylä Palokka kostar besiktningen 46 € och lagstadgade mätningar 30 €, totalt 76 €. Betalning sker på stationen.",
+    "status": 200,
+    "latency": 14.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "",
+      "product": "004",
+      "vehicle_category": "M1"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "",
+       "product": "004",
+       "vehicle_category": "M1"
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-09-30\",\"label\":\"Wed 30.9.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-05\",\"label\":\"Mon 5.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-06\",\"label\":\"Tue 6.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-07\",\"label\":\"Wed 7.10.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-10-08\",\"label\":\"Thu 8.10.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-09-30 Wed 19:41\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/?stationId=1465&serviceId=1\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-10-01\",\"label\":\"Thu 1.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-01T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-01T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-01T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]},{\"date\":\"2026-10-02\",\"label\":\"Fri 2.10.\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-10-02T06:00:00Z|256|2246+2254|M1\",\"time\":\"09:00\"},{\"slot_id\":\"2026-10-02T10:00:00Z|256|2246+2254|M1\",\"time\":\"13:00\"},{\"slot_id\":\"2026-10-02T13:45:00Z|256|2246+2254|M1\",\"time\":\"16:45\"}]}],\"price\":{\"total_eur\":76,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"Payment is at the station.\"},\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"]},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.where_number.en",
+  "suite": "pilot",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-721"
+  },
+  "turns": [
+   {
+    "user": "Where did you get my number?",
+    "reply": "This number is attached to the inspection reminder, but I can’t see where it originally came from. If you’d like me to stop future reminders, just tell me.",
+    "status": 200,
+    "latency": 10.2,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "pilot.where_number.fi",
+  "suite": "pilot",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-720"
+  },
+  "turns": [
+   {
+    "user": "Mistä sait numeroni?",
+    "reply": "En näe tästä, mistä numerosi on alun perin saatu. Se on liitetty K1:n katsastusmuistutukseen autollesi TST-720.",
+    "status": 200,
+    "latency": 5.9,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ }
+]

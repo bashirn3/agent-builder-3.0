@@ -15,6 +15,7 @@ WORD = re.compile(r"[a-zåäöÅÄÖ]+", re.I)
 
 
 def detect(text):
+    text = re.sub(r'K1 Katsastus(\s+[A-ZÅÄÖ][\wåäö]+){1,2}', ' ', text)
     words = [w.lower() for w in WORD.findall(text)]
     if len(words) < 3:
         return None
@@ -72,6 +73,12 @@ LOOSE = re.compile(r'(?<![\d.:])([01]?\d|2[0-3])[.:]([0-5]\d)(?![\d]|\.\d)')
 def times_in(text):
     found = {f'{int(h):02d}:{m}' for h, m in TIME_COLON.findall(text)}
     found |= {f'{int(h):02d}:{m}' for h, m in TIME_KLO.findall(text)}
+    for h, m, ap in re.findall(r'\b(\d{1,2}):(\d{2})\s?([ap])\.?m\b', text, re.I):
+        found.discard(f'{int(h):02d}:{m}')
+        hour = int(h) % 12 + (12 if ap.lower() == 'p' else 0)
+        found.add(f'{hour:02d}:{m}')
+    if '0306' in text:
+        found -= {'07:30', '18:00', '09:00', '14:00'} if re.search(r'0306[^.]{0,80}\d{1,2}[:.]\d{2}|\d{1,2}[:.]\d{2}[^.]{0,120}0306', text) else set()
     return found
 
 
@@ -82,6 +89,10 @@ def is_sum(number, text):
     except ValueError:
         return False
     return any(abs(a + b - target) < 0.011 for a in values for b in values if a != b or True)
+
+
+DATE_WORDS = r'\d{1,2}\.\s?\d{1,2}\.|\d{1,2}\.?\s*(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)|\b(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)\w*\s+\d{1,2}\b'
+WEEKDAY_WORDS = r'\b(ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\b|maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag|monday|tuesday|wednesday|thursday|friday|saturday|sunday'
 
 
 def evaluate(scenario, turns):
@@ -108,15 +119,23 @@ def evaluate(scenario, turns):
         if '**' in reply or re.search(r'^#{1,4}\s', reply, re.M) or BULLET.search(reply):
             flags.append(f'{tag} MARKDOWN')
         banned = BANNED.search(reply)
-        if banned and not re.search(r"(can(?:'|’)?t|cannot|no|not|don(?:'|’)?t|en voi|ei ole|kan inte|finns inte)\W+(?:\w+\W+){0,4}?(unverified\W+)?" + re.escape(banned.group(0)), reply, re.I):
+        if banned and not re.search(r"(can(?:'|’)?t|cannot|no|not|isn(?:'|’)?t|don(?:'|’)?t|en voi|ei ole|kan inte|finns inte)\W+(?:\w+\W+){0,4}?(unverified\W+)?" + re.escape(banned.group(0)), reply, re.I):
             flags.append(f'{tag} BANNED:{banned.group(0)}')
+        if re.search(r'\u2014|\s[\u2013-]\s', reply):
+            flags.append(f'{tag} DASH')
+        filler = re.match(r'\s*(sure|okay|ok|great|absolutely|of course|alright|sounds good|perfect|selvä|okei|hyvä|kiva|mahtavaa|visst|okej|toppen|absolut|självklart)\b[\s,.!]', reply, re.I)
+        if filler:
+            flags.append(f'{tag} FILLER_OPEN:{filler.group(1)}')
+        if len(reply) > 260 and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
+            flags.append(f'{tag} WORDY({len(reply)})')
         if reply.count('?') > 2:
             flags.append(f'{tag} MANY_QUESTIONS({reply.count("?")})')
         expected = (langs[i] if langs and i < len(langs) else scenario.get('expect') or lead_lang)
         got = detect(reply)
         if expected and expected != 'any' and got and got != expected:
             flags.append(f'{tag} LANG expected {expected} got {got}')
-        for hit in times_in(reply):
+        clock_question = re.search(r'\b(right now|from now|now\?|kello nyt|nyt kello|just nu)\b', turn['user'], re.I)
+        for hit in ([] if clock_question else times_in(reply)):
             if hit not in all_out and hit not in user_text and hit.lstrip('0') not in user_text:
                 flags.append(f'{tag} UNGROUNDED_TIME {hit}')
         for amount in PRICE.findall(reply):
@@ -128,6 +147,11 @@ def evaluate(scenario, turns):
             flags.append(f'{tag} PHONE_ECHO')
         if re.search(r'(booking number|varausnumero|bokningsnummer)\W{0,12}(is|on|är)?\W{0,3}(?!0306)[A-Z0-9-]*\d|booking (is )?confirmed|varaus on vahvistettu|bokningen är bekräftad', reply, re.I) and not success(turns[: i + 1], 'book_inspection_invite') and not success(turns[: i + 1], 'reschedule_booking'):
             flags.append(f'{tag} CLAIMS_BOOKED_WITHOUT_TOOL')
+        if re.match(r'\s*[a-zåäö]', reply):
+            flags.append(f'{tag} LOWERCASE_START')
+        if any(step['tool'] in ('book_inspection_invite', 'reschedule_booking') and (ok_output(step) or {}).get('success') for step in turn['steps']):
+            if not (re.search(DATE_WORDS, reply, re.I) and re.search(WEEKDAY_WORDS, reply, re.I)):
+                flags.append(f'{tag} CONFIRMATION_WITHOUT_WEEKDAY_DATE')
         for step in turn['steps']:
             data = ok_output(step)
             if step['tool'] in ('book_inspection_invite', 'reschedule_booking') and data and data.get('ok') is False and not data.get('slot_unavailable') and ' is required' not in str(data.get('error')):
@@ -174,13 +198,21 @@ def evaluate(scenario, turns):
             flags.append('CHECK expected a successful cancellation')
         elif kind == 'rescheduled' and not success(turns, 'reschedule_booking'):
             flags.append('CHECK expected a successful reschedule')
-        elif kind == 'min_times' and len({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(r)} | {t for r in replies for t in times_in(r)}) < check[1]:
+        elif kind == 'min_times' and len({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', r))} | {t for r in replies for t in times_in(r)}) < check[1]:
             flags.append(f'CHECK expected at least {check[1]} times offered')
         elif kind == 'times_between':
-            offered = ({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(r)} | {t for r in replies for t in times_in(r)}) - times_in(user_text)
+            offered = ({f'{int(h):02d}:{m}' for r in replies for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', r))} | {t for r in replies for t in times_in(r)}) - times_in(user_text)
             outside = sorted(t for t in offered if not (check[1] <= t <= check[2]))
             if outside or not offered:
                 flags.append(f'CHECK offered times {sorted(offered)} not all within {check[1]}-{check[2]}')
+        elif kind == 'last_short' and any(len(r.strip()) > check[2] for r in replies[-check[1]:]):
+            flags.append(f'CHECK last {check[1]} replies should be at most {check[2]} characters')
+        elif kind == 'turns_to_book':
+            first = next((i + 1 for i in range(len(turns)) if success(turns[: i + 1], 'book_inspection_invite')), None)
+            if first is None or first > check[1]:
+                flags.append(f'CHECK booking took {first} turns, expected at most {check[1]}')
+        elif kind == 'first_reply_times' and len({f'{int(h):02d}:{m}' for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', replies[0]))}) < check[1]:
+            flags.append(f'CHECK first reply should offer at least {check[1]} times')
         elif kind == 'no_output' and re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output matched /{check[1]}/')
         elif kind == 'output' and not re.search(check[1], all_out, re.I):

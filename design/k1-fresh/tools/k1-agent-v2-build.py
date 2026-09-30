@@ -41,27 +41,36 @@ SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExe
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
 
 
-def proxy_literal():
-    """K1_STAGING_PROXY_URL (env or .env.local, never committed) as a JS object for n8n's request helper, or null."""
+def proxy_pool():
+    """K1_STAGING_PROXY_URLS (comma separated; env or .env.local, never committed), falling back to K1_STAGING_PROXY_URL."""
     from urllib.parse import urlparse
-    url = os.environ.get('K1_STAGING_PROXY_URL') or ''
     env_file = ROOT.parents[1] / '.env.local'
-    if not url and env_file.is_file():
-        url = next((line.strip().split('=', 1)[1] for line in env_file.read_text().splitlines() if line.startswith('K1_STAGING_PROXY_URL=')), '')
-    if not url:
-        return 'null'
-    parsed = urlparse(url)
-    proxy = {'protocol': parsed.scheme or 'http', 'host': parsed.hostname, 'port': parsed.port}
-    if parsed.username:
-        proxy['auth'] = {'username': parsed.username, 'password': parsed.password or ''}
-    return json.dumps(proxy)
+    values = {}
+    if env_file.is_file():
+        for line in env_file.read_text().splitlines():
+            if line.startswith('K1_STAGING_PROXY_URL') and '=' in line:
+                key, value = line.strip().split('=', 1)
+                values[key] = value
+    raw = os.environ.get('K1_STAGING_PROXY_URLS') or values.get('K1_STAGING_PROXY_URLS') or os.environ.get('K1_STAGING_PROXY_URL') or values.get('K1_STAGING_PROXY_URL') or ''
+    pool = []
+    for url in [item.strip() for item in raw.split(',') if item.strip()]:
+        parsed = urlparse(url)
+        proxy = {'protocol': parsed.scheme or 'http', 'host': parsed.hostname, 'port': parsed.port}
+        if parsed.username:
+            proxy['auth'] = {'username': parsed.username, 'password': parsed.password or ''}
+        pool.append(proxy)
+    return pool
+
+
+def proxy_literal():
+    return json.dumps(proxy_pool(), separators=(',', ':'))
 
 
 def library():
     directory = json.dumps(json.loads((ROOT / 'data/k1-directory.json').read_text()), ensure_ascii=False, separators=(',', ':'))
     code = (HERE / 'k1-muster-v2.js').read_text()
     assert 'const DIRECTORY = __DIRECTORY__' in code
-    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXY__', proxy_literal())
+    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal())
 
 
 def by_name(name):
@@ -97,21 +106,26 @@ def suffix_webhooks(nodes, owner):
 OWNER_ATTACH_JS = """const original = $('When called by the agent').first().json
 const rows = $input.all().flatMap((item) => (Array.isArray(item.json) ? item.json : [item.json]))
 const failed = rows.some((row) => row && (row.message || row.error || row.code) && !row.groupId)
-const owned = rows.filter((row) => row && row.groupId && row.status === 'confirmed').map((row) => row.groupId)
-return [{ json: { ...original, require_owner: true, owned_bookings: owned, owner_lookup_failed: failed } }]"""
+const tail = (value) => String(value || '').replace(/\\D/g, '').slice(-9)
+const caller = tail(original.phone)
+const mine = rows.filter((row) => caller && row && row.groupId && row.status === 'confirmed' && tail(row.phone) === caller)
+const details = mine.map((row) => ({ groupId: row.groupId, reservationUid: row.reservationUid, customerUid: row.customerUid, bookingNumber: row.bookingNumber, stationId: row.stationId, stationName: row.stationName, plate: row.plate, startsAt: row.startsAt }))
+return [{ json: { ...original, require_owner: true, owned_bookings: mine.map((row) => row.groupId), owned_details: details, owner_lookup_failed: failed } }]"""
 
 
 def harden_booking(nodes, connections):
     """Idempotent: safe retries for the database save, and an ownership lookup before the agent cancels or moves a booking."""
     named = {node['name']: node for node in nodes}
-    proxied = proxy_literal()
-    if proxied != 'null':
+    pool = proxy_literal()
+    if pool != '[]':
         for node_name in ('Shape', 'Cancel in Muster'):
             js = named[node_name]['parameters']['jsCode']
-            if 'proxy:' not in js:
-                named[node_name]['parameters']['jsCode'] = js.replace("json: true })", "json: true, proxy: " + proxied + " })")
+            js = re.sub(r"^const PROXIES = .*\n", '', js, flags=re.M)
+            js = re.sub(r", proxy: PROXIES\[[^\]]*\]", '', js)
+            js = js.replace("json: true })", "json: true, proxy: PROXIES[Math.floor(Math.random() * PROXIES.length)] })")
+            named[node_name]['parameters']['jsCode'] = f'const PROXIES = {pool}\n' + js
     record = named['Record booking']
-    record.update({'retryOnFail': True, 'maxTries': 3, 'waitBetweenTries': 1500})
+    record.update({'retryOnFail': True, 'maxTries': 4, 'waitBetweenTries': 2000})
     record['parameters'].setdefault('options', {})['timeout'] = 15000
     if 'Needs ownership?' in named:
         return
@@ -120,12 +134,12 @@ def harden_booking(nodes, connections):
     uid = lambda name: str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-booking-owner/{name}'))
     nodes.append({'id': uid('if'), 'name': 'Needs ownership?', 'type': 'n8n-nodes-base.if', 'typeVersion': 2.2, 'position': [x + 140, y + 200], 'parameters': {
         'conditions': {'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
-                       'conditions': [{'id': 'own', 'leftValue': '={{ ["cancel", "reschedule"].includes($json.action) ? "yes" : "no" }}', 'rightValue': 'yes', 'operator': {'type': 'string', 'operation': 'equals'}}], 'combinator': 'and'}, 'options': {}}})
+                       'conditions': [{'id': 'own', 'leftValue': '={{ ["cancel", "reschedule", "my_bookings"].includes($json.action) ? "yes" : "no" }}', 'rightValue': 'yes', 'operator': {'type': 'string', 'operation': 'equals'}}], 'combinator': 'and'}, 'options': {}}})
     nodes.append({'id': uid('lookup'), 'name': 'Owned bookings', 'type': 'n8n-nodes-base.httpRequest', 'typeVersion': 4.2, 'position': [x + 300, y + 280], 'onError': 'continueRegularOutput', 'alwaysOutputData': True,
                   'retryOnFail': True, 'maxTries': 2, 'waitBetweenTries': 1000,
                   'credentials': {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}},
-                  'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/list_bookings_for_phone', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi',
-                                 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ { p_tenant_key: "k1_katsastus_demo", p_phone: String($json.phone || "") } }}', 'options': {'timeout': 15000}}})
+                  'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/list_bookings', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi',
+                                 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ { p_tenant_key: "k1_katsastus_demo", p_from: new Date(Date.now() - 86400000).toISOString(), p_to: new Date(Date.now() + 400 * 86400000).toISOString() } }}', 'options': {'timeout': 15000}}})
     nodes.append({'id': uid('attach'), 'name': 'Attach owner data', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [x + 460, y + 280], 'parameters': {'mode': 'runOnceForAllItems', 'jsCode': OWNER_ATTACH_JS}})
     connections['When called by the agent'] = {'main': [[{'node': 'Needs ownership?', 'type': 'main', 'index': 0}]]}
     connections['Needs ownership?'] = {'main': [[{'node': 'Owned bookings', 'type': 'main', 'index': 0}], [{'node': 'Muster', 'type': 'main', 'index': 0}]]}
@@ -188,11 +202,16 @@ TOOLS = {
         'fixed': {'action': 'station_info', 'phone': PHONE, **LEAD_FIELDS},
     },
 }
+TOOLS['get_my_bookings'] = {
+    'description': 'The customer\'s own upcoming bookings made through this chat, found from their phone number: count and a list with event_id, booking_number, station_name, plate, date, time. Call it first, without asking anything, when the customer asks whether they have a booking, or wants to cancel or move one. It has no inputs.',
+    'ai': {},
+    'fixed': {'action': 'my_bookings', 'phone': PHONE},
+}
 SCHEMA_ENTRY = lambda key: {'id': key, 'displayName': key, 'type': 'string', 'display': True, 'required': False, 'defaultMatch': False, 'canBeUsedToMatch': True}
 SLOT_TOOLS = {
     'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category). Reuse plate, name and phone. success true includes booking_number and event_id. If success is false, it is not booked.',
-    'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots. event_id is the one returned when it was booked. The booking number stays the same.',
-    'cancel_booking': 'Cancel an existing booking. event_id is required. sendConfirmation is never used. If already_cancelled is true, it was already gone.',
+    'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots. event_id comes from get_my_bookings (or from the booking made in this conversation). The booking number stays the same.',
+    'cancel_booking': 'Cancel an existing booking. event_id is required and comes from get_my_bookings (or from the booking made in this conversation). sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
 
 LANGUAGE_CORE = '''const LANGUAGE_WORDS = {
@@ -210,7 +229,8 @@ const LANGUAGE_REQUESTS = [
   ['English', /englanniksi|englannin kiel|englantia\\b|på engelska|\\bengelska\\b|\\benglish\\b/i],
 ]
 const detectLanguage = (value) => {
-  const asked = LANGUAGE_REQUESTS.filter(([, pattern]) => pattern.test(String(value || ''))).map(([name]) => name)
+  const translating = /k[aä]ännä|kääntä|translate|översätt|\\böversätta/i.test(String(value || ''))
+  const asked = translating ? [] : LANGUAGE_REQUESTS.filter(([, pattern]) => pattern.test(String(value || ''))).map(([name]) => name)
   if (asked.length === 1) return asked[0]
   const words = (String(value || '').toLowerCase().replace(/\\S*\\d\\S*/g, ' ').match(/[\\p{L}]+/gu) || []).filter((word) => word.length > 1)
   const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word) || (LANGUAGE_STEMS[name] || []).some((stem) => word.length > stem.length && word.startsWith(stem))).length]).sort((a, b) => b[1] - a[1])
@@ -262,6 +282,31 @@ PLAYGROUND_RETURN = (
 )
 
 
+DASH_CLEAN = "String(m ?? '').replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^\\p{Ll}/u, (c) => c.toUpperCase())"
+PLAN_DELIVERY_CLEAN = (
+    "msgs = msgs.map(m => String(m ?? '').trim()).filter(Boolean).slice(0, maxBubbles);",
+    "msgs = msgs.map(m => " + DASH_CLEAN + ").filter(Boolean).slice(0, maxBubbles);",
+)
+PLAN_FOLLOWUP_CLEAN = (
+    "const text = msgs.map(m => String(m ?? '').trim()).filter(Boolean).join(' ').trim();",
+    "const text = msgs.map(m => " + DASH_CLEAN + ").filter(Boolean).join(' ').trim();",
+)
+NORMALIZE_PATCHES = (
+    ("const messages = lines.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean)",
+     "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^\\p{Ll}/u, (c) => c.toUpperCase())).filter(Boolean)"),
+    ("fallback: !lines.some((line) => typeof line === 'string' && line.trim()) }", "fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly }"),
+    ("if (!messages.length) {\n", "const reactionOnly = String(raw.reaction || '').trim()\nif (!messages.length && reactionOnly) messages.push(reactionOnly)\nif (!messages.length) {\n"),
+    ("fi: 'Hyvä! Mille päivälle katsotaan katsastusaikaa?', sv: 'Absolut! Vilken dag passar dig för besiktningen?', en: 'Sure! Which day would suit you for the inspection?'",
+     "fi: 'Mille päivälle?', sv: 'Vilken dag passar?', en: 'What day works best?'"),
+)
+SYSTEM_STYLE_PATCHES = (
+    (("Split like a person does: acknowledgement, then substance, then the question.", "Default to ONE bubble. Give the substance and the single question together; never add an acknowledgement bubble."), 'shape'),
+    (("Say something warm and ask for a day.", "Do not ask which day. Call get_slots from tomorrow and offer the first day's times. Do not echo their word and do not open with an acknowledgement."), 'ack'),
+    (("(\"no rush — want me to leave this with you?\")", "(\"no rush, want me to leave this with you?\")"), 'dash example'),
+    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\" to your offer to find a time, the reply is the times themselves from get_slots.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
+)
+
+
 def replace_once(text, pair, label):
     old, new = pair
     if text.count(old) != 1:
@@ -297,6 +342,17 @@ def build_agent(booking_id):
                 options['systemMessage'],
                 ("Never invent prices, availability, dates or policy that aren't in the brief below.", "Never invent prices, availability, opening hours, dates or policy that are not in the brief below or in a tool result."),
                 'system message')
+            for pair, label in SYSTEM_STYLE_PATCHES:
+                options['systemMessage'] = replace_once(options['systemMessage'], pair, f'system message {label}')
+        if node['name'] == 'Plan Delivery':
+            node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_DELIVERY_CLEAN, 'Plan Delivery dashes')
+        if node['name'] == 'Plan Follow-up Delivery':
+            node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_FOLLOWUP_CLEAN, 'Plan Follow-up Delivery dashes')
+        if node['name'] == 'Normalize playground reply':
+            code = node['parameters']['jsCode']
+            for label, pair in enumerate(NORMALIZE_PATCHES):
+                code = replace_once(code, pair, f'Normalize playground reply {label}')
+            node['parameters']['jsCode'] = code
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
             for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_LEADLANG, 'lead language'), (PLAYGROUND_TAIL, 'language order'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
@@ -309,7 +365,7 @@ def build_agent(booking_id):
             node['parameters']['jsCode'] = code
         if node['name'] == 'Playground reply':
             code = node['parameters']['jsCode']
-            code = replace_once(code, ("new Set(['get_slots',", "new Set(['get_station_info', 'get_slots',"), 'allowed tools')
+            code = replace_once(code, ("new Set(['get_slots',", "new Set(['get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['station', 'product', 'vehicle_category', 'date', 'station_id',"), 'allowed inputs')
             node['parameters']['jsCode'] = code
 
@@ -414,6 +470,15 @@ def summarise(out):
 LIVE_BOOKING_NAME = 'K1 Muster Booking (staging)'
 
 
+def scrub_secrets(text):
+    """Backups are committed; proxy passwords in the live nodes must not be."""
+    for proxy in proxy_pool():
+        for secret in (proxy.get('auth') or {}).values():
+            if secret:
+                text = text.replace(secret, 'REDACTED')
+    return text
+
+
 def snapshot(wid):
     workflow = gate.request('GET', f'/workflows/{wid}')
     return {k: workflow[k] for k in ('id', 'name', 'nodes', 'connections', 'settings', 'active')}
@@ -452,8 +517,8 @@ def promote():
     live_booking, live_agent = snapshot(LIVE_BOOKING), snapshot(LIVE_AGENT)
     BACKUPS.mkdir(exist_ok=True)
     stamp = time.strftime('%Y%m%d-%H%M%S')
-    (BACKUPS / f'{stamp}-booking.json').write_text(json.dumps(live_booking, ensure_ascii=False))
-    (BACKUPS / f'{stamp}-agent.json').write_text(json.dumps(live_agent, ensure_ascii=False))
+    (BACKUPS / f'{stamp}-booking.json').write_text(scrub_secrets(json.dumps(live_booking, ensure_ascii=False)))
+    (BACKUPS / f'{stamp}-agent.json').write_text(scrub_secrets(json.dumps(live_agent, ensure_ascii=False)))
     new_booking = transplant(snapshot(booking_id), live_booking)
     new_agent = transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name']))
     put_live(LIVE_BOOKING, new_booking, live_booking['active'])

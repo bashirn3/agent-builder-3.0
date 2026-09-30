@@ -59,11 +59,15 @@ def main():
 
     try:
         gate.request('POST', f'/workflows/{wid}/activate')
-        day = time.strftime('%Y-%m-%d', time.gmtime(time.time() + 3 * 86400))
-        slots = call({'action': 'get_slots', 'phone': OWNER, 'station': 'Palokka', 'product': '004', 'vehicle_category': 'M1', 'date_from': day, 'date_to': day})
-        days = [d for d in slots.get('days', []) if d.get('all_times')]
+        days = []
+        for offset in range(2, 12):
+            day = time.strftime('%Y-%m-%d', time.gmtime(time.time() + offset * 86400))
+            slots = call({'action': 'get_slots', 'phone': OWNER, 'station': 'Palokka', 'product': '004', 'vehicle_category': 'M1', 'date_from': day, 'date_to': day})
+            days = [d for d in slots.get('days', []) if len(d.get('all_times') or []) > 1]
+            if days:
+                break
         if not days:
-            print('no free times on', day, '- rerun another day'); return 2
+            print('no free times in the next 10 days'); return 2
         slot = days[0]['all_times'][-1]['slot_id']
         booked = call({'action': 'book', 'phone': OWNER, 'start_time': slot, 'rek': 'TST-OWN', 'name': 'Owner Check', 'language': 'en'})
         check('booking is made and recorded', booked.get('ok') and booked.get('recorded'), booked)

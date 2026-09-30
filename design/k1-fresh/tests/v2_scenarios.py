@@ -1,7 +1,6 @@
 """Scenario sets for the v2 agent: 'usual' (varied everyday conversations in fi/sv/en) and 'devil' (adversarial).
 
-Date facts the checks rely on (evaluation day is Tuesday 2026-09-29): tomorrow 2026-09-30, Saturday 2026-10-03,
-next Monday 2026-10-05, Thursday 2026-10-01. Booking scenarios use Auto(...) rule-based customers; every booking made is
+Date-dependent checks are computed from today (Europe/Helsinki) at build time. Booking scenarios use Auto(...) rule-based customers; every booking made is
 cancelled by the harness afterwards.
 """
 
@@ -16,7 +15,16 @@ LANGS = ('fi', 'sv', 'en')
 counter = {'n': 0}
 
 
+def nextday(weekday):
+    import datetime
+    from v2_devil_extended import iso, TODAY
+    return iso((weekday - TODAY.weekday()) % 7 or 7)
+
+
 def build(Customer, Auto):
+    import os, sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from v2_devil_extended import iso, TODAY
     scenarios = []
 
     def lead(lang, station='pal', product='004', cat='M1', plate=None):
@@ -57,7 +65,7 @@ def build(Customer, Auto):
     tri('hours_today', 'Mihin asti olette tänään auki?', 'Till vilken tid har ni öppet idag?', 'What time do you close today?', [('tool', 'get_station_info'), ('reply', HOURS)])
     tri('hours_tomorrow', 'Milloin asema aukeaa huomenna?', 'När öppnar stationen imorgon?', 'When does the station open tomorrow?', [('tool', 'get_station_info'), ('reply', HOURS)])
     tri('hours_saturday', 'Onko asema auki lauantaina?', 'Har ni öppet på lördag?', 'Are you open on Saturday?', [('tool', 'get_station_info'), ('reply', r'suljettu|kiinni|ei ole auki|ei auki|stängt|stängd|inte öppet|closed|not open')])
-    tri('hours_monday', 'Ollaanko maanantaina auki ja mihin aikaan?', 'Är ni öppna på måndag och vilka tider?', 'Are you open Monday and what hours?', [('tool', 'get_station_info'), ('param', 'get_station_info', 'date', '2026-10-05')])
+    tri('hours_monday', 'Ollaanko maanantaina auki ja mihin aikaan?', 'Är ni öppna på måndag och vilka tider?', 'Are you open Monday and what hours?', [('tool', 'get_station_info'), ('param', 'get_station_info', 'date', nextday(0))])
     tri('hours_generic', 'Mitkä ovat aukioloaikanne?', 'Vilka är era öppettider?', 'What are your opening hours?', [('tool', 'get_station_info'), ('reply', HOURS)])
     tri('hours_ita', 'Mihin aikaan teillä on auki tällä viikolla?', 'Vilka tider har ni öppet denna vecka?', 'What hours are you open this week?', [('tool', 'get_station_info'), ('reply', HOURS)], station='ita')
     tri('hours_oulu_lead', 'Milloin olette auki?', 'När har ni öppet?', 'When are you open?', [('tool', 'get_station_info'), ('reply', r'Oulu'), ('no_reply', r'Palokka|Itäharju')], station='oul')
@@ -104,7 +112,7 @@ def build(Customer, Auto):
     # ---------- times ----------
     tri('times_tomorrow', 'Onko huomenna vapaita aikoja?', 'Finns det lediga tider imorgon?', 'Are there free times tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)])
     tri('times_next_week', 'Ensi viikolla sopisi, mitä aikoja on?', 'Nästa vecka passar, vilka tider finns?', 'Next week works, what times do you have?', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', '2026-10-05')])
-    tri('times_thursday_pm', 'Torstaina iltapäivällä olisi hyvä', 'På torsdag eftermiddag skulle passa', 'Thursday afternoon would be good', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', '2026-10-01')])
+    tri('times_thursday_pm', 'Torstaina iltapäivällä olisi hyvä', 'På torsdag eftermiddag skulle passa', 'Thursday afternoon would be good', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', nextday(3))])
     tri('times_earliest', 'Mikä on aikaisin aika jonka saan?', 'Vilken är den tidigaste tiden jag kan få?', 'What is the earliest time I can get?', [('any_tool', ['get_slots', 'get_station_info'])])
     tri('times_latest', 'Mikä on huomisen viimeinen aika?', 'Vilken är sista tiden imorgon?', 'What is the last time tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)])
     tri('times_weekend', 'Onko viikonlopulle aikoja?', 'Finns det tider på helgen?', 'Do you have weekend slots?', [NOBOOK])
@@ -346,8 +354,8 @@ def build(Customer, Auto):
     r('yesterday', 'en', 'Book me yesterday at 10:00.', [NOBOOK])
     r('far_future', 'en', 'Book me for 15 March 2028 at 10:00.', [NOBOOK])
     r('feb_30', 'en', 'Book me on 30 February at 10:00.', [NOBOOK])
-    r('day_after', 'fi', 'Onko ylihuomenna aikoja?', [('any_tool', GETS), ('param', 'get_slots', 'date_from', '2026-10-01'), NOBOOK])
-    r('next_wednesday', 'en', 'What times do you have next Wednesday?', [('any_tool', GETS), ('param', 'get_slots', 'date_from', '2026-(09-30|10-07)'), NOBOOK])
+    r('day_after', 'fi', 'Onko ylihuomenna aikoja?', [('any_tool', GETS), ('param', 'get_slots', 'date_from', iso(2)), NOBOOK])
+    r('next_wednesday', 'en', 'What times do you have next Wednesday?', [('any_tool', GETS), ('param', 'get_slots', 'date_from', f'{nextday(2)}|{iso(7 + (2 - TODAY.weekday()) % 7)}'), NOBOOK])
     r('tonight_2330', 'en', 'Book me tonight at 23:30.', [NOBOOK])
     r('in_five_minutes', 'en', 'I am at the station in 5 minutes, can you book me right now?', [NOBOOK])
     r('independence_day', 'fi', 'Onko asema auki 6.12. itsenäisyyspäivänä?', [('tool', 'get_station_info'), NOBOOK])
@@ -407,4 +415,8 @@ def build(Customer, Auto):
             ld('cancel', [ASK[lang], Auto(Customer(lang, 'first')), CANCEL[lang], Auto(Customer(lang), 'cancelled', 3)], [('booked',), ('cancelled',)], books=True)
             ld('move', [ASK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('rescheduled',)], books=True)
 
+    from v2_devil_extended import extend, extend_voice, extend_pilot
+    extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET)
+    extend_voice(add, Auto, Customer, NOBOOK, GETS)
+    extend_pilot(add, Auto, Customer, NOBOOK, GETS)
     return scenarios

@@ -1,0 +1,191 @@
+=== pilot.ambiguous_four.fi (clean) ===
+Customer: Varaa huomiselle klo 4.
+Agent:    Palokka on huomenna auki klo 9–17. Klo 16.00 on vapaa, tarkoititko sitä?
+
+=== pilot.ambiguous_seven.sv (clean) ===
+Customer: Kan jag komma imorgon klockan 7?
+Agent:    Palokka öppnar kl. 09:00 i morgon, så kl. 07:00 går inte. Det finns tider kl. 09:15, 13:00 och 16:45, vilken passar dig?
+
+=== pilot.cancel_after.en (clean) ===
+Customer: sure
+Agent:    Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?
+Customer: The 09:00 one works for me
+Agent:    Thu 1 Oct at 09:00 for TST-713. What name should I put on it?
+Customer: John Smith
+Agent:    Booked for Thu 1 Oct at 09:00 at K1 Katsastus Jyväskylä Palokka. Booking number A6K4WGEM, total 76 €, payable at the station.
+Customer: cancel it
+Agent:    Your appointment on Thu 1 Oct at 09:00 at K1 Katsastus Jyväskylä Palokka has been cancelled.
+
+=== pilot.check_after.sv (clean) ===
+Customer: visst
+Agent:    tors 1.10.: 09.00, 13.00 eller 16.45. Vilken tid passar?
+Customer: Kl 09:00 passar bra
+Agent:    Tors 1 okt kl. 09.00 för TST-715. Vilket namn ska jag skriva bokningen på?
+Customer: Anna Andersson
+Agent:    Jag bokar tors 1 okt kl. 09.00 för TST-715, Anna Andersson.
+Customer: Ja
+Agent:    Bokningen är klar på K1 Katsastus Jyväskylä Palokka tors 1 okt kl. 09.00. Bokningsnummer ALNFNJJ6, totalpris 76 €.
+Customer: Har jag en aktiv bokning?
+Agent:    Ja, du har en aktiv bokning tors 1 okt kl. 09.00 på K1 Katsastus Jyväskylä Palokka. Bokningsnummer ALNFNJJ6.
+
+=== pilot.consent.en.sure (clean) ===
+Customer: sure
+Agent:    Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?
+
+=== pilot.consent.en.yes_please (clean) ===
+Customer: yes please
+Agent:    Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?
+
+=== pilot.consent.fi.joo (clean) ===
+Customer: joo
+Agent:    to 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?
+
+=== pilot.consent.fi.kyllä_kiitos (clean) ===
+Customer: kyllä kiitos
+Agent:    To 1.10.: klo 9.00, 13.00 tai 16.45. Mikä aika sopii?
+
+=== pilot.consent.sv.ja_tack (clean) ===
+Customer: ja tack
+Agent:    tors 1.10.: 09.00, 13.00 eller 16.45. Vilken tid passar?
+
+=== pilot.consent.sv.visst (clean) ===
+Customer: visst
+Agent:    tors 1.10.: 09.00, 13.00 eller 16.45. Vilken tid passar?
+
+=== pilot.done_acks.sv (clean) ===
+Customer: visst
+Agent:    tors 1.10. kl. 9.00, 13.00 eller 16.45. Vilken tid passar?
+Customer: Kl 09:00 passar bra
+Agent:    tors 1 okt kl. 09.00 för TST-712. Vilket namn ska jag skriva bokningen på?
+Customer: Anna Andersson
+Agent:    Bokad på K1 Katsastus Jyväskylä Palokka tors 1 okt kl. 09.00. Bokningsnummer E7W4X4EC, totalpris 76 € (betalas på stationen).
+Customer: Tack
+Agent:    Ta hand om dig!
+Customer: Ok
+Agent:    👍
+Customer: Ok
+Agent:    👍
+
+=== pilot.ev_other_car.fi (clean) ===
+Customer: Haluan katsastaa toisen auton, EFG-321
+Agent:    Onko EFG-321 bensiinikäyttöinen, diesel, hybridi vai täyssähköauto?
+Customer: Se on täyssähköauto
+Agent:    To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii EFG-321:lle?
+Customer: Mitä aikoja on huomenna?
+Agent:    Huomenna Palokassa on vapaita aikoja klo 9.00–16.45, esimerkiksi klo 9.00, 13.00 ja 16.45. Mikä aika sopii?
+Customer: Klo 09:00 sopii
+Agent:    To 1.10. klo 9.00 EFG-321:lle. Millä nimellä teen varauksen?
+Customer: Matti Meikäläinen
+Agent:    Katsastus on varattu torstaille 1.10. klo 9.00 K1 Katsastus Jyväskylä Palokkaan, varausnumero UJ3RWPPF. Hinta on 46 €, maksu asemalla.
+
+=== pilot.ev_other_car_ita.en (clean) ===
+Customer: It is for my other car, ELE-777
+Agent:    Is ELE-777 petrol, diesel, hybrid, or fully electric?
+Customer: It is fully electric
+Agent:    Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for ELE-777?
+Customer: What times tomorrow?
+Agent:    Tomorrow, Thu 1 Oct, there are also openings at 10:30, 13:30 and 16:30. Which works for ELE-777?
+Customer: The 10:30 one works for me
+Agent:    Thu 1 Oct at 10:30 for ELE-777. What name should I put on the booking?
+Customer: John Smith
+Agent:    Booked for Thu 1 Oct at 10:30 for ELE-777 at K1 Katsastus Turku Itäharju. Booking number NJVGR7T4. The station uses its standard inspection product for this electric car. Total: €46, payable at the station.
+
+=== pilot.evening.en (clean) ===
+Customer: Book me tomorrow at 19:00.
+Agent:    Palokka is open Thu 1 Oct from 09:00 to 17:00, so 19:00 isn’t available. I can offer 09:15, 13:00 or 16:45. Which time works for you?
+
+=== pilot.fast_book.en.ita (clean) ===
+Customer: yes
+Agent:    Thu 1 Oct: 09:00, 13:00 or 16:45. Which time suits you?
+Customer: The 09:00 one works for me
+Agent:    Thu 1 Oct at 09:00 for TST-702. What name should I put on it?
+Customer: John Smith
+Agent:    You’re booked at K1 Katsastus Turku Itäharju for Thu 1 Oct at 09:00. Booking number: 7YKJEX9A. Total: €76, payable at the station.
+
+=== pilot.fast_book.en.pal (clean) ===
+Customer: sure
+Agent:    Thu 1 Oct: 09:00, 13:00 or 16:45. Which time works for you?
+Customer: The 09:00 one works for me
+Agent:    Thu 1 Oct at 09:00 for TST-699. What name should I put it under?
+Customer: John Smith
+Agent:    I have your name as John Smith for Thu 1 Oct at 09:00. The total is 76 €, payable at the station.
+Customer: Yes
+Agent:    Booked for Thu 1 Oct at 09:00 at K1 Katsastus Jyväskylä Palokka. Booking number: PKNME7PJ. Total: 76 €, payable at the station.
+
+=== pilot.fast_book.fi.ita (clean) ===
+Customer: kyllä
+Agent:    To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?
+Customer: Klo 16:45 sopii
+Agent:    To 1.10. klo 16.45 TST-703:lle. Millä nimellä teen ajan?
+Customer: Matti Meikäläinen
+Agent:    Katsastus on varattu to 1.10. klo 16.45 K1 Katsastus Turku Itäharjuun. Varausnumero YU3HMVYW, hinta 76 €.
+
+=== pilot.fast_book.fi.pal (clean) ===
+Customer: joo
+Agent:    To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?
+Customer: Klo 13:00 sopii
+Agent:    To 1.10. klo 13.00 TST-700:lle. Millä nimellä teen varauksen?
+Customer: Matti Meikäläinen
+Agent:    Varaus tehty, K1 Katsastus Jyväskylä Palokka, to 1.10. klo 13.00. Varausnumero W7YWNT7R, yhteensä 76 €.
+
+=== pilot.fast_book.sv.pal (clean) ===
+Customer: visst
+Agent:    Tors 1.10.: 09.00, 13.00 eller 16.45. Vilken tid passar?
+Customer: Kl 16:45 passar bra
+Agent:    Tors 1.10. kl. 16.45 för TST-701. Vilket namn ska jag ange?
+Customer: Anna Andersson
+Agent:    Besiktningen är bokad tors 1.10. kl. 16.45 på K1 Katsastus Jyväskylä Palokka. Bokningsnummer NNTXLCQP. Totalt 76 €, betalning på stationen.
+
+=== pilot.greet_thanks.en (clean) ===
+Customer: hey
+Agent:    Hey! I can help find a time for TST-718. Want me to check the next available appointments?
+Customer: thanks bye
+Agent:    Take care!
+
+=== pilot.handoff_acks.en (clean) ===
+Customer: I want to speak to a real person right now.
+Agent:    You can speak with someone at K1 by calling 0306 100 100.
+Customer: Yes
+Agent:    Take care.
+Customer: Yes
+Agent:    👍
+Customer: Yes
+Agent:    👍
+
+=== pilot.handoff_acks.fi (clean) ===
+Customer: Haluan puhua oikean ihmisen kanssa.
+Agent:    Voit soittaa K1:n ajanvaraukseen numeroon 0306 100 100.
+Customer: Joo
+Agent:    Mukavaa päivänjatkoa.
+Customer: Joo
+Agent:    👍
+Customer: Joo
+Agent:    👍
+
+=== pilot.move_after.fi (clean) ===
+Customer: joo
+Agent:    To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?
+Customer: Klo 09:00 sopii
+Agent:    To 1.10. klo 9.00 TST-714:lle. Millä nimellä teen ajan?
+Customer: Matti Meikäläinen
+Agent:    Aika on varattu to 1.10. klo 9.00 K1 Katsastus Jyväskylä Palokkaan. Varausnumero QWKE3FP7, kokonaishinta 76 €.
+Customer: Voisinko siirtää sen perjantaille?
+Agent:    Pe 2.10. klo 9.00, 13.00 tai 16.45 sopii. Mikä aika käy?
+Customer: Klo 16:45 sopii
+Agent:    Aika on siirretty pe 2.10. klo 16.45 K1 Katsastus Jyväskylä Palokkaan. Varausnumero QWKE3FP7, kokonaishinta 76 €.
+
+=== pilot.past_hour.en (clean) ===
+Customer: Book me today at 07:00.
+Agent:    Palokka is open today from 09:00 to 17:00, but there are no free inspection times left today. What other day works for you?
+
+=== pilot.price_after_consent.fi (clean) ===
+Customer: joo
+Agent:    To 1.10. klo 9.00, 13.00 tai 16.45. Mikä aika sopii?
+Customer: Paljonko tämä maksaa?
+Agent:    Palokan tämän auton katsastus maksaa 76 €, josta katsastus on 46 € ja lakisääteiset mittaukset 30 €. Maksu hoidetaan asemalla.
+
+=== pilot.switch.fi_sv (clean) ===
+Customer: joo
+Agent:    To 1.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?
+Customer: Kan vi prata svenska? Vad kostar det?
+Agent:    På K1 Katsastus Jyväskylä Palokka är priset enligt bokningspriset 46 € för besiktningen och 30 € för lagstadgade mätningar, totalt 76 €. Betalning sker på stationen.

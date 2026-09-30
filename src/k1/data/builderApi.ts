@@ -533,6 +533,22 @@ export async function setFeedback(messageId: string, feedback: Feedback): Promis
   await call('/feedback', { method: 'POST', body: JSON.stringify({ messageId, feedback }) })
 }
 
+export async function deleteTestChats(ids: string[]): Promise<number> {
+  const unique = [...new Set(ids)]
+  if (!unique.length) return 0
+  if (!remote) {
+    await pause(250)
+    const store = readLocal()
+    const before = store.chats.length
+    store.chats = store.chats.filter((chat) => !unique.includes(chat.conversation.id))
+    writeLocal(store)
+    return before - store.chats.length
+  }
+  const result = await secure<{ ok: boolean; deleted?: number; error?: string }>('chats.delete', { ids: unique })
+  if (!result.ok) throw new Error(result.error ?? 'delete_failed')
+  return result.deleted ?? 0
+}
+
 export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal): Promise<TestChatSummary[]> {
   if (!remote) {
     await pause(250)

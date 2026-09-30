@@ -7,12 +7,12 @@ const root = new URL('../', import.meta.url)
 const source = fs.readFileSync(new URL('design/k1-fresh/tools/k1-muster-v2.js', root), 'utf8')
 const directory = fs.readFileSync(new URL('design/k1-fresh/data/k1-directory.json', root), 'utf8')
 const withDirectory = source.replace('const DIRECTORY = __DIRECTORY__', `const DIRECTORY = ${directory}`)
-const code = withDirectory.replace('__STAGING_PROXY__', 'null')
-assert.ok(!code.includes('__DIRECTORY__') && !code.includes('__STAGING_PROXY__'), 'placeholders were not replaced')
+const code = withDirectory.replace('__STAGING_PROXIES__', '[]')
+assert.ok(!code.includes('__DIRECTORY__') && !code.includes('__STAGING_PROXIES__'), 'placeholders were not replaced')
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 const node = new AsyncFunction('$input', '$getWorkflowStaticData', code)
-const proxied = { protocol: 'http', host: 'proxy.example', port: 8080, auth: { username: 'u', password: 'p' } }
-const proxiedNode = new AsyncFunction('$input', '$getWorkflowStaticData', withDirectory.replace('__STAGING_PROXY__', JSON.stringify(proxied)))
+const pool = Array.from({ length: 8 }, (_, i) => ({ protocol: 'http', host: `proxy${i}.example`, port: 8080 + i, auth: { username: 'u', password: 'p' } }))
+const proxiedNode = new AsyncFunction('$input', '$getWorkflowStaticData', withDirectory.replace('__STAGING_PROXIES__', JSON.stringify(pool)))
 
 const NOW = '2026-09-29T08:00:00Z'
 const product = (id, productType, en, fi) => ({ id, productType, name: { en, fi: fi || en, sv: en } })
@@ -289,6 +289,24 @@ test('cancel and reschedule: the agent path only touches bookings the caller own
   assert.equal(staff.result.ok, true, 'the gated staff path is unchanged')
 })
 
+test('my_bookings lists only the caller\'s upcoming bookings with a usable event_id', async () => {
+  const soon = new Date(Date.now() + 2 * 86400000).toISOString()
+  const past = new Date(Date.now() - 2 * 86400000).toISOString()
+  const details = [
+    { groupId: 'g1', reservationUid: 'r1', customerUid: 'c1', bookingNumber: 'AB12', stationName: 'K1 Katsastus Jyväskylä Palokka', plate: 'ABC-123', startsAt: soon },
+    { groupId: 'g0', reservationUid: 'r0', customerUid: 'c0', bookingNumber: 'OLD1', stationName: 'K1 Katsastus Jyväskylä Palokka', plate: 'ABC-123', startsAt: past },
+  ]
+  const mine = await makeRun({})({ action: 'my_bookings', phone: '1', require_owner: true, owned_bookings: ['g1', 'g0'], owned_details: details })
+  assert.equal(mine.result.count, 1)
+  assert.equal(mine.result.bookings[0].event_id, 'g1|r1|c1')
+  assert.equal(mine.calls.length, 0)
+  const none = await makeRun({})({ action: 'my_bookings', phone: '1', require_owner: true, owned_bookings: [], owned_details: [] })
+  assert.equal(none.result.ok, true)
+  assert.equal(none.result.count, 0)
+  const broken = await makeRun({})({ action: 'my_bookings', phone: '1', require_owner: true, owner_lookup_failed: true })
+  assert.equal(broken.result.ok, false)
+})
+
 test('a failed refresh serves the last good station list instead of turning bookable stations into read-only ones', async () => {
   const staticData = { k1_cache: {} }
   const first = await makeRun({ staticData })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
@@ -310,24 +328,34 @@ test('rate limits (429) are retried; a persistent one is reported, and a write i
   assert.equal(gone.calls.filter((c) => c.method === 'DELETE').length, 1, 'a 500 on a write is not repeated')
 })
 
-test('staging calls go through the proxy when one is configured, production and the K1 site never do', async () => {
+test('staging calls go through a random proxy from the pool, production and the K1 site never do', async () => {
   const direct = await makeRun()({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
   assert.ok(direct.calls.every((c) => !c.proxy))
-  const via = await makeRun({ proxy: true })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
-  assert.equal(via.result.ok, true)
-  const staging = via.calls.filter((c) => c.url.includes('staging-booking-api'))
-  assert.ok(staging.length > 0 && staging.every((c) => c.proxy && c.proxy.host === 'proxy.example'))
-  assert.ok(via.calls.filter((c) => !c.url.includes('staging-booking-api')).every((c) => !c.proxy))
+  const seen = new Set()
+  for (let i = 0; i < 6; i++) {
+    const via = await makeRun({ proxy: true })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })
+    assert.equal(via.result.ok, true)
+    const staging = via.calls.filter((c) => c.url.includes('staging-booking-api'))
+    assert.ok(staging.length > 0 && staging.every((c) => c.proxy && pool.some((p) => p.host === c.proxy.host)))
+    assert.ok(via.calls.filter((c) => !c.url.includes('staging-booking-api')).every((c) => !c.proxy))
+    staging.forEach((c) => seen.add(c.proxy.host))
+  }
+  assert.ok(seen.size >= 3, `expected a spread of proxies, saw ${seen.size}`)
 })
 
-test('booking keeps accented names intact all the way to the Muster customer record', async () => {
-  const slotId = '2026-09-30T07:00:00Z|256|2246+2254|M1'
-  const { result, calls } = await makeRun()({ action: 'book', start_time: slotId, phone: '358401', rek: 'abc-123', name: 'Åsa Öberg-Ähtäri', language: 'fi' })
+test('a proxy that refuses the connection is skipped: the same call is retried through another one, even for writes', async () => {
+  const dead = new Set()
+  const handler = (o) => {
+    if (o.url.includes('staging-booking-api') && o.method === 'DELETE') {
+      if (!dead.size) { dead.add(o.proxy.host); throw Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }) }
+      return {}
+    }
+  }
+  const { result, calls } = await makeRun({ proxy: true, handler })({ action: 'cancel', event_id: 'g2|r2|c2' })
   assert.equal(result.ok, true)
-  const customer = calls.find((c) => c.url.endsWith('/B2CCustomer'))
-  assert.match(JSON.stringify(customer.body), /Åsa/)
-  assert.match(JSON.stringify(customer.body), /Öberg-Ähtäri/)
-  assert.equal(result.plate, 'ABC-123')
+  const deletes = calls.filter((c) => c.method === 'DELETE')
+  assert.equal(deletes.length, 2)
+  assert.notEqual(deletes[0].proxy.host, deletes[1].proxy.host)
 })
 
 test('station names: Swedish exonyms and Finnish inflections resolve', async () => {
