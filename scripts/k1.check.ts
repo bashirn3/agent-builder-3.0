@@ -133,6 +133,9 @@ assert(describeChanges({ ...base, translations: { fi: { opener: '', reminders: [
 console.log('k1 checks passed')
 
 const swedish = leadContext({ plateNumber: 'ABC-123', stationName: 'SULJETTU K1 Katsastus Turku Itäharju', nextInspection: '2026-10-05', lastInspection: '2025-10-05', language: 'Ruotsi' }, 'en')
-assert(swedish.includes("Customer's language: Swedish. Reply in Swedish") && swedish.includes('sent in English because no Swedish version') && swedish.includes('Station: K1 Katsastus Turku Itäharju. Offer this station first') && swedish.includes('Inspection due by: 5.10.2026'), 'lead context names the language, the fallback opener and the station')
+assert(swedish.includes("Customer's language: Swedish. Reply in Swedish") && swedish.includes('sent in English because no Swedish version') && swedish.includes('Station the customer last visited: K1 Katsastus Turku Itäharju. Default to this station') && swedish.includes('Inspection due by: 5.10.2026'), 'lead context names the language, the fallback opener and the station')
 assert(!leadContext({ plateNumber: 'X-1', stationName: '', nextInspection: null, lastInspection: null, language: 'Suomi' }, 'fi').includes('opening message was sent'), 'no fallback note when the opener matched the language')
+const electric = leadContext({ plateNumber: 'X-1', stationName: 'K1 Katsastus Espoo Suomenoja', nextInspection: null, lastInspection: null, language: 'Suomi', product: '004e', vehicleCategory: 'M1' }, 'fi')
+assert(electric.includes('Product on the reminder: 004e') && electric.includes('no measuring product') && electric.includes('Vehicle category: M1'), 'lead context carries the reminder product and vehicle category')
+assert(!/opening hours \(Europe\/Helsinki\)/i.test(electric) && !/Published station opening hours/.test(electric), 'lead context no longer hardcodes station hours')
 console.log('lead context checks passed')

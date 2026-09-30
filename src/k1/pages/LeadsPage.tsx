@@ -105,6 +105,7 @@ function fromMuster(row: LeadRow, stationId: number): Lead {
     isClosed: row.isClosed,
     plateNumber: row.PlateNumber,
     product: row.Product,
+    vehicleCategory: row.VehicleCategory || undefined,
     nextInspection: row.NextInspectionDateRangeEnd || null,
     phoneNumber: row.PhoneNumber,
     language: row.Language,

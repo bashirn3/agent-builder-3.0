@@ -1,5 +1,7 @@
 const BASE = import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
 const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefined
+// Points the tester at another agent workflow (for example /booking-chat-v2) without changing the saved setup.
+const CHAT_PATH = (import.meta.env?.VITE_K1_CHAT_PATH as string | undefined)?.trim() || '/booking-chat'
 export const TENANT_KEY = 'k1_katsastus_demo'
 export const remote = Boolean(BASE)
 
@@ -32,6 +34,7 @@ export type LeadRow = {
   Language: string
   LastInspection: string
   Reason: string
+  VehicleCategory?: string
 }
 
 export type VersionRecord = {
@@ -133,6 +136,10 @@ export type TurnInput = {
   leadContext?: string
   phone?: string
   stationId?: number | null
+  stationName?: string
+  product?: string
+  vehicleCategory?: string
+  plate?: string
   history: Array<{ role: 'agent' | 'user'; text: string }>
 }
 
@@ -442,7 +449,7 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     writeLocal(store)
     return { reply: fallbackReply, demo: true, recorded: true, messageId: agentMessage.id, userMessageId: userMessage.id, toolCalls: [] }
   }
-  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>('/booking-chat', {
+  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>(CHAT_PATH, {
     method: 'POST',
     body: JSON.stringify({
       tenantKey: TENANT_KEY,
@@ -458,6 +465,10 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
       leadContext: input.leadContext ?? '',
       phone: input.phone ?? '',
       stationId: input.stationId ?? null,
+      stationName: input.stationName ?? '',
+      product: input.product ?? '',
+      vehicleCategory: input.vehicleCategory ?? '',
+      plate: input.plate ?? '',
       text: [...input.history].reverse().find((message) => message.role === 'user')?.text ?? '',
       messages: input.history.map((message) => ({ role: message.role === 'agent' ? 'assistant' : 'user', content: message.text })),
     }),
@@ -717,6 +728,7 @@ function sampleMusterDay(day: string, stationIds: number[], closed: StationStatu
         Language: ['Suomi', 'Suomi', 'Ruotsi', 'Englanti'][(seed + index + offset) % 4],
         LastInspection: `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`,
         Reason: 'Customer relationship',
+        VehicleCategory: 'M1',
       }
     }))
   const filtered = items.filter((row) => closed === 'all' || (closed === 'closed') === row.isClosed)

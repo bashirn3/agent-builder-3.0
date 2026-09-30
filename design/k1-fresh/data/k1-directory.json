@@ -1,0 +1,530 @@
+[
+ {
+  "slug": "aanekoski-kotakennaantie",
+  "name": "K1 Katsastus Äänekoski Kotakennääntie",
+  "address": "Kotakennääntie 34, 44100 Äänekoski",
+  "city": "Äänekoski",
+  "url": "https://www.k1katsastus.fi/asema/aanekoski-kotakennaantie/",
+  "k1_id": 1480,
+  "aliases": []
+ },
+ {
+  "slug": "alavus-rekola",
+  "name": "K1 Katsastus Alavus Rekola",
+  "address": "Telekuja 7, 63300 Alavus",
+  "city": "Alavus",
+  "url": "https://www.k1katsastus.fi/asema/alavus-rekola/",
+  "k1_id": 1485,
+  "aliases": []
+ },
+ {
+  "slug": "espoo-koskelo",
+  "name": "K1 Katsastus Espoo Koskelo",
+  "address": "Koskelonkuja 1 B 44, 02920 Espoo",
+  "city": "Espoo",
+  "url": "https://www.k1katsastus.fi/asema/espoo-koskelo/",
+  "k1_id": 1489,
+  "aliases": []
+ },
+ {
+  "slug": "espoo-suomenoja",
+  "name": "K1 Katsastus Espoo Suomenoja",
+  "address": "Suomalaistentie 5, 02270 Espoo",
+  "city": "Espoo",
+  "url": "https://www.k1katsastus.fi/asema/espoo-suomenoja/",
+  "k1_id": 1455,
+  "aliases": []
+ },
+ {
+  "slug": "forssa-paavola",
+  "name": "K1 Katsastus Forssa Paavola",
+  "address": "Aukeentie 3, 30100 Forssa",
+  "city": "Forssa",
+  "url": "https://www.k1katsastus.fi/asema/forssa-paavola/",
+  "k1_id": 1460,
+  "aliases": []
+ },
+ {
+  "slug": "helsinki-konala",
+  "name": "K1 Katsastus Helsinki Konala",
+  "address": "Ristipellontie 21, 00390 Helsinki",
+  "city": "Helsinki",
+  "url": "https://www.k1katsastus.fi/asema/helsinki-konala/",
+  "k1_id": 1454,
+  "aliases": []
+ },
+ {
+  "slug": "helsinki-vuosaari",
+  "name": "K1 Katsastus Helsinki Vuosaari",
+  "address": "Rahtarinkatu 5, 00980 Helsinki",
+  "city": "Helsinki",
+  "url": "https://www.k1katsastus.fi/asema/helsinki-vuosaari/",
+  "k1_id": 1476,
+  "aliases": []
+ },
+ {
+  "slug": "huittinen-sahko",
+  "name": "K1 Katsastus Huittinen Sahko",
+  "address": "Kauppiaskatu 3, 32700 Huittinen",
+  "city": "Huittinen",
+  "url": "https://www.k1katsastus.fi/asema/huittinen-sahko/",
+  "k1_id": 1459,
+  "aliases": []
+ },
+ {
+  "slug": "iisalmi-kiviranta",
+  "name": "K1 Katsastus Iisalmi Kiviranta",
+  "address": "Kivirannantie 4, 74130 Iisalmi",
+  "city": "Iisalmi",
+  "url": "https://www.k1katsastus.fi/asema/iisalmi-kiviranta/",
+  "k1_id": 1496,
+  "aliases": []
+ },
+ {
+  "slug": "imatra-mansikkala",
+  "name": "K1 Katsastus Imatra Mansikkala",
+  "address": "Sukkulakatu 11, 55120 Imatra",
+  "city": "Imatra",
+  "url": "https://www.k1katsastus.fi/asema/imatra-mansikkala/",
+  "k1_id": 1507,
+  "aliases": []
+ },
+ {
+  "slug": "jarvenpaa-satukallio",
+  "name": "K1 Katsastus Järvenpää Satukallio",
+  "address": "Satukukanpolku 5 A 1, 04430 Järvenpää",
+  "city": "Järvenpää",
+  "url": "https://www.k1katsastus.fi/asema/jarvenpaa-satukallio/",
+  "k1_id": 1498,
+  "aliases": []
+ },
+ {
+  "slug": "joensuu-kapykangas",
+  "name": "K1 Katsastus Joensuu Käpykangas",
+  "address": "Kaltimontie 2, 80100 Joensuu",
+  "city": "Joensuu",
+  "url": "https://www.k1katsastus.fi/asema/joensuu-kapykangas/",
+  "k1_id": 1477,
+  "aliases": []
+ },
+ {
+  "slug": "jyvaskyla-keljo",
+  "name": "K1 Katsastus Jyväskylä Keljo",
+  "address": "Pumperinkatu 6, 40500 Jyväskylä",
+  "city": "Jyväskylä",
+  "url": "https://www.k1katsastus.fi/asema/jyvaskyla-keljo/",
+  "k1_id": 2092,
+  "aliases": []
+ },
+ {
+  "slug": "jyvaskyla-palokka",
+  "name": "K1 Katsastus Jyväskylä Palokka",
+  "address": "Palokanorsi 1, 40270 Jyväskylä",
+  "city": "Jyväskylä",
+  "url": "https://www.k1katsastus.fi/asema/jyvaskyla-palokka/",
+  "k1_id": 1465,
+  "aliases": []
+ },
+ {
+  "slug": "kaarina-keskusta",
+  "name": "K1 Katsastus Kaarina Keskusta",
+  "address": "Kärrykatu 8, 20780 Kaarina",
+  "city": "Kaarina",
+  "url": "https://www.k1katsastus.fi/asema/kaarina-keskusta/",
+  "k1_id": 1457,
+  "aliases": []
+ },
+ {
+  "slug": "kajaani-kettukallio",
+  "name": "K1 Katsastus Kajaani Kettukallio",
+  "address": "Kettukalliontie 25, 87100 Kajaani",
+  "city": "Kajaani",
+  "url": "https://www.k1katsastus.fi/asema/kajaani-kettukallio/",
+  "k1_id": 1513,
+  "aliases": []
+ },
+ {
+  "slug": "kemi-karjalahti",
+  "name": "K1 Katsastus Kemi Karjalahti",
+  "address": "Valajankatu 6, 94600 Kemi",
+  "city": "Kemi",
+  "url": "https://www.k1katsastus.fi/asema/kemi-karjalahti/",
+  "k1_id": 1488,
+  "aliases": []
+ },
+ {
+  "slug": "kotka-sutela",
+  "name": "K1 Katsastus Kotka Sutela",
+  "address": "Hakamäentie 5, 48400 Kotka",
+  "city": "Kotka",
+  "url": "https://www.k1katsastus.fi/asema/kotka-sutela/",
+  "k1_id": 1472,
+  "aliases": []
+ },
+ {
+  "slug": "kouvola-korjala",
+  "name": "K1 Katsastus Kouvola Korjala",
+  "address": "Kaupinkatu 3, 45130 Kouvola",
+  "city": "Kouvola",
+  "url": "https://www.k1katsastus.fi/asema/kouvola-korjala/",
+  "k1_id": 1473,
+  "aliases": []
+ },
+ {
+  "slug": "kuopio-sorsasalo",
+  "name": "K1 Katsastus Kuopio Sorsasalo",
+  "address": "Virranniementie 14, 70420 Kuopio",
+  "city": "Kuopio",
+  "url": "https://www.k1katsastus.fi/asema/kuopio-sorsasalo/",
+  "k1_id": 1512,
+  "aliases": []
+ },
+ {
+  "slug": "lahti-laune",
+  "name": "K1 Katsastus Lahti Laune",
+  "address": "Launeenkatu 82, 15610 Lahti",
+  "city": "Lahti",
+  "url": "https://www.k1katsastus.fi/asema/lahti-laune/",
+  "k1_id": 1470,
+  "aliases": []
+ },
+ {
+  "slug": "lappeenranta-myllymaki",
+  "name": "K1 Katsastus Lappeenranta Myllymäki",
+  "address": "Alaniitynkatu 5, 53550 Lappeenranta",
+  "city": "Lappeenranta",
+  "url": "https://www.k1katsastus.fi/asema/lappeenranta-myllymaki/",
+  "k1_id": 1475,
+  "aliases": []
+ },
+ {
+  "slug": "lapua-alanko",
+  "name": "K1 Katsastus Lapua Alanko",
+  "address": "Latojantie 7, 62100 Lapua",
+  "city": "Lapua",
+  "url": "https://www.k1katsastus.fi/asema/lapua-alanko/",
+  "k1_id": 1468,
+  "aliases": []
+ },
+ {
+  "slug": "lieto-avanti",
+  "name": "K1 Katsastus Lieto Avanti",
+  "address": "Avantintie 24, 21420 Lieto",
+  "city": "Lieto",
+  "url": "https://www.k1katsastus.fi/asema/lieto-avanti/",
+  "k1_id": 1500,
+  "aliases": []
+ },
+ {
+  "slug": "lieto-keskusta",
+  "name": "K1 Katsastus Lieto Keskusta",
+  "address": "Simpukkatie 2, 21420 Lieto",
+  "city": "Lieto",
+  "url": "https://www.k1katsastus.fi/asema/lieto-keskusta/",
+  "k1_id": 1453,
+  "aliases": []
+ },
+ {
+  "slug": "lohja-tynninharju",
+  "name": "K1 Katsastus Lohja Tynninharju",
+  "address": "Maksjoentie 9, 08700 Lohja",
+  "city": "Lohja",
+  "url": "https://www.k1katsastus.fi/asema/lohja-tynninharju/",
+  "k1_id": 1484,
+  "aliases": []
+ },
+ {
+  "slug": "loviisa-uusikaupunki",
+  "name": "K1 Katsastus Loviisa Uusikaupunki",
+  "address": "Porvoonkatu 8, 07900 Loviisa",
+  "city": "Loviisa",
+  "url": "https://www.k1katsastus.fi/asema/loviisa-uusikaupunki/",
+  "k1_id": 1481,
+  "aliases": []
+ },
+ {
+  "slug": "mantsala-maisala",
+  "name": "K1 Katsastus Mäntsälä Maisala",
+  "address": "Maisalantie 16, 04600 Mäntsälä",
+  "city": "Mäntsälä",
+  "url": "https://www.k1katsastus.fi/asema/mantsala-maisala/",
+  "k1_id": 1474,
+  "aliases": []
+ },
+ {
+  "slug": "mikkeli-pitkajarvi",
+  "name": "K1 Katsastus Mikkeli Pitkäjärvi",
+  "address": "Hietakatu 3, 50130 Mikkeli",
+  "city": "Mikkeli",
+  "url": "https://www.k1katsastus.fi/asema/mikkeli-pitkajarvi/",
+  "k1_id": 1466,
+  "aliases": []
+ },
+ {
+  "slug": "naantali-luolala",
+  "name": "K1 Katsastus Naantali Luolala",
+  "address": "Linkkikatu 14, 21110 Naantali",
+  "city": "Naantali",
+  "url": "https://www.k1katsastus.fi/asema/naantali-luolala/",
+  "k1_id": 1449,
+  "aliases": []
+ },
+ {
+  "slug": "orivesi-ysitie",
+  "name": "K1 Katsastus Orivesi Ysitie",
+  "address": "Teollisuustie 23, 35300 Orivesi",
+  "city": "Orivesi",
+  "url": "https://www.k1katsastus.fi/asema/orivesi-ysitie/",
+  "k1_id": 1504,
+  "aliases": []
+ },
+ {
+  "slug": "oulu-alppila",
+  "name": "K1 Katsastus Oulu Alppila",
+  "address": "Tukkimiehentie 1, 90530 Oulu",
+  "city": "Oulu",
+  "url": "https://www.k1katsastus.fi/asema/oulu-alppila/",
+  "k1_id": 1486,
+  "aliases": []
+ },
+ {
+  "slug": "oulu-limingantulli",
+  "name": "K1 Katsastus Oulu Limingantulli",
+  "address": "Kallisenkaarre 1, 90400 Oulu",
+  "city": "Oulu",
+  "url": "https://www.k1katsastus.fi/asema/oulu-limingantulli/",
+  "k1_id": 1467,
+  "aliases": []
+ },
+ {
+  "slug": "parkano-teollisuustie",
+  "name": "K1 Katsastus Parkano Teollisuustie",
+  "address": "Teollisuustie 20, 39700 Parkano",
+  "city": "Parkano",
+  "url": "https://www.k1katsastus.fi/asema/parkano-teollisuustie/",
+  "k1_id": 1509,
+  "aliases": []
+ },
+ {
+  "slug": "pori-helmentie",
+  "name": "K1 Katsastus Pori Helmentie",
+  "address": "Helmentie 28, 28100 Pori",
+  "city": "Pori",
+  "url": "https://www.k1katsastus.fi/asema/pori-helmentie/",
+  "k1_id": 1832,
+  "aliases": []
+ },
+ {
+  "slug": "porvoo-tarmola",
+  "name": "K1 Katsastus Porvoo Tarmola",
+  "address": "Veckjärventie 5, 06150 Porvoo",
+  "city": "Porvoo",
+  "url": "https://www.k1katsastus.fi/asema/porvoo-tarmola/",
+  "k1_id": 2093,
+  "aliases": []
+ },
+ {
+  "slug": "rauma-papinhaka",
+  "name": "K1 Katsastus Rauma Papinhaka",
+  "address": "Sinkokatu 23, 26100 Rauma",
+  "city": "Rauma",
+  "url": "https://www.k1katsastus.fi/asema/rauma-papinhaka/",
+  "k1_id": 1462,
+  "aliases": []
+ },
+ {
+  "slug": "riihimaki-mattila",
+  "name": "K1 Katsastus Riihimäki Mattila",
+  "address": "Tehtaankatu 2, (Euromaster), 11710 Riihimäki",
+  "city": "Riihimäki",
+  "url": "https://www.k1katsastus.fi/asema/riihimaki-mattila/",
+  "k1_id": 1478,
+  "aliases": []
+ },
+ {
+  "slug": "rovaniemi-etelakeskus",
+  "name": "K1 Katsastus Rovaniemi Eteläkeskus",
+  "address": "Lautatie 1, 96300 Rovaniemi",
+  "city": "Rovaniemi",
+  "url": "https://www.k1katsastus.fi/asema/rovaniemi-etelakeskus/",
+  "k1_id": 1510,
+  "aliases": []
+ },
+ {
+  "slug": "salo-meriniitty",
+  "name": "K1 Katsastus Salo Meriniitty",
+  "address": "Meriniitynkatu 6, 24100 Salo",
+  "city": "Salo",
+  "url": "https://www.k1katsastus.fi/asema/salo-meriniitty/",
+  "k1_id": 1461,
+  "aliases": []
+ },
+ {
+  "slug": "seinajoki-nurmo",
+  "name": "K1 Katsastus Seinäjoki Nurmo",
+  "address": "Nurmontie 111 B, 60510 Seinäjoki",
+  "city": "Seinäjoki",
+  "url": "https://www.k1katsastus.fi/asema/seinajoki-nurmo/",
+  "k1_id": 1451,
+  "aliases": []
+ },
+ {
+  "slug": "suljettu-raisio-hauninen",
+  "name": "K1 Katsastus Raisio Hauninen",
+  "address": "Tuotekatu 10, 21200 Raisio",
+  "city": "Raisio",
+  "url": "https://www.k1katsastus.fi/asema/suljettu-raisio-hauninen/",
+  "closed": true,
+  "aliases": []
+ },
+ {
+  "slug": "tampere-hatanpaan-valtatie",
+  "name": "K1 Katsastus Tampere Hatanpään Valtatie",
+  "address": "Hatanpään valtatie 42, 33900 Tampere",
+  "city": "Tampere",
+  "url": "https://www.k1katsastus.fi/asema/tampere-hatanpaan-valtatie/",
+  "aliases": []
+ },
+ {
+  "slug": "tampere-lakalaiva",
+  "name": "K1 Katsastus Tampere Lakalaiva",
+  "address": "Korjaamonkatu 1, 33840 Tampere",
+  "city": "Tampere",
+  "url": "https://www.k1katsastus.fi/asema/tampere-lakalaiva/",
+  "k1_id": 1482,
+  "aliases": []
+ },
+ {
+  "slug": "tampere-sarankulma",
+  "name": "K1 Katsastus Tampere Sarankulma",
+  "address": "Nuutisarankatu 35, 33900 Tampere",
+  "city": "Tampere",
+  "url": "https://www.k1katsastus.fi/asema/tampere-sarankulma/",
+  "k1_id": 1452,
+  "aliases": []
+ },
+ {
+  "slug": "turku-itaharju",
+  "name": "K1 Katsastus Turku Itäharju",
+  "address": "Munkkionkuja 1, 20520 Turku",
+  "city": "Turku",
+  "url": "https://www.k1katsastus.fi/asema/turku-itaharju/",
+  "k1_id": 1450,
+  "aliases": []
+ },
+ {
+  "slug": "turku-oriketo-raskas",
+  "name": "K1 Katsastus Turku Oriketo (raskas)",
+  "address": "Pollenkuja 4, 20380 Turku",
+  "city": "Turku",
+  "url": "https://www.k1katsastus.fi/asema/turku-oriketo-raskas/",
+  "k1_id": 1479,
+  "heavy": true,
+  "aliases": [
+   "K1 Katsastus Turku Oriketo"
+  ]
+ },
+ {
+  "slug": "turku-vatti",
+  "name": "K1 Katsastus Turku Vätti",
+  "address": "Rieskalähteentie 76, 20300 Turku",
+  "city": "Turku",
+  "url": "https://www.k1katsastus.fi/asema/turku-vatti/",
+  "k1_id": 1458,
+  "aliases": []
+ },
+ {
+  "slug": "tuusula-hyryla",
+  "name": "K1 Katsastus Tuusula Hyrylä",
+  "address": "Majavantie 10, 04320 Tuusula",
+  "city": "Tuusula",
+  "url": "https://www.k1katsastus.fi/asema/tuusula-hyryla/",
+  "k1_id": 1508,
+  "aliases": []
+ },
+ {
+  "slug": "uusikaupunki-ketunkallio",
+  "name": "K1 Katsastus Uusikaupunki Ketunkallio",
+  "address": "Levysepänkatu 22, 23500 Uusikaupunki",
+  "city": "Uusikaupunki",
+  "url": "https://www.k1katsastus.fi/asema/uusikaupunki-ketunkallio/",
+  "k1_id": 1495,
+  "aliases": []
+ },
+ {
+  "slug": "vaasa-klemettila-myllarinkatu",
+  "name": "K1 Katsastus Vaasa Klemettilä Myllärinkatu",
+  "address": "Myllärinkatu 18, 65100 Vaasa",
+  "city": "Vaasa",
+  "url": "https://www.k1katsastus.fi/asema/vaasa-klemettila-myllarinkatu/",
+  "k1_id": 1503,
+  "aliases": []
+ },
+ {
+  "slug": "vaasa-korkeamaki",
+  "name": "K1 Katsastus Vaasa Korkeamäki",
+  "address": "Karhuntie 81, 65350 Vaasa",
+  "city": "Vaasa",
+  "url": "https://www.k1katsastus.fi/asema/vaasa-korkeamaki/",
+  "k1_id": 1471,
+  "aliases": []
+ },
+ {
+  "slug": "vihti-nummela",
+  "name": "K1 Katsastus Vihti Nummela",
+  "address": "Ratastie 2, 03100 Nummela",
+  "city": "Nummela",
+  "url": "https://www.k1katsastus.fi/asema/vihti-nummela/",
+  "k1_id": 1456,
+  "aliases": []
+ },
+ {
+  "slug": "ylojarvi-elovainio",
+  "name": "K1 Katsastus Ylöjärvi Elovainio",
+  "address": "Varastotie 2 B, 33470 Ylöjärvi",
+  "city": "Ylöjärvi",
+  "url": "https://www.k1katsastus.fi/asema/ylojarvi-elovainio/",
+  "k1_id": 1483,
+  "aliases": []
+ },
+ {
+  "slug": "kokkola-mottinen",
+  "name": "K1 Katsastus Kokkola Mottinen",
+  "address": "",
+  "city": "Kokkola",
+  "closed": true,
+  "aliases": []
+ },
+ {
+  "slug": "hameenlinna-tiirio",
+  "name": "K1 Katsastus Hämeenlinna Tiiriö",
+  "address": "",
+  "city": "Hämeenlinna",
+  "closed": true,
+  "aliases": []
+ },
+ {
+  "slug": "pori-herralahti",
+  "name": "K1 Katsastus Pori Herralahti",
+  "address": "",
+  "city": "Pori",
+  "closed": true,
+  "aliases": []
+ },
+ {
+  "slug": "helsinki-pasila",
+  "name": "K1 Katsastus Helsinki Pasila",
+  "address": "",
+  "city": "Helsinki",
+  "closed": true,
+  "aliases": []
+ },
+ {
+  "slug": "huittinen-ah-transhouse-raskas",
+  "name": "K1 Katsastus Huittinen AH-Transhouse Raskas",
+  "address": "",
+  "city": "Huittinen",
+  "heavy": true,
+  "aliases": []
+ }
+]

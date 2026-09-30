@@ -261,6 +261,10 @@ export async function sendTest(
     leadContext: leadContext(meta.lead, used.lang),
     phone: meta.lead.phoneNumber ?? '',
     stationId: bookingStationId(meta.lead.stationName),
+    stationName: meta.lead.stationName.replace(/^SULJETTU\s+/i, '').trim(),
+    product: meta.lead.product ?? '',
+    vehicleCategory: meta.lead.vehicleCategory ?? '',
+    plate: meta.lead.plateNumber,
     history,
   }, fallback)
 }
