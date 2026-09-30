@@ -117,6 +117,13 @@ def evaluate(scenario, turns):
         banned = BANNED.search(reply)
         if banned and not re.search(r"(can(?:'|’)?t|cannot|no|not|isn(?:'|’)?t|don(?:'|’)?t|en voi|ei ole|kan inte|finns inte)\W+(?:\w+\W+){0,4}?(unverified\W+)?" + re.escape(banned.group(0)), reply, re.I):
             flags.append(f'{tag} BANNED:{banned.group(0)}')
+        if re.search(r'\u2014|\s[\u2013-]\s', reply):
+            flags.append(f'{tag} DASH')
+        filler = re.match(r'\s*(sure|okay|ok|great|absolutely|of course|alright|sounds good|perfect|selvä|okei|hyvä|kiva|mahtavaa|visst|okej|toppen|absolut|självklart)\b[\s,.!]', reply, re.I)
+        if filler:
+            flags.append(f'{tag} FILLER_OPEN:{filler.group(1)}')
+        if len(reply) > 260 and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
+            flags.append(f'{tag} WORDY({len(reply)})')
         if reply.count('?') > 2:
             flags.append(f'{tag} MANY_QUESTIONS({reply.count("?")})')
         expected = (langs[i] if langs and i < len(langs) else scenario.get('expect') or lead_lang)

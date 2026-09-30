@@ -289,6 +289,24 @@ test('cancel and reschedule: the agent path only touches bookings the caller own
   assert.equal(staff.result.ok, true, 'the gated staff path is unchanged')
 })
 
+test('my_bookings lists only the caller\'s upcoming bookings with a usable event_id', async () => {
+  const soon = new Date(Date.now() + 2 * 86400000).toISOString()
+  const past = new Date(Date.now() - 2 * 86400000).toISOString()
+  const details = [
+    { groupId: 'g1', reservationUid: 'r1', customerUid: 'c1', bookingNumber: 'AB12', stationName: 'K1 Katsastus Jyväskylä Palokka', plate: 'ABC-123', startsAt: soon },
+    { groupId: 'g0', reservationUid: 'r0', customerUid: 'c0', bookingNumber: 'OLD1', stationName: 'K1 Katsastus Jyväskylä Palokka', plate: 'ABC-123', startsAt: past },
+  ]
+  const mine = await makeRun({})({ action: 'my_bookings', phone: '1', require_owner: true, owned_bookings: ['g1', 'g0'], owned_details: details })
+  assert.equal(mine.result.count, 1)
+  assert.equal(mine.result.bookings[0].event_id, 'g1|r1|c1')
+  assert.equal(mine.calls.length, 0)
+  const none = await makeRun({})({ action: 'my_bookings', phone: '1', require_owner: true, owned_bookings: [], owned_details: [] })
+  assert.equal(none.result.ok, true)
+  assert.equal(none.result.count, 0)
+  const broken = await makeRun({})({ action: 'my_bookings', phone: '1', require_owner: true, owner_lookup_failed: true })
+  assert.equal(broken.result.ok, false)
+})
+
 test('a failed refresh serves the last good station list instead of turning bookable stations into read-only ones', async () => {
   const staticData = { k1_cache: {} }
   const first = await makeRun({ staticData })({ action: 'get_slots', station: 'Palokka', product: '004', vehicle_category: 'M1', date_from: '2026-09-30', date_to: '2026-09-30', now: NOW })

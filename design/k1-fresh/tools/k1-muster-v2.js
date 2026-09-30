@@ -598,6 +598,15 @@ async function moveBooking() {
     },
   }
 }
+function myBookings() {
+  if (input.owner_lookup_failed) return { ok: false, error: 'The customer\'s bookings could not be checked right now. Do not guess whether a booking exists; give the national number 0306 100 100.' }
+  const now = Date.now()
+  const bookings = (input.owned_details || []).filter((row) => new Date(row.startsAt).getTime() > now).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt)).map((row) => {
+    const local = helsinki(new Date(row.startsAt))
+    return { event_id: `${row.groupId}|${row.reservationUid}|${row.customerUid}`, booking_number: row.bookingNumber, station_name: row.stationName, plate: row.plate, date: local.date, time: local.hm, display_fi: `${weekdayOf(local.date)} ${fiDate(local.date)} ${local.hm}` }
+  })
+  return { ok: true, count: bookings.length, bookings, note: 'Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.' }
+}
 async function cancel() {
   const groupId = String(body.event_id || body.group_id || '').split('|')[0]
   if (!groupId) return { ok: false, error: 'cancel needs the event_id from the booking' }
@@ -618,6 +627,7 @@ else if (action === 'stations') {
   const response = await muster('GET', `/Products/${stationId}?vehicleCategory=${normalizeCategory(body.vehicle_category)}`)
   result = response.status === 200 ? { ok: true, products: response.data.map((product) => ({ id: product.id, type: product.productType, name: product.name })) } : { ok: false, error: response.data }
 } else if (action === 'book') result = await book()
+else if (action === 'my_bookings') result = myBookings()
 else if (action === 'reschedule') result = await moveBooking()
 else if (action === 'cancel') result = await cancel()
 else if (action === 'find') {

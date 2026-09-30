@@ -346,3 +346,32 @@ def extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET):
     ]
     for id, lang, text, station, checks in stations:
         x(id, lang, text, checks, station=station)
+
+
+def extend_voice(add, Auto, Customer, NOBOOK, GETS):
+    """Short, human, no filler: the shape of the reply to one-word answers, and the booking look-up / cancel / move flows."""
+    def v(id, lang, turns, checks=(), suite='voice', **kw):
+        add(f'{suite}.{id}', suite, lang, turns if isinstance(turns, list) else [turns], checks, **kw)
+
+    ACKS = {'fi': ['joo', 'kyllä', 'okei', 'jep', 'sopii', 'Joo, hae aika'], 'sv': ['visst', 'ja', 'okej', 'ja tack', 'gärna'], 'en': ['sure', 'yes', 'ok', 'yeah', 'yep please', 'Sure, find me a time']}
+    for lang, words in ACKS.items():
+        for index, word in enumerate(words):
+            v(f'ack.{lang}.{index}', lang, word, [NOBOOK, ('reply', r'\?'), ('no_reply', r'^\W*' + word.split(',')[0].split()[0] + r'\b')])
+    GREET = {'fi': ['moi', 'hei', 'terve'], 'sv': ['hej', 'tjena'], 'en': ['hey', 'hi', 'hello']}
+    for lang, words in GREET.items():
+        for index, word in enumerate(words):
+            v(f'greet.{lang}.{index}', lang, word, [NOBOOK, ('reply', r'\?')])
+    HAVE = {'fi': 'Onko minulla aktiivista varausta?', 'sv': 'Har jag en aktiv bokning?', 'en': 'Can you check if I have an active booking?'}
+    CANCEL = {'fi': 'Haluan perua varaukseni', 'sv': 'Jag vill avboka min tid', 'en': 'I want to cancel my booking'}
+    MOVE = {'fi': 'Voisinko siirtää varaukseni perjantaille?', 'sv': 'Kan jag flytta min tid till fredag?', 'en': 'Can I move my booking to Friday?'}
+    BOOK = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
+    ASKS = r'what (date|time|day)|which (date|time|day)|when is|milloin|mikä päivä|mihin aikaan|vilken (dag|tid)|när är'
+    NOCANT = r"can.t check|cannot check|unable to check|en voi tarkistaa|en pysty tarkistaa|kan inte kontrollera|kan inte se"
+    for lang in ('fi', 'sv', 'en'):
+        v(f'mine.none.{lang}', lang, HAVE[lang], [('tool', 'get_my_bookings'), ('no_reply', NOCANT), ('no_reply', r'0306'), NOBOOK])
+        v(f'mine.after_booking.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), HAVE[lang]], [('booked',), ('tool', 'get_my_bookings'), ('no_reply', NOCANT), ('reply', r'\d{1,2}[:.]\d{2}')], books=True)
+        v(f'mine.cancel.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), CANCEL[lang], Auto(Customer(lang), 'cancelled', 3)], [('booked',), ('tool', 'get_my_bookings'), ('cancelled',)], books=True)
+        v(f'mine.cancel_no_questions.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), CANCEL[lang]], [('booked',), ('tool', 'get_my_bookings'), ('cancelled',)], books=True)
+        v(f'mine.move.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('tool', 'get_my_bookings'), ('rescheduled',), ('max_success', 'book_inspection_invite', 1)], books=True)
+        v(f'mine.cancel_none.{lang}', lang, CANCEL[lang], [('tool', 'get_my_bookings'), ('no_success', 'cancel_booking'), ('no_reply', NOCANT), ('no_reply', ASKS)])
+        v(f'mine.move_none.{lang}', lang, MOVE[lang], [('tool', 'get_my_bookings'), ('no_success', 'reschedule_booking'), ('no_reply', NOCANT)])

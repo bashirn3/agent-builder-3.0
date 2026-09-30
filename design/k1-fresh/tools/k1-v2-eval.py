@@ -261,6 +261,7 @@ class Customer:
         if re.search(r'plate|registration|rekisteri|registrering|reg\.', q):
             return self.plate or self.phrases['yes']
         undated = re.sub(r'(?<!klo )(?<!kl )(?<![\d.:])([1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(?!\d)', ' ', reply)
+        undated = re.sub(r'\b\d{1,2}\.\d{1,2}(?=\s+(?:kl|klo|at|klockan)\b)', ' ', undated)
         times = [f'{int(h):02d}:{m}' for h, m in TIME.findall(undated)]
         if times and re.search(r'time|kello|klo|tid|kl|which|kumpi|mikä|vilken|passar|sopii|works', q):
             choice = {'first': times[0], 'last': times[-1], 'second': times[min(1, len(times) - 1)]}[self.pick]

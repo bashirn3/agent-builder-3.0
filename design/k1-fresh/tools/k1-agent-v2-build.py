@@ -106,8 +106,11 @@ def suffix_webhooks(nodes, owner):
 OWNER_ATTACH_JS = """const original = $('When called by the agent').first().json
 const rows = $input.all().flatMap((item) => (Array.isArray(item.json) ? item.json : [item.json]))
 const failed = rows.some((row) => row && (row.message || row.error || row.code) && !row.groupId)
-const owned = rows.filter((row) => row && row.groupId && row.status === 'confirmed').map((row) => row.groupId)
-return [{ json: { ...original, require_owner: true, owned_bookings: owned, owner_lookup_failed: failed } }]"""
+const tail = (value) => String(value || '').replace(/\\D/g, '').slice(-9)
+const caller = tail(original.phone)
+const mine = rows.filter((row) => caller && row && row.groupId && row.status === 'confirmed' && tail(row.phone) === caller)
+const details = mine.map((row) => ({ groupId: row.groupId, reservationUid: row.reservationUid, customerUid: row.customerUid, bookingNumber: row.bookingNumber, stationId: row.stationId, stationName: row.stationName, plate: row.plate, startsAt: row.startsAt }))
+return [{ json: { ...original, require_owner: true, owned_bookings: mine.map((row) => row.groupId), owned_details: details, owner_lookup_failed: failed } }]"""
 
 
 def harden_booking(nodes, connections):
@@ -131,12 +134,12 @@ def harden_booking(nodes, connections):
     uid = lambda name: str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-booking-owner/{name}'))
     nodes.append({'id': uid('if'), 'name': 'Needs ownership?', 'type': 'n8n-nodes-base.if', 'typeVersion': 2.2, 'position': [x + 140, y + 200], 'parameters': {
         'conditions': {'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
-                       'conditions': [{'id': 'own', 'leftValue': '={{ ["cancel", "reschedule"].includes($json.action) ? "yes" : "no" }}', 'rightValue': 'yes', 'operator': {'type': 'string', 'operation': 'equals'}}], 'combinator': 'and'}, 'options': {}}})
+                       'conditions': [{'id': 'own', 'leftValue': '={{ ["cancel", "reschedule", "my_bookings"].includes($json.action) ? "yes" : "no" }}', 'rightValue': 'yes', 'operator': {'type': 'string', 'operation': 'equals'}}], 'combinator': 'and'}, 'options': {}}})
     nodes.append({'id': uid('lookup'), 'name': 'Owned bookings', 'type': 'n8n-nodes-base.httpRequest', 'typeVersion': 4.2, 'position': [x + 300, y + 280], 'onError': 'continueRegularOutput', 'alwaysOutputData': True,
                   'retryOnFail': True, 'maxTries': 2, 'waitBetweenTries': 1000,
                   'credentials': {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}},
-                  'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/list_bookings_for_phone', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi',
-                                 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ { p_tenant_key: "k1_katsastus_demo", p_phone: String($json.phone || "") } }}', 'options': {'timeout': 15000}}})
+                  'parameters': {'method': 'POST', 'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/list_bookings', 'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'supabaseApi',
+                                 'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ { p_tenant_key: "k1_katsastus_demo", p_from: new Date(Date.now() - 86400000).toISOString(), p_to: new Date(Date.now() + 400 * 86400000).toISOString() } }}', 'options': {'timeout': 15000}}})
     nodes.append({'id': uid('attach'), 'name': 'Attach owner data', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [x + 460, y + 280], 'parameters': {'mode': 'runOnceForAllItems', 'jsCode': OWNER_ATTACH_JS}})
     connections['When called by the agent'] = {'main': [[{'node': 'Needs ownership?', 'type': 'main', 'index': 0}]]}
     connections['Needs ownership?'] = {'main': [[{'node': 'Owned bookings', 'type': 'main', 'index': 0}], [{'node': 'Muster', 'type': 'main', 'index': 0}]]}
@@ -199,11 +202,16 @@ TOOLS = {
         'fixed': {'action': 'station_info', 'phone': PHONE, **LEAD_FIELDS},
     },
 }
+TOOLS['get_my_bookings'] = {
+    'description': 'The customer\'s own upcoming bookings made through this chat, found from their phone number: count and a list with event_id, booking_number, station_name, plate, date, time. Call it first, without asking anything, when the customer asks whether they have a booking, or wants to cancel or move one. It has no inputs.',
+    'ai': {},
+    'fixed': {'action': 'my_bookings', 'phone': PHONE},
+}
 SCHEMA_ENTRY = lambda key: {'id': key, 'displayName': key, 'type': 'string', 'display': True, 'required': False, 'defaultMatch': False, 'canBeUsedToMatch': True}
 SLOT_TOOLS = {
     'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category). Reuse plate, name and phone. success true includes booking_number and event_id. If success is false, it is not booked.',
-    'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots. event_id is the one returned when it was booked. The booking number stays the same.',
-    'cancel_booking': 'Cancel an existing booking. event_id is required. sendConfirmation is never used. If already_cancelled is true, it was already gone.',
+    'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots. event_id comes from get_my_bookings (or from the booking made in this conversation). The booking number stays the same.',
+    'cancel_booking': 'Cancel an existing booking. event_id is required and comes from get_my_bookings (or from the booking made in this conversation). sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
 
 LANGUAGE_CORE = '''const LANGUAGE_WORDS = {
@@ -274,6 +282,29 @@ PLAYGROUND_RETURN = (
 )
 
 
+DASH_CLEAN = "String(m ?? '').replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim()"
+PLAN_DELIVERY_CLEAN = (
+    "msgs = msgs.map(m => String(m ?? '').trim()).filter(Boolean).slice(0, maxBubbles);",
+    "msgs = msgs.map(m => " + DASH_CLEAN + ").filter(Boolean).slice(0, maxBubbles);",
+)
+PLAN_FOLLOWUP_CLEAN = (
+    "const text = msgs.map(m => String(m ?? '').trim()).filter(Boolean).join(' ').trim();",
+    "const text = msgs.map(m => " + DASH_CLEAN + ").filter(Boolean).join(' ').trim();",
+)
+NORMALIZE_PATCHES = (
+    ("const messages = lines.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean)",
+     "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim()).filter(Boolean)"),
+    ("fi: 'Hyvä! Mille päivälle katsotaan katsastusaikaa?', sv: 'Absolut! Vilken dag passar dig för besiktningen?', en: 'Sure! Which day would suit you for the inspection?'",
+     "fi: 'Mille päivälle?', sv: 'Vilken dag passar?', en: 'What day works best?'"),
+)
+SYSTEM_STYLE_PATCHES = (
+    (("Split like a person does: acknowledgement, then substance, then the question.", "Default to ONE bubble. Give the substance and the single question together; never add an acknowledgement bubble."), 'shape'),
+    (("Say something warm and ask for a day.", "Just ask for the day. Do not echo their word and do not open with an acknowledgement."), 'ack'),
+    (("(\"no rush — want me to leave this with you?\")", "(\"no rush, want me to leave this with you?\")"), 'dash example'),
+    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\", the reply is only the next question.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
+)
+
+
 def replace_once(text, pair, label):
     old, new = pair
     if text.count(old) != 1:
@@ -309,6 +340,17 @@ def build_agent(booking_id):
                 options['systemMessage'],
                 ("Never invent prices, availability, dates or policy that aren't in the brief below.", "Never invent prices, availability, opening hours, dates or policy that are not in the brief below or in a tool result."),
                 'system message')
+            for pair, label in SYSTEM_STYLE_PATCHES:
+                options['systemMessage'] = replace_once(options['systemMessage'], pair, f'system message {label}')
+        if node['name'] == 'Plan Delivery':
+            node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_DELIVERY_CLEAN, 'Plan Delivery dashes')
+        if node['name'] == 'Plan Follow-up Delivery':
+            node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_FOLLOWUP_CLEAN, 'Plan Follow-up Delivery dashes')
+        if node['name'] == 'Normalize playground reply':
+            code = node['parameters']['jsCode']
+            for label, pair in enumerate(NORMALIZE_PATCHES):
+                code = replace_once(code, pair, f'Normalize playground reply {label}')
+            node['parameters']['jsCode'] = code
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
             for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_LEADLANG, 'lead language'), (PLAYGROUND_TAIL, 'language order'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
@@ -321,7 +363,7 @@ def build_agent(booking_id):
             node['parameters']['jsCode'] = code
         if node['name'] == 'Playground reply':
             code = node['parameters']['jsCode']
-            code = replace_once(code, ("new Set(['get_slots',", "new Set(['get_station_info', 'get_slots',"), 'allowed tools')
+            code = replace_once(code, ("new Set(['get_slots',", "new Set(['get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['station', 'product', 'vehicle_category', 'date', 'station_id',"), 'allowed inputs')
             node['parameters']['jsCode'] = code
 
