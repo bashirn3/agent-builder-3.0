@@ -166,6 +166,8 @@ def evaluate(scenario, turns):
             flags.append(f'CHECK expected tool {check[1]}')
         elif kind == 'any_tool' and not set(check[1]) & set(used):
             flags.append(f'CHECK expected one of tools {check[1]}')
+        elif kind == 'success' and not success(turns, check[1]):
+            flags.append(f'CHECK expected {check[1]} to succeed')
         elif kind == 'no_success' and success(turns, check[1]):
             flags.append(f'CHECK {check[1]} succeeded')
         elif kind == 'max_success' and count_success(turns, check[1]) > check[2]:

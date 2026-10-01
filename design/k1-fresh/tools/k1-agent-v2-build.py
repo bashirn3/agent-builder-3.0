@@ -62,6 +62,12 @@ def proxy_pool():
     return pool
 
 
+def proxy_mode():
+    """'fallback' (default): staging calls go direct (the n8n IP is whitelisted) and use a proxy only on retries. 'always': every call uses a proxy."""
+    mode = (os.environ.get('K1_STAGING_PROXY_MODE') or 'fallback').strip().lower()
+    return mode if mode in ('fallback', 'always') else 'fallback'
+
+
 def proxy_literal():
     return json.dumps(proxy_pool(), separators=(',', ':'))
 
@@ -70,7 +76,7 @@ def library():
     directory = json.dumps(json.loads((ROOT / 'data/k1-directory.json').read_text()), ensure_ascii=False, separators=(',', ':'))
     code = (HERE / 'k1-muster-v2.js').read_text()
     assert 'const DIRECTORY = __DIRECTORY__' in code
-    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal())
+    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal()).replace('__STAGING_PROXY_MODE__', json.dumps(proxy_mode()))
 
 
 def by_name(name):
@@ -109,7 +115,7 @@ const failed = rows.some((row) => row && (row.message || row.error || row.code) 
 const tail = (value) => String(value || '').replace(/\\D/g, '').slice(-9)
 const caller = tail(original.phone)
 const mine = rows.filter((row) => caller && row && row.groupId && row.status === 'confirmed' && tail(row.phone) === caller)
-const details = mine.map((row) => ({ groupId: row.groupId, reservationUid: row.reservationUid, customerUid: row.customerUid, bookingNumber: row.bookingNumber, stationId: row.stationId, stationName: row.stationName, plate: row.plate, startsAt: row.startsAt }))
+const details = mine.map((row) => ({ groupId: row.groupId, reservationUid: row.reservationUid, customerUid: row.customerUid, bookingNumber: row.bookingNumber, stationId: row.stationId, stationName: row.stationName, plate: row.plate, startsAt: row.startsAt, productIds: row.productIds || [] }))
 return [{ json: { ...original, require_owner: true, owned_bookings: mine.map((row) => row.groupId), owned_details: details, owner_lookup_failed: failed } }]"""
 
 
@@ -127,6 +133,8 @@ def harden_booking(nodes, connections):
     record = named['Record booking']
     record.update({'retryOnFail': True, 'maxTries': 4, 'waitBetweenTries': 2000})
     record['parameters'].setdefault('options', {})['timeout'] = 15000
+    if 'Attach owner data' in named:
+        named['Attach owner data']['parameters']['jsCode'] = OWNER_ATTACH_JS
     if 'Needs ownership?' in named:
         return
     trigger = named['When called by the agent']
@@ -182,13 +190,14 @@ PHONE = "={{ %s.isExecuted ? %s.first().json.from_phone : $('Webhook').first().j
 
 STATION_HINT = 'Station name or city ONLY when the customer asks about a different station than their own. Leave EMPTY for the customer\'s own station (the lead\'s station).'
 PRODUCT_HINT = 'Vehicle product: 004 (petrol/diesel/hybrid car or van), 004e (fully electric), 0040 (camper or larger car). Leave empty to use the lead\'s product for the lead\'s own plate. Pass unknown if the customer gave another plate or vehicle and you have not yet asked what it is.'
+MEASURING_HINT = 'true (default) or false. The statutory emissions measuring is included by default for petrol/diesel/hybrid cars and campers. Pass false ONLY when the customer asked to leave the measuring out of this inspection (it can be done elsewhere). Leave empty otherwise.'
 CATEGORY_HINT = 'Vehicle category: M1 (car or camper) or N1 (van). Leave empty to use the lead\'s category (default M1).'
 
 TOOLS = {
     'get_slots': {
         'description': 'Live free appointment times for one station, already limited to that station\'s opening hours, with a price for the vehicle. The ONLY source of appointment times and slot_id values. Pass date_from and date_to as YYYY-MM-DD (Europe/Helsinki, at most 14 days apart). Leave station empty for the customer\'s own station. Returns a per-day summary (station_hours, free_count, first, last, up to three suggestions, and all_times for a single day). If it returns needs_product, ask the vehicle question it gives. If bookable_by_assistant is false, times are informational only and there are no slot_ids.',
         'ai': {
-            'station': STATION_HINT, 'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT,
+            'station': STATION_HINT, 'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
             'date_from': 'YYYY-MM-DD, Europe/Helsinki. Default: tomorrow.', 'date_to': 'YYYY-MM-DD, Europe/Helsinki. Same as date_from for a single day.',
         },
         'fixed': {'action': 'get_slots', 'phone': PHONE, **LEAD_FIELDS},
@@ -197,13 +206,13 @@ TOOLS = {
         'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices for the vehicle, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
         'ai': {
             'station': STATION_HINT, 'date': 'YYYY-MM-DD, Europe/Helsinki. Default today.',
-            'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT,
+            'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
         },
         'fixed': {'action': 'station_info', 'phone': PHONE, **LEAD_FIELDS},
     },
 }
 TOOLS['get_my_bookings'] = {
-    'description': 'The customer\'s own upcoming bookings made through this chat, found from their phone number: count and a list with event_id, booking_number, station_name, plate, date, time. Call it first, without asking anything, when the customer asks whether they have a booking, or wants to cancel or move one. It has no inputs.',
+    'description': 'The customer\'s own upcoming bookings made through this chat, found from their phone number: count and a list with event_id, booking_number, station_name, plate, date, time, includes_measuring. Call it first, without asking anything, when the customer asks whether they have a booking, or wants to cancel or move one. It has no inputs.',
     'ai': {},
     'fixed': {'action': 'my_bookings', 'phone': PHONE},
 }
@@ -366,7 +375,7 @@ def build_agent(booking_id):
         if node['name'] == 'Playground reply':
             code = node['parameters']['jsCode']
             code = replace_once(code, ("new Set(['get_slots',", "new Set(['get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
-            code = replace_once(code, ("new Set(['station_id',", "new Set(['station', 'product', 'vehicle_category', 'date', 'station_id',"), 'allowed inputs')
+            code = replace_once(code, ("new Set(['station_id',", "new Set(['station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
             node['parameters']['jsCode'] = code
 
     def define(node, ai, fixed):

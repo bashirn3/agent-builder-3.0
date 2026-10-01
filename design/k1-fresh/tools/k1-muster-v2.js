@@ -7,6 +7,9 @@
 //   production (chain 5):  read-only calendar/products/prices, used to describe stations that are not bookable here yet.
 const STAGING = 'https://staging-booking-api.muster.fi/v3/91'
 // Staging calls go through a random proxy from this pool (filled in at build time; an empty pool means direct).
+// Mode 'fallback' (default): the n8n server IP is whitelisted at Muster, so the first attempt goes direct and a proxy is only used when a retry is needed.
+// Mode 'always': every staging call goes through a proxy.
+const STAGING_PROXY_MODE = __STAGING_PROXY_MODE__
 const STAGING_PROXIES = __STAGING_PROXIES__
 let lastProxy = null
 const pickProxy = () => {
@@ -14,7 +17,7 @@ const pickProxy = () => {
   lastProxy = pool[Math.floor(Math.random() * pool.length)]
   return lastProxy
 }
-const request = (options) => this.helpers.httpRequest.call(this, STAGING_PROXIES.length && String(options.url).startsWith(STAGING) ? { ...options, proxy: pickProxy() } : options)
+const request = (options, attempt = 0) => this.helpers.httpRequest.call(this, STAGING_PROXIES.length && String(options.url).startsWith(STAGING) && (STAGING_PROXY_MODE === 'always' || attempt > 0) ? { ...options, proxy: pickProxy() } : options)
 const PROD = 'https://a-katsastus-booking-api.muster.fi/v3/5'
 const BOOKING_SITE = 'https://ajanvaraus.k1katsastus.fi'
 const NATIONAL_PHONE = '0306 100 100'
@@ -68,7 +71,7 @@ async function muster(method, path, payload, base = STAGING) {
   for (let attempt = 0; attempt < 4; attempt++) {
     let retryAfter = 0
     try {
-      const response = await request({ method, url: base + path, body: payload, json: true, headers: { Accept: 'application/json' }, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true })
+      const response = await request({ method, url: base + path, body: payload, json: true, headers: { Accept: 'application/json' }, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true }, attempt)
       const code = Number(response.statusCode || response.status || 200)
       if (code >= 200 && code < 300) return { status: 200, data: response.body ?? null }
       last = { status: code, data: response.body ?? null }
@@ -80,7 +83,7 @@ async function muster(method, path, payload, base = STAGING) {
       if (!error.statusCode && /ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN/.test(code)) last.unsent = true
       else if (!error.statusCode && /ETIMEDOUT|ECONNRESET|ECONNABORTED|EPIPE|socket hang up/i.test(code + ' ' + (error.message || ''))) last.transient = true
     }
-    const retryable = last.status === 429 || last.unsent || (method === 'GET' && (last.transient || [502, 503, 504].includes(last.status))) || (STAGING_PROXIES.length > 0 && last.status === 407)
+    const retryable = last.status === 429 || last.unsent || (method === 'GET' && (last.transient || [502, 503, 504].includes(last.status))) || (STAGING_PROXIES.length > 0 && (last.status === 407 || (last.status === 403 && STAGING_PROXY_MODE !== 'always')))
     if (!retryable || attempt === 3) return last
     await sleep(last.unsent || last.status === 407 ? 100 : Math.min(5000, Math.max(retryAfter * 1000, 800 * 2 ** attempt)))
   }
@@ -259,7 +262,7 @@ async function stationProducts(src, category) {
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
   })
 }
-function planProducts(list, code, category) {
+function planProducts(list, code, category, includeMeasuring = true) {
   const wanted = normalizeProduct(code)
   if (!wanted) return { ok: false, needs_product: true }
   if (!ASSISTANT_CATEGORIES.includes(category)) return { ok: false, code: wanted, unsupported: true, reason: `Vehicle category ${category} (for example a trailer, light four-wheeler or heavier vehicle) cannot be booked here. Use the official K1 booking or the national number.` }
@@ -278,13 +281,14 @@ function planProducts(list, code, category) {
   if (!main) return { ok: false, code: wanted, unsupported: true, reason: wanted === '0040' ? 'This station has no product for a camper or larger car (0040). It does not fit every station: use the official K1 booking or the national number.' : 'No matching inspection product at this station.' }
   const ids = [main.id]
   const names = [shortName(main)]
-  const needsMeasuring = wanted !== '004e'
-  if (needsMeasuring) {
+  const combustion = wanted !== '004e'
+  const withMeasuring = combustion && includeMeasuring
+  if (withMeasuring) {
     if (!measuring) return { ok: false, code: wanted, unsupported: true, reason: 'The statutory measuring product (0020) is missing at this station.' }
     ids.push(measuring.id)
     names.push(shortName(measuring))
   }
-  return { ok: true, code: wanted, product_ids: ids, names, needs_measuring: needsMeasuring, assumption }
+  return { ok: true, code: wanted, product_ids: ids, names, needs_measuring: combustion, includes_measuring: withMeasuring, assumption }
 }
 async function musterPrices(src, ids, time) {
   return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, HOUR, async () => {
@@ -293,14 +297,14 @@ async function musterPrices(src, ids, time) {
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
   })
 }
-function pageEstimate(prices, code) {
+function pageEstimate(prices, code, includeMeasuring = true) {
   const find = (re) => prices.find((p) => re.test(p.service))
   const base = find(/drive-in/i) || find(/määräaikaiskatsastus \(auto max/i)
   const measuring = find(/mittaukset|measurements|mätningar/i)
   const electric = find(/sähkö|electric|elbil/i)
   const large = find(/isot|large|stora/i)
   const parts = []
-  if (code === '004e') { if (electric) parts.push(electric) } else if (code === '0040') { if (large) parts.push(large); if (measuring) parts.push(measuring) } else if (code === '004') { if (base) parts.push(base); if (measuring) parts.push(measuring) }
+  if (code === '004e') { if (electric) parts.push(electric) } else if (code === '0040') { if (large) parts.push(large); if (measuring && includeMeasuring) parts.push(measuring) } else if (code === '004') { if (base) parts.push(base); if (measuring && includeMeasuring) parts.push(measuring) }
   if (!parts.length) return null
   return { total_from_eur: parts.reduce((sum, p) => sum + p.eur, 0), parts: parts.map((p) => `${p.service}: from ${p.eur} EUR`), note: 'These are "from" prices from the official station page (drive-in), not the price of a booking. Always say "from" / "alk." / "från" with the amount, for the total too. The final price is confirmed at the station.' }
 }
@@ -374,12 +378,13 @@ async function priceBlock(src, plan, sample) {
     note: 'Payment is at the station.',
   }
 }
+const wantsMeasuring = (body_) => !(body_.include_measuring === false || /^(false|no|0)$/i.test(String(body_.include_measuring ?? '')))
 async function planFor(src, body_) {
   const category = normalizeCategory(body_.vehicle_category || body_.lead_vehicle_category)
   const code = body_.product || body_.lead_product
   const list = await stationProducts(src, category)
   if (!list) return { category, plan: { ok: false, load_failed: true } }
-  return { category, plan: planProducts(list, code, category) }
+  return { category, plan: planProducts(list, code, category, wantsMeasuring(body_)) }
 }
 
 async function slots() {
@@ -416,7 +421,7 @@ async function slots() {
   })
   return {
     ok: true, station: { id: src.id, name: entry.name }, bookable_by_assistant: src.bookable,
-    vehicle: { product: plan.code, category, includes: plan.names, assumption: plan.assumption || undefined },
+    vehicle: { product: plan.code, category, includes: plan.names, measuring_included: plan.includes_measuring, assumption: plan.assumption || undefined },
     total_free: summary.reduce((sum, d) => sum + d.free_count, 0), days: summary, price: await priceBlock(src, plan, found.sample),
     hours_verified: days.every((day) => hoursByDay[day].status !== 'unknown'),
     rule: src.bookable
@@ -472,14 +477,14 @@ async function stationInfo() {
           return { date: d, label: dayLabel(d), station_hours: showHours(hoursByDay[d]), free_count: list.length, first: list[0].time, last: list[list.length - 1].time, suggestions: spread(list, 3).map(view) }
         })
         result.price = await priceBlock(src, plan, found.sample)
-        result.vehicle = { product: plan.code, category, includes: plan.names }
+        result.vehicle = { product: plan.code, category, includes: plan.names, measuring_included: plan.includes_measuring }
       } else result.availability_error = 'Live availability could not be loaded right now.'
     } else if (plan.needs_product) result.availability_note = VEHICLE_QUESTION
     else if (plan.load_failed) result.availability_error = 'Live availability could not be loaded right now.'
     else result.availability_note = plan.reason
   }
   if (!result.price && page && page.prices.length && code) {
-    const estimate = pageEstimate(page.prices, code)
+    const estimate = pageEstimate(page.prices, code, wantsMeasuring(body))
     if (estimate) result.price_estimate_for_this_vehicle = estimate
   }
   if (!result.price && page && page.prices.length) result.prices_on_station_page = page.prices.slice(0, 10).map((p) => `${p.service}: ${p.eur} EUR`)
@@ -603,7 +608,7 @@ function myBookings() {
   const now = Date.now()
   const bookings = (input.owned_details || []).filter((row) => new Date(row.startsAt).getTime() > now).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt)).map((row) => {
     const local = helsinki(new Date(row.startsAt))
-    return { event_id: `${row.groupId}|${row.reservationUid}|${row.customerUid}`, booking_number: row.bookingNumber, station_name: row.stationName, plate: row.plate, date: local.date, time: local.hm, display_fi: `${weekdayOf(local.date)} ${fiDate(local.date)} ${local.hm}` }
+    return { event_id: `${row.groupId}|${row.reservationUid}|${row.customerUid}`, booking_number: row.bookingNumber, station_name: row.stationName, plate: row.plate, date: local.date, time: local.hm, includes_measuring: (row.productIds || []).length > 1, display_fi: `${weekdayOf(local.date)} ${fiDate(local.date)} ${local.hm}` }
   })
   return { ok: true, count: bookings.length, bookings, note: 'Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.' }
 }

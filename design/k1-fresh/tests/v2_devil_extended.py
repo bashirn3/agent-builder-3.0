@@ -419,14 +419,21 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
     p('capital.en', 'en', 'I live in Helsinki, can I book a time there?', [ESCALATE, NOBOOK, ('reply', r'0306|k1\.fi|link'), ('no_reply', r'which (one|station) .{0,30}book|like to book')])
     p('booking_link.sv', 'sv', 'kan du skicka bokningslänken?', [ESCALATE, NOBOOK])
 
-    for lang, ask, again, yes in (
-        ('en', 'Could you remove the measurements from the booking? I had them done at a garage.', 'Can you make a new booking without them?', 'Yes, cancel it'),
-        ('fi', 'Voitko poistaa mittaukset varauksesta? Ne on tehty jo korjaamolla.', 'Voitko tehdä uuden varauksen ilman niitä?', 'Kyllä, peru se'),
-        ('sv', 'Kan du ta bort mätningarna från bokningen? Jag har gjort dem på en verkstad.', 'Kan du göra en ny bokning utan dem?', 'Ja, avboka den')):
+    YES = {'en': 'Yes please', 'fi': 'Kyllä, tee niin', 'sv': 'Ja, gör det'}
+    NOMEAS_SLOTS = ('param', 'get_slots', 'include_measuring', r'^false$')
+    for lang, upfront, later, back in (
+        ('en', 'I want to book tomorrow, but without the measurements. I get those done at a garage.', 'Could you remove the measurements from the booking? I will have them done at a garage.', 'Actually, add the measurements back please.'),
+        ('fi', 'Haluan varata ajan huomiselle, mutta ilman mittauksia. Teen ne korjaamolla.', 'Voitko poistaa mittaukset varauksesta? Teen ne korjaamolla.', 'Lisää mittaukset sittenkin takaisin.'),
+        ('sv', 'Jag vill boka imorgon, men utan mätningarna. Jag gör dem på en verkstad.', 'Kan du ta bort mätningarna från bokningen? Jag gör dem på en verkstad.', 'Lägg tillbaka mätningarna ändå.')):
         word = {'en': 'sure', 'fi': 'joo', 'sv': 'visst'}[lang]
-        p(f'measurements.ask.{lang}', lang, [word, Auto(Customer(lang, 'first')), ask],
-          [('booked',), ('no_success', 'cancel_booking'), ('reply', r'cancel|peru|avboka'), ('no_reply', r'0306')], books=True)
-        p(f'measurements.again.{lang}', lang, [word, Auto(Customer(lang, 'first')), ask, again],
-          [('booked',), ('no_success', 'cancel_booking'), ('max_success', 'book_inspection_invite', 1), ('reply', r'cancel|peru|avboka')], books=True)
-        p(f'measurements.cancel.{lang}', lang, [word, Auto(Customer(lang, 'first')), ask, yes],
-          [('booked',), ('cancelled',), ('max_success', 'book_inspection_invite', 1)], books=True)
+        yes = YES[lang]
+        p(f'measurements.new_without.{lang}', lang, [upfront, Auto(Customer(lang, 'first'))],
+          [('booked',), NOMEAS_SLOTS, ('output', r'"product_ids":\s*\[2246\]'), ('no_output', r'"product_ids":\s*\[2246,\s*2254\]'), ('no_reply', r'0306')], books=True)
+        p(f'measurements.remove_booked.{lang}', lang, [word, Auto(Customer(lang, 'first')), later, yes],
+          [('booked',), NOMEAS_SLOTS, ('success', 'cancel_booking'), ('output', r'"product_ids":\s*\[2246\]'), ('no_reply', r'0306|mandatory|pakollinen|obligatorisk')], books=True)
+        p(f'measurements.remove_booked_ask.{lang}', lang, [word, Auto(Customer(lang, 'first')), later],
+          [('booked',), ('no_success', 'cancel_booking'), ('max_success', 'book_inspection_invite', 1), ('no_reply', r'0306')], books=True)
+        p(f'measurements.add_back.{lang}', lang, [word, Auto(Customer(lang, 'first')), later, yes, back, yes],
+          [('booked',), ('success', 'cancel_booking'), ('output', r'"product_ids":\s*\[2246,\s*2254\]'), ('no_reply', r'0306')], books=True)
+        p(f'measurements.default_in.{lang}', lang, [word, Auto(Customer(lang, 'first'))],
+          [('booked',), ('no_param', 'get_slots', 'include_measuring', r'^false$'), ('output', r'"product_ids":\s*\[2246,\s*2254\]')], books=True)
