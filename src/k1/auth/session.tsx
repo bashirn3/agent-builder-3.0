@@ -68,7 +68,7 @@ function ClerkSession({ children }: { children: ReactNode }) {
     setActor(value.signedIn && value.user ? { name: value.user.name, email: value.user.email } : null)
   }, [value])
   useEffect(() => {
-    setSessionTokenProvider(async () => (await clerk.session?.getToken()) ?? null)
+    setSessionTokenProvider(async (fresh) => (await clerk.session?.getToken(fresh ? { skipCache: true } : undefined)) ?? null)
     return () => setSessionTokenProvider(null)
   }, [clerk])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

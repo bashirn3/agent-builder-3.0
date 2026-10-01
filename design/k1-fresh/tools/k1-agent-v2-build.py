@@ -281,6 +281,11 @@ PLAYGROUND_PREAMBLE = (
     "const leadProduct = String(body.product || contextLine('Product on the reminder') || '').trim().toLowerCase()\n"
     "const leadCategory = String(body.vehicleCategory || contextLine('Vehicle category') || '').trim().toUpperCase()\n" + LANGUAGE_JS.rstrip(),
 )
+# The reply-language order is appended after [USER] for the model only; the stored chat history keeps just what the customer wrote.
+RECORD_USER_TEXT = (
+    'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().trim()',
+    'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().replace(/\\n\\[REPLY LANGUAGE:[\\s\\S]*$/, "").trim()',
+)
 PLAYGROUND_OPENER = (
     "  '[LEAD]',",
     "  '[OPENER ALREADY SENT TO CUSTOMER]',\n  String(body.opener || ''),\n  'The customer is replying to this message. Do not send the opener again; answer what they said.',\n  '',\n  '[LEAD]',",
@@ -367,6 +372,8 @@ def build_agent(booking_id):
             for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_LEADLANG, 'lead language'), (PLAYGROUND_TAIL, 'language order'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
                 code = replace_once(code, pair, f'Playground Turn {label}')
             node['parameters']['jsCode'] = code
+        if node['name'] == 'Record playground turn':
+            node['parameters']['jsonBody'] = replace_once(node['parameters']['jsonBody'], RECORD_USER_TEXT, 'Record playground turn user text')
         if node['name'] == 'Build Turn':
             code = node['parameters']['jsCode']
             for pair, label in ((BUILD_TURN_LANGUAGE, 'language'), (BUILD_TURN_TAIL, 'language order')):
