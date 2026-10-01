@@ -418,3 +418,15 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
     p('capital.fi', 'fi', 'Asun Helsingissä, voiko teillä varata ajan sinne?', [ESCALATE, NOBOOK, ('reply', r'0306|k1\.fi|linkki|verkkosivu'), ('no_reply', r'haluaisit varata|valitse asema|kummalle')])
     p('capital.en', 'en', 'I live in Helsinki, can I book a time there?', [ESCALATE, NOBOOK, ('reply', r'0306|k1\.fi|link'), ('no_reply', r'which (one|station) .{0,30}book|like to book')])
     p('booking_link.sv', 'sv', 'kan du skicka bokningslänken?', [ESCALATE, NOBOOK])
+
+    for lang, ask, again, yes in (
+        ('en', 'Could you remove the measurements from the booking? I had them done at a garage.', 'Can you make a new booking without them?', 'Yes, cancel it'),
+        ('fi', 'Voitko poistaa mittaukset varauksesta? Ne on tehty jo korjaamolla.', 'Voitko tehdä uuden varauksen ilman niitä?', 'Kyllä, peru se'),
+        ('sv', 'Kan du ta bort mätningarna från bokningen? Jag har gjort dem på en verkstad.', 'Kan du göra en ny bokning utan dem?', 'Ja, avboka den')):
+        word = {'en': 'sure', 'fi': 'joo', 'sv': 'visst'}[lang]
+        p(f'measurements.ask.{lang}', lang, [word, Auto(Customer(lang, 'first')), ask],
+          [('booked',), ('no_success', 'cancel_booking'), ('reply', r'cancel|peru|avboka'), ('no_reply', r'0306')], books=True)
+        p(f'measurements.again.{lang}', lang, [word, Auto(Customer(lang, 'first')), ask, again],
+          [('booked',), ('no_success', 'cancel_booking'), ('max_success', 'book_inspection_invite', 1), ('reply', r'cancel|peru|avboka')], books=True)
+        p(f'measurements.cancel.{lang}', lang, [word, Auto(Customer(lang, 'first')), ask, yes],
+          [('booked',), ('cancelled',), ('max_success', 'book_inspection_invite', 1)], books=True)
