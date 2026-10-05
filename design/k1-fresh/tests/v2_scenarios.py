@@ -22,7 +22,7 @@ def nextday(weekday):
 
 
 def build(Customer, Auto):
-    import os, sys
+    import datetime, os, sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from v2_devil_extended import iso, TODAY
     scenarios = []
@@ -111,13 +111,13 @@ def build(Customer, Auto):
 
     # ---------- times ----------
     tri('times_tomorrow', 'Onko huomenna vapaita aikoja?', 'Finns det lediga tider imorgon?', 'Are there free times tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)])
-    tri('times_next_week', 'Ensi viikolla sopisi, mitä aikoja on?', 'Nästa vecka passar, vilka tider finns?', 'Next week works, what times do you have?', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', '2026-10-05')])
+    tri('times_next_week', 'Ensi viikolla sopisi, mitä aikoja on?', 'Nästa vecka passar, vilka tider finns?', 'Next week works, what times do you have?', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', (TODAY + datetime.timedelta(days=7 - TODAY.weekday())).isoformat())])
     tri('times_thursday_pm', 'Torstaina iltapäivällä olisi hyvä', 'På torsdag eftermiddag skulle passa', 'Thursday afternoon would be good', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', nextday(3))])
     tri('times_earliest', 'Mikä on aikaisin aika jonka saan?', 'Vilken är den tidigaste tiden jag kan få?', 'What is the earliest time I can get?', [('any_tool', ['get_slots', 'get_station_info'])])
     tri('times_latest', 'Mikä on huomisen viimeinen aika?', 'Vilken är sista tiden imorgon?', 'What is the last time tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)])
     tri('times_weekend', 'Onko viikonlopulle aikoja?', 'Finns det tider på helgen?', 'Do you have weekend slots?', [NOBOOK])
     tri('times_specific', 'Onko klo 10 vapaana huomenna?', 'Är kl 10 ledigt imorgon?', 'Is 10:00 free tomorrow?', [('any_tool', ['get_slots', 'get_station_info'])])
-    tri('times_friday_morning', 'Perjantaiaamu sopisi', 'Fredag morgon passar', 'Friday morning suits me', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', '2026-10-02')])
+    tri('times_friday_morning', 'Perjantaiaamu sopisi', 'Fredag morgon passar', 'Friday morning suits me', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', (TODAY + datetime.timedelta(days=(4 - TODAY.weekday()) % 7 or 7)).isoformat())])
     tri('times_two_weeks', 'Entä parin viikon päästä?', 'Och om två veckor då?', 'What about in two weeks?', [NOBOOK])
     tri('times_other_station', 'Onko Kuopion asemalla vapaita aikoja huomenna?', 'Finns det lediga tider på Kuopio-stationen imorgon?', 'Are there free times at the Kuopio station tomorrow?',
         [('any_tool', ['get_slots', 'get_station_info']), NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306|k1katsastus')])

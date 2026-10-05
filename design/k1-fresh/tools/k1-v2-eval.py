@@ -414,6 +414,7 @@ def main():
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--out', default='')
     parser.add_argument('--repeat', type=int, default=1)
+    parser.add_argument('--books', default='', choices=['', 'no', 'only'], help='no: skip scenarios that need a working booking; only: run just those')
     parser.add_argument('--shard', default='', help='i/n: run every n-th scenario of the cost-sorted list (longest first), so parallel processes finish together')
     args = parser.parse_args()
     if args.command == 'cleanup':
@@ -429,6 +430,9 @@ def main():
     if args.only:
         wanted = [part for part in args.only.split(',') if part]
         scenarios = [s for s in scenarios if any(part in s['id'] for part in wanted)]
+    if args.books:
+        needs = lambda s: is_booking_flow(s) or any(c[0] in ('booked', 'cancelled', 'rescheduled', 'turns_to_book') or (c[0] in ('success', 'max_success') and c[1] in ('book_inspection_invite', 'cancel_booking', 'reschedule_booking')) for c in s.get('checks', []))
+        scenarios = [s for s in scenarios if needs(s) == (args.books == 'only')]
     if args.shard:
         index, count = (int(part) for part in args.shard.split('/'))
         cost = lambda s: -(len(s['turns']) * 2 + (6 if s.get('books') else 0) + sum(5 for t in s['turns'] if not isinstance(t, str)))

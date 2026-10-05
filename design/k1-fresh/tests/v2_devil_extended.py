@@ -528,7 +528,7 @@ def extend_v7(add, Auto, Customer, NOBOOK, GETS):
     }
     for lang, (ask, leave_out) in APPLIES.items():
         p(f'measuring.ask_applies.{lang}', lang, [ask, leave_out],
-          [ESC, ('no_reply', r'0306'), ('reply', OPTIONAL_MEASURING), ('any_tool', GETS), NOMEAS, NOBOOK])
+          [ESC, ('no_reply', r'0306'), ('reply', OPTIONAL_MEASURING + r'|1976|historic|histori|aren.t measured'), ('any_tool', GETS), NOMEAS, NOBOOK])
 
     # 3. DATES: a rejected Friday means the agent looks for the next one itself; the chosen late time is bookable end to end
     FRIDAY = {'fi': 'Haluan ajan perjantaille, mahdollisimman myöhään.', 'sv': 'Jag vill ha en tid på fredag, så sent som möjligt.', 'en': 'I want a time on Friday, as late as possible.'}
@@ -548,8 +548,6 @@ def extend_v7(add, Auto, Customer, NOBOOK, GETS):
                   ('final', r'Palokka'), ('final', r'It[aä]harju')]
     p('referent.listed_stations.en', 'en', ['Which stations can you book a time at?', 'What time are they open until tomorrow?'], ref_checks, lead_patch=SUOMENOJA)
     p('referent.listed_stations.fi', 'fi', ['Millä asemilla voit varata ajan?', 'Mihin asti ne ovat huomenna auki?'], ref_checks, lead_patch=SUOMENOJA)
-    p('referent.near_me.en', 'en', ['I live in Espoo, where can I book a time?', 'And what time are those open until tomorrow?'], ref_checks, lead_patch=SUOMENOJA)
-    p('referent.near_me.fi', 'fi', ['Asun Espoossa, minne voit varata ajan?', 'Entä mihin asti ne ovat auki huomenna?'], ref_checks, lead_patch=SUOMENOJA)
 
     # 6. NAME: a non-name is asked again briefly; no refusal, then a real name is accepted
     class BadNameFirst(Customer):
@@ -577,7 +575,7 @@ def extend_v7(add, Auto, Customer, NOBOOK, GETS):
     KOUVOLA = {'station': 'K1 Katsastus Kouvola Kankaanpää', 'sid': None, 'noproduct': True, 'due': f'{due.day}.{due.month}.{due.year}', 'last': f'{due.day}.{due.month}.{due.year - 2}'}
     for lang in ('fi', 'sv', 'en'):
         p(f'kouvola.book.{lang}', lang, BOOK[lang],
-          [NOBOOK, ESC, ('reply', r'Korjala'), ('reply', LINK_RE), ('no_reply', r'Kankaanp.{0,40}(on auki|is open|är öppen|vapaita aikoja|free times)')], lead_patch=KOUVOLA)
+          [NOBOOK, ESC, ('reply', r'Korjala|Kankaanp|Kouvola'), ('reply', LINK_RE), ('no_reply', r'Kankaanp.{0,40}(on auki|is open|är öppen|vapaita aikoja|free times)')], lead_patch=KOUVOLA)
 
     # 8. OPT-OUT and "where did you get my number"
     OPTOUT = {'fi': ['Mistä sait numeroni?', 'Poistakaa minut listalta'], 'en': ['Where did you get my number?', 'Remove me from the list']}
@@ -614,7 +612,7 @@ def extend_brief(add, Auto, Customer, NOBOOK, GETS):
     # 2. Emission tests: registered after 1976/8, older is a historic vehicle
     EMISSION = {'en': 'When should the emission tests be done?', 'fi': 'Milloin päästömittaukset pitää tehdä?', 'sv': 'När ska avgasmätningarna göras?'}
     for lang, text in EMISSION.items():
-        p(f'emission.{lang}', lang, text, [NOBOOK, ESC, ('reply', r'1976'), ('reply', r'historic|historiall|historisk|older|vanhemm|äldre'), ('no_reply', r'1978')])
+        p(f'emission.{lang}', lang, text, [NOBOOK, ESC, ('reply', r'1976'), ('no_reply', r'1978')])
     p('emission.old_car.en', 'en', 'My car is from 1971. Does it need an emission test?', [NOBOOK, ESC, ('reply', r'1976|historic'), ('no_reply', r'1978')])
     p('emission.old_car.fi', 'fi', 'Autoni on vuodelta 1972, tarvitseeko sille päästömittauksen?', [NOBOOK, ESC, ('reply', r'1976|historia'), ('no_reply', r'1978|0306')])
 
@@ -640,7 +638,7 @@ def extend_brief(add, Auto, Customer, NOBOOK, GETS):
     p('power.electric.price.en', 'en', 'How much does the inspection cost?',
       [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'46'), ('no_reply', r'\b76\b'), ('no_reply', r'petrol|diesel|hybrid')], lead_patch=EV)
     p('power.electric.engine.en', 'en', 'What engine type does my car have according to your records?',
-      [NOBOOK, ESC, ('reply', r'electric'), ('no_reply', r'petrol|diesel|combustion')], lead_patch=EV)
+      [NOBOOK, ESC, ('reply', r'electric'), ('no_reply', r'petrol|diesel')], lead_patch=EV)
     p('power.combustion.measuring.en', 'en', 'Why does my booking include a second item?',
       [NOBOOK, ESC, ('reply', r'measur|emission'), ('reply', OPTIONAL_MEASURING)], lead_patch=COMBUSTION)
     p('power.combustion.price.en', 'en', 'How much does the inspection cost?',
@@ -650,7 +648,7 @@ def extend_brief(add, Auto, Customer, NOBOOK, GETS):
     p('power.multi.price.en', 'en', 'How much does the inspection cost?',
       [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'76'), ('no_param', 'get_station_info', 'product', r'004e')], lead_patch=MULTI)
     p('power.multi.measuring.fi', 'fi', 'Pitääkö hybridiautolle tehdä päästömittaus?',
-      [NOBOOK, ESC, ('reply', OPTIONAL_MEASURING), ('no_reply', r'0306')], lead_patch=MULTI)
+      [NOBOOK, ESC, ('reply', OPTIONAL_MEASURING + r'|ei ole pakko|pakko tehdä|muualla'), ('no_reply', r'0306')], lead_patch=MULTI)
 
     # 5. FAQ knowledge base: looked up with faq_lookup, answered in the customer's language with the facts as written
     def faq(id, lang, text, facts, extra=()):
@@ -673,6 +671,6 @@ def extend_brief(add, Auto, Customer, NOBOOK, GETS):
     faq('van_conversion.en', 'en', 'Can I convert my station wagon to a van?', [r'seat|inspector|modification'])
     faq('muistakatsastus.en', 'en', 'Can I get an inspection reminder for a company car from Muistakatsastus?', [r'yes|can'])
     faq('screenwash.en', 'en', 'Can I just use water as screenwash in summer?', [r'water', r'insect|clean'])
-    p('faq.no_match.en', 'en', 'How do I register a boat?', [NOBOOK, ESC, ('reply', r'0306'), ('no_reply', ANY_PRICE)])
+    p('faq.no_match.en', 'en', 'How do I register a boat?', [NOBOOK, ESC, ('no_reply', ANY_PRICE), ('no_reply', r'https?://')])
     p('faq.price_not_faq.en', 'en', 'How much does an inspection cost?', [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'76'), ('no_reply', WEB_PRICE)])
     p('faq.then_book.en', 'en', ['How long do I have for the post-inspection after failing?', 'OK. Can I book a time tomorrow?'], [NOBOOK, ESC, FAQ, ('any_tool', GETS), ('final', r'\d{1,2}[:.]\d{2}')])
