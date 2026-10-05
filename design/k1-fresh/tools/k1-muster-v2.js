@@ -22,6 +22,7 @@ const PROD = 'https://a-katsastus-booking-api.muster.fi/v3/5'
 const BOOKING_SITE = 'https://ajanvaraus.k1katsastus.fi'
 const NATIONAL_PHONE = '0306 100 100'
 const DIRECTORY = __DIRECTORY__
+const FAQ = __FAQ__
 const input = $input.first().json
 const body = input.body && input.body.action ? input.body : input
 const action = String(body.action || '')
@@ -487,7 +488,7 @@ async function stationInfo() {
     const estimate = pageEstimate(page.prices, code, wantsMeasuring(body))
     if (estimate) result.price_estimate_for_this_vehicle = estimate
   }
-  if (!result.price && page && page.prices.length) result.prices_on_station_page = page.prices.slice(0, 10).map((p) => `${p.service}: ${p.eur} EUR`)
+  if (!result.price && !result.price_estimate_for_this_vehicle && !code) result.price_note = 'The vehicle type is unknown, so no price can be given yet: ask the fuel question first (see availability_note or vehicle question), then call again with the product.'
   return result
 }
 
@@ -622,6 +623,24 @@ async function cancel() {
   return { ok: true, success: true, already_cancelled: response.status === 204, group_id: groupId, cancelLocal: true }
 }
 
+const FAQ_STOP = new Set('a an and or the of to for in on at is are was be it its my me i you your can could do does did how what when where which who why should would will with from about if not no yes there this that than then have has had get got need want'.split(' '))
+const FAQ_SYNONYMS = { deadline: ['period', 'latest'], cost: ['price'], fee: ['price'], expire: ['elapsed'], expired: ['elapsed'], buy: ['bought'], sell: ['sold'], deregister: ['decommission'], unregister: ['decommission'], reregister: ['commission'], emissions: ['emission', 'measuring'], exhaust: ['emission', 'measuring'], oil: ['engine'], licence: ['license'], lease: ['leasing'] }
+const faqStem = (word) => word.replace(/(ing|ed|es|s)$/, '')
+const faqTokens = (value) => [...new Set((String(value || '').toLowerCase().match(/[a-zåäö0-9]+/g) || []).filter((word) => word.length > 1 && !FAQ_STOP.has(word)).flatMap((word) => [word, ...(FAQ_SYNONYMS[word] || [])]).map(faqStem))]
+const FAQ_INDEX = FAQ.map((entry) => ({ entry, inQuestion: new Set(faqTokens(entry.question)), inAnswer: new Set(faqTokens(entry.answer)) }))
+function faqLookup() {
+  const wanted = faqTokens(body.query)
+  if (!wanted.length) return { ok: true, matches: [], note: 'No query given.' }
+  const weight = (word) => Math.log(1 + FAQ_INDEX.length / (1 + FAQ_INDEX.filter((row) => row.inQuestion.has(word) || row.inAnswer.has(word)).length))
+  const scored = FAQ_INDEX.map((row) => {
+    let score = 0
+    for (const word of wanted) score += weight(word) * ((row.inQuestion.has(word) ? 3 : 0) + (row.inAnswer.has(word) ? 1 : 0))
+    return { entry: row.entry, score: Math.round(score * 10) / 10 }
+  }).filter((row) => row.score >= 4).sort((a, b) => b.score - a.score).slice(0, 4)
+  if (!scored.length) return { ok: true, matches: [], note: 'No FAQ entry matched. Say you do not have that information and give 0306 100 100.' }
+  return { ok: true, matches: scored.map(({ entry, score }) => ({ id: entry.id, category: entry.category, question: entry.question, answer: entry.answer, links: entry.links, score })), note: 'Answer only from the best matching entry, in the customer\'s language. Keep its facts exactly.' }
+}
+
 let result
 if (action === 'get_slots' || action === 'slots') result = await slots()
 else if (action === 'station_info') result = await stationInfo()
@@ -633,6 +652,7 @@ else if (action === 'stations') {
   result = response.status === 200 ? { ok: true, products: response.data.map((product) => ({ id: product.id, type: product.productType, name: product.name })) } : { ok: false, error: response.data }
 } else if (action === 'book') result = await book()
 else if (action === 'my_bookings') result = myBookings()
+else if (action === 'faq') result = faqLookup()
 else if (action === 'reschedule') result = await moveBooking()
 else if (action === 'cancel') result = await cancel()
 else if (action === 'find') {

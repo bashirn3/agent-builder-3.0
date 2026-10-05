@@ -31,7 +31,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-STATE = Path('/tmp/k1eval/state.json')
+STATE = Path(os.environ.get('K1_EVAL_STATE', '/tmp/k1eval/state.json'))
 
 
 def load(path, name):
@@ -116,7 +116,7 @@ def create_copies(secret):
         gate.request('POST', f'/workflows/{wid}/activate')
     state = {'secret': secret, 'agent_wf': created_agent, 'booking_wf': created_booking, 'agent_url': f'{base_url()}/webhook/k1-v2-eval-{suffix}',
              'booking_url': f'{base_url()}/webhook/k1-v2-eval-booking-{suffix}', 'events': []}
-    STATE.parent.mkdir(exist_ok=True)
+    STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(state))
     for url in (state['agent_url'], state['booking_url']):
         for _ in range(15):
@@ -181,6 +181,7 @@ def cleanup(state=None):
 
 # ---------- Lead context (mirrors src/k1/data/language.ts) ----------
 LANG_NAMES = {'fi': 'Finnish', 'sv': 'Swedish', 'en': 'English'}
+POWER_TYPES = {'004': 'combustion engine or multi-power (petrol, diesel, hybrid or gas)', '0040': 'combustion engine (camper or larger car)', '004e': 'electric'}
 PRODUCT_NOTES = {
     '004': 'periodic inspection of a car or van up to 3500 kg with a combustion engine; statutory measuring (0020) is added',
     '0040': 'periodic inspection of a camper or larger car; statutory measuring (0020) is added; not offered at every station',
@@ -191,7 +192,7 @@ OPENERS = {
     'sv': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {plate}. Vill du att jag hjälper dig hitta en tid?',
     'en': 'Hi, this is K1 Katsastus. Your vehicle {plate} is due for inspection soon. Would you like me to find you a time?',
 }
-PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v3.json')
+PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v7.json')
 MASTER = """You are the appointment-booking assistant for K1 Katsastus, a Finnish vehicle inspection company.
 
 Ask whether the customer wants to book an inspection and collect the details needed to check availability: registration number, preferred K1 station, preferred date or time window, and contact details when needed.
@@ -210,7 +211,7 @@ def lead_context(lead):
         "LEAD CONTEXT (from K1's lead data for this customer)",
         f"- Customer's language: {LANG_NAMES[lang]}. Reply in {LANG_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.",
         f"- Station the customer last visited: {lead['station']}. Default to this station; use get_station_info for its live opening hours and for any other station they ask about.",
-        *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}."]),
+        *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}.", f"- Power type of the vehicle: {lead.get('power') or POWER_TYPES[lead['product']]}. Use it in your answers about this vehicle."]),
         f"- Customer phone: {lead['phone']}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.",
         f"- Registration: {lead['plate']}",
         f"- Inspection due by: {lead.get('due', '20.10.2026')}",
@@ -413,6 +414,7 @@ def main():
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--out', default='')
     parser.add_argument('--repeat', type=int, default=1)
+    parser.add_argument('--shard', default='', help='i/n: run every n-th scenario of the cost-sorted list (longest first), so parallel processes finish together')
     args = parser.parse_args()
     if args.command == 'cleanup':
         cleanup()
@@ -427,6 +429,10 @@ def main():
     if args.only:
         wanted = [part for part in args.only.split(',') if part]
         scenarios = [s for s in scenarios if any(part in s['id'] for part in wanted)]
+    if args.shard:
+        index, count = (int(part) for part in args.shard.split('/'))
+        cost = lambda s: -(len(s['turns']) * 2 + (6 if s.get('books') else 0) + sum(5 for t in s['turns'] if not isinstance(t, str)))
+        scenarios = sorted(scenarios, key=cost)[index::count]
     if args.repeat > 1:
         scenarios = [dict(s, id=f"{s['id']}#{k}") for s in scenarios for k in range(args.repeat)]
     print(f'{len(scenarios)} scenarios', flush=True)

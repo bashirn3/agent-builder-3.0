@@ -39,6 +39,7 @@ OPTIONAL_MEASURING = (r'vapaaehtoi|voi (jättää|ottaa) pois|voidaan jättää|
                       r'can be (skipped|removed|left|omitted)|without the (measur|emission)|not mandatory|frivillig|utelämna|lämnas utan|kan (hoppas|tas bort)|utan (mätning|avgas)')
 ORIGIN_BAD = (r'verkkosivu|website|nettisivu|webbplats|hemsida|lomake|\bform\b|formulär|kysely|survey|enkät|ostit|tilasit|aiemm\w+ (varauks|käynni|asioinn)|previous (visit|booking)|tidigare (besök|bokning)|'
               r'google|facebook|sosiaalinen media|social media|sociala medier|ajoneuvorekisteri|vehicle register|fordonsregister|traficom|trafi\b|offentlig|public (register|record)|julkinen')
+ORIGIN_BAD_NOSITE = re.sub(r'verkkosivu\|website\|nettisivu\|webbplats\|hemsida\|', '', ORIGIN_BAD)
 APOLOGY = r'anteeksi|pahoittelen|beklagar|förlåt|ursäkta|\bledsen\b|\bsorry\b|apolog'
 REFUSE_NAME = (r'markkinointi.{0,60}(en|ei) (voi|pysty)|(en|ei) (voi|pysty).{0,60}markkinointi|marketing.{0,60}(cannot|can.t|unable)|(cannot|can.t|unable).{0,60}(marketing|test)|'
                r'marknadsförings.{0,60}kan inte|kan inte.{0,60}(marknadsförings|test)|markkinointitesti|marketing test|marknadsföringstest|(en|ei) voi auttaa|cannot help|can.t help|kan inte hjälpa')
@@ -426,7 +427,7 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
       [ESC, NOBOOK, ('reply', r'Korjala'), ('reply', LINK_RE), ORIGIN, ('param', 'get_slots', 'station', r'it[aä]harju|turku'), ('param', 'get_slots', 'product', r'^004e$'),
        ('no_reply', r'Kankaanp.{0,40}(on auki|is open|vapaita aikoja)'), ('max_replies', APOLOGY, 1), ('final', r'muistutu|yhteystie|reminder')], station='pal', plate='ABC-123', books=True)
     p('replay.chat2_besikta.sv', 'sv', ['När behöver den besiktas?', 'Var har du fått mitt telefonnumer?', 'Jag har int ebett om besiktningspåminnelse', 'jag vill ha en e-postadress', 'ta bort mig från påminnelselistan'],
-      [('tool', 'opt_out'), NOBOOK, ORIGIN, ('max_replies', APOLOGY, 2), ('reply', r'påminnelse|kontaktuppgift|kontaktdata|reminder')], station='pal', plate='KLM-908', books=True)
+      [('tool', 'opt_out'), NOBOOK, ('no_reply', ORIGIN_BAD_NOSITE), ('max_replies', APOLOGY, 2), ('reply', r'påminnelse|kontaktuppgift|kontaktdata|reminder')], station='pal', plate='KLM-908', books=True)
     p('replay.chat3_price.fi', 'fi', replay,
       [ESC, ('booked',), ('no_reply', r'0306'), ('no_reply', WEB_PRICE), ('no_reply', HEDGE_PRICE_SOFT), ('no_reply', HEDGE_HOURS), ('no_reply', ASK_DATE), ('no_reply', PLATE_RECONFIRM), ('no_reply', REFUSE_NAME),
        ('param', 'get_slots', 'include_measuring', r'^false$'), ('slots_cover', f2.isoformat()), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_param', 'book_inspection_invite', 'name', r'testi markk|asdf'),
@@ -584,3 +585,94 @@ def extend_v7(add, Auto, Customer, NOBOOK, GETS):
         p(f'optout.where_number.{lang}', lang, turns,
           [('tool', 'opt_out'), NOBOOK, ESC, ('no_reply', ORIGIN_BAD), ('max_replies', APOLOGY, 1), ('reply', r'muistutu|yhteystie|reminder|contact')])
 
+
+
+def extend_brief(add, Auto, Customer, NOBOOK, GETS):
+    """Dev brief of 5 Oct 2026: direct answer to 'where did you get my number', the emission-test rule, hours from tools only,
+    power type on the lead, and the A-Katsastus FAQ knowledge base (faq_lookup)."""
+    def p(id, lang, turns, checks=(), **kw):
+        add(f'pilot.v7.brief.{id}', 'pilot', lang, turns if isinstance(turns, list) else [turns], checks, **kw)
+
+    ESC = ('no_tool', 'escalate_to_human')
+    FAQ = ('tool', 'faq_lookup')
+    BOOKING_TALK = r'varata|varaa|aika(a|n|ja)\b|book|boka|times|tider|0306|linkki|link\b|länk'
+    SOURCE = r'asema|station|katsast|inspect|besikt'
+
+    # 1. Where did you get my number: direct answer, no redirect, no hand-off
+    ORIGIN_ASKS = {
+        'fi': ['Mistä sait numeroni?', 'Kuka antoi sinulle puhelinnumeroni?', 'Mistä teillä on minun numeroni? En ole antanut sitä kenellekään', 'Miksi lähetätte minulle viestejä, mistä numero on peräisin?'],
+        'en': ['Where did you get my number?', 'How do you have my phone number?', 'Who gave you my number? I never asked for this reminder'],
+        'sv': ['Var har du fått mitt telefonnummer?', 'Hur har ni fått mitt nummer?', 'Jag har inte bett om någon påminnelse, varifrån har ni mitt nummer?'],
+    }
+    for lang, asks in ORIGIN_ASKS.items():
+        for index, text in enumerate(asks, 1):
+            p(f'origin.{lang}{index}', lang, text,
+              [NOBOOK, ESC, ('no_tool', 'opt_out'), ('no_reply', ORIGIN_BAD), ('no_reply', BOOKING_TALK), ('reply', SOURCE), ('reply', r'numero|nummer|number|muistutu|påminnelse|reminder')])
+    p('origin.after_booking_offer.en', 'en', ['Yes please', 'Where did you get my number?'],
+      [ESC, NOBOOK, ('no_tool', 'opt_out'), ('no_reply', ORIGIN_BAD), ('final', SOURCE), ('final', r'number|reminder')])
+
+    # 2. Emission tests: registered after 1976/8, older is a historic vehicle
+    EMISSION = {'en': 'When should the emission tests be done?', 'fi': 'Milloin päästömittaukset pitää tehdä?', 'sv': 'När ska avgasmätningarna göras?'}
+    for lang, text in EMISSION.items():
+        p(f'emission.{lang}', lang, text, [NOBOOK, ESC, ('reply', r'1976'), ('reply', r'historic|historiall|historisk|older|vanhemm|äldre'), ('no_reply', r'1978')])
+    p('emission.old_car.en', 'en', 'My car is from 1971. Does it need an emission test?', [NOBOOK, ESC, ('reply', r'1976|historic'), ('no_reply', r'1978')])
+    p('emission.old_car.fi', 'fi', 'Autoni on vuodelta 1972, tarvitseeko sille päästömittauksen?', [NOBOOK, ESC, ('reply', r'1976|historia'), ('no_reply', r'1978|0306')])
+
+    # 3. Opening hours: latest time and a follow-up on another day come from tools, never from guesses or a bare website referral
+    HOURS_URL = r'verkkosivu|website|webbplats|nettisivu|k1katsastus\.fi'
+    LATEST = {
+        'en': ['What is the latest time I can have my car inspected tomorrow?', 'And next Friday?'],
+        'fi': ['Mihin asti katsastukseen pääsee viimeistään huomenna?', 'Entä ensi perjantaina?'],
+        'sv': ['Vad är den senaste tiden för besiktning imorgon?', 'Och nästa fredag då?'],
+    }
+    for lang, turns in LATEST.items():
+        p(f'hours.latest.{lang}', lang, turns,
+          [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'\d{1,2}[:.]\d{2}'), ('final', r'\d{1,2}[:.]\d{2}'), ('no_reply', HOURS_URL), ('no_reply', HEDGE_HOURS)])
+
+    # 4. Power type on the lead: each type gets an answer that matches its vehicle
+    EV = {'product': '004e', 'power': 'electric'}
+    COMBUSTION = {'product': '004', 'power': 'combustion engine (petrol or diesel)'}
+    MULTI = {'product': '004', 'power': 'multi-power (hybrid)'}
+    p('power.electric.measuring.en', 'en', 'Do I need the emissions measuring for my car?',
+      [NOBOOK, ESC, ('reply', r'electric|no measuring|not (needed|required|applicable)|does not apply|doesn.t apply|isn.t (needed|required)'), ('no_reply', r'default|included by default')], lead_patch=EV)
+    p('power.electric.measuring.fi', 'fi', 'Tarvitaanko autolleni päästömittaus?',
+      [NOBOOK, ESC, ('reply', r'sähkö|ei (tarvita|ole|koske)|ei ole mittausta'), ('no_reply', r'oletuksena|sisältyy oletuksena')], lead_patch=EV)
+    p('power.electric.price.en', 'en', 'How much does the inspection cost?',
+      [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'46'), ('no_reply', r'\b76\b'), ('no_reply', r'petrol|diesel|hybrid')], lead_patch=EV)
+    p('power.electric.engine.en', 'en', 'What engine type does my car have according to your records?',
+      [NOBOOK, ESC, ('reply', r'electric'), ('no_reply', r'petrol|diesel|combustion')], lead_patch=EV)
+    p('power.combustion.measuring.en', 'en', 'Why does my booking include a second item?',
+      [NOBOOK, ESC, ('reply', r'measur|emission'), ('reply', OPTIONAL_MEASURING)], lead_patch=COMBUSTION)
+    p('power.combustion.price.en', 'en', 'How much does the inspection cost?',
+      [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'76'), ('no_reply', r'electric')], lead_patch=COMBUSTION)
+    p('power.multi.electric.en', 'en', 'Is my car fully electric according to your records?',
+      [NOBOOK, ESC, ('reply', r'multi|hybrid|not (fully )?electric|combustion|no\b'), ('no_reply', r'^yes|fully electric\.? 46')], lead_patch=MULTI)
+    p('power.multi.price.en', 'en', 'How much does the inspection cost?',
+      [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'76'), ('no_param', 'get_station_info', 'product', r'004e')], lead_patch=MULTI)
+    p('power.multi.measuring.fi', 'fi', 'Pitääkö hybridiautolle tehdä päästömittaus?',
+      [NOBOOK, ESC, ('reply', OPTIONAL_MEASURING), ('no_reply', r'0306')], lead_patch=MULTI)
+
+    # 5. FAQ knowledge base: looked up with faq_lookup, answered in the customer's language with the facts as written
+    def faq(id, lang, text, facts, extra=()):
+        p(f'faq.{id}', lang, text, [NOBOOK, ESC, FAQ, *[('reply', fact) for fact in facts], *extra])
+    faq('post_period.en', 'en', 'How long do I have for the post-inspection after failing?', [r'one month|1 month|a month'])
+    faq('post_period.fi', 'fi', 'Kuinka kauan minulla on aikaa jälkitarkastukseen?', [r'kuukau|1 kk'])
+    faq('post_period.sv', 'sv', 'Hur lång tid har jag på mig för efterbesiktningen?', [r'månad'])
+    faq('post_same_station.en', 'en', 'Does the post-inspection have to be at the same station?', [r'\bno\b|not|any|other|different'])
+    faq('ownership.en', 'en', 'How soon do I have to register a change of ownership after buying a car?', [r'7|seven'])
+    faq('ownership.fi', 'fi', 'Kuinka pian omistajanvaihto pitää ilmoittaa?', [r'7|seitsemän'])
+    faq('autotohtori.en', 'en', 'How much does an Autotohtori inspection cost together with a normal inspection?', [r'79'])
+    faq('autotohtori.sv', 'sv', 'Vad kostar Autotohtori tillsammans med en vanlig besiktning?', [r'79'])
+    faq('receipt.en', 'en', 'Where can I get a receipt for a prepaid appointment?', [r'receipt', r'station|service point'])
+    faq('decommission.en', 'en', 'What do I need to decommission my car from traffic?', [r'ID|identity|notification part|registration certificate'])
+    faq('decommission_plates.en', 'en', 'Do I have to return the licence plates when I decommission my car?', [r'\bno\b|not necessary|not (have|need)'])
+    faq('wipers.en', 'en', 'How often should I replace the wiper blades?', [r'year|six months|6 months'])
+    faq('licence_renew.en', 'en', 'My driving licence is about to expire. What should I do?', [r'Ajovarma', r'photo'])
+    faq('leasing.en', 'en', 'Can I get my leasing car inspected and have the invoice go to the leasing company?', [r'leasing'])
+    faq('documents.fi', 'fi', 'Mitä papereita tarvitaan henkilöauton katsastukseen jos mittaus on tehty huollossa?', [r'3 kuukau|kolme kuukau|todistus'])
+    faq('van_conversion.en', 'en', 'Can I convert my station wagon to a van?', [r'seat|inspector|modification'])
+    faq('muistakatsastus.en', 'en', 'Can I get an inspection reminder for a company car from Muistakatsastus?', [r'yes|can'])
+    faq('screenwash.en', 'en', 'Can I just use water as screenwash in summer?', [r'water', r'insect|clean'])
+    p('faq.no_match.en', 'en', 'How do I register a boat?', [NOBOOK, ESC, ('reply', r'0306'), ('no_reply', ANY_PRICE)])
+    p('faq.price_not_faq.en', 'en', 'How much does an inspection cost?', [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'76'), ('no_reply', WEB_PRICE)])
+    p('faq.then_book.en', 'en', ['How long do I have for the post-inspection after failing?', 'OK. Can I book a time tomorrow?'], [NOBOOK, ESC, FAQ, ('any_tool', GETS), ('final', r'\d{1,2}[:.]\d{2}')])

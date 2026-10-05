@@ -35,6 +35,7 @@ export type LeadRow = {
   LastInspection: string
   Reason: string
   VehicleCategory?: string
+  PowerType?: string
 }
 
 export type VersionRecord = {

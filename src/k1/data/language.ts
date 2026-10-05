@@ -39,6 +39,7 @@ export type TemplateLead = {
   phoneNumber?: string
   product?: string
   vehicleCategory?: string
+  powerType?: string
 }
 
 // Staging chain 91. Only the two K1 stations can be booked.
@@ -66,6 +67,19 @@ const PRODUCT_NOTES: Record<string, string> = {
   '004e': 'periodic inspection of a fully electric car; no measuring product',
 }
 
+const POWER_FROM_PRODUCT: Record<string, string> = {
+  '004e': 'electric',
+  '004': 'combustion engine or multi-power (petrol, diesel, hybrid or gas)',
+  '0040': 'combustion engine (camper or larger car)',
+}
+
+// The lead's own power type wins; otherwise it is derived from the reminder product.
+export function powerTypeOf(lead: Pick<TemplateLead, 'powerType' | 'product'>) {
+  const given = (lead.powerType ?? '').trim()
+  if (given) return given
+  return POWER_FROM_PRODUCT[(lead.product ?? '').trim().toLowerCase()] ?? ''
+}
+
 // Sent with every test turn so the agent knows who it is talking to; the saved prompt is never changed.
 // Station hours are never listed here: the agent reads them live per station from the get_station_info tool.
 export function leadContext(lead: TemplateLead, openerLang: Lang) {
@@ -79,6 +93,7 @@ export function leadContext(lead: TemplateLead, openerLang: Lang) {
     station ? `- Station the customer last visited: ${station}. Default to this station; use get_station_info for its live opening hours and for any other station they ask about.` : '- Station: unknown. Ask which K1 station or city they mean.',
     product && `- Product on the reminder: ${product}${PRODUCT_NOTES[product] ? ` (${PRODUCT_NOTES[product]})` : ''}. This applies to the registration below only.`,
     lead.vehicleCategory && `- Vehicle category: ${lead.vehicleCategory}.`,
+    powerTypeOf(lead) && `- Power type of the vehicle: ${powerTypeOf(lead)}. Use it in your answers about this vehicle.`,
     lead.phoneNumber && `- Customer phone: ${lead.phoneNumber}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.`,
     lead.plateNumber && `- Registration: ${lead.plateNumber}`,
     lead.nextInspection && `- Inspection due by: ${formatDate(lead.nextInspection, 'fi')}`,

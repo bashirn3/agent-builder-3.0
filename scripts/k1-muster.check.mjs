@@ -6,13 +6,14 @@ import assert from 'node:assert/strict'
 const root = new URL('../', import.meta.url)
 const source = fs.readFileSync(new URL('design/k1-fresh/tools/k1-muster-v2.js', root), 'utf8')
 const directory = fs.readFileSync(new URL('design/k1-fresh/data/k1-directory.json', root), 'utf8')
-const withDirectory = source.replace('const DIRECTORY = __DIRECTORY__', `const DIRECTORY = ${directory}`)
+const faq = fs.readFileSync(new URL('design/k1-fresh/data/a-katsastus-faq.json', root), 'utf8')
+const withDirectory = source.replace('const DIRECTORY = __DIRECTORY__', `const DIRECTORY = ${directory}`).replace('const FAQ = __FAQ__', `const FAQ = ${faq}`).replace('__STAGING_PROXY_MODE__', "'fallback'")
 const code = withDirectory.replace('__STAGING_PROXIES__', '[]')
-assert.ok(!code.includes('__DIRECTORY__') && !code.includes('__STAGING_PROXIES__'), 'placeholders were not replaced')
+assert.ok(!code.includes('__DIRECTORY__') && !code.includes('__STAGING_PROXIES__') && !code.includes('__FAQ__') && !code.includes('__STAGING_PROXY_MODE__'), 'placeholders were not replaced')
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 const node = new AsyncFunction('$input', '$getWorkflowStaticData', code)
 const pool = Array.from({ length: 8 }, (_, i) => ({ protocol: 'http', host: `proxy${i}.example`, port: 8080 + i, auth: { username: 'u', password: 'p' } }))
-const proxiedNode = new AsyncFunction('$input', '$getWorkflowStaticData', withDirectory.replace('__STAGING_PROXIES__', JSON.stringify(pool)))
+const proxiedNode = new AsyncFunction('$input', '$getWorkflowStaticData', withDirectory.replace("const STAGING_PROXY_MODE = 'fallback'", "const STAGING_PROXY_MODE = 'always'").replace('__STAGING_PROXIES__', JSON.stringify(pool)))
 
 const NOW = '2026-09-29T08:00:00Z'
 const product = (id, productType, en, fi) => ({ id, productType, name: { en, fi: fi || en, sv: en } })
@@ -369,6 +370,83 @@ test('station names: Swedish exonyms and Finnish inflections resolve', async () 
 test('legacy single-product slot ids still parse', async () => {
   const { result } = await makeRun()({ action: 'book', start_time: '2026-09-30T07:00:00Z|256|2246|M1', phone: '1', rek: 'ABC-123', name: 'Test Person' })
   assert.equal(result.ok, true)
+})
+
+test('faq: the best entry comes first, links are kept, nothing matches nonsense', async () => {
+  const run = makeRun()
+  const post = (await run({ action: 'faq', query: 'post-inspection deadline' })).result
+  assert.equal(post.ok, true)
+  assert.match(post.matches[0].answer, /one month/)
+  const cancel = (await run({ action: 'faq', query: 'cancel prepaid appointment' })).result
+  assert.ok(cancel.matches[0].links.some((link) => link.url.startsWith('https://www.a-katsastus.fi/')))
+  const emission = (await run({ action: 'faq', query: 'when emission tests' })).result
+  assert.match(emission.matches[0].answer, /1976/)
+  const none = (await run({ action: 'faq', query: 'pizza recipe' })).result
+  assert.equal(none.matches.length, 0)
+  assert.equal((await run({ action: 'faq', query: '' })).result.matches.length, 0)
+})
+
+const FAQ_QUERIES = [
+  ['post-inspection period elapsed', 'post-inspection period has elapsed'],
+  ['how long post-inspection after failing', 'taken to a post-inspection at the latest'],
+  ['post-inspection same station', 'same station as the original inspection'],
+  ['documents periodic inspection passenger car', 'What documents are required'],
+  ['leave car at station all day', 'leave the car at the inspection station in the morning'],
+  ['extension post-inspection repaired defects', 'extension to the post-inspection'],
+  ['cancel prepaid appointment refund', 'cancel a vehicle inspection appointment'],
+  ['inspection cost price', 'How much does it cost to get a car inspected'],
+  ['convert car to van', 'convert my car to a van'],
+  ['receipt prepaid appointment', 'receipt for a prepaid appointment'],
+  ['leasing car invoice', 'leasing car inspected'],
+  ['emission limit values', 'limit values in emission testing'],
+  ['Etuaika inspection payment', 'Etuaika'],
+  ['change of ownership how soon register', 'how soon must the vehicle be registered'],
+  ['decommission vehicle estate deceased', 'decommission a vehicle that is part of an estate'],
+  ['commission vehicle estate deceased', 'commission a vehicle that belongs to an estate'],
+  ['recommission vehicle traffic', 'How can I get my vehicle commissioned'],
+  ['decommission vehicle what do I need', 'How can I get my vehicle decommissioned'],
+  ['cost of commissioning', 'How much does commissioning'],
+  ['cost decommissioning', 'How much does decommissioning'],
+  ['tax insurance decommissioned', 'vehicle tax and motor insurance'],
+  ['sold car buyer not registered', 'the new owner hasn.t registered'],
+  ['bought a vehicle change ownership', 'I bought a vehicle'],
+  ['insurance ownership change', 'insured when the ownership is changed'],
+  ['drive decommissioned vehicle', 'drive a vehicle that has been decommissioned'],
+  ['use vehicle after commissioning', 'use the vehicle in traffic as soon as'],
+  ['return licence plates decommission', 'return the license plates'],
+  ['additional registration plate bike rack', 'additional registration plate'],
+  ['wiper blades replace interval', 'interval for replacing the wiper blades'],
+  ['screenwash methanol ethanol', 'methanol and ethanol'],
+  ['electronic parking disc arrival time', 'parking disc'],
+  ['water as screenwash summer', 'just use water'],
+  ['Autotohtori difference ordinary inspection', 'Autotohtori inspection differ'],
+  ['Autotohtori with vehicle inspection price', 'consecutive times'],
+  ['Muistakatsastus reminder vehicle types', 'any type of vehicle'],
+  ['Muistakatsastus company vehicle reminder', 'owned by a company'],
+  ['carbon deposit removal how often', 'BG carbon deposit removal process'],
+  ['carbon deposit removal benefits', 'benefits of the BG'],
+  ['age exemption processing time', 'age exemption'],
+  ['driving instruction permit processing time', 'driving instruction permit applications'],
+  ['driving licence lost stolen', 'lost, destroyed or stolen'],
+  ['driving licence expire renew', 'about to expire'],
+  ['instructor permit requirements', 'instructor permit'],
+  ['driving examination theory test', 'driving examination'],
+  ['trailer towing licence category', 'tow a trailer'],
+  ['B licence vehicles', 'with a B licence'],
+  ['driving health requirements', 'driving health'],
+  ['Ajovarma reservation modify payment', 'modify a reservation I made with Ajovarma'],
+  ['dual brake pedal instructor', 'dual brake pedal'],
+  ['when emission tests done', 'emission tests be done'],
+]
+test('faq: the right entry is among the matches for every kind of question', async () => {
+  const run = makeRun()
+  const misses = []
+  for (const [query, expected] of FAQ_QUERIES) {
+    const { matches } = (await run({ action: 'faq', query })).result
+    const rank = matches.findIndex((match) => new RegExp(expected, 'i').test(match.question))
+    if (rank < 0 || rank > 1) misses.push(`${query} -> ${rank} (${matches.map((m) => m.question.slice(0, 30)).join(' | ')})`)
+  }
+  assert.equal(misses.length, 0, misses.join('\n'))
 })
 
 let failed = 0

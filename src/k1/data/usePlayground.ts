@@ -24,6 +24,7 @@ const toOption = (lead: TestLead & { id: string; isClosed: boolean }, sample: bo
   phoneNumber: lead.phoneNumber,
   product: lead.product,
   vehicleCategory: lead.vehicleCategory,
+  powerType: lead.powerType,
   sample,
 })
 

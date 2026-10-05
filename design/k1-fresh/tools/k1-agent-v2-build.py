@@ -53,6 +53,8 @@ def proxy_pool():
                 values[key] = value
     raw = os.environ.get('K1_STAGING_PROXY_URLS') or values.get('K1_STAGING_PROXY_URLS') or os.environ.get('K1_STAGING_PROXY_URL') or values.get('K1_STAGING_PROXY_URL') or ''
     pool = []
+    if not raw:
+        return live_pool()
     for url in [item.strip() for item in raw.split(',') if item.strip()]:
         parsed = urlparse(url)
         proxy = {'protocol': parsed.scheme or 'http', 'host': parsed.hostname, 'port': parsed.port}
@@ -68,6 +70,22 @@ def proxy_mode():
     return mode if mode in ('fallback', 'always') else 'fallback'
 
 
+_LIVE_POOL = []
+
+
+def live_pool():
+    """No proxy secrets in this environment: keep the pool the live booking workflow already carries (it is only used for retries)."""
+    if not _LIVE_POOL:
+        try:
+            code = next(n for n in gate.request('GET', f'/workflows/{LIVE_BOOKING}')['nodes'] if n['name'] == 'Muster')['parameters']['jsCode']
+            match = re.search(r'^const STAGING_PROXIES = (\[.*\])$', code, re.M)
+            pool = json.loads(match.group(1)) if match else []
+            _LIVE_POOL.append([p for p in pool if 'REDACTED' not in json.dumps(p)])
+        except Exception:
+            _LIVE_POOL.append([])
+    return _LIVE_POOL[0]
+
+
 def proxy_literal():
     return json.dumps(proxy_pool(), separators=(',', ':'))
 
@@ -76,7 +94,9 @@ def library():
     directory = json.dumps(json.loads((ROOT / 'data/k1-directory.json').read_text()), ensure_ascii=False, separators=(',', ':'))
     code = (HERE / 'k1-muster-v2.js').read_text()
     assert 'const DIRECTORY = __DIRECTORY__' in code
-    return code.replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal()).replace('__STAGING_PROXY_MODE__', json.dumps(proxy_mode()))
+    faq = json.dumps([{k: v for k, v in e.items() if k in ('id', 'category', 'question', 'answer', 'links')} for e in json.loads((ROOT / 'data/a-katsastus-faq.json').read_text())], ensure_ascii=False, separators=(',', ':'))
+    assert 'const FAQ = __FAQ__' in code
+    return code.replace('const FAQ = __FAQ__', 'const FAQ = ' + faq).replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal()).replace('__STAGING_PROXY_MODE__', json.dumps(proxy_mode()))
 
 
 def by_name(name):
@@ -215,6 +235,11 @@ TOOLS['get_my_bookings'] = {
     'description': 'The customer\'s own upcoming bookings made through this chat, found from their phone number: count and a list with event_id, booking_number, station_name, plate, date, time, includes_measuring. Call it first, without asking anything, when the customer asks whether they have a booking, or wants to cancel or move one. It has no inputs.',
     'ai': {},
     'fixed': {'action': 'my_bookings', 'phone': PHONE},
+}
+TOOLS['faq_lookup'] = {
+    'description': 'Look up the official A-Katsastus FAQ (inspections and post-inspection, receipts, leasing, registering, decommissioning and commissioning vehicles, change of ownership, plates, insurance, wipers and screenwash, Autotohtori, the Muistakatsastus reminder, emission tests, driving licences and permits). Pass 2 to 6 English keywords for the topic, for example "post-inspection deadline" or "change of ownership". Returns up to three matching entries with question, answer and links. Answer only from the best entry; if matches is empty say you do not have that information. Not for opening hours or prices.',
+    'ai': {'query': '2 to 6 English keywords for the topic of the customer\'s question, whatever language the customer wrote in.'},
+    'fixed': {'action': 'faq', 'phone': PHONE},
 }
 SCHEMA_ENTRY = lambda key: {'id': key, 'displayName': key, 'type': 'string', 'display': True, 'required': False, 'defaultMatch': False, 'canBeUsedToMatch': True}
 SLOT_TOOLS = {
@@ -381,8 +406,8 @@ def build_agent(booking_id):
             node['parameters']['jsCode'] = code
         if node['name'] == 'Playground reply':
             code = node['parameters']['jsCode']
-            code = replace_once(code, ("new Set(['get_slots',", "new Set(['get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
-            code = replace_once(code, ("new Set(['station_id',", "new Set(['station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
+            code = replace_once(code, ("new Set(['get_slots',", "new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
+            code = replace_once(code, ("new Set(['station_id',", "new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
             node['parameters']['jsCode'] = code
 
     def define(node, ai, fixed):

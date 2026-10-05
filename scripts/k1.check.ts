@@ -137,5 +137,7 @@ assert(swedish.includes("Customer's language: Swedish. Reply in Swedish") && swe
 assert(!leadContext({ plateNumber: 'X-1', stationName: '', nextInspection: null, lastInspection: null, language: 'Suomi' }, 'fi').includes('opening message was sent'), 'no fallback note when the opener matched the language')
 const electric = leadContext({ plateNumber: 'X-1', stationName: 'K1 Katsastus Espoo Suomenoja', nextInspection: null, lastInspection: null, language: 'Suomi', product: '004e', vehicleCategory: 'M1' }, 'fi')
 assert(electric.includes('Product on the reminder: 004e') && electric.includes('no measuring product') && electric.includes('Vehicle category: M1'), 'lead context carries the reminder product and vehicle category')
+assert(electric.includes('Power type of the vehicle: electric'), 'lead context gives the power type derived from the product')
+assert(leadContext({ plateNumber: 'X-2', stationName: '', nextInspection: null, lastInspection: null, language: 'Suomi', product: '004', powerType: 'multi-power' }, 'fi').includes('Power type of the vehicle: multi-power.'), 'a power type on the lead wins over the derived one')
 assert(!/opening hours \(Europe\/Helsinki\)/i.test(electric) && !/Published station opening hours/.test(electric), 'lead context no longer hardcodes station hours')
 console.log('lead context checks passed')
