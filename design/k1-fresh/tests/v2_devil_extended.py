@@ -384,6 +384,13 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
         add(f'pilot.{id}', 'pilot', lang, turns if isinstance(turns, list) else [turns], checks, **kw)
 
     NOPRICE = ('no_reply', r'€|eur\b')
+    replay = ['Milloin autoni tulee viimeistään katsastaa?', 'no sehä lähestyy. Mitä katsastus maksaa?', 'Palokan', 'miksi hinta on suuntaa antava? Kuulostaa oudolta', 'Sinulle ei tuoteta tietoa käyttövoimasta?',
+              'se on bensiiniauto vuodelta 1973', 'Otetaanko vuoden 1973 vuosimallin autolta mittaukset?', 'ei pitäisi ottaa, vasta vuoden 1976 jälkeen käyttöönotetuita autoilta mitataan',
+              'Mitä aikoja on vapaana? Haluan mahdollisimman myöhän ajan', 'perjantai', 'mutta ei tuo 9.10.', 'ei perjantaille halusin, muttei 9.10', 'klo 16.30. Miksi aukiolo pitää vielä varmistaa jo varaat minulle ajan siihen aikaan?',
+              'varaa aika', 'kyllä', 'testi markkinointi', 'Maria Testi']
+    p('replay.chat1_kouvola.fi', 'fi', ['KOuvolassa ei ole Kankaanpään asemaa', 'Haluan KOuvolan asemalta varata ajan', 'etsi aika Itäharjusta', 'sähkö', 'mistä olet saanut puhelinnumeroni?'], [], station='pal', plate='ABC-123', books=True)
+    p('replay.chat2_besikta.sv', 'sv', ['När behöver den besiktas?', 'Var har du fått mitt telefonnumer?', 'Jag har int ebett om besiktningspåminnelse', 'jag vill ha en e-postadress', 'ta bort mig från påminnelselistan'], [], station='pal', plate='KLM-908', books=True)
+    p('replay.chat3_price.fi', 'fi', replay, [], station='pal', plate='XYZ-441', books=True)
     ASKDAY = r'what day|which day|mille päivälle|minä päivänä|vilken dag|vilka dag'
     OPENER_ASK = ('first_reply_times', 2)
     for lang, word in (('en', 'sure'), ('fi', 'joo'), ('sv', 'visst'), ('en', 'yes please'), ('fi', 'kyllä kiitos'), ('sv', 'ja tack')):

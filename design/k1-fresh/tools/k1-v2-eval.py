@@ -191,7 +191,7 @@ OPENERS = {
     'sv': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {plate}. Vill du att jag hjälper dig hitta en tid?',
     'en': 'Hi, this is K1 Katsastus. Your vehicle {plate} is due for inspection soon. Would you like me to find you a time?',
 }
-PLATFORM_FILE = ROOT / 'prompts/k1-platform-v3.json'
+PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v3.json')
 MASTER = """You are the appointment-booking assistant for K1 Katsastus, a Finnish vehicle inspection company.
 
 Ask whether the customer wants to book an inspection and collect the details needed to check availability: registration number, preferred K1 station, preferred date or time window, and contact details when needed.
@@ -210,12 +210,11 @@ def lead_context(lead):
         "LEAD CONTEXT (from K1's lead data for this customer)",
         f"- Customer's language: {LANG_NAMES[lang]}. Reply in {LANG_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.",
         f"- Station the customer last visited: {lead['station']}. Default to this station; use get_station_info for its live opening hours and for any other station they ask about.",
-        f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.",
-        f"- Vehicle category: {lead['cat']}.",
+        *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}."]),
         f"- Customer phone: {lead['phone']}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.",
         f"- Registration: {lead['plate']}",
-        "- Inspection due by: 20.10.2026",
-        "- Last inspection: 20.10.2024",
+        f"- Inspection due by: {lead.get('due', '20.10.2026')}",
+        f"- Last inspection: {lead.get('last', '20.10.2024')}",
     ]
     return '\n'.join(lines)
 
@@ -223,7 +222,7 @@ def lead_context(lead):
 def payload_for(lead, text, conversation_id):
     return {
         'text': text, 'messages': [{'role': 'user', 'content': text}], 'phone': lead['phone'], 'stationId': lead.get('sid'), 'stationName': lead['station'],
-        'product': lead['product'], 'vehicleCategory': lead['cat'], 'plate': lead['plate'], 'leadContext': lead_context(lead),
+        'product': '' if lead.get('noproduct') else lead['product'], 'vehicleCategory': '' if lead.get('noproduct') else lead['cat'], 'plate': lead['plate'], 'leadContext': lead_context(lead),
         'conversationId': conversation_id, 'versionId': None, 'isDraft': True, 'opener': OPENERS[lead['lang']].format(plate=lead['plate']),
         'masterPrompt': PLATFORM['masterPrompt'], 'additionalInformation': PLATFORM['additionalInformation'],
     }

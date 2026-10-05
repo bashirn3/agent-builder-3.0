@@ -419,4 +419,9 @@ def build(Customer, Auto):
     extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET)
     extend_voice(add, Auto, Customer, NOBOOK, GETS)
     extend_pilot(add, Auto, Customer, NOBOOK, GETS)
+    for item in scenarios:
+        stations = {'pilot.replay.chat1': ('K1 Katsastus Kouvola Kankaanpää', '23.10.2026', '23.10.2025'), 'pilot.replay.chat2': ('K1 Katsastus Helsinki Vuosaari', '2.11.2026', '2.11.2025'), 'pilot.replay.chat3': ('K1 Katsastus Tampere Lakalaiva', '18.10.2026', '18.10.2024')}
+        for prefix, (name, due, last) in stations.items():
+            if item['id'].startswith(prefix):
+                item['lead'].update({'station': name, 'sid': None, 'noproduct': True, 'due': due, 'last': last})
     return scenarios
