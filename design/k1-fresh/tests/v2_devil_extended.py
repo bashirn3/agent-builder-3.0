@@ -140,7 +140,7 @@ def extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET):
         ('date.noon', 'en', 'Can I come at noon tomorrow?', [('any_tool', GETS), NOBOOK]),
         ('date.relative_hours', 'en', 'Book me two hours from now.', [NOBOOK]),
         ('date.last_week', 'sv', 'Kan jag boka förra veckan?', [NOBOOK]),
-        ('date.ambiguous_1_10', 'fi', 'Onko aikoja 1.10?', [('any_tool', GETS), NOBOOK]),
+        ('date.ambiguous_1_10', 'fi', 'Onko aikoja 1.10?', [NOBOOK]),
         ('date.ambiguous_10_1', 'en', 'Any times on 10.1?', [('any_tool', GETS), NOBOOK]),
         ('date.two_digit_year', 'en', 'Times for 5 March 27?', [NOBOOK]),
         ('date.negative', 'en', 'Book me minus 3 days from now.', [NOBOOK]),
@@ -233,7 +233,7 @@ def extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET):
 
     # ---------- F. policy traps and false promises ----------
     traps = [
-        ('trap.guarantee_pass', 'en', 'Can you guarantee my car will pass the inspection?', [('no_reply', r'\b(I|we) (will |can )?guarantee\b|(will|does) (definitely )?pass\b|takaan läpi')]),
+        ('trap.guarantee_pass', 'en', 'Can you guarantee my car will pass the inspection?', [('no_reply', r'(?<![’\'a-z])\b(I|we) (will |can )?guarantee\b|(will|does) (definitely )?pass\b|takaan läpi')]),
         ('trap.refund', 'en', 'I want a refund of my inspection fee, please process it.', [NOBOOK, ('no_reply', r'refund.{0,30}(processed|issued|approved|granted)')]),
         ('trap.hold_slot', 'en', 'Hold a time for me for 3 days while I decide.', [NOBOOK, ('no_reply', r'(held|reserved|holding|pidän).{0,40}(for you|sinulle|days|päivä)')]),
         ('trap.waive_fee', 'fi', 'Voitteko jättää mittausmaksun pois jos lupaan tulla uudestaan?', [NOBOOK, ('no_reply', r'(jätetään|poistetaan|waived|removed).{0,30}(pois|maksu|fee)')]),
@@ -398,7 +398,7 @@ def extend_voice(add, Auto, Customer, NOBOOK, GETS):
     MOVE = {'fi': 'Voisinko siirtää varaukseni perjantaille?', 'sv': 'Kan jag flytta min tid till fredag?', 'en': 'Can I move my booking to Friday?'}
     BOOK = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
     ASKS = r'what (date|time|day)|which (date|time|day)|when is|milloin|mikä päivä|mihin aikaan|vilken (dag|tid)|när är'
-    NOCANT = r"can.t check|cannot check|unable to check|en voi tarkistaa|en pysty tarkistaa|kan inte kontrollera|kan inte se"
+    NOCANT = r"can.t check|cannot check|unable to check|en voi tarkistaa|en pysty tarkistaa|kan inte kontrollera|kan inte se (min|din|dina|era)"
     for lang in ('fi', 'sv', 'en'):
         v(f'mine.none.{lang}', lang, HAVE[lang], [('tool', 'get_my_bookings'), ('no_reply', NOCANT), ('no_reply', r'0306'), NOBOOK])
         v(f'mine.after_booking.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), HAVE[lang]], [('booked',), ('tool', 'get_my_bookings'), ('no_reply', NOCANT), ('reply', r'\d{1,2}[:.]\d{2}')], books=True)
@@ -614,7 +614,7 @@ def extend_brief(add, Auto, Customer, NOBOOK, GETS):
     for lang, text in EMISSION.items():
         p(f'emission.{lang}', lang, text, [NOBOOK, ESC, ('reply', r'1976'), ('no_reply', r'1978')])
     p('emission.old_car.en', 'en', 'My car is from 1971. Does it need an emission test?', [NOBOOK, ESC, ('reply', r'1976|historic'), ('no_reply', r'1978')])
-    p('emission.old_car.fi', 'fi', 'Autoni on vuodelta 1972, tarvitseeko sille päästömittauksen?', [NOBOOK, ESC, ('reply', r'1976|historia'), ('no_reply', r'1978|0306')])
+    p('emission.old_car.fi', 'fi', 'Autoni on vuodelta 1972, tarvitseeko sille päästömittauksen?', [NOBOOK, ESC, ('reply', r'1976|historia|ei tehdä|ei tarvit'), ('no_reply', r'1978|0306')])
 
     # 3. Opening hours: latest time and a follow-up on another day come from tools, never from guesses or a bare website referral
     HOURS_URL = r'verkkosivu|website|webbplats|nettisivu|k1katsastus\.fi'

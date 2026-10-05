@@ -133,6 +133,15 @@ def create_copies(secret):
 
 
 def post(url, secret, payload, timeout=170):
+    for attempt in range(8):
+        status, data, took = post_once(url, secret, payload, timeout)
+        if status != 503 and not (status == 0 and 'SSL' in str(data) and attempt < 2):
+            break
+        time.sleep(4 + attempt * 3)
+    return status, data, took
+
+
+def post_once(url, secret, payload, timeout=170):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), method='POST', headers={'Content-Type': 'application/json', 'x-k1-eval-key': secret})
     started = time.monotonic()
     try:

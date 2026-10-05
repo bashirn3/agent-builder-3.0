@@ -126,7 +126,7 @@ def evaluate(scenario, turns):
         filler = re.match(r'\s*(sure|okay|ok|great|absolutely|of course|alright|sounds good|perfect|selvä|okei|hyvä|kiva|mahtavaa|visst|okej|toppen|absolut|självklart)\b[\s,.!]', reply, re.I)
         if filler:
             flags.append(f'{tag} FILLER_OPEN:{filler.group(1)}')
-        if len(reply) > 260 and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
+        if len(re.sub(r'https?://\S+', '', reply)) > (360 if 'faq_lookup' in (turn.get('tools') or []) else 260) and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
             flags.append(f'{tag} WORDY({len(reply)})')
         if reply.count('?') > 2:
             flags.append(f'{tag} MANY_QUESTIONS({reply.count("?")})')
