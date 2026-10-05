@@ -215,6 +215,23 @@ def evaluate(scenario, turns):
                 flags.append(f'CHECK booking took {first} turns, expected at most {check[1]}')
         elif kind == 'first_reply_times' and len({f'{int(h):02d}:{m}' for h, m in LOOSE.findall(re.sub(r'(?<![\d.:])(?:[1-9]|[12]\d|3[01])\.(?:[1-9]|1[0-2])\.(?!\d)', ' ', replies[0]))}) < check[1]:
             flags.append(f'CHECK first reply should offer at least {check[1]} times')
+        elif kind == 'max_replies' and sum(bool(re.search(check[1], r, re.I)) for r in replies) > check[2]:
+            flags.append(f'CHECK {sum(bool(re.search(check[1], r, re.I)) for r in replies)} replies matched /{check[1]}/, expected at most {check[2]}')
+        elif kind == 'slots_cover':
+            covered = False
+            for t in turns:
+                for name, params in zip(t['tools'], t['params']):
+                    if name == 'get_slots':
+                        start = str(params.get('date_from') or '')[:10]
+                        end = str(params.get('date_to') or start)[:10]
+                    elif name == 'get_station_info':
+                        start = end = str(params.get('date') or '')[:10]
+                    else:
+                        continue
+                    if start and any(start <= day <= end for day in check[1:]):
+                        covered = True
+            if not covered:
+                flags.append(f'CHECK no slot search covered any of {list(check[1:])}')
         elif kind == 'no_output' and re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output matched /{check[1]}/')
         elif kind == 'output' and not re.search(check[1], all_out, re.I):

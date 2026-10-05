@@ -4,6 +4,7 @@ Each scenario asserts what a K1 agent must (or must never) do; general flags (la
 prices, raw JSON, markdown, length) apply to every scenario on top of the listed checks.
 """
 import datetime
+import re
 import zoneinfo
 
 TODAY = datetime.datetime.now(zoneinfo.ZoneInfo('Europe/Helsinki')).date()
@@ -11,6 +12,36 @@ TODAY = datetime.datetime.now(zoneinfo.ZoneInfo('Europe/Helsinki')).date()
 
 def iso(offset):
     return (TODAY + datetime.timedelta(days=offset)).isoformat()
+
+
+def friday(n=1):
+    """The n-th Friday strictly after today."""
+    return TODAY + datetime.timedelta(days=((4 - TODAY.weekday()) % 7 or 7) + 7 * (n - 1))
+
+
+def dm(day):
+    return f'{day.day}.{day.month}.'
+
+
+LINK_RE = r'0306|ajanvaraus\.k1katsastus|k1katsastus\.fi'
+WEB_PRICE = r'(?<![\d.,])(63|80|36|27)(?:[.,]\d+)?\s?(€|eur\b|euroa|euros|euro\b)'
+ANY_PRICE = r'\d\s?(€|eur\b|euroa|euros|euro\b)'
+HEDGE_PRICE = (r'suuntaa.?antava|\balk\.\s*\d|alkaen|approximate|approx\.|ungefär|\bcirka\b|\bfrom\s+(€\s*\d|\d+(?:[.,]\d+)?\s?(€|eur))|'
+               r'\bfrån\s+(€\s*\d|\d+(?:[.,]\d+)?\s?(€|kr|eur))')
+HEDGE_PRICE_SOFT = r'\bon suuntaa|hinta[a-zäö]* (on|ovat) (vain )?(suuntaa|arvio)|\d\s?(€|euroa|eur)\s+alkaen|alkaen\s+\d'
+HEDGE_HOURS = (r'pitää varmistaa|kannattaa varmistaa|varmista (asemalta|aseman)|vahvista (asemalta|aseman)|only (an )?estimat|(is|are) (just |only )?(an )?estimat|arvio(ina|ituja|ituna)|'
+               r'(verify|confirm|check) with the station|bekräfta med stationen|kontrollera med stationen|uppskattade|ungefärliga öppettider|ei ole (vielä )?varmistettu|not (yet )?(been )?verified')
+ASK_DATE = (r'which friday|what friday|mikä perjantai|minä perjantaina|mitä perjantaita|mitkä perjantai|vilken fredag|vilka fredag|(which|what) (date|day)|anna päivämäärä|kerro päivämäärä|'
+            r'(minkä|mikä) päivämäärä|ange (ett )?datum|vilket datum|(tell|give) me (the|a) date|specific date|mille päivälle|minä päivänä|vilken dag')
+PLATE_RECONFIRM = (r'correct plate|plate correct|right plate|(registration|plate)( number)? (is|looks) (correct|right)|rekisteri\w*\s+(on\s+)?(oikea|oikein)|'
+                   r'rekisterinumero\w*.{0,30}(oikea|oikein|vahvist)|vahvistatko.{0,30}rekisteri|registreringsnummer.{0,20}rätt|stämmer.{0,20}registrer')
+OPTIONAL_MEASURING = (r'vapaaehtoi|voi (jättää|ottaa) pois|voidaan jättää|jättää pois|jätetään pois|ilman (mittau|päästö)|ei (ole )?pakollinen|optional|left out|leave (it|them|that) out|'
+                      r'can be (skipped|removed|left|omitted)|without the (measur|emission)|not mandatory|frivillig|utelämna|lämnas utan|kan (hoppas|tas bort)|utan (mätning|avgas)')
+ORIGIN_BAD = (r'verkkosivu|website|nettisivu|webbplats|hemsida|lomake|\bform\b|formulär|kysely|survey|enkät|ostit|tilasit|aiemm\w+ (varauks|käynni|asioinn)|previous (visit|booking)|tidigare (besök|bokning)|'
+              r'google|facebook|sosiaalinen media|social media|sociala medier|ajoneuvorekisteri|vehicle register|fordonsregister|traficom|trafi\b|offentlig|public (register|record)|julkinen')
+APOLOGY = r'anteeksi|pahoittelen|beklagar|förlåt|ursäkta|\bledsen\b|\bsorry\b|apolog'
+REFUSE_NAME = (r'markkinointi.{0,60}(en|ei) (voi|pysty)|(en|ei) (voi|pysty).{0,60}markkinointi|marketing.{0,60}(cannot|can.t|unable)|(cannot|can.t|unable).{0,60}(marketing|test)|'
+               r'marknadsförings.{0,60}kan inte|kan inte.{0,60}(marknadsförings|test)|markkinointitesti|marketing test|marknadsföringstest|(en|ei) voi auttaa|cannot help|can.t help|kan inte hjälpa')
 
 
 def extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET):
@@ -384,13 +415,22 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
         add(f'pilot.{id}', 'pilot', lang, turns if isinstance(turns, list) else [turns], checks, **kw)
 
     NOPRICE = ('no_reply', r'€|eur\b')
+    f1, f2 = friday(1), friday(2)
     replay = ['Milloin autoni tulee viimeistään katsastaa?', 'no sehä lähestyy. Mitä katsastus maksaa?', 'Palokan', 'miksi hinta on suuntaa antava? Kuulostaa oudolta', 'Sinulle ei tuoteta tietoa käyttövoimasta?',
               'se on bensiiniauto vuodelta 1973', 'Otetaanko vuoden 1973 vuosimallin autolta mittaukset?', 'ei pitäisi ottaa, vasta vuoden 1976 jälkeen käyttöönotetuita autoilta mitataan',
-              'Mitä aikoja on vapaana? Haluan mahdollisimman myöhän ajan', 'perjantai', 'mutta ei tuo 9.10.', 'ei perjantaille halusin, muttei 9.10', 'klo 16.30. Miksi aukiolo pitää vielä varmistaa jo varaat minulle ajan siihen aikaan?',
-              'varaa aika', 'kyllä', 'testi markkinointi', 'Maria Testi']
-    p('replay.chat1_kouvola.fi', 'fi', ['KOuvolassa ei ole Kankaanpään asemaa', 'Haluan KOuvolan asemalta varata ajan', 'etsi aika Itäharjusta', 'sähkö', 'mistä olet saanut puhelinnumeroni?'], [], station='pal', plate='ABC-123', books=True)
-    p('replay.chat2_besikta.sv', 'sv', ['När behöver den besiktas?', 'Var har du fått mitt telefonnumer?', 'Jag har int ebett om besiktningspåminnelse', 'jag vill ha en e-postadress', 'ta bort mig från påminnelselistan'], [], station='pal', plate='KLM-908', books=True)
-    p('replay.chat3_price.fi', 'fi', replay, [], station='pal', plate='XYZ-441', books=True)
+              'Mitä aikoja on vapaana? Haluan mahdollisimman myöhän ajan', 'perjantai', f'mutta ei tuo {dm(f1)}', f'ei perjantaille halusin, muttei {f1.day}.{f1.month}', 'klo 16.30. Miksi aukiolo pitää vielä varmistaa jo varaat minulle ajan siihen aikaan?',
+              'varaa aika', 'kyllä', 'testi markkinointi', 'Maria Testi', Auto(Customer('fi', 'last', name='Maria Testi', fuel='Bensiini'), 'booked', 4)]
+    ESC = ('no_tool', 'escalate_to_human')
+    ORIGIN = ('no_reply', ORIGIN_BAD)
+    p('replay.chat1_kouvola.fi', 'fi', ['KOuvolassa ei ole Kankaanpään asemaa', 'Haluan KOuvolan asemalta varata ajan', 'etsi aika Itäharjusta', 'sähkö', 'mistä olet saanut puhelinnumeroni?'],
+      [ESC, NOBOOK, ('reply', r'Korjala'), ('reply', LINK_RE), ORIGIN, ('param', 'get_slots', 'station', r'it[aä]harju|turku'), ('param', 'get_slots', 'product', r'^004e$'),
+       ('no_reply', r'Kankaanp.{0,40}(on auki|is open|vapaita aikoja)'), ('max_replies', APOLOGY, 1), ('final', r'muistutu|yhteystie|reminder')], station='pal', plate='ABC-123', books=True)
+    p('replay.chat2_besikta.sv', 'sv', ['När behöver den besiktas?', 'Var har du fått mitt telefonnumer?', 'Jag har int ebett om besiktningspåminnelse', 'jag vill ha en e-postadress', 'ta bort mig från påminnelselistan'],
+      [('tool', 'opt_out'), NOBOOK, ORIGIN, ('max_replies', APOLOGY, 2), ('reply', r'påminnelse|kontaktuppgift|kontaktdata|reminder')], station='pal', plate='KLM-908', books=True)
+    p('replay.chat3_price.fi', 'fi', replay,
+      [ESC, ('booked',), ('no_reply', r'0306'), ('no_reply', WEB_PRICE), ('no_reply', HEDGE_PRICE_SOFT), ('no_reply', HEDGE_HOURS), ('no_reply', ASK_DATE), ('no_reply', PLATE_RECONFIRM), ('no_reply', REFUSE_NAME),
+       ('param', 'get_slots', 'include_measuring', r'^false$'), ('slots_cover', f2.isoformat()), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_param', 'book_inspection_invite', 'name', r'testi markk|asdf'),
+       ('output', r'"product_ids":\s*\[2246\]'), ('no_output', r'"product_ids":\s*\[2246,\s*2254\]')], station='pal', plate='XYZ-441', books=True)
     ASKDAY = r'what day|which day|mille päivälle|minä päivänä|vilken dag|vilka dag'
     OPENER_ASK = ('first_reply_times', 2)
     for lang, word in (('en', 'sure'), ('fi', 'joo'), ('sv', 'visst'), ('en', 'yes please'), ('fi', 'kyllä kiitos'), ('sv', 'ja tack')):
@@ -444,3 +484,103 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
           [('booked',), ('success', 'cancel_booking'), ('output', r'"product_ids":\s*\[2246,\s*2254\]'), ('no_reply', r'0306')], books=True)
         p(f'measurements.default_in.{lang}', lang, [word, Auto(Customer(lang, 'first'))],
           [('booked',), ('no_param', 'get_slots', 'include_measuring', r'^false$'), ('output', r'"product_ids":\s*\[2246,\s*2254\]')], books=True)
+
+
+def extend_v7(add, Auto, Customer, NOBOOK, GETS):
+    """v7 behaviours from the pilot replays: no website 'from' prices while the fuel type is unknown, optional measuring, looking ahead for a rejected
+    weekday, no hedging of listed times, follow-ups about the stations just listed, bad names, a non-existent lead station and opt-out wording."""
+    def p(id, lang, turns, checks=(), **kw):
+        add(f'pilot.v7.{id}', 'pilot', lang, turns if isinstance(turns, list) else [turns], checks, **kw)
+
+    ESC = ('no_tool', 'escalate_to_human')
+    NOPROD = {'noproduct': True}
+    NOMEAS = ('param', 'get_slots', 'include_measuring', r'^false$')
+    INSPECTION_ONLY = [('output', r'"product_ids":\s*\[2246\]'), ('no_output', r'"product_ids":\s*\[2246,\s*2254\]')]
+    BOOK = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
+    f1, f2, f3 = friday(1), friday(2), friday(3)
+
+    # 1. PRICE: fuel type unknown -> ask first, quote the booking-system price only afterwards
+    ASK_PRICE = {'fi': 'Paljonko katsastus maksaa?', 'sv': 'Vad kostar besiktningen?', 'en': 'How much does an inspection cost?'}
+    for lang in ('fi', 'sv', 'en'):
+        p(f'price.ask_first.{lang}', lang, ASK_PRICE[lang],
+          [NOBOOK, ESC, ('no_reply', WEB_PRICE), ('no_reply', ANY_PRICE), ('reply', r'petrol|diesel|bensiin|bensin|hybrid|hybridi|sähkö|electric|elbil'), ('reply', r'\?')], lead_patch=NOPROD)
+    for lang, fuel in (('fi', 'Bensiini'), ('sv', 'Diesel'), ('en', 'Petrol, a normal car')):
+        p(f'price.after_type.{lang}', lang, [ASK_PRICE[lang], fuel],
+          [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'76'), ('no_reply', WEB_PRICE), ('no_reply', HEDGE_PRICE), ('param', 'get_slots', 'product', r'^004$')], lead_patch=NOPROD)
+    p('price.ev.en', 'en', ['How much is an inspection?', 'It is fully electric'],
+      [NOBOOK, ESC, ('any_tool', GETS), ('reply', r'46'), ('no_reply', r'\b76\b'), ('no_reply', WEB_PRICE), ('no_reply', HEDGE_PRICE), ('param', 'get_slots', 'product', r'^004e$')], lead_patch=NOPROD)
+
+    # 2. MEASURING: optional, never a reason to escalate or to send the customer to 0306
+    SKIP_OLD = {
+        'fi': ('Autoni on bensiiniauto vuodelta 1973, sille ei tarvitse päästömittausta. Haluan varata ajan huomiselle.', 'Bensiini'),
+        'sv': ('Min bil är en bensinbil från 1973, den behöver ingen avgasmätning. Jag vill boka tid imorgon.', 'Bensin'),
+        'en': ('My car is a 1973 petrol car and it does not need the emissions test. I want to book a time tomorrow.', 'Petrol'),
+    }
+    for lang, (text, fuel) in SKIP_OLD.items():
+        p(f'measuring.skip_old_car.{lang}', lang, [text, Auto(Customer(lang, 'first', fuel=fuel))],
+          [('booked',), ESC, ('no_reply', r'0306'), NOMEAS, *INSPECTION_ONLY, ('no_reply', HEDGE_HOURS)], lead_patch=NOPROD, books=True)
+    p('measuring.elsewhere.sv', 'sv', ['Jag gör avgasmätningen på en annan verkstad, boka bara besiktningen imorgon.', Auto(Customer('sv', 'first'))],
+      [('booked',), ESC, ('no_reply', r'0306'), NOMEAS, *INSPECTION_ONLY], books=True)
+    APPLIES = {
+        'fi': ('Koskeeko päästömittaus myös vuoden 1973 autoon? Ei sen pitäisi.', 'Jätetään mittaus pois. Mitä aikoja on huomenna?'),
+        'en': ('Does the emissions test apply to a 1973 car? I do not think it should.', 'Then leave the emissions test out. What times are free tomorrow?'),
+    }
+    for lang, (ask, leave_out) in APPLIES.items():
+        p(f'measuring.ask_applies.{lang}', lang, [ask, leave_out],
+          [ESC, ('no_reply', r'0306'), ('reply', OPTIONAL_MEASURING), ('any_tool', GETS), NOMEAS, NOBOOK])
+
+    # 3. DATES: a rejected Friday means the agent looks for the next one itself; the chosen late time is bookable end to end
+    FRIDAY = {'fi': 'Haluan ajan perjantaille, mahdollisimman myöhään.', 'sv': 'Jag vill ha en tid på fredag, så sent som möjligt.', 'en': 'I want a time on Friday, as late as possible.'}
+    NOTTHAT = {'fi': f'Ei tuo käy, muttei {dm(f1)}', 'sv': f'Inte den, inte {dm(f1)}', 'en': f'Not that one, not {dm(f1)}'}
+    for lang in ('fi', 'en'):
+        p(f'friday.reject_first.{lang}', lang, [FRIDAY[lang], NOTTHAT[lang]],
+          [ESC, NOBOOK, ('slots_cover', f2.isoformat()), ('min_times', 1), ('no_reply', ASK_DATE), ('no_reply', HEDGE_HOURS)])
+    for lang in ('fi', 'sv', 'en'):
+        p(f'friday.book_late.{lang}', lang, [FRIDAY[lang], NOTTHAT[lang], Auto(Customer(lang, 'last'))],
+          [('booked',), ESC, ('slots_cover', f2.isoformat()), ('no_reply', ASK_DATE), ('no_reply', HEDGE_HOURS), ('no_reply', PLATE_RECONFIRM), ('turns_to_book', 6)], books=True)
+    p('friday.reject_twice.fi', 'fi', [FRIDAY['fi'], NOTTHAT['fi'], f'Eikä tuo {dm(f2)} käy'],
+      [ESC, NOBOOK, ('slots_cover', f3.isoformat()), ('no_reply', ASK_DATE)])
+
+    # 5. REFERENT: "they" means the stations the agent just listed, not the lead's own station
+    SUOMENOJA = {'station': 'K1 Katsastus Espoo Suomenoja', 'sid': None}
+    ref_checks = [ESC, NOBOOK, ('tool', 'get_station_info'), ('param', 'get_station_info', 'station', r'palokka|jyv'), ('param', 'get_station_info', 'station', r'it[aä]harju|turku'),
+                  ('final', r'Palokka'), ('final', r'It[aä]harju')]
+    p('referent.listed_stations.en', 'en', ['Which stations can you book a time at?', 'What time are they open until tomorrow?'], ref_checks, lead_patch=SUOMENOJA)
+    p('referent.listed_stations.fi', 'fi', ['Millä asemilla voit varata ajan?', 'Mihin asti ne ovat huomenna auki?'], ref_checks, lead_patch=SUOMENOJA)
+    p('referent.near_me.en', 'en', ['I live in Espoo, where can I book a time?', 'And what time are those open until tomorrow?'], ref_checks, lead_patch=SUOMENOJA)
+    p('referent.near_me.fi', 'fi', ['Asun Espoossa, minne voit varata ajan?', 'Entä mihin asti ne ovat auki huomenna?'], ref_checks, lead_patch=SUOMENOJA)
+
+    # 6. NAME: a non-name is asked again briefly; no refusal, then a real name is accepted
+    class BadNameFirst(Customer):
+        def __init__(self, lang, bad, good='Maria Testi'):
+            super().__init__(lang, 'first', name=good)
+            self.bad, self.gave_bad = bad, False
+            before, after = self.phrases['time'].split('{t}')
+            self.time_reply = re.compile(re.escape(before) + r'\d\d:\d\d' + re.escape(after))
+
+        def respond(self, reply):
+            out = super().respond(reply)
+            if out == self.phrases['name'] and not self.gave_bad:
+                self.gave_bad = True
+                return self.bad
+            if self.time_reply.fullmatch(out):
+                self.gave_bad = False
+            return out
+
+    for lang, bad in (('fi', 'testi markkinointi'), ('sv', 'asdf'), ('en', 'asdf')):
+        p(f'name.not_a_name.{lang}', lang, [BOOK[lang], Auto(BadNameFirst(lang, bad), 'booked', 10)],
+          [('booked',), ESC, ('no_reply', REFUSE_NAME), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_param', 'book_inspection_invite', 'name', r'testi markk|asdf')], books=True)
+
+    # 7. KOUVOLA: the lead station does not exist; the real one is Korjala and cannot be booked in chat
+    due = TODAY + datetime.timedelta(days=14)
+    KOUVOLA = {'station': 'K1 Katsastus Kouvola Kankaanpää', 'sid': None, 'noproduct': True, 'due': f'{due.day}.{due.month}.{due.year}', 'last': f'{due.day}.{due.month}.{due.year - 2}'}
+    for lang in ('fi', 'sv', 'en'):
+        p(f'kouvola.book.{lang}', lang, BOOK[lang],
+          [NOBOOK, ESC, ('reply', r'Korjala'), ('reply', LINK_RE), ('no_reply', r'Kankaanp.{0,40}(on auki|is open|är öppen|vapaita aikoja|free times)')], lead_patch=KOUVOLA)
+
+    # 8. OPT-OUT and "where did you get my number"
+    OPTOUT = {'fi': ['Mistä sait numeroni?', 'Poistakaa minut listalta'], 'en': ['Where did you get my number?', 'Remove me from the list']}
+    for lang, turns in OPTOUT.items():
+        p(f'optout.where_number.{lang}', lang, turns,
+          [('tool', 'opt_out'), NOBOOK, ESC, ('no_reply', ORIGIN_BAD), ('max_replies', APOLOGY, 1), ('reply', r'muistutu|yhteystie|reminder|contact')])
+
