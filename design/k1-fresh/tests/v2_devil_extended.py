@@ -424,7 +424,7 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
     ESC = ('no_tool', 'escalate_to_human')
     ORIGIN = ('no_reply', ORIGIN_BAD)
     p('replay.chat1_kouvola.fi', 'fi', ['KOuvolassa ei ole Kankaanpään asemaa', 'Haluan KOuvolan asemalta varata ajan', 'etsi aika Itäharjusta', 'sähkö', 'mistä olet saanut puhelinnumeroni?'],
-      [ESC, NOBOOK, ('reply', r'Korjala'), ('reply', LINK_RE), ORIGIN, ('param', 'get_slots', 'station', r'it[aä]harju|turku'), ('param', 'get_slots', 'product', r'^004e$'),
+      [ESC, NOBOOK, ('reply', r'Korjala'), ('reply', LINK_RE), ('no_reply', ORIGIN_BAD_NOSITE), ('no_final', ORIGIN_BAD), ('param', 'get_slots', 'station', r'it[aä]harju|turku'), ('param', 'get_slots', 'product', r'^004e$'),
        ('no_reply', r'Kankaanp.{0,40}(on auki|is open|vapaita aikoja)'), ('max_replies', APOLOGY, 1), ('final', r'muistutu|yhteystie|reminder')], station='pal', plate='ABC-123', books=True)
     p('replay.chat2_besikta.sv', 'sv', ['När behöver den besiktas?', 'Var har du fått mitt telefonnumer?', 'Jag har int ebett om besiktningspåminnelse', 'jag vill ha en e-postadress', 'ta bort mig från påminnelselistan'],
       [('tool', 'opt_out'), NOBOOK, ('no_reply', ORIGIN_BAD_NOSITE), ('max_replies', APOLOGY, 2), ('reply', r'påminnelse|kontaktuppgift|kontaktdata|reminder')], station='pal', plate='KLM-908', books=True)

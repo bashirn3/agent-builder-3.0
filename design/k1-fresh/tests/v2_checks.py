@@ -95,6 +95,13 @@ DATE_WORDS = r'\d{1,2}\.\s?\d{1,2}\.|\d{1,2}\.?\s*(jan|feb|mar|apr|maj|may|jun|j
 WEEKDAY_WORDS = r'\b(ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\b|maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag|monday|tuesday|wednesday|thursday|friday|saturday|sunday'
 
 
+def tool_values(turns, names, key):
+    """Inputs of the named tools: the playground's trimmed params plus the full inputs from the evaluation steps (which include fields such as name)."""
+    values = [str(p.get(key, '')) for t in turns for name, p in zip(t['tools'], t['params']) if name in names]
+    values += [str((step.get('input') or {}).get(key, '')) for t in turns for step in t.get('steps', []) if step.get('tool') in names and isinstance(step.get('input'), dict) and key in step['input']]
+    return values
+
+
 def evaluate(scenario, turns):
     flags = []
     lead_lang = scenario['lead']['lang']
@@ -180,16 +187,18 @@ def evaluate(scenario, turns):
             flags.append(f'CHECK forbidden reply /{check[1]}/')
         elif kind == 'final' and not re.search(check[1], replies[-1] if replies else '', re.I):
             flags.append(f'CHECK final reply /{check[1]}/')
+        elif kind == 'no_final' and re.search(check[1], replies[-1] if replies else '', re.I):
+            flags.append(f'CHECK forbidden final reply /{check[1]}/')
         elif kind == 'param':
             _, tool, key, pattern = check
             names = {tool, 'get_station_info'} if tool == 'get_slots' else {tool}
-            values = [p.get(key, '') for t in turns for name, p in zip(t['tools'], t['params']) if name in names]
+            values = tool_values(turns, names, key)
             if not any(re.search(pattern, v, re.I) for v in values):
                 flags.append(f'CHECK {tool}.{key} /{pattern}/ not in {values}')
         elif kind == 'no_param':
             _, tool, key, pattern = check
             names = {tool, 'get_station_info'} if tool == 'get_slots' else {tool}
-            values = [p.get(key, '') for t in turns for name, p in zip(t['tools'], t['params']) if name in names]
+            values = tool_values(turns, names, key)
             if any(re.search(pattern, v, re.I) for v in values):
                 flags.append(f'CHECK {tool}.{key} /{pattern}/ used: {values}')
         elif kind == 'booked' and not success(turns, 'book_inspection_invite'):
