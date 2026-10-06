@@ -54,8 +54,9 @@ function helsinki(date) {
 const isDay = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))
 const addDays = (day, n) => { const d = new Date(`${day}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
 const weekdayOf = (day) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(`${day}T12:00:00Z`).getUTCDay()]
+const weekdayName = (day) => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(`${day}T12:00:00Z`).getUTCDay()]
 const fiDate = (day) => { const [, m, d] = day.split('-'); return `${Number(d)}.${Number(m)}.` }
-const dayLabel = (day) => `${weekdayOf(day)} ${fiDate(day)}`
+const dayLabel = (day) => `${weekdayName(day)} ${fiDate(day)}`
 function helsinkiOffset(day) {
   const year = Number(day.slice(0, 4))
   const lastSunday = (monthIndex) => { const d = new Date(Date.UTC(year, monthIndex + 1, 0)); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d }
@@ -414,7 +415,7 @@ async function slots() {
     const list = found.byDay[day] || []
     const hours = hoursByDay[day]
     return {
-      date: day, weekday: weekdayOf(day), station_hours: showHours(hours), hours_note: hours.estimated ? 'estimated, verify with the station' : undefined,
+      date: day, weekday: weekdayName(day), station_hours: showHours(hours), hours_note: hours.estimated ? 'estimated, verify with the station' : undefined,
       free_count: list.length, first: list[0] && list[0].time, last: list[list.length - 1] && list[list.length - 1].time,
       suggestions: spread(list, 3).map(view),
       ...(single ? { all_times: list.map(view) } : {}),
@@ -554,7 +555,7 @@ async function book() {
   return {
     ok: true, success: true, booking_number: info.bookingNumber, event_id: `${held.data.groupId}|${info.uid}|${customer.data.uid}`,
     group_id: held.data.groupId, reservation_uid: info.uid, customer_uid: customer.data.uid, slot_id: body.start_time,
-    display_fi: `${weekdayOf(local.date)} ${fiDate(local.date)} ${local.hm}`, station_id: slot.stationId, station_name: stationName, plate,
+    display_fi: `${weekdayName(local.date)} ${fiDate(local.date)} ${local.hm}`, station_id: slot.stationId, station_name: stationName, plate,
     vehicle_category: slot.category, product_ids: slot.productIds,
     record: {
       p_tenant_key: 'k1_katsastus_demo', p_phone: String(body.phone), p_plate: plate, p_station_id: slot.stationId, p_station_name: stationName,
@@ -616,7 +617,7 @@ async function moveBooking() {
   const local = helsinki(new Date(slot.time))
   return {
     ok: true, success: true, booking_number: info.bookingNumber, event_id: `${held.data.groupId}|${info.uid}|${customerUid}`, group_id: held.data.groupId,
-    display_fi: `${weekdayOf(local.date)} ${fiDate(local.date)} ${local.hm}`, previous_reservation_uid: reservationUid, station_name: stationName,
+    display_fi: `${weekdayName(local.date)} ${fiDate(local.date)} ${local.hm}`, previous_reservation_uid: reservationUid, station_name: stationName,
     record: {
       p_tenant_key: 'k1_katsastus_demo', p_phone: String(body.phone), p_plate: plate, p_station_id: slot.stationId, p_station_name: stationName,
       p_product_ids: slot.productIds, p_group_id: held.data.groupId, p_reservation_uid: info.uid, p_booking_number: info.bookingNumber,
@@ -629,7 +630,7 @@ function myBookings() {
   const now = Date.now()
   const bookings = (input.owned_details || []).filter((row) => new Date(row.startsAt).getTime() > now).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt)).map((row) => {
     const local = helsinki(new Date(row.startsAt))
-    return { event_id: `${row.groupId}|${row.reservationUid}|${row.customerUid}`, booking_number: row.bookingNumber, station_name: row.stationName, plate: row.plate, date: local.date, time: local.hm, includes_measuring: (row.productIds || []).length > 1, display_fi: `${weekdayOf(local.date)} ${fiDate(local.date)} ${local.hm}` }
+    return { event_id: `${row.groupId}|${row.reservationUid}|${row.customerUid}`, booking_number: row.bookingNumber, station_name: row.stationName, plate: row.plate, date: local.date, time: local.hm, includes_measuring: (row.productIds || []).length > 1, display_fi: `${weekdayName(local.date)} ${fiDate(local.date)} ${local.hm}` }
   })
   return { ok: true, count: bookings.length, bookings, note: 'Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.' }
 }
