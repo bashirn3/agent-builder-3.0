@@ -563,6 +563,26 @@ async function book() {
     },
   }
 }
+// The model sometimes miscopies the long event_id (a few characters off). The caller's own bookings are known, so a unique near match is mapped back to the real id.
+function editDistance(a, b, cap) {
+  if (Math.abs(a.length - b.length) > cap) return cap + 1
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index)
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i]
+    for (let j = 1; j <= b.length; j++) row[j] = Math.min(previous[j] + 1, row[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    previous = row
+  }
+  return previous[b.length]
+}
+function repairedEventId(raw) {
+  const given = String(raw || '')
+  if (!input.require_owner || input.owner_lookup_failed || !given) return given
+  const canonical = (input.owned_details || []).map((row) => ({ group: row.groupId, id: `${row.groupId}|${row.reservationUid}|${row.customerUid}` }))
+  const sameGroup = canonical.filter((row) => row.group === given.split('|')[0])
+  if (sameGroup.length === 1) return sameGroup[0].id
+  const near = canonical.filter((row) => editDistance(given, row.id, 8) <= 8)
+  return near.length === 1 ? near[0].id : given
+}
 // The agent tool path passes the caller's confirmed bookings (require_owner); staff calls through the gated webhook do not.
 function ownershipError(groupId) {
   if (!input.require_owner) return null
@@ -572,7 +592,7 @@ function ownershipError(groupId) {
 }
 async function moveBooking() {
   const slot = parseSlot(body.start_time || body.slot_id)
-  const [groupId, reservationUid, customerUid] = String(body.event_id || '').split('|')
+  const [groupId, reservationUid, customerUid] = repairedEventId(body.event_id).split('|')
   if (!slot || !groupId || !reservationUid || !customerUid) return { ok: false, error: 'reschedule needs a new slot_id and the event_id from the booking' }
   const notOwner = ownershipError(groupId)
   if (notOwner) return notOwner
@@ -614,7 +634,7 @@ function myBookings() {
   return { ok: true, count: bookings.length, bookings, note: 'Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.' }
 }
 async function cancel() {
-  const groupId = String(body.event_id || body.group_id || '').split('|')[0]
+  const groupId = repairedEventId(body.event_id || body.group_id).split('|')[0]
   if (!groupId) return { ok: false, error: 'cancel needs the event_id from the booking' }
   const notOwner = ownershipError(groupId)
   if (notOwner) return notOwner
