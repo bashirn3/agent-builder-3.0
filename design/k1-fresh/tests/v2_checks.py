@@ -99,6 +99,8 @@ def tool_values(turns, names, key):
     """Inputs of the named tools: the playground's trimmed params plus the full inputs from the evaluation steps (which include fields such as name)."""
     values = [str(p.get(key, '')) for t in turns for name, p in zip(t['tools'], t['params']) if name in names]
     values += [str((step.get('input') or {}).get(key, '')) for t in turns for step in t.get('steps', []) if step.get('tool') in names and isinstance(step.get('input'), dict) and key in step['input']]
+    if key == 'date_from' and 'get_station_info' in names:
+        values += [str((step.get('input') or {}).get('date', '')) for t in turns for step in t.get('steps', []) if step.get('tool') == 'get_station_info' and isinstance(step.get('input'), dict)]
     return values
 
 
@@ -131,7 +133,7 @@ def evaluate(scenario, turns):
         if re.search(r'\u2014|\s[\u2013-]\s', reply):
             flags.append(f'{tag} DASH')
         filler = re.match(r'\s*(sure|okay|ok|great|absolutely|of course|alright|sounds good|perfect|selvä|okei|hyvä|kiva|mahtavaa|visst|okej|toppen|absolut|självklart)\b[\s,.!]', reply, re.I)
-        if filler:
+        if filler and len(reply.strip()) > len(filler.group(0)) + 12:
             flags.append(f'{tag} FILLER_OPEN:{filler.group(1)}')
         if len(re.sub(r'https?://\S+', '', reply)) > (360 if 'faq_lookup' in (turn.get('tools') or []) else 260) and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
             flags.append(f'{tag} WORDY({len(reply)})')

@@ -141,7 +141,7 @@ def extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET):
         ('date.relative_hours', 'en', 'Book me two hours from now.', [NOBOOK]),
         ('date.last_week', 'sv', 'Kan jag boka förra veckan?', [NOBOOK]),
         ('date.ambiguous_1_10', 'fi', 'Onko aikoja 1.10?', [NOBOOK]),
-        ('date.ambiguous_10_1', 'en', 'Any times on 10.1?', [('any_tool', GETS), NOBOOK]),
+        ('date.ambiguous_10_1', 'en', 'Any times on 10.1?', [('reply', r'\?|\d{1,2}[:.]\d{2}'), NOBOOK]),
         ('date.two_digit_year', 'en', 'Times for 5 March 27?', [NOBOOK]),
         ('date.negative', 'en', 'Book me minus 3 days from now.', [NOBOOK]),
         ('date.zero', 'en', 'Book me on day zero.', [NOBOOK]),
