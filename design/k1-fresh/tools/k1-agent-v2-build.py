@@ -243,8 +243,8 @@ TOOLS['faq_lookup'] = {
 }
 SCHEMA_ENTRY = lambda key: {'id': key, 'displayName': key, 'type': 'string', 'display': True, 'required': False, 'defaultMatch': False, 'canBeUsedToMatch': True}
 SLOT_TOOLS = {
-    'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category). Reuse plate, name and phone. success true includes booking_number and event_id. If success is false, it is not booked.',
-    'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots. event_id comes from get_my_bookings (or from the booking made in this conversation). The booking number stays the same.',
+    'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category); copy the slot_id of the entry whose time is the chosen one, and also pass that chosen clock time in time. Reuse plate, name and phone. success true includes booking_number and event_id. If success is false, it is not booked.',
+    'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots (the entry whose time is the chosen one); also pass that chosen clock time in time. event_id comes from get_my_bookings (or from the booking made in this conversation). The booking number stays the same.',
     'cancel_booking': 'Cancel an existing booking. event_id is required and comes from get_my_bookings (or from the booking made in this conversation). sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
 
@@ -439,6 +439,8 @@ def build_agent(booking_id):
         value = node['parameters']['workflowInputs']['value']
         value['station_id'] = ''
         value['phone'] = PHONE
+        if name in ('book_inspection_invite', 'reschedule_booking'):
+            value['time'] = from_ai('time', 'The clock time the customer chose, written HH:MM in Finnish local time exactly as the get_slots time field shows it (for example 16:30). Always fill it in.')
         for key in ('lead_station', 'lead_station_id', 'lead_product', 'lead_vehicle_category'):
             value.pop(key, None)
         node['parameters']['workflowInputs']['schema'] = [entry for entry in node['parameters']['workflowInputs'].get('schema', []) if entry['id'] in value]

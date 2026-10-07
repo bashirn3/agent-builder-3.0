@@ -320,6 +320,21 @@ function parseSlot(value) {
   const ids = String(product || '2246').split('+').map(Number).filter(Boolean)
   return { time, stationId: Number(station || 256), productIds: ids.length ? ids : [2246], category: normalizeCategory(category) }
 }
+function chosenSlot() {
+  const slot = parseSlot(body.start_time || body.slot_id)
+  const said = String(body.time || '').match(/(\d{1,2})\s*[:.]\s*(\d{2})/)
+  if (!slot || !said) return slot
+  const hh = Number(said[1]), mm = Number(said[2])
+  if (hh > 23 || mm > 59) return slot
+  const local = helsinki(new Date(slot.time))
+  const wanted = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+  if (local.hm === wanted) return slot
+  const fixed = new Date(`${local.date}T${wanted}:00${helsinkiOffset(local.date)}`)
+  if (Number.isNaN(fixed.getTime())) return slot
+  const time = fixed.toISOString().replace('.000Z', 'Z')
+  body.start_time = `${time}|${slot.stationId}|${slot.productIds.join('+')}|${slot.category}`
+  return { ...slot, time }
+}
 function spread(list, count) {
   if (list.length <= count) return list
   return Array.from({ length: count }, (_, i) => list[Math.round((i * (list.length - 1)) / (count - 1))])
@@ -530,7 +545,7 @@ function holdFailure(held) {
   return { ok: false, step: 'hold', status: held.status, error: text.slice(0, 300) }
 }
 async function book() {
-  const slot = parseSlot(body.start_time || body.slot_id)
+  const slot = chosenSlot()
   if (!slot) return { ok: false, error: 'start_time must be an exact slot_id from get_slots.' }
   if (!(await directory()).some((e) => e.muster_id === slot.stationId)) return { ok: false, error: 'That station cannot be booked through this assistant. Use only slot_id values returned by get_slots.' }
   if (!body.phone) return { ok: false, error: 'phone is required' }
@@ -598,7 +613,7 @@ function ownershipError(groupId) {
   return null
 }
 async function moveBooking() {
-  const slot = parseSlot(body.start_time || body.slot_id)
+  const slot = chosenSlot()
   const [groupId, reservationUid, customerUid] = repairedEventId(body.event_id).split('|')
   if (!slot || !groupId || !reservationUid || !customerUid) return { ok: false, error: 'reschedule needs a new slot_id and the event_id from the booking' }
   const notOwner = ownershipError(groupId)

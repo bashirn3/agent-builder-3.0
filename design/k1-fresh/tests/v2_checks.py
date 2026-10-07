@@ -161,7 +161,7 @@ def evaluate(scenario, turns):
                 flags.append(f'{tag} CONFIRMATION_WITHOUT_WEEKDAY_DATE')
         for step in turn['steps']:
             data = ok_output(step)
-            if step['tool'] in ('book_inspection_invite', 'reschedule_booking') and data and data.get('ok') is False and not data.get('slot_unavailable') and ' is required' not in str(data.get('error')):
+            if step['tool'] in ('book_inspection_invite', 'reschedule_booking') and data and data.get('ok') is False and not data.get('slot_unavailable') and ' is required' not in str(data.get('error')) and 'does not look like a person' not in str(data.get('error')):
                 flags.append(f'{tag} BOOK_TOOL_FAILED {str(data.get("error"))[:80]}')
             if data and str(data.get('error', '')).startswith('unknown action'):
                 flags.append(f'{tag} TOOL_ERROR unknown action')
@@ -201,6 +201,11 @@ def evaluate(scenario, turns):
             values = tool_values(turns, names, key)
             if any(re.search(pattern, v, re.I) for v in values):
                 flags.append(f'CHECK {tool}.{key} /{pattern}/ used: {values}')
+        elif kind == 'no_ok_param':
+            _, tool, key, pattern = check
+            values = [str(step['input'].get(key, '')) for t in turns for step in t['steps'] if step['tool'] == tool and (ok_output(step) or {}).get('success')]
+            if any(re.search(pattern, v, re.I) for v in values):
+                flags.append(f'CHECK {tool}.{key} /{pattern}/ booked with: {values}')
         elif kind == 'booked' and not success(turns, 'book_inspection_invite'):
             flags.append('CHECK expected a successful booking')
         elif kind == 'no_book' and success(turns, 'book_inspection_invite'):

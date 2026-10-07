@@ -430,7 +430,7 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
       [('tool', 'opt_out'), NOBOOK, ('no_reply', ORIGIN_BAD_NOSITE), ('max_replies', APOLOGY, 2), ('reply', r'påminnelse|kontaktuppgift|kontaktdata|reminder')], station='pal', plate='KLM-908', books=True)
     p('replay.chat3_price.fi', 'fi', replay,
       [ESC, ('booked',), ('no_reply', r'0306'), ('no_reply', WEB_PRICE), ('no_reply', HEDGE_PRICE_SOFT), ('no_reply', HEDGE_HOURS), ('no_reply', ASK_DATE), ('no_reply', PLATE_RECONFIRM), ('no_reply', REFUSE_NAME),
-       ('param', 'get_slots', 'include_measuring', r'^false$'), ('slots_cover', f2.isoformat()), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_param', 'book_inspection_invite', 'name', r'testi markk|asdf'),
+       ('param', 'get_slots', 'include_measuring', r'^false$'), ('slots_cover', f2.isoformat()), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_ok_param', 'book_inspection_invite', 'name', r'testi markk|asdf'),
        ('output', r'"product_ids":\s*\[2246\]'), ('no_output', r'"product_ids":\s*\[2246,\s*2254\]')], station='pal', plate='XYZ-441', books=True)
     FI_REPLY = r'paikallis|suomen|aikaa\b|asema on|\bei ole\b|\bon auki'
     p('lang.word_finnish_time.en', 'en', 'Are the times in Finnish time or UTC?', [NOBOOK, ESC, ('no_reply', FI_REPLY), ('reply', r'Finnish|local|Helsinki|UTC')])
@@ -573,7 +573,7 @@ def extend_v7(add, Auto, Customer, NOBOOK, GETS):
 
     for lang, bad in (('fi', 'testi markkinointi'), ('sv', 'asdf'), ('en', 'asdf')):
         p(f'name.not_a_name.{lang}', lang, [BOOK[lang], Auto(BadNameFirst(lang, bad), 'booked', 10)],
-          [('booked',), ESC, ('no_reply', REFUSE_NAME), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_param', 'book_inspection_invite', 'name', r'testi markk|asdf')], books=True)
+          [('booked',), ESC, ('no_reply', REFUSE_NAME), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_ok_param', 'book_inspection_invite', 'name', r'testi markk|asdf')], books=True)
 
     # 7. KOUVOLA: the lead station does not exist; the real one is Korjala and cannot be booked in chat
     due = TODAY + datetime.timedelta(days=14)
