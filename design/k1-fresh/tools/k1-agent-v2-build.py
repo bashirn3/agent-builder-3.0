@@ -446,7 +446,34 @@ def build_agent(booking_id):
             if not any(entry['id'] == key for entry in node['parameters']['workflowInputs']['schema']):
                 node['parameters']['workflowInputs']['schema'].append(SCHEMA_ENTRY(key))
 
+    add_agent_error_branch(nodes, connections)
     return save(AGENT_NAME, nodes, connections, live, activate=True)
+
+
+AGENT_ERROR_JS = r"""// The model provider can refuse a message (for example content it treats as a cyber-security risk). The builder chat then gets a safe answer instead of a 500.
+let playground = false
+try { playground = Boolean($('Playground Turn').isExecuted) } catch (error) { playground = false }
+if (!playground) return []
+const body = $('Playground').first().json.body || {}
+const text = String(body.text || '')
+const lang = /\b(hej|visst|tack|boka|besiktning|vad|hur|vilken)\b|nästa|imorgon/i.test(text) ? 'sv'
+  : /\b(joo|moi|hei|kiitos|huomenna|ensi|varaa|katsastus|mitä|milloin)\b|kyllä/i.test(text) ? 'fi' : 'en'
+const reply = { fi: 'En voinut käsitellä tuota viestiä. Voitko kirjoittaa sen toisin, tai soittaa numeroon 0306 100 100?',
+  sv: 'Jag kunde inte behandla det meddelandet. Kan du skriva det på ett annat sätt, eller ringa 0306 100 100?',
+  en: "I couldn't process that message. Could you rephrase it, or call 0306 100 100?" }[lang]
+return [{ json: { reply, mode: 'muster', recorded: false, messageId: null, userMessageId: null, toolCalls: [], fallback: true } }]"""
+
+
+def add_agent_error_branch(nodes, connections):
+    agent = next(n for n in nodes if n['name'] == 'AI Agent')
+    agent['onError'] = 'continueErrorOutput'
+    if not any(n['name'] == 'Agent error reply' for n in nodes):
+        nodes.append({'id': str(uuid.uuid4()), 'name': 'Agent error reply', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [agent['position'][0] + 400, agent['position'][1] + 520],
+                      'parameters': {'mode': 'runOnceForAllItems', 'jsCode': AGENT_ERROR_JS}})
+    main = connections['AI Agent']['main']
+    assert len(main) >= 1
+    connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}]]
+    connections['Agent error reply'] = {'main': [[{'node': 'Respond to playground', 'type': 'main', 'index': 0}]]}
 
 
 SMOKE_CASES = [
