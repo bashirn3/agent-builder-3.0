@@ -7,6 +7,7 @@ cancelled by the harness afterwards.
 STATIONS = {
     'pal': ('K1 Katsastus Jyväskylä Palokka', 256),
     'ita': ('K1 Katsastus Turku Itäharju', 241),
+    'kou': ('K1 Katsastus Kouvola Kankaanpää', None),
     'oul': ('K1 Katsastus Oulu Alppila', None),
     'kuo': ('K1 Katsastus Kuopio Sorsasalo', None),
     'tam': ('K1 Katsastus Tampere Sarankulma', None),

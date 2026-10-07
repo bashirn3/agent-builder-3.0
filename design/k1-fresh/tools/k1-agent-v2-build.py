@@ -251,12 +251,13 @@ SLOT_TOOLS = {
 LANGUAGE_CORE = '''const LANGUAGE_WORDS = {
   English: 'the a an and or is are was be you your can could would please do does have has what which when where how much many about after before tomorrow today times time day week next book booking me my we our to of for with on at in it this that yes no hi hello thanks thank want need move cancel price cost open close hours station',
   Swedish: 'och jag det att är på för inte kan vill har vilken vilka vilket imorgon idag tid tider boka bokning vad kostar hur en ett till av som då fredag måndag tisdag onsdag torsdag lördag söndag hej tack ja nej öppet öppettider stationen avboka flytta pris',
-  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette',
+  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette me ollaan oman omaa kanssa sulla sulle sun mun mut mutta muuten miks miksi mitäs mistä missä kuka mikä onks oon kyl tuo tämä nyt vielä sit siis vai tai jos kun niin vaan ihan voin voi pitää pitäisi mä sä ole ollut sinä sinun teidän ettei jotta tai myös',
 }
 const LANGUAGE_STEMS = {
   Finnish: ['peruu', 'peruut', 'varau', 'varat', 'tunniste', 'katsast', 'rekister', 'haluai', 'haluan', 'huomen', 'aukio', 'aikoj', 'maksa', 'suome', 'kiitos', 'tarvit', 'siirt', 'vapaa'],
   Swedish: ['bokning', 'avbok', 'besikt', 'registrer', 'öppettid', 'lediga', 'kostar'],
 }
+const FINNISH_ENDING = /(?:ssa|ssä|stä|llä|ltä|ksi|aan|ään|nsa|nsä|ttä|isiä)$/
 const LANGUAGE_REQUESTS = [
   ['Finnish', /suomeksi|suomen kiel|suomea\\b|på finska|\\bfinska\\b|\\b(?:in|speak|write|reply|answer|respond|use|switch to|talk|chat|continue in|go with)\\s+(?:in\\s+)?finnish\\b(?!\\s+(?:time|timezone|time zone|station|stations|prices?|market|euros?|currency|law|rules?))|\\bfinnish\\s+(?:please|pls|only)\\b|^\\s*finnish[\\s?!.]*$|\\bpuhu suomea/i],
   ['Swedish', /ruotsiksi|ruotsin kiel|ruotsia\\b|på svenska|\\bsvenska\\b|\\b(?:in|speak|write|reply|answer|respond|use|switch to|talk|chat|continue in|go with)\\s+(?:in\\s+)?swedish\\b(?!\\s+(?:time|timezone|time zone|station|stations|prices?|market|euros?|currency|law|rules?))|\\bswedish\\s+(?:please|pls|only)\\b|^\\s*swedish[\\s?!.]*$/i],
@@ -267,7 +268,7 @@ const detectLanguage = (value) => {
   const asked = translating ? [] : LANGUAGE_REQUESTS.filter(([, pattern]) => pattern.test(String(value || ''))).map(([name]) => name)
   if (asked.length === 1) return asked[0]
   const words = (String(value || '').toLowerCase().replace(/\\S*\\d\\S*/g, ' ').match(/[\\p{L}]+/gu) || []).filter((word) => word.length > 1)
-  const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word) || (LANGUAGE_STEMS[name] || []).some((stem) => word.length > stem.length && word.startsWith(stem))).length]).sort((a, b) => b[1] - a[1])
+  const scores = Object.entries(LANGUAGE_WORDS).map(([name, list]) => [name, words.filter((word) => list.split(' ').includes(word) || (LANGUAGE_STEMS[name] || []).some((stem) => word.length > stem.length && word.startsWith(stem)) || (name === 'Finnish' && word.length >= 5 && FINNISH_ENDING.test(word))).length]).sort((a, b) => b[1] - a[1])
   return scores[0][1] >= 2 && scores[0][1] > scores[1][1] ? scores[0][0] : ''
 }
 const languageOrder = (language) => `REPLY LANGUAGE: ${language}. Write every word of your reply in ${language}, including the first sentence and any confirmation of the switch. The lead's stored language and the language of the opener or earlier turns no longer apply.`
@@ -321,7 +322,7 @@ PLAYGROUND_RETURN = (
 )
 
 
-DASH_CLEAN = "String(m ?? '').replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^\\p{Ll}/u, (c) => c.toUpperCase())"
+DASH_CLEAN = "String(m ?? '').replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^(?:Absolut|Visst|Okej|Okey|Toppen|Självklart|Sure|Okay|Absolutely|Of course|Certainly|Alright|Sounds good|Selvä|Okei|Kiva kuulla)\\s*[,!.]\\s+(?=\\S)/i, '').replace(/^\\p{Ll}/u, (c) => c.toUpperCase())"
 PLAN_DELIVERY_CLEAN = (
     "msgs = msgs.map(m => String(m ?? '').trim()).filter(Boolean).slice(0, maxBubbles);",
     "msgs = msgs.map(m => " + DASH_CLEAN + ").filter(Boolean).slice(0, maxBubbles);",
@@ -332,9 +333,16 @@ PLAN_FOLLOWUP_CLEAN = (
 )
 NORMALIZE_PATCHES = (
     ("const messages = lines.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean)",
-     "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^\\p{Ll}/u, (c) => c.toUpperCase())).filter(Boolean)"),
+     "const messages = lines.filter((line) => typeof line === 'string').map((line) => String(line).replace(/\\s*[\u2014]\\s*|\\s+[\u2013-]\\s+/g, ', ').trim().replace(/^(?:Absolut|Visst|Okej|Okey|Toppen|Självklart|Sure|Okay|Absolutely|Of course|Certainly|Alright|Sounds good|Selvä|Okei|Kiva kuulla)\\s*[,!.]\\s+(?=\\S)/i, '').replace(/^\\p{Ll}/u, (c) => c.toUpperCase())).filter(Boolean)"),
     ("fallback: !lines.some((line) => typeof line === 'string' && line.trim()) }", "fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly }"),
     ("if (!messages.length) {\n", "const reactionOnly = String(raw.reaction || '').trim()\nif (!messages.length && reactionOnly) messages.push(reactionOnly)\nif (!messages.length) {\n"),
+    ("const agent = $('AI Agent').first().json\n", LANGUAGE_CORE.rstrip() + "\nconst agent = $('AI Agent').first().json\n"),
+    (r"""  const lang = /\b(hej|visst|tack|boka|besiktning)\b|nästa|imorgon/i.test(text) ? 'sv'
+    : /\b(joo|moi|hei|kiitos|huomenna|ensi|varaa|katsastus)\b|kyllä/i.test(text) ? 'fi' : 'en'
+""", r"""  const leadName = (String(body.leadContext || '').match(/Customer's language:\s*([A-Za-z]+)/i) || [])[1] || ''
+  const pastText = [...(Array.isArray(body.messages) ? body.messages : [])].reverse().filter((entry) => entry.role === 'user').map((entry) => String(entry.content || '')).find((value) => detectLanguage(value)) || ''
+  const lang = { Finnish: 'fi', Swedish: 'sv', English: 'en' }[detectLanguage(text) || detectLanguage(pastText)] || { finnish: 'fi', swedish: 'sv', english: 'en' }[leadName.toLowerCase()] || 'fi'
+"""),
     ("fi: 'Hyvä! Mille päivälle katsotaan katsastusaikaa?', sv: 'Absolut! Vilken dag passar dig för besiktningen?', en: 'Sure! Which day would suit you for the inspection?'",
      "fi: 'Mille päivälle?', sv: 'Vilken dag passar?', en: 'What day works best?'"),
 )
@@ -375,6 +383,8 @@ def build_agent(booking_id):
             for item in node['parameters']['assignments']['assignments']:
                 if item['name'] == 'business_prompt':
                     item['value'] = business_prompt(item['value'])
+        if node['name'] == 'escalate_to_human':
+            node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, demands compensation, refuses to continue, or reports a legal, safety or accident matter. Never for swearing or rudeness alone, payment methods, phone hours, off-topic chat, or a question you can answer or point to 0306 100 100 for. Pass syy.'
         if node['name'] == 'AI Agent':
             options = node['parameters']['options']
             options['systemMessage'] = replace_once(

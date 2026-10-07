@@ -76,7 +76,7 @@ def render():
     head = (ROOT / 'prompts/k1-conversational-head.md').read_text().rstrip()
     rules = (ROOT / 'prompts/k1-business-prompt-v2.md').read_text().strip()
     translations = {
-        'fi': {'opener': 'Hei! Täällä K1 Katsastus {{station}}. Autosi {{registration_number}} katsastusaika lähestyy. Haluatko, että etsin sinulle sopivan ajan?', 'reminders': [{'days': None, 'text': ''}] * 3},
+        'fi': {'opener': 'Hei! Täällä {{station}}. Autosi {{registration_number}} katsastusaika lähestyy. Haluatko, että etsin sinulle sopivan ajan?', 'reminders': [{'days': None, 'text': ''}] * 3},
         'sv': {'opener': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {{registration_number}}. Vill du att jag hjälper dig hitta en tid?', 'reminders': [{'days': None, 'text': ''}] * 3},
     }
     version = {

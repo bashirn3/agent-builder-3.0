@@ -128,6 +128,8 @@ assert(!missing(en, fi).length, `Finnish copy is missing: ${missing(en, fi).join
 assert(detectLanguage('Suomi') === 'fi' && detectLanguage('svenska') === 'sv' && detectLanguage('Deutsch') === 'en' && detectLanguage('') === 'fi', 'a missing language is Finnish and other languages get English')
 assert(fillTemplate('Hi {{first_name}}, {{registration_number}} is due by {{due_date}} at {{station}} (last {{last_inspection}}).', lead) === 'Hi, JJ-190 is due by 23.9.2026 at K1 Katsastus Kouvola (last 23.9.2025).', 'placeholders fill from the lead; first name is dropped')
 assert(fillTemplate('{{due_date}}', { ...lead, language: 'English' }) === '23 Sep 2026', 'English dates are written out')
+assert(fillTemplate('Täällä K1 Katsastus {{station}}.', lead) === 'Täällä K1 Katsastus Kouvola.', 'the brand is not written twice when the station name already carries it')
+assert(fillTemplate('Täällä K1 Katsastus {{station}}.', { ...lead, stationName: 'Palokka' }) === 'Täällä K1 Katsastus Palokka.', 'the brand is kept when the station name does not carry it')
 assert(describeChanges({ ...base, translations: { fi: { opener: '', reminders: [] } } }, { ...base, translations: { fi: { opener: 'Hei', reminders: [] } } }) === 'Changed Finnish opener', 'change note names the language')
 
 console.log('k1 checks passed')

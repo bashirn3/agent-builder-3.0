@@ -56,7 +56,7 @@ export function fillTemplate(text: string, lead: TemplateLead, lang: Lang = dete
     .replace(/{{\s*(registration[-_\s]?number|plate[-_\s]?number)\s*}}/gi, lead.plateNumber)
     .replace(/{{\s*due[-_\s]?date\s*}}/gi, formatDate(lead.nextInspection, lang))
     .replace(/{{\s*last[-_\s]?inspection\s*}}/gi, formatDate(lead.lastInspection, lang))
-    .replace(/{{\s*station\s*}}/gi, lead.stationName)
+    .replace(/(K1 Katsastus\s+)?{{\s*station\s*}}/gi, (_match, brand) => (brand && /^K1 Katsastus\b/i.test(lead.stationName) ? '' : brand ?? '') + lead.stationName)
 }
 
 const LANGUAGE_NAMES: Record<Lang, string> = { fi: 'Finnish', sv: 'Swedish', en: 'English' }
