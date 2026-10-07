@@ -8,6 +8,8 @@ import re
 import zoneinfo
 
 TODAY = datetime.datetime.now(zoneinfo.ZoneInfo('Europe/Helsinki')).date()
+# A day to move a booking made for tomorrow to: Friday, or Monday when tomorrow is Friday.
+MOVE_DAY = {'fi': 'maanantaille', 'sv': 'måndag', 'en': 'Monday'} if TODAY.weekday() == 3 else {'fi': 'perjantaille', 'sv': 'fredag', 'en': 'Friday'}
 
 
 def iso(offset):
@@ -395,7 +397,7 @@ def extend_voice(add, Auto, Customer, NOBOOK, GETS):
             v(f'greet.{lang}.{index}', lang, word, [NOBOOK, ('reply', r'\?')])
     HAVE = {'fi': 'Onko minulla aktiivista varausta?', 'sv': 'Har jag en aktiv bokning?', 'en': 'Can you check if I have an active booking?'}
     CANCEL = {'fi': 'Haluan perua varaukseni', 'sv': 'Jag vill avboka min tid', 'en': 'I want to cancel my booking'}
-    MOVE = {'fi': 'Voisinko siirtää varaukseni perjantaille?', 'sv': 'Kan jag flytta min tid till fredag?', 'en': 'Can I move my booking to Friday?'}
+    MOVE = {'fi': 'Voisinko siirtää varaukseni ' + MOVE_DAY['fi'] + '?', 'sv': 'Kan jag flytta min tid till ' + MOVE_DAY['sv'] + '?', 'en': 'Can I move my booking to ' + MOVE_DAY['en'] + '?'}
     BOOK = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
     ASKS = r'what (date|time|day)|which (date|time|day)|when is|milloin|mikä päivä|mihin aikaan|vilken (dag|tid)|när är'
     NOCANT = r"can.t check|cannot check|unable to check|en voi tarkistaa|en pysty tarkistaa|kan inte kontrollera|kan inte se (min|din|dina|era)"

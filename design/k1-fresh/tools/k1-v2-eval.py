@@ -282,6 +282,8 @@ class Customer:
         undated = re.sub(r'(?<!klo )(?<!kl )(?<![\d.:])([1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(?!\d)', ' ', reply)
         undated = re.sub(r'\b\d{1,2}\.\d{1,2}(?=\s+(?:kl|klo|at|klockan)\b)', ' ', undated)
         undated = re.sub(r'\b(?:ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\.?\s+\d{1,2}\.\d{1,2}\b\.?(?!\d)(?!:\d)', ' ', undated, flags=re.I)
+        gone = r'taken|not available|isn.t available|no longer|can.t book|upptagen|inte ledig|varattu|ei ole (enää )?vapaa|ei ole saatavilla|ei onnistu'
+        undated = ' '.join(p for p in re.split(r'(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])', undated) if not re.search(gone, p, re.I))
         times = [f'{int(h):02d}:{m}' for h, m in TIME.findall(undated)]
         offered = [t for t in times if t in {f'{int(h):02d}:{m}' for h, m in TIME.findall(q)}]
         times = offered or times
