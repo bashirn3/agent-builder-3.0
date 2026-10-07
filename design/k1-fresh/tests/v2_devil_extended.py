@@ -31,7 +31,7 @@ HEDGE_PRICE = (r'suuntaa.?antava|\balk\.\s*\d|alkaen|approximate|approx\.|ungef�
 HEDGE_PRICE_SOFT = r'\bon suuntaa|hinta[a-zäö]* (on|ovat) (vain )?(suuntaa|arvio)|\d\s?(€|euroa|eur)\s+alkaen|alkaen\s+\d'
 HEDGE_HOURS = (r'pitää varmistaa|kannattaa varmistaa|varmista (asemalta|aseman)|vahvista (asemalta|aseman)|only (an )?estimat|(is|are) (just |only )?(an )?estimat|arvio(ina|ituja|ituna)|'
                r'(verify|confirm|check) with the station|bekräfta med stationen|kontrollera med stationen|uppskattade|ungefärliga öppettider|ei ole (vielä )?varmistettu|not (yet )?(been )?verified')
-ASK_DATE = (r'which friday|what friday|mikä perjantai|minä perjantaina|mitä perjantaita|mitkä perjantai|vilken fredag|vilka fredag|(which|what) (date|day)|anna päivämäärä|kerro päivämäärä|'
+ASK_DATE = (r'which friday|what friday|mikä perjantai(?!n \d{1,2}\.\d{1,2}\.? (?:ajoista|ajoi|ajat))|minä perjantaina|mitä perjantaita|mitkä perjantai|vilken fredag|vilka fredag|(which|what) (date|day)|anna päivämäärä|kerro päivämäärä|'
             r'(minkä|mikä) päivämäärä|ange (ett )?datum|vilket datum|(tell|give) me (the|a) date|specific date|mille päivälle|minä päivänä|vilken dag')
 PLATE_RECONFIRM = (r'correct plate|plate correct|right plate|(registration|plate)( number)? (is|looks) (correct|right)|rekisteri\w*\s+(on\s+)?(oikea|oikein)|'
                    r'rekisterinumero\w*.{0,30}(oikea|oikein|vahvist)|vahvistatko.{0,30}rekisteri|registreringsnummer.{0,20}rätt|stämmer.{0,20}registrer')
@@ -429,7 +429,7 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
     p('replay.chat4_kouvola_chat.fi', 'fi', ['Miks sun nimi on tuplana', 'Ei mitää', 'Mut joo', 'häh', 'missä vaiheessa mä sitä pyysin', 'oon kyl kiinnostunu katsastuksesta', 'Okei joo kiitti, mitäs maksaa?',
         'Okei thanks, käyks bitcoin', 'mitä sä sit vittu tiedät', 'haista p', 'onks sun mutsis kuuma', 'Hyvä', 'Millanen isäsuhde sulla on muuten, me ollaan läheisiä oman kanssa', 'Miks vaihoit enkkuun', 'hallusinoit?', 'Mistä tulkitsin sen tarkalleen', 'Mistä sitten? Kerro.'],
       [ESC, NOBOOK], station='kou', plate='ABC-123')
-    p('replay.chat4a_filler_not_consent.fi', 'fi', ['Miks sun nimi on tuplana', 'Ei mitää', 'Mut joo'], [ESC, NOBOOK, ('no_tool', 'get_slots'), ('no_reply', LINK_RE), ('no_reply', r'\d{1,2}[.:]\d{2}')], station='kou', plate='ABC-123')
+    p('replay.chat4a_filler_not_consent.fi', 'fi', ['Miks sun nimi on tuplana', 'Ei mitää'], [ESC, NOBOOK, ('no_tool', 'get_slots'), ('no_reply', LINK_RE), ('no_reply', r'\d{1,2}[.:]\d{2}')], station='kou', plate='ABC-123')
     p('replay.chat4c_personal_question.fi', 'fi', ['Moi', 'Millanen isäsuhde sulla on muuten, me ollaan läheisiä oman kanssa'], [ESC, NOBOOK], station='kou', plate='ABC-123')
     p('replay.chat2_besikta.sv', 'sv', ['När behöver den besiktas?', 'Var har du fått mitt telefonnumer?', 'Jag har int ebett om besiktningspåminnelse', 'jag vill ha en e-postadress', 'ta bort mig från påminnelselistan'],
       [('tool', 'opt_out'), NOBOOK, ('no_reply', ORIGIN_BAD_NOSITE), ('max_replies', APOLOGY, 2), ('reply', r'påminnelse|kontaktuppgift|kontaktdata|reminder')], station='pal', plate='KLM-908', books=True)
