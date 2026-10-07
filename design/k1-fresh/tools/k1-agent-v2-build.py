@@ -251,7 +251,7 @@ SLOT_TOOLS = {
 LANGUAGE_CORE = '''const LANGUAGE_WORDS = {
   English: 'the a an and or is are was be you your can could would please do does have has what which when where how much many about after before tomorrow today times time day week next book booking me my we our to of for with on at in it this that yes no hi hello thanks thank want need move cancel price cost open close hours station',
   Swedish: 'och jag det att är på för inte kan vill har vilken vilka vilket imorgon idag tid tider boka bokning vad kostar hur en ett till av som då fredag måndag tisdag onsdag torsdag lördag söndag hej tack ja nej öppet öppettider stationen avboka flytta pris',
-  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette me ollaan oman omaa kanssa sulla sulle sun mun mut mutta muuten miks miksi mitäs mistä missä kuka mikä onks oon kyl tuo tämä nyt vielä sit siis vai tai jos kun niin vaan ihan voin voi pitää pitäisi mä sä ole ollut sinä sinun teidän ettei jotta tai myös',
+  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette me ollaan oman omaa kanssa sulla sulle sun mun mut mutta muuten miks miksi mitäs mistä missä kuka mikä onks oon kyl tuo tämä nyt vielä siis vai tai jos kun niin vaan ihan voin voi pitää pitäisi mä sä ole ollut sinä sinun teidän ettei jotta tai myös',
 }
 const LANGUAGE_STEMS = {
   Finnish: ['peruu', 'peruut', 'varau', 'varat', 'tunniste', 'katsast', 'rekister', 'haluai', 'haluan', 'huomen', 'aukio', 'aikoj', 'maksa', 'suome', 'kiitos', 'tarvit', 'siirt', 'vapaa'],
@@ -625,6 +625,9 @@ def main():
         booking = build_booking()
         agent = build_agent(booking)
         print(f'booking candidate {booking}\nagent candidate   {agent}\nplayground path   booking-chat{SUFFIX}')
+    elif command == 'agent':
+        booking = by_name(BOOKING_NAME)
+        print('agent candidate  ', build_agent(booking))
     elif command == 'smoke':
         smoke()
     elif command == 'promote':
