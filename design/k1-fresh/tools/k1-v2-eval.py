@@ -47,8 +47,18 @@ AGENT_NAME = os.environ.get('K1_EVAL_AGENT', 'K1 Muster agent v2 (candidate)')
 BOOKING_NAME = os.environ.get('K1_EVAL_BOOKING', 'K1 Muster Booking v2 (candidate)')
 
 
+def all_workflows():
+    items, cursor = [], None
+    while True:
+        page = gate.request('GET', '/workflows?limit=250' + (f'&cursor={cursor}' if cursor else ''))
+        items += page['data']
+        cursor = page.get('nextCursor')
+        if not cursor:
+            return items
+
+
 def workflow_id(name):
-    for item in gate.request('GET', '/workflows?limit=250')['data']:
+    for item in all_workflows():
         if item['name'] == name:
             return item['id']
     raise SystemExit(f'{name} does not exist. Run k1-agent-v2-build.py build first.')
@@ -263,7 +273,7 @@ class Customer:
         q = self.question(reply)
         if re.search(r'e-?mail|sähköposti|e-post', q):
             return self.email or self.phrases['noemail']
-        if re.search(r'\b(name|nimi|nimesi|nimellä|namn|namnet|heißt)\b', q):
+        if re.search(r'\b(name|nimi|nimen|nimesi|nimellä|namn|namnet|heißt)\b', q):
             return self.phrases['name']
         if re.search(r'petrol|diesel|bensa|electric|sähkö|hybrid|elbil|polttomoot|bensin', q) and self.fuel:
             return self.fuel
@@ -271,9 +281,11 @@ class Customer:
             return self.plate or self.phrases['yes']
         undated = re.sub(r'(?<!klo )(?<!kl )(?<![\d.:])([1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(?!\d)', ' ', reply)
         undated = re.sub(r'\b\d{1,2}\.\d{1,2}(?=\s+(?:kl|klo|at|klockan)\b)', ' ', undated)
-        undated = re.sub(r'\b(?:ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\.?\s+\d{1,2}\.\d{1,2}\b\.?(?![:\d])', ' ', undated, flags=re.I)
+        undated = re.sub(r'\b(?:ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\.?\s+\d{1,2}\.\d{1,2}\b\.?(?!\d)(?!:\d)', ' ', undated, flags=re.I)
         times = [f'{int(h):02d}:{m}' for h, m in TIME.findall(undated)]
-        if times and re.search(r'time|kello|klo|tid|kl|which|kumpi|mikä|vilken|passar|sopii|works', q):
+        offered = [t for t in times if t in {f'{int(h):02d}:{m}' for h, m in TIME.findall(q)}]
+        times = offered or times
+        if times and (offered or re.search(r'time|kello|klo|tid|kl|which|kumpi|mikä|minkä|vilken|passar|sopii|works|valit|ajan|ajoista', q)):
             choice = {'first': times[0], 'last': times[-1], 'second': times[min(1, len(times) - 1)]}[self.pick]
             return self.phrases['time'].format(t=choice)
         if re.search(r'day|date|päivä|päivälle|dag|when|milloin|quando|vilken dag', q):
