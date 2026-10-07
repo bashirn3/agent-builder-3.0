@@ -456,8 +456,11 @@ try { playground = Boolean($('Playground Turn').isExecuted) } catch (error) { pl
 if (!playground) return []
 const body = $('Playground').first().json.body || {}
 const text = String(body.text || '')
-const lang = /\b(hej|visst|tack|boka|besiktning|vad|hur|vilken)\b|nästa|imorgon/i.test(text) ? 'sv'
-  : /\b(joo|moi|hei|kiitos|huomenna|ensi|varaa|katsastus|mitä|milloin)\b|kyllä/i.test(text) ? 'fi' : 'en'
+const leadLanguage = (String(body.leadContext || '').match(/Customer's language:\s*([A-Za-z]+)/i) || [])[1] || ''
+const fallbackLang = { finnish: 'fi', swedish: 'sv', english: 'en' }[leadLanguage.toLowerCase()] || 'fi'
+const lang = /\b(hej|visst|tack|boka|besiktning|vad|hur|vilken|var|har|du|fått|jag|mitt|min|inte|och|det)\b|nästa|imorgon/i.test(text) ? 'sv'
+  : /\b(joo|moi|hei|kiitos|huomenna|ensi|varaa|katsastus|mitä|milloin|mistä|olet|minun|miksi)\b|kyllä/i.test(text) ? 'fi'
+  : /\b(the|what|when|where|how|can|please|you|my|is|are|do|does)\b/i.test(text) ? 'en' : fallbackLang
 const reply = { fi: 'En voinut käsitellä tuota viestiä. Voitko kirjoittaa sen toisin, tai soittaa numeroon 0306 100 100?',
   sv: 'Jag kunde inte behandla det meddelandet. Kan du skriva det på ett annat sätt, eller ringa 0306 100 100?',
   en: "I couldn't process that message. Could you rephrase it, or call 0306 100 100?" }[lang]

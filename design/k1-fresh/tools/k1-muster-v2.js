@@ -496,6 +496,11 @@ async function stationInfo() {
 // ---------- Booking (staging only) ----------
 const cleanName = (value) => String(value || '').replace(/<[^>]*>/g, ' ').replace(/[^\p{L}\p{M}' .-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
 const cleanPlate = (value) => String(value || '').toUpperCase().replace(/[^A-Z0-9ÅÄÖ-]/g, '').slice(0, 10)
+const NOT_NAME_WORDS = new Set('test testi testing tester testaus asdf asd qwerty foo bar xxx marketing markkinointi marknadsföring name nimi namn none null undefined unknown anonymous anonyymi ei no yes kyllä ja nej joo ok okay sure hello hei hej moi thanks kiitos tack booking varaus bokning'.split(' '))
+const looksLikeName = (value) => {
+  const words = cleanName(value).toLowerCase().split(' ').filter((word) => word.replace(/[^\p{L}]/gu, '').length >= 2)
+  return words.length > 0 && words.some((word) => !NOT_NAME_WORDS.has(word.replace(/[^\p{L}]/gu, '')))
+}
 function customerBody(fields, stationId) {
   const name = cleanName(fields.name) || 'Wasup Testi'
   const bits = name.split(/\s+/)
@@ -532,6 +537,7 @@ async function book() {
   const plate = cleanPlate(body.rek || body.plate)
   if (plate.replace(/[^A-Z0-9ÅÄÖ]/g, '').length < 2) return { ok: false, error: 'A valid registration number is required. Ask the customer for the plate.' }
   if (!cleanName(body.name)) return { ok: false, error: 'A name is required for the booking. Ask the customer for their name.' }
+  if (!looksLikeName(body.name)) return { ok: false, error: 'That does not look like a person\'s name, so nothing was booked. Ask the customer once, in one short question, for the name to put on the booking.' }
   if (!(await insideHours(slot))) return { ok: false, error: 'That time is outside the station opening hours. Call get_slots again and offer a listed time.' }
   const time = slot.time.replace('Z', '.000Z')
   const held = await muster('POST', '/PendingReservations', { time, stationId: slot.stationId, productIds: slot.productIds, plateNumber: plate, vehicleCategory: slot.category, groupId: null })

@@ -139,7 +139,7 @@ if __name__ == '__main__':
     elif command == 'show':
         show()
     elif command == 'fold':
-        fold(sys.argv[2] if len(sys.argv) > 2 else None)
+        fold(sys.argv[2] if len(sys.argv) > 2 else None, int(sys.argv[3]) if len(sys.argv) > 3 else 5)
     elif command == 'save' and len(sys.argv) > 2:
         save(sys.argv[2])
     else:
