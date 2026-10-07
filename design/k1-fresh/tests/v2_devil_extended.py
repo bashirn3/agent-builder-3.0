@@ -432,6 +432,11 @@ def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
       [ESC, ('booked',), ('no_reply', r'0306'), ('no_reply', WEB_PRICE), ('no_reply', HEDGE_PRICE_SOFT), ('no_reply', HEDGE_HOURS), ('no_reply', ASK_DATE), ('no_reply', PLATE_RECONFIRM), ('no_reply', REFUSE_NAME),
        ('param', 'get_slots', 'include_measuring', r'^false$'), ('slots_cover', f2.isoformat()), ('param', 'book_inspection_invite', 'name', r'Maria'), ('no_param', 'book_inspection_invite', 'name', r'testi markk|asdf'),
        ('output', r'"product_ids":\s*\[2246\]'), ('no_output', r'"product_ids":\s*\[2246,\s*2254\]')], station='pal', plate='XYZ-441', books=True)
+    FI_REPLY = r'paikallis|suomen|aikaa\b|asema on|\bei ole\b|\bon auki'
+    p('lang.word_finnish_time.en', 'en', 'Are the times in Finnish time or UTC?', [NOBOOK, ESC, ('no_reply', FI_REPLY), ('reply', r'Finnish|local|Helsinki|UTC')])
+    p('lang.word_finnish_station.en', 'en', 'Is the Finnish station open tomorrow?', [NOBOOK, ESC, ('no_reply', FI_REPLY), ('any_tool', GETS)])
+    p('lang.word_swedish_station.en', 'en', 'Is there a Swedish-speaking person at the station?', [NOBOOK, ('no_reply', FI_REPLY + r'|svenska')])
+    p('lang.word_finnish_asked.en', 'en', 'Please answer in Finnish', [NOBOOK, ESC, ('reply', r'[äö]|\bja\b|\bon\b|\bei\b')], expect='fi')
     ASKDAY = r'what day|which day|mille päivälle|minä päivänä|vilken dag|vilka dag'
     OPENER_ASK = ('first_reply_times', 2)
     for lang, word in (('en', 'sure'), ('fi', 'joo'), ('sv', 'visst'), ('en', 'yes please'), ('fi', 'kyllä kiitos'), ('sv', 'ja tack')):

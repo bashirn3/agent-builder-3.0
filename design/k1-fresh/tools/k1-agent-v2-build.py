@@ -258,9 +258,9 @@ const LANGUAGE_STEMS = {
   Swedish: ['bokning', 'avbok', 'besikt', 'registrer', 'öppettid', 'lediga', 'kostar'],
 }
 const LANGUAGE_REQUESTS = [
-  ['Finnish', /suomeksi|suomen kiel|suomea\\b|på finska|\\bfinska\\b|\\bfinnish\\b|\\bpuhu suomea/i],
-  ['Swedish', /ruotsiksi|ruotsin kiel|ruotsia\\b|på svenska|\\bsvenska\\b|\\bswedish\\b/i],
-  ['English', /englanniksi|englannin kiel|englantia\\b|på engelska|\\bengelska\\b|\\benglish\\b/i],
+  ['Finnish', /suomeksi|suomen kiel|suomea\\b|på finska|\\bfinska\\b|\\b(?:in|speak|write|reply|answer|respond|use|switch to|talk|chat|continue in|go with)\\s+(?:in\\s+)?finnish\\b(?!\\s+(?:time|timezone|time zone|station|stations|prices?|market|euros?|currency|law|rules?))|\\bfinnish\\s+(?:please|pls|only)\\b|^\\s*finnish[\\s?!.]*$|\\bpuhu suomea/i],
+  ['Swedish', /ruotsiksi|ruotsin kiel|ruotsia\\b|på svenska|\\bsvenska\\b|\\b(?:in|speak|write|reply|answer|respond|use|switch to|talk|chat|continue in|go with)\\s+(?:in\\s+)?swedish\\b(?!\\s+(?:time|timezone|time zone|station|stations|prices?|market|euros?|currency|law|rules?))|\\bswedish\\s+(?:please|pls|only)\\b|^\\s*swedish[\\s?!.]*$/i],
+  ['English', /englanniksi|englannin kiel|englantia\\b|på engelska|\\bengelska\\b|\\b(?:in|speak|write|reply|answer|respond|use|switch to|talk|chat|continue in|go with)\\s+(?:in\\s+)?english\\b(?!\\s+(?:time|timezone|time zone|station|stations|prices?|market|euros?|currency|law|rules?))|\\benglish\\s+(?:please|pls|only)\\b|^\\s*english[\\s?!.]*$/i],
 ]
 const detectLanguage = (value) => {
   const translating = /k[aä]ännä|kääntä|translate|översätt|\\böversätta/i.test(String(value || ''))
