@@ -381,6 +381,9 @@ def _run(state, scenario, events):
             if auto.turns <= 0 or (auto.goal == 'booked' and any(tool_ok(t['steps'], 'book_inspection_invite') for t in turns)):
                 auto = None
                 continue
+            if auto.goal == 'rebooked' and sum(bool(tool_ok(t['steps'], 'book_inspection_invite')) for t in turns) >= 2:
+                auto = None
+                continue
             if auto.goal == 'cancelled' and any(tool_ok(t['steps'], 'cancel_booking') for t in turns):
                 auto = None
                 continue
