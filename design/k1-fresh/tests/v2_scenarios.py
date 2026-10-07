@@ -409,7 +409,7 @@ def build(Customer, Auto):
             def ld(id, turns, checks, **kw):
                 add(f'leads.{key}.{id}.{lang}', LD, lang, turns, checks, station=key, product=product, **kw)
             ld('book_default', [ASK[lang], Auto(Customer(lang, 'first'))], [('booked',), ('output', rf'"station_id":\s*{own_id}\b'), ('no_output', rf'"station_id":\s*{other_id}\b'), ('no_reply', WHICH)], books=True)
-            ld('info', [INFO[lang]], [('tool', 'get_station_info'), ('reply', own_name), ('no_reply', other_name.split()[-1])])
+            ld('info', [INFO[lang]], [('tool', 'get_station_info'), ('reply', own_name[:-1]), ('no_reply', other_name.split()[-1])])
             ld('other_station', [other_ask[lang], Auto(Customer(lang, 'first'))], [('booked',), ('output', rf'"station_id":\s*{other_id}\b')], books=True)
             ld('kuopio_link', [KUOPIO[lang]], [NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306')])
             ld('closed_station', [PASILA[lang]], [NOBOOK, ('reply', r'ajanvaraus\.k1katsastus|0306|suljettu|closed|stängd|sulje|stänger')])
