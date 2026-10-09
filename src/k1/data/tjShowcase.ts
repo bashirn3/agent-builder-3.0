@@ -8,10 +8,9 @@ type ShowcaseMessage = TestChatMessage & { origin: Origin }
 export type ShowcaseChat = TestChat & {
   conversation: TestChatSummary & { showcase: true }
   messages: ShowcaseMessage[]
-  evidence: string
 }
 
-const makeChat = (key: string, title: string, start: string, evidence: string,
+const makeChat = (key: string, title: string, start: string,
   lines: Array<[role: 'agent' | 'user', text: string, minutes: number, origin: Origin]>): ShowcaseChat => {
   const id = `tj-showcase-${key}`
   const startMs = new Date(start).getTime()
@@ -20,7 +19,6 @@ const makeChat = (key: string, title: string, start: string, evidence: string,
     createdAt: new Date(startMs + minutes * 60_000).toISOString(),
   }))
   return {
-    evidence,
     conversation: {
       id, title, source: 'playground', versionId: '', versionNumber: 0, isDraft: false,
       startedBy: null, createdAt: start, updatedAt: messages.at(-1)!.createdAt,
@@ -32,16 +30,14 @@ const makeChat = (key: string, title: string, start: string, evidence: string,
 }
 
 export const TJ_SHOWCASE: ShowcaseChat[] = [
-  makeChat('harri', 'Harri · Confirmed in chat · CGP-3••', '2026-06-01T10:12:00+03:00',
-    'The supplied excerpt contains a booking confirmation in chat. A later calendar snapshot matched the registration, but does not independently establish that the exact 13.00 slot was committed. The intermediate reply is illustrative.', [
+  makeChat('harri', 'Harri · Confirmed in chat · CGP-3••', '2026-06-01T10:12:00+03:00', [
       ['agent', 'Hei Harri! Autosi (CGP-3••) katsastus erääntyy pian. Haluatko, että varaan sinulle ajan?', 0, 'supplied'],
       ['user', 'Muistaakseni 15.6 mennessä pitää katsastaa. Auto nyt myynnissä mutta varaa aika kesäkuulle. Perun ajan jos auto myyty. Haluan varauksen Leppävedelle', 7, 'supplied'],
       ['agent', 'Selvä homma! Katsotaan sulle sopiva aika Leppävedelle. 😊', 8, 'illustrative'],
       ['user', '10.6 13.00 käy', 12, 'supplied'],
       ['agent', 'Mahtavaa! 👍 Aikasi on varattu:\n\n📅 10.6.2026\n🕒 13.00\n📍 TJ Katsastus Laukaa\n\nNähdään katsastuksessa!', 14, 'supplied'],
     ]),
-  makeChat('jani', 'Jani · New vehicle · CNS-1••', '2026-10-09T09:05:00+03:00',
-    'Only the original reminder and the customer’s sold-car reply are supplied as excerpts. The replacement vehicle, lookup and reminder dialogue below is illustrative; no vehicle lookup or future reminder is verified.', [
+  makeChat('jani', 'Jani · New vehicle · CNS-1••', '2026-10-09T09:05:00+03:00', [
       ['agent', 'Moro Jani Pyry tästä TJ-Katsastukselta. Kattelin et jos sulla edelleen on CNS-1•• alla, niin sen katsastus olis kohta taas tulossa. Ajattelin et hoidetaas ajoissa kuntoon ku ei viitti paperitta ajella, mikä päivä sulle sopis parhaiten?', 0, 'supplied'],
       ['user', 'ei oo enää, myin sen pari kuukautta sitte', 9, 'supplied'],
       ['agent', 'Aivan, kiitos kun kerroit! Onko sulla jo uus auto alla? Voin auttaa senkin katsastuksen kanssa.', 10, 'illustrative'],
@@ -52,8 +48,7 @@ export const TJ_SHOWCASE: ShowcaseChat[] = [
       ['user', 'joo laita vaa 👍', 25, 'illustrative'],
       ['agent', 'Selvä — muistutuksen voi asettaa, kun auton katsastustiedot on vahvistettu. Palaan silloin asiaan.', 26, 'illustrative'],
     ]),
-  makeChat('sara', 'Sara · Work-shift scheduling · LMC-9••', '2026-10-02T11:38:00+03:00',
-    'The customer’s week-41 request is supplied as an excerpt. Availability, choice and confirmation below illustrate a possible journey; neither the exact appointment nor a completed booking was verified by the supplied transcript.', [
+  makeChat('sara', 'Sara · Work-shift scheduling · LMC-9••', '2026-10-02T11:38:00+03:00', [
       ['agent', 'Moro Sara Pyry tästä TJ-Katsastukselta. Kattelin et jos sulla edelleen on LMC-9•• alla, niin sen katsastus olis kohta taas tulossa. Ajattelin et hoidetaas ajoissa kuntoon ku ei viitti paperitta ajella, mikä päivä sulle sopis parhaiten?', 0, 'supplied'],
       ['user', 'Moi! No viikolla 41 sopis parhaiten kun oon aamuvuorossa niin olis sen jälkeen kätevä ajella siihen teille. 5.10 , 6.10 tai 7.10 niin oisko jolkkein noista päivistä semmosta aikaa kuin 14:45 ?', 18, 'supplied'],
       ['agent', 'Joo, iltapäivä aamuvuoron jälkeen käy järkeen. Tarkistan ensin nuo päivät ja klo 14.45 — en vielä varaa mitään.', 19, 'illustrative'],
@@ -61,8 +56,7 @@ export const TJ_SHOWCASE: ShowcaseChat[] = [
       ['user', 'joo toi ois hyvä', 25, 'illustrative'],
       ['agent', 'Hyvä! Tarkistaisin ajan vielä varausjärjestelmästä ja vahvistaisin varauksen vasta sitten. Mikä nimi laitetaan varaukseen?', 26, 'illustrative'],
     ]),
-  makeChat('inkeri', 'Inkeri · Finding a day · ECY-7••', '2026-10-09T10:06:00+03:00',
-    'The customer’s open-ended date request is supplied as an excerpt. All later messages are illustrative. No 14.30 availability, exact Friday date or confirmed appointment was verified.', [
+  makeChat('inkeri', 'Inkeri · Finding a day · ECY-7••', '2026-10-09T10:06:00+03:00', [
       ['agent', 'Moro Inkeri Pyry tästä TJ-Katsastukselta. Kattelin et jos sulla edelleen on ECY-7•• alla, niin sen katsastus olis kohta taas tulossa. Ajattelin et hoidetaas ajoissa kuntoon ku ei viitti paperitta ajella, mikä päivä sulle sopis parhaiten?', 0, 'supplied'],
       ['user', 'Moi! Joo on, kiitos muistutuksesta. Mulle sopii kyllä jo esim tänään päivemmällä tai sitten ensiviikolla torstaina tai perjantaina?', 10, 'supplied'],
       ['agent', 'Moikka! Onhan tässä vaihtoehtoja 😊. Haluatko tulla jo tänään vai katsotaanko ens viikon loppupuolta?', 11, 'illustrative'],
@@ -72,6 +66,12 @@ export const TJ_SHOWCASE: ShowcaseChat[] = [
       ['agent', 'Kiitos! Tarkistaisin Leppäveden perjantain ajat ja tarjoaisin pari oikeasti vapaata vaihtoehtoa ennen varausta.', 21, 'illustrative'],
     ]),
 ]
+
+const SHOWCASE_VIEWERS = ['arslan@tryrapidscreen.com']
+
+export function canSeeShowcase(email: string | null | undefined) {
+  return SHOWCASE_VIEWERS.includes((email ?? '').trim().toLowerCase())
+}
 
 export function showcaseById(id: string): ShowcaseChat | null {
   return TJ_SHOWCASE.find((chat) => chat.conversation.id === id) ?? null

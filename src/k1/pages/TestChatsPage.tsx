@@ -17,7 +17,8 @@ import { Spinner } from '../ui/controls'
 import { ThreadSkeleton } from '../ui/skeletons'
 import { orderVersions, versionHint } from './versionText'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
-import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../data/tjShowcase'
+import { TJ_SHOWCASE, canSeeShowcase, matchingShowcase, showcaseById } from '../data/tjShowcase'
+import { useSession } from '../auth/session'
 
 export type ChatFilters = Omit<TestChatFilters, 'from' | 'to' | 'query'> & { from: string | null; to: string | null; query: string }
 
@@ -239,6 +240,9 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 }) {
   const t = useCopy()
+  const session = useSession()
+  const showcaseAllowed = canSeeShowcase(session.user?.email)
+  const showcaseFor = (chatId: string) => (showcaseAllowed ? showcaseById(chatId) : null)
   const [items, setItems] = useState<TestChatSummary[]>(() => listCache.get(listKey(toApi(filters))) ?? [])
   const [loading, setLoading] = useState(() => !listCache.has(listKey(toApi(filters))))
   const [searching, setSearching] = useState(false)
@@ -307,12 +311,14 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   }, [])
 
   useEffect(() => {
-    if (!compact && !id) go({ page: 'chats', id: TJ_SHOWCASE[0].conversation.id }, true)
-  }, [compact, id])
+    if (compact || id) return
+    const first = showcaseAllowed ? TJ_SHOWCASE[0].conversation.id : items[0]?.id
+    if (first) go({ page: 'chats', id: first }, true)
+  }, [compact, id, items, showcaseAllowed])
 
   useEffect(() => {
     if (!id) { setSelected(null); return }
-    const showcase = showcaseById(id)
+    const showcase = showcaseFor(id)
     if (showcase) {
       setSelected(showcase)
       setMessages(toMessages(showcase))
@@ -336,7 +342,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       .catch(() => { if (!cancelled && !cached) setSelected(null) })
       .finally(() => { if (!cancelled) setDetailLoading(false) })
     return () => { cancelled = true }
-  }, [id])
+  }, [id, showcaseAllowed])
 
   const rate = (messageId: string, value: 'up' | 'down') => {
     const message = messages.find((item) => item.id === messageId)
@@ -365,7 +371,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
 
   const pendingQuery = query.trim() !== filters.query.trim()
   const realShown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
-  const showcaseShown = matchingShowcase(query).filter(() => !filters.feedback && !filters.from && !filters.to && !filters.source && !filters.versions.length)
+  const showcaseShown = (showcaseAllowed ? matchingShowcase(query) : []).filter(() => !filters.feedback && !filters.from && !filters.to && !filters.source && !filters.versions.length)
   const shown = [...showcaseShown.map((chat) => chat.conversation), ...realShown]
   const count = chatFilterCount(filters)
   const tracking = config?.tracking !== false
@@ -420,7 +426,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         </>
       )}
       items={shown.map((item) => {
-        const illustrative = Boolean(showcaseById(item.id))
+        const illustrative = Boolean(showcaseFor(item.id))
         return {
           id: item.id,
           title: item.title || t.chats.openerOnly,
@@ -454,7 +460,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   )
 
   const conversation = selected?.conversation?.id === id ? selected.conversation : null
-  const showcase = conversation ? showcaseById(conversation.id) : null
+  const showcase = conversation ? showcaseFor(conversation.id) : null
   const detail = detailLoading && !conversation ? (
     <ThreadSkeleton label={t.chats.loadingChat} />
   ) : conversation ? (
@@ -483,13 +489,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     >
       {tab === 'chat' ? (
         <div className={`k1-thread${showcase ? ' k1-thread--showcase' : ''}`}>
-          {showcase ? (
-            <div className="k1-showcase__notice" role="note">
-              <strong>{t.chats.showcaseNotice}</strong>
-              <p>{t.chats.showcaseClock}</p>
-              <p>{showcase.evidence}</p>
-            </div>
-          ) : <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>}
+          {!showcase && <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>}
           {messages.map((message, index) => showcase ? (
             <div key={message.id} className="k1-showcase__message">
               {index > 0 && showcase.messages[index].origin !== showcase.messages[index - 1].origin && <span className="k1-showcase__section">{showcase.messages[index].origin === 'illustrative' ? t.chats.showcaseIllustrative : t.chats.showcaseSupplied}</span>}
@@ -504,11 +504,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         </div>
       ) : (
         <Facts rows={[
-          ...(showcase ? [
-            [t.chats.showcaseStatus, t.chats.showcaseNotice],
-            [t.chats.showcaseTimeLabel, t.chats.showcaseClock],
-            [t.chats.showcaseEvidence, showcase.evidence],
-          ] as Array<[string, ReactNode]> : [
+          ...(showcase ? [] : [
             [t.chats.version, versionTag(conversation)],
             [t.chats.source, sourceLabel(conversation.source)],
             [t.chats.thumbsUp, String(messages.filter((message) => message.feedback === 'up').length)],
