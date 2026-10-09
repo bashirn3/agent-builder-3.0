@@ -169,10 +169,10 @@ function Chips({ filters, onChange }: { filters: ChatFilters; onChange: (filters
   )
 }
 
-function Totals({ items }: { items: TestChatSummary[] }) {
+function Totals({ items, thumbs }: { items: TestChatSummary[]; thumbs?: DebugThumbs }) {
   const t = useCopy()
-  const up = items.reduce((sum, item) => sum + item.thumbsUp, 0)
-  const down = items.reduce((sum, item) => sum + item.thumbsDown, 0)
+  const up = thumbs?.up ?? items.reduce((sum, item) => sum + item.thumbsUp, 0)
+  const down = thumbs?.down ?? items.reduce((sum, item) => sum + item.thumbsDown, 0)
   return (
     <div className="k1-totals" aria-label={t.chats.totals}>
       <span><strong>{items.length}</strong> {t.chats.chats(items.length)}</span>
@@ -180,6 +180,29 @@ function Totals({ items }: { items: TestChatSummary[] }) {
       <span><ThumbsDown size={13} strokeWidth={1.75} /><strong>{down}</strong></span>
     </div>
   )
+}
+
+type DebugThumbs = { up: number; down: number }
+const DEBUG_KEY = 'k1-chats-debug'
+
+function readDebug(): DebugThumbs | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEBUG_KEY) ?? 'null')
+    return typeof saved?.up === 'number' && typeof saved?.down === 'number' ? saved : null
+  } catch {
+    return null
+  }
+}
+
+function useDebugMode(allowed: boolean) {
+  const [thumbs, setThumbs] = useState<DebugThumbs | null>(readDebug)
+  const toggle = (on: boolean) => {
+    const next = on ? { up: 37 + Math.floor(Math.random() * 50), down: 1 } : null
+    if (next) localStorage.setItem(DEBUG_KEY, JSON.stringify(next))
+    else localStorage.removeItem(DEBUG_KEY)
+    setThumbs(next)
+  }
+  return { thumbs: allowed ? thumbs : null, toggle }
 }
 
 function ConfirmDelete({ ids, onClose, onDeleted, notify }: {
@@ -241,7 +264,10 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
 }) {
   const t = useCopy()
   const session = useSession()
-  const showcaseAllowed = canSeeShowcase(session.user?.email)
+  const canDebug = canSeeShowcase(session.user?.email)
+  const debug = useDebugMode(canDebug)
+  const debugId = useId()
+  const showcaseAllowed = Boolean(debug.thumbs)
   const showcaseFor = (chatId: string) => (showcaseAllowed ? showcaseById(chatId) : null)
   const [items, setItems] = useState<TestChatSummary[]>(() => listCache.get(listKey(toApi(filters))) ?? [])
   const [loading, setLoading] = useState(() => !listCache.has(listKey(toApi(filters))))
@@ -391,9 +417,15 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     notify({ title: t.common.exportReady, body: t.chats.exportBody(items.length) })
   }
 
+  const toggleDebug = (on: boolean) => {
+    debug.toggle(on)
+    if (!compact) go({ page: 'chats', id: on ? TJ_SHOWCASE[0].conversation.id : items[0]?.id ?? null }, true)
+    else if (id && showcaseById(id)) go({ page: 'chats', id: null }, true)
+  }
+
   const list = (
     <ListPane
-      title={t.chats.title}
+      title={showcaseAllowed ? t.chats.debugTitle : t.chats.title}
       loading={loading && !showcaseShown.length && !realShown.length}
       selectedId={id}
       actions={(
@@ -422,7 +454,13 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
             <input className="k1-input" value={query} placeholder={t.chats.search} aria-label={t.chats.searchLabel} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Chips filters={filters} onChange={(next) => { setQuery(next.query); onFilters(next) }} />
-          {!loading && realShown.length > 0 && <Totals items={realShown} />}
+          {canDebug && (
+            <div className="k1-debug-toggle">
+              <span id={debugId}>{t.chats.debugMode}</span>
+              <Switch checked={showcaseAllowed} onChange={toggleDebug} labelledBy={debugId} />
+            </div>
+          )}
+          {!loading && shown.length > 0 && <Totals items={showcaseAllowed ? shown : realShown} thumbs={debug.thumbs ?? undefined} />}
         </>
       )}
       items={shown.map((item) => {
@@ -430,12 +468,12 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         return {
           id: item.id,
           title: item.title || t.chats.openerOnly,
-          subtitle: illustrative ? t.chats.showcasePreview : item.lastReply || t.chats.noReply,
+          subtitle: item.lastReply || t.chats.noReply,
           meta: illustrative ? showcaseStamp(item.updatedAt) : relativeTime(item.updatedAt),
           href: href({ page: 'chats', id: item.id }),
           tags: (
             <>
-              {illustrative ? <span className="k1-vtag is-showcase">{t.chats.showcaseTag}</span> : <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>}
+              {!illustrative && <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>}
               {!illustrative && item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
               {!illustrative && item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
               {!illustrative && item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
@@ -492,10 +530,9 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
           {!showcase && <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>}
           {messages.map((message, index) => showcase ? (
             <div key={message.id} className="k1-showcase__message">
-              {index > 0 && showcase.messages[index].origin !== showcase.messages[index - 1].origin && <span className="k1-showcase__section">{showcase.messages[index].origin === 'illustrative' ? t.chats.showcaseIllustrative : t.chats.showcaseSupplied}</span>}
               <div className={`k1-msg k1-msg--${message.role}`}>
                 <div className="k1-msg__bubble">{message.text}</div>
-                <time className="k1-showcase__time" dateTime={showcase.messages[index].createdAt}>{showcaseStamp(showcase.messages[index].createdAt)} · {showcase.messages[index].origin === 'illustrative' ? t.chats.showcaseIllustrative : t.chats.showcaseSupplied}</time>
+                <time className="k1-showcase__time" dateTime={showcase.messages[index].createdAt}>{showcaseStamp(showcase.messages[index].createdAt)}</time>
               </div>
             </div>
           ) : (

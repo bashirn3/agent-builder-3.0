@@ -842,6 +842,7 @@ body { overscroll-behavior: none; }
 .k1-list-search { position: relative; display: flex; align-items: center; margin: 0 16px 8px; color: var(--k1-muted); }
 .k1-list-search svg { position: absolute; left: 10px; pointer-events: none; }
 .k1-list-search .k1-input { height: 36px; width: 100%; padding-left: 30px; }
+.k1-debug-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 16px 8px; font-size: 12px; color: var(--k1-muted); }
 .k1-totals { display: flex; align-items: center; gap: 14px; margin: 0 16px 8px; font-size: 12px; color: var(--k1-muted); }
 .k1-totals span { display: inline-flex; align-items: center; gap: 4px; }
 .k1-totals strong { color: var(--k1-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -853,8 +854,6 @@ body { overscroll-behavior: none; }
 .k1-vcount { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--k1-success); font-variant-numeric: tabular-nums; }
 .k1-vcount.is-down { color: var(--k1-danger); }
 .k1-thread__version { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--k1-muted); margin-bottom: 4px; }
-.k1-vtag.is-showcase { background: var(--k1-line-soft); color: var(--k1-ink-2); }
-.k1-showcase__section { display: block; margin: 8px 0 3px; padding-top: 10px; border-top: 1px solid var(--k1-line); color: var(--k1-muted); font-size: 11px; font-weight: 600; }
 .k1-showcase__message { display: grid; gap: 5px; }
 .k1-thread--showcase .k1-msg { display: flex; flex-direction: column; align-items: flex-start; }
 .k1-thread--showcase .k1-msg--user { align-items: flex-end; }
