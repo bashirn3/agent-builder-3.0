@@ -1,5 +1,7 @@
 const BASE = import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
 const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefined
+// Points the tester at another agent workflow (for example /booking-chat-v2) without changing the saved setup.
+const CHAT_PATH = (import.meta.env?.VITE_K1_CHAT_PATH as string | undefined)?.trim() || '/booking-chat'
 export const TENANT_KEY = 'k1_katsastus_demo'
 export const remote = Boolean(BASE)
 
@@ -32,6 +34,8 @@ export type LeadRow = {
   Language: string
   LastInspection: string
   Reason: string
+  VehicleCategory?: string
+  PowerType?: string
 }
 
 export type VersionRecord = {
@@ -133,6 +137,10 @@ export type TurnInput = {
   leadContext?: string
   phone?: string
   stationId?: number | null
+  stationName?: string
+  product?: string
+  vehicleCategory?: string
+  plate?: string
   history: Array<{ role: 'agent' | 'user'; text: string }>
 }
 
@@ -182,8 +190,17 @@ export const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in cry
 
 const pause = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
-let sessionToken: (() => Promise<string | null>) | null = null
-export const setSessionTokenProvider = (provider: (() => Promise<string | null>) | null) => { sessionToken = provider }
+// fresh asks Clerk for a new token instead of the cached one (a cached token can be seconds from its one-minute expiry).
+let sessionToken: ((fresh?: boolean) => Promise<string | null>) | null = null
+export const setSessionTokenProvider = (provider: ((fresh?: boolean) => Promise<string | null>) | null) => { sessionToken = provider }
+
+async function readToken(fresh: boolean) {
+  try {
+    return sessionToken ? await sessionToken(fresh) : null
+  } catch {
+    throw new AccessError('signin_required')
+  }
+}
 
 export class AccessError extends Error {
   reason: 'signin_required' | 'team_required'
@@ -194,53 +211,51 @@ export class AccessError extends Error {
 }
 
 async function secure<T>(action: string, body: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
-  let token: string | null = null
-  try {
-    token = sessionToken ? await sessionToken() : null
-  } catch {
-    throw new AccessError('signin_required')
+  // A 401 can just mean the one-minute session token expired while the request waited, so ask for a new one and send it once more.
+  for (let attempt = 0; ; attempt++) {
+    const token = await readToken(attempt > 0)
+    if (!token) throw new AccessError('signin_required')
+    let response: Response
+    try {
+      response = await fetch(`${BASE}/secure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-K1-Session': token },
+        body: JSON.stringify({ action, ...body }),
+        signal,
+      })
+    } catch (error) {
+      if (signal?.aborted) throw error
+      throw new Error('network_failed')
+    }
+    if (response.status === 401 && attempt === 0) continue
+    const data = await response.json().catch(() => null) as ({ error?: string } & T) | null
+    if (response.status === 401) throw new AccessError('signin_required')
+    if (response.status === 403) throw new AccessError('team_required')
+    if (!response.ok || !data) throw new Error(`request_failed:${response.status}`)
+    return data
   }
-  if (!token) throw new AccessError('signin_required')
-  let response: Response
-  try {
-    response = await fetch(`${BASE}/secure`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-K1-Session': token },
-      body: JSON.stringify({ action, ...body }),
-      signal,
-    })
-  } catch (error) {
-    if (signal?.aborted) throw error
-    throw new Error('network_failed')
-  }
-  const data = await response.json().catch(() => null) as ({ error?: string } & T) | null
-  if (response.status === 401) throw new AccessError('signin_required')
-  if (response.status === 403) throw new AccessError('team_required')
-  if (!response.ok || !data) throw new Error(`request_failed:${response.status}`)
-  return data
 }
 
 // Every builder endpoint checks the Clerk session and team, like the customer data endpoint.
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  let token: string | null = null
-  try {
-    token = sessionToken ? await sessionToken() : null
-  } catch {
-    throw new AccessError('signin_required')
+  for (let attempt = 0; ; attempt++) {
+    // Chat turns can queue for several seconds in n8n before the token is checked, so they always carry a freshly issued one.
+    const token = await readToken(attempt > 0 || path === CHAT_PATH)
+    const response = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
+        ...(token ? { 'X-K1-Session': token } : {}),
+        ...init?.headers,
+      },
+    })
+    if (response.status === 401 && attempt === 0 && sessionToken) continue
+    if (response.status === 401) throw new AccessError('signin_required')
+    if (response.status === 403) throw new AccessError('team_required')
+    if (!response.ok) throw new Error(`request_failed:${response.status}`)
+    return await response.json() as T
   }
-  const response = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
-      ...(token ? { 'X-K1-Session': token } : {}),
-      ...init?.headers,
-    },
-  })
-  if (response.status === 401) throw new AccessError('signin_required')
-  if (response.status === 403) throw new AccessError('team_required')
-  if (!response.ok) throw new Error(`request_failed:${response.status}`)
-  return await response.json() as T
 }
 
 // ---------- Offline store (no backend configured) ----------
@@ -442,7 +457,7 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
     writeLocal(store)
     return { reply: fallbackReply, demo: true, recorded: true, messageId: agentMessage.id, userMessageId: userMessage.id, toolCalls: [] }
   }
-  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>('/booking-chat', {
+  const result = await call<{ reply: string; mode: string; recorded?: boolean; messageId?: string | null; userMessageId?: string | null; toolCalls?: ToolCall[] }>(CHAT_PATH, {
     method: 'POST',
     body: JSON.stringify({
       tenantKey: TENANT_KEY,
@@ -458,6 +473,10 @@ export async function sendTurn(input: TurnInput, fallbackReply: string): Promise
       leadContext: input.leadContext ?? '',
       phone: input.phone ?? '',
       stationId: input.stationId ?? null,
+      stationName: input.stationName ?? '',
+      product: input.product ?? '',
+      vehicleCategory: input.vehicleCategory ?? '',
+      plate: input.plate ?? '',
       text: [...input.history].reverse().find((message) => message.role === 'user')?.text ?? '',
       messages: input.history.map((message) => ({ role: message.role === 'agent' ? 'assistant' : 'user', content: message.text })),
     }),
@@ -522,6 +541,22 @@ export async function setFeedback(messageId: string, feedback: Feedback): Promis
   await call('/feedback', { method: 'POST', body: JSON.stringify({ messageId, feedback }) })
 }
 
+export async function deleteTestChats(ids: string[]): Promise<number> {
+  const unique = [...new Set(ids)]
+  if (!unique.length) return 0
+  if (!remote) {
+    await pause(250)
+    const store = readLocal()
+    const before = store.chats.length
+    store.chats = store.chats.filter((chat) => !unique.includes(chat.conversation.id))
+    writeLocal(store)
+    return before - store.chats.length
+  }
+  const result = await secure<{ ok: boolean; deleted?: number; error?: string }>('chats.delete', { ids: unique })
+  if (!result.ok) throw new Error(result.error ?? 'delete_failed')
+  return result.deleted ?? 0
+}
+
 export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal): Promise<TestChatSummary[]> {
   if (!remote) {
     await pause(250)
@@ -539,7 +574,7 @@ export async function listTestChats(filters: TestChatFilters, signal?: AbortSign
   if (filters.to) params.set('to', filters.to)
   if (filters.query.trim()) params.set('q', filters.query.trim())
   const { items } = await call<{ items: TestChatSummary[] }>(`/test-chats?${params}`, { signal })
-  return items
+  return items.map((item) => ({ ...item, title: stripInstructions(item.title) }))
 }
 
 export async function getTestChat(id: string): Promise<TestChat | null> {
@@ -548,8 +583,12 @@ export async function getTestChat(id: string): Promise<TestChat | null> {
     return chat ? { conversation: summarise(chat), messages: chat.messages } : null
   }
   const result = await call<TestChat | { error: string }>(`/test-chat?id=${encodeURIComponent(id)}`)
-  return 'error' in result ? null : result
+  if ('error' in result) return null
+  return { ...result, messages: result.messages.map((message) => (message.role === 'user' ? { ...message, text: stripInstructions(message.text) } : message)) }
 }
+
+// Earlier turns stored the model-only "[REPLY LANGUAGE: ...]" order after the customer's words; it is never part of what they wrote.
+const stripInstructions = (text: string) => text.replace(/\s*\[REPLY LANGUAGE:[^\]]*\]\s*$/, '').trim()
 
 export async function requestDeploy(input: DeployRequestInput): Promise<DeployRequest> {
   if (!remote) {
@@ -717,6 +756,7 @@ function sampleMusterDay(day: string, stationIds: number[], closed: StationStatu
         Language: ['Suomi', 'Suomi', 'Ruotsi', 'Englanti'][(seed + index + offset) % 4],
         LastInspection: `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`,
         Reason: 'Customer relationship',
+        VehicleCategory: 'M1',
       }
     }))
   const filtered = items.filter((row) => closed === 'all' || (closed === 'closed') === row.isClosed)

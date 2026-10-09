@@ -1,0 +1,2772 @@
+{
+ "generated": "2026-09-29T13:11:19+00:00",
+ "counts": {
+  "site_pages": 54,
+  "open_on_site": 53,
+  "muster_k1_bookable": 2,
+  "reminder_names": 56,
+  "reminder_only": 6
+ },
+ "stations": [
+  {
+   "slug": "aanekoski-kotakennaantie",
+   "url": "https://www.k1katsastus.fi/asema/aanekoski-kotakennaantie/",
+   "title": "Äänekoski Kotakennääntie",
+   "address": "Kotakennääntie 34, 44100 Äänekoski",
+   "k1_booking_station_id": 1480,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/aanekoski-kotakennaantie/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:30-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:30-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:30-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:30-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:30-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:30-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:30-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "alavus-rekola",
+   "url": "https://www.k1katsastus.fi/asema/alavus-rekola/",
+   "title": "Alavus Rekola",
+   "address": "Telekuja 7, 63300 Alavus",
+   "k1_booking_station_id": 1485,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/alavus-rekola/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:40"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "espoo-koskelo",
+   "url": "https://www.k1katsastus.fi/asema/espoo-koskelo/",
+   "title": "Espoo Koskelo",
+   "address": "Koskelonkuja 1 B 44, 02920 Espoo",
+   "k1_booking_station_id": 1489,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/espoo-koskelo/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "espoo-suomenoja",
+   "url": "https://www.k1katsastus.fi/asema/espoo-suomenoja/",
+   "title": "Espoo Suomenoja",
+   "address": "Suomalaistentie 5, 02270 Espoo",
+   "k1_booking_station_id": 1455,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/espoo-suomenoja/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "forssa-paavola",
+   "url": "https://www.k1katsastus.fi/asema/forssa-paavola/",
+   "title": "Forssa Paavola",
+   "address": "Aukeentie 3, 30100 Forssa",
+   "k1_booking_station_id": 1460,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/forssa-paavola/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "helsinki-konala",
+   "url": "https://www.k1katsastus.fi/asema/helsinki-konala/",
+   "title": "Helsinki Konala",
+   "address": "Ristipellontie 21, 00390 Helsinki",
+   "k1_booking_station_id": 1454,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/helsinki-konala/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "helsinki-vuosaari",
+   "url": "https://www.k1katsastus.fi/asema/helsinki-vuosaari/",
+   "title": "Helsinki Vuosaari",
+   "address": "Rahtarinkatu 5, 00980 Helsinki",
+   "k1_booking_station_id": 1476,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/helsinki-vuosaari/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "huittinen-sahko",
+   "url": "https://www.k1katsastus.fi/asema/huittinen-sahko/",
+   "title": "Huittinen Sahko",
+   "address": "Kauppiaskatu 3, 32700 Huittinen",
+   "k1_booking_station_id": 1459,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/huittinen-sahko/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "iisalmi-kiviranta",
+   "url": "https://www.k1katsastus.fi/asema/iisalmi-kiviranta/",
+   "title": "Iisalmi Kiviranta",
+   "address": "Kivirannantie 4, 74130 Iisalmi",
+   "k1_booking_station_id": 1496,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/iisalmi-kiviranta/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "imatra-mansikkala",
+   "url": "https://www.k1katsastus.fi/asema/imatra-mansikkala/",
+   "title": "Imatra Mansikkala",
+   "address": "Sukkulakatu 11, 55120 Imatra",
+   "k1_booking_station_id": 1507,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/imatra-mansikkala/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:30-16:15"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:30-16:15"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:30-16:15"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:30-16:15"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:30-16:15"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:30-16:15"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:30-16:15"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "jarvenpaa-satukallio",
+   "url": "https://www.k1katsastus.fi/asema/jarvenpaa-satukallio/",
+   "title": "Järvenpää Satukallio",
+   "address": "Satukukanpolku 5 A 1, 04430 Järvenpää",
+   "k1_booking_station_id": 1498,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/jarvenpaa-satukallio/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "joensuu-kapykangas",
+   "url": "https://www.k1katsastus.fi/asema/joensuu-kapykangas/",
+   "title": "Joensuu Käpykangas",
+   "address": "Kaltimontie 2, 80100 Joensuu",
+   "k1_booking_station_id": 1477,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/joensuu-kapykangas/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "jyvaskyla-keljo",
+   "url": "https://www.k1katsastus.fi/asema/jyvaskyla-keljo/",
+   "title": "Jyväskylä Keljo",
+   "address": "Pumperinkatu 6, 40500 Jyväskylä",
+   "k1_booking_station_id": 2092,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/jyvaskyla-keljo/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:30-16:30"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": false
+  },
+  {
+   "slug": "jyvaskyla-palokka",
+   "url": "https://www.k1katsastus.fi/asema/jyvaskyla-palokka/",
+   "title": "Jyväskylä Palokka",
+   "address": "Palokanorsi 1, 40270 Jyväskylä",
+   "k1_booking_station_id": 1465,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/jyvaskyla-palokka/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "muster_station_id": 256,
+   "muster_phone": "0306 100 740",
+   "muster_email": "jyvaskyla.palokka@k1katsastus.fi",
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "kaarina-keskusta",
+   "url": "https://www.k1katsastus.fi/asema/kaarina-keskusta/",
+   "title": "Kaarina Keskusta",
+   "address": "Kärrykatu 8, 20780 Kaarina",
+   "k1_booking_station_id": 1457,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/kaarina-keskusta/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "kajaani-kettukallio",
+   "url": "https://www.k1katsastus.fi/asema/kajaani-kettukallio/",
+   "title": "Kajaani Kettukallio",
+   "address": "Kettukalliontie 25, 87100 Kajaani",
+   "k1_booking_station_id": 1513,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/kajaani-kettukallio/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "kemi-karjalahti",
+   "url": "https://www.k1katsastus.fi/asema/kemi-karjalahti/",
+   "title": "Kemi Karjalahti",
+   "address": "Valajankatu 6, 94600 Kemi",
+   "k1_booking_station_id": 1488,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/kemi-karjalahti/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "kotka-sutela",
+   "url": "https://www.k1katsastus.fi/asema/kotka-sutela/",
+   "title": "Kotka Sutela",
+   "address": "Hakamäentie 5, 48400 Kotka",
+   "k1_booking_station_id": 1472,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/kotka-sutela/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "kouvola-korjala",
+   "url": "https://www.k1katsastus.fi/asema/kouvola-korjala/",
+   "title": "Kouvola Korjala",
+   "address": "Kaupinkatu 3, 45130 Kouvola",
+   "k1_booking_station_id": 1473,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/kouvola-korjala/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "kuopio-sorsasalo",
+   "url": "https://www.k1katsastus.fi/asema/kuopio-sorsasalo/",
+   "title": "Kuopio Sorsasalo",
+   "address": "Virranniementie 14, 70420 Kuopio",
+   "k1_booking_station_id": 1512,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/kuopio-sorsasalo/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "lahti-laune",
+   "url": "https://www.k1katsastus.fi/asema/lahti-laune/",
+   "title": "Lahti Laune",
+   "address": "Launeenkatu 82, 15610 Lahti",
+   "k1_booking_station_id": 1470,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/lahti-laune/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "lappeenranta-myllymaki",
+   "url": "https://www.k1katsastus.fi/asema/lappeenranta-myllymaki/",
+   "title": "Lappeenranta Myllymäki",
+   "address": "Alaniitynkatu 5, 53550 Lappeenranta",
+   "k1_booking_station_id": 1475,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/lappeenranta-myllymaki/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "lapua-alanko",
+   "url": "https://www.k1katsastus.fi/asema/lapua-alanko/",
+   "title": "Lapua Alanko",
+   "address": "Latojantie 7, 62100 Lapua",
+   "k1_booking_station_id": 1468,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/lapua-alanko/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "lieto-avanti",
+   "url": "https://www.k1katsastus.fi/asema/lieto-avanti/",
+   "title": "Lieto Avanti",
+   "address": "Avantintie 24, 21420 Lieto",
+   "k1_booking_station_id": 1500,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/lieto-avanti/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": false
+  },
+  {
+   "slug": "lieto-keskusta",
+   "url": "https://www.k1katsastus.fi/asema/lieto-keskusta/",
+   "title": "Lieto Keskusta",
+   "address": "Simpukkatie 2, 21420 Lieto",
+   "k1_booking_station_id": 1453,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/lieto-keskusta/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:40"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:40"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:40"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:40"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "lohja-tynninharju",
+   "url": "https://www.k1katsastus.fi/asema/lohja-tynninharju/",
+   "title": "Lohja Tynninharju",
+   "address": "Maksjoentie 9, 08700 Lohja",
+   "k1_booking_station_id": 1484,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/lohja-tynninharju/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "loviisa-uusikaupunki",
+   "url": "https://www.k1katsastus.fi/asema/loviisa-uusikaupunki/",
+   "title": "Loviisa Uusikaupunki",
+   "address": "Porvoonkatu 8, 07900 Loviisa",
+   "k1_booking_station_id": 1481,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/loviisa-uusikaupunki/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "mantsala-maisala",
+   "url": "https://www.k1katsastus.fi/asema/mantsala-maisala/",
+   "title": "Mäntsälä Maisala",
+   "address": "Maisalantie 16, 04600 Mäntsälä",
+   "k1_booking_station_id": 1474,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/mantsala-maisala/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "mikkeli-pitkajarvi",
+   "url": "https://www.k1katsastus.fi/asema/mikkeli-pitkajarvi/",
+   "title": "Mikkeli Pitkäjärvi",
+   "address": "Hietakatu 3, 50130 Mikkeli",
+   "k1_booking_station_id": 1466,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/mikkeli-pitkajarvi/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "naantali-luolala",
+   "url": "https://www.k1katsastus.fi/asema/naantali-luolala/",
+   "title": "Naantali Luolala",
+   "address": "Linkkikatu 14, 21110 Naantali",
+   "k1_booking_station_id": 1449,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/naantali-luolala/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "orivesi-ysitie",
+   "url": "https://www.k1katsastus.fi/asema/orivesi-ysitie/",
+   "title": "Orivesi Ysitie",
+   "address": "Teollisuustie 23, 35300 Orivesi",
+   "k1_booking_station_id": 1504,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/orivesi-ysitie/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "oulu-alppila",
+   "url": "https://www.k1katsastus.fi/asema/oulu-alppila/",
+   "title": "Oulu Alppila",
+   "address": "Tukkimiehentie 1, 90530 Oulu",
+   "k1_booking_station_id": 1486,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/oulu-alppila/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "oulu-limingantulli",
+   "url": "https://www.k1katsastus.fi/asema/oulu-limingantulli/",
+   "title": "Oulu Limingantulli",
+   "address": "Kallisenkaarre 1, 90400 Oulu",
+   "k1_booking_station_id": 1467,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/oulu-limingantulli/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-03",
+      "weekday": "La",
+      "hours": "09:00-14:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "parkano-teollisuustie",
+   "url": "https://www.k1katsastus.fi/asema/parkano-teollisuustie/",
+   "title": "Parkano Teollisuustie",
+   "address": "Teollisuustie 20, 39700 Parkano",
+   "k1_booking_station_id": 1509,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/parkano-teollisuustie/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "pori-helmentie",
+   "url": "https://www.k1katsastus.fi/asema/pori-helmentie/",
+   "title": "Pori Helmentie",
+   "address": "Helmentie 28, 28100 Pori",
+   "k1_booking_station_id": 1832,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/pori-helmentie/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "porvoo-tarmola",
+   "url": "https://www.k1katsastus.fi/asema/porvoo-tarmola/",
+   "title": "Porvoo Tarmola",
+   "address": "Veckjärventie 5, 06150 Porvoo",
+   "k1_booking_station_id": 2093,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/porvoo-tarmola/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": false
+  },
+  {
+   "slug": "rauma-papinhaka",
+   "url": "https://www.k1katsastus.fi/asema/rauma-papinhaka/",
+   "title": "Rauma Papinhaka",
+   "address": "Sinkokatu 23, 26100 Rauma",
+   "k1_booking_station_id": 1462,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/rauma-papinhaka/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:30-16:30"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "riihimaki-mattila",
+   "url": "https://www.k1katsastus.fi/asema/riihimaki-mattila/",
+   "title": "Riihimäki Mattila",
+   "address": "Tehtaankatu 2, (Euromaster), 11710 Riihimäki",
+   "k1_booking_station_id": 1478,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/riihimaki-mattila/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:15-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:15-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:15-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:15-16:00"
+     },
+     {
+      "date": "2026-10-19",
+      "weekday": "Ma",
+      "hours": "08:15-16:00"
+     },
+     {
+      "date": "2026-10-20",
+      "weekday": "Ti",
+      "hours": "08:15-16:00"
+     },
+     {
+      "date": "2026-10-21",
+      "weekday": "Ke",
+      "hours": "08:15-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "rovaniemi-etelakeskus",
+   "url": "https://www.k1katsastus.fi/asema/rovaniemi-etelakeskus/",
+   "title": "Rovaniemi Eteläkeskus",
+   "address": "Lautatie 1, 96300 Rovaniemi",
+   "k1_booking_station_id": 1510,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/rovaniemi-etelakeskus/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "salo-meriniitty",
+   "url": "https://www.k1katsastus.fi/asema/salo-meriniitty/",
+   "title": "Salo Meriniitty",
+   "address": "Meriniitynkatu 6, 24100 Salo",
+   "k1_booking_station_id": 1461,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/salo-meriniitty/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "seinajoki-nurmo",
+   "url": "https://www.k1katsastus.fi/asema/seinajoki-nurmo/",
+   "title": "Seinäjoki Nurmo",
+   "address": "Nurmontie 111 B, 60510 Seinäjoki",
+   "k1_booking_station_id": 1451,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/seinajoki-nurmo/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "suljettu-raisio-hauninen",
+   "url": "https://www.k1katsastus.fi/asema/suljettu-raisio-hauninen/",
+   "title": "SULJETTU Raisio Hauninen",
+   "address": "Tuotekatu 10, 21200 Raisio",
+   "k1_booking_station_id": null,
+   "station_phone": [],
+   "station_email": [],
+   "hours_by_service": {},
+   "closed_on_site": true,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "tampere-hatanpaan-valtatie",
+   "url": "https://www.k1katsastus.fi/asema/tampere-hatanpaan-valtatie/",
+   "title": "Tampere Hatanpään Valtatie",
+   "address": "Hatanpään valtatie 42, 33900 Tampere",
+   "k1_booking_station_id": null,
+   "station_phone": [],
+   "station_email": [],
+   "hours_by_service": {},
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "tampere-lakalaiva",
+   "url": "https://www.k1katsastus.fi/asema/tampere-lakalaiva/",
+   "title": "Tampere Lakalaiva",
+   "address": "Korjaamonkatu 1, 33840 Tampere",
+   "k1_booking_station_id": 1482,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/tampere-lakalaiva/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "tampere-sarankulma",
+   "url": "https://www.k1katsastus.fi/asema/tampere-sarankulma/",
+   "title": "Tampere Sarankulma",
+   "address": "Nuutisarankatu 35, 33900 Tampere",
+   "k1_booking_station_id": 1452,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/tampere-sarankulma/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "turku-itaharju",
+   "url": "https://www.k1katsastus.fi/asema/turku-itaharju/",
+   "title": "Turku Itäharju",
+   "address": "Munkkionkuja 1, 20520 Turku",
+   "k1_booking_station_id": 1450,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/turku-itaharju/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:40-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:40-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:40-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:40-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:40-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:40-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:40-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "muster_station_id": 241,
+   "muster_phone": "0306 100 500",
+   "muster_email": "turku.itaharju@k1katsastus.fi",
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "turku-oriketo-raskas",
+   "url": "https://www.k1katsastus.fi/asema/turku-oriketo-raskas/",
+   "title": "Turku Oriketo (raskas)",
+   "address": "Pollenkuja 4, 20380 Turku",
+   "k1_booking_station_id": 1479,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/turku-oriketo-raskas/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": false
+  },
+  {
+   "slug": "turku-vatti",
+   "url": "https://www.k1katsastus.fi/asema/turku-vatti/",
+   "title": "Turku Vätti",
+   "address": "Rieskalähteentie 76 , 20300 Turku",
+   "k1_booking_station_id": 1458,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/turku-vatti/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "tuusula-hyryla",
+   "url": "https://www.k1katsastus.fi/asema/tuusula-hyryla/",
+   "title": "Tuusula Hyrylä",
+   "address": "Majavantie 10, 04320 Tuusula",
+   "k1_booking_station_id": 1508,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/tuusula-hyryla/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-15:45"
+     },
+     {
+      "date": "2026-10-08",
+      "weekday": "To",
+      "hours": "08:00-15:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "uusikaupunki-ketunkallio",
+   "url": "https://www.k1katsastus.fi/asema/uusikaupunki-ketunkallio/",
+   "title": "Uusikaupunki Ketunkallio",
+   "address": "Levysepänkatu 22, 23500 Uusikaupunki",
+   "k1_booking_station_id": 1495,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/uusikaupunki-ketunkallio/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:40-16:20"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:40-16:20"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:40-16:20"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:40-16:20"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:40-16:20"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:40-16:20"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:40-16:20"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "vaasa-klemettila-myllarinkatu",
+   "url": "https://www.k1katsastus.fi/asema/vaasa-klemettila-myllarinkatu/",
+   "title": "Vaasa Klemettilä Myllärinkatu",
+   "address": "Myllärinkatu 18, 65100 Vaasa",
+   "k1_booking_station_id": 1503,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/vaasa-klemettila-myllarinkatu/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "vaasa-korkeamaki",
+   "url": "https://www.k1katsastus.fi/asema/vaasa-korkeamaki/",
+   "title": "Vaasa Korkeamäki",
+   "address": "Karhuntie 81, 65350 Vaasa",
+   "k1_booking_station_id": 1471,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/vaasa-korkeamaki/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "08:00-16:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "08:00-16:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "vihti-nummela",
+   "url": "https://www.k1katsastus.fi/asema/vihti-nummela/",
+   "title": "Vihti Nummela",
+   "address": "Ratastie 2, 03100 Nummela",
+   "k1_booking_station_id": 1456,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/vihti-nummela/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-17:00"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-17:00"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  },
+  {
+   "slug": "ylojarvi-elovainio",
+   "url": "https://www.k1katsastus.fi/asema/ylojarvi-elovainio/",
+   "title": "Ylöjärvi Elovainio",
+   "address": "Varastotie 2 B, 33470 Ylöjärvi",
+   "k1_booking_station_id": 1483,
+   "station_phone": [],
+   "station_email": [
+    "?subject=A-katsastus&#038;body=https://www.k1katsastus.fi/asema/ylojarvi-elovainio/"
+   ],
+   "hours_by_service": {
+    "K1 Katsastus": [
+     {
+      "date": "2026-09-29",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-09-30",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-01",
+      "weekday": "To",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-02",
+      "weekday": "Pe",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-05",
+      "weekday": "Ma",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-06",
+      "weekday": "Ti",
+      "hours": "09:00-16:45"
+     },
+     {
+      "date": "2026-10-07",
+      "weekday": "Ke",
+      "hours": "09:00-16:45"
+     }
+    ]
+   },
+   "closed_on_site": false,
+   "seen_in_reminders": true
+  }
+ ],
+ "reminder_only_stations": {
+  "kokkola-mottinen": {
+   "reminder_name": "SULJETTU K1 Katsastus Kokkola Mottinen",
+   "closed": true
+  },
+  "hameenlinna-tiirio": {
+   "reminder_name": "SULJETTU K1 Hämeenlinna Tiiriö",
+   "closed": true
+  },
+  "pori-herralahti": {
+   "reminder_name": "SULJETTU K1 Katsastus Pori Herralahti",
+   "closed": true
+  },
+  "helsinki-pasila": {
+   "reminder_name": "SULJETTU K1 Katsastus Helsinki Pasila",
+   "closed": true
+  },
+  "turku-oriketo": {
+   "reminder_name": "K1 Katsastus Turku Oriketo",
+   "closed": false
+  },
+  "huittinen-ah-transhouse-raskas": {
+   "reminder_name": "K1 Katsastus Huittinen AH-Transhouse Raskas",
+   "closed": false
+  }
+ }
+}

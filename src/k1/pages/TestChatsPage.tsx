@@ -2,13 +2,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
-import { getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
+import { deleteTestChats, getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
 import { downloadCsv, toCsv } from '../data/fixtures'
 import type { TestMessage } from '../data/useTestChat'
 import { go, href } from '../routes'
 import { MultiSelect, Select, Skeleton, Switch } from '../ui/controls'
 import { DateRangeField } from '../ui/DateRange'
-import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, X } from '../ui/icons'
+import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Trash, X } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { Bubble } from './PlaygroundPage'
 import { copy, locale, useCopy } from '../i18n'
@@ -181,6 +181,42 @@ function Totals({ items }: { items: TestChatSummary[] }) {
   )
 }
 
+function ConfirmDelete({ ids, onClose, onDeleted, notify }: {
+  ids: string[] | null
+  onClose: () => void
+  onDeleted: (ids: string[]) => void
+  notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
+}) {
+  const t = useCopy()
+  const [busy, setBusy] = useState(false)
+  const count = ids?.length ?? 0
+  const confirm = async () => {
+    if (!ids?.length) return
+    setBusy(true)
+    try {
+      const removed = await deleteTestChats(ids)
+      onDeleted(ids)
+      notify({ title: t.chats.deleted, body: t.chats.deletedBody(removed) })
+      onClose()
+    } catch {
+      notify({ tone: 'error', title: t.chats.deleteFailed, body: t.chats.deleteFailedBody })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog open={count > 0} title={t.chats.deleteTitle(count)} onClose={() => { if (!busy) onClose() }} width={420}>
+      <div className="k1-form-stack">
+        <p className="k1-dialog__text">{t.chats.deleteBody(count)}</p>
+      </div>
+      <footer className="k1-dialog__foot">
+        <button type="button" className="k1-btn k1-btn--outline" onClick={onClose} disabled={busy}>{t.common.cancel}</button>
+        <button type="button" className="k1-btn k1-btn--danger" onClick={() => void confirm()} disabled={busy} aria-busy={busy}>{busy && <Spinner />}{t.chats.deleteAction(count)}</button>
+      </footer>
+    </Dialog>
+  )
+}
+
 function toMessages(chat: TestChat): TestMessage[] {
   return chat.messages.map((message) => ({
     id: message.id,
@@ -212,6 +248,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const [loadError, setLoadError] = useState<string | null>(null)
   const [spin, setSpin] = useState(0)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [deleting, setDeleting] = useState<string[] | null>(null)
   const [tab, setTab] = useState<'chat' | 'details'>('chat')
   const [selected, setSelected] = useState<TestChat | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -314,6 +351,18 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     void setFeedback(message.serverId, next).catch(() => notify({ tone: 'error', title: copy().chats.feedbackFailed, body: copy().chats.feedbackFailedBody }))
   }
 
+  const afterDelete = (removed: string[]) => {
+    listCache.clear()
+    removed.forEach((removedId) => chatCache.delete(removedId))
+    const left = items.filter((item) => !removed.includes(item.id))
+    setItems(left)
+    if (id && removed.includes(id)) {
+      setSelected(null)
+      go({ page: 'chats', id: compact ? null : left[0]?.id ?? null }, true)
+    }
+    refresh()
+  }
+
   const pendingQuery = query.trim() !== filters.query.trim()
   const realShown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
   const showcaseShown = matchingShowcase(query).filter(() => !filters.feedback && !filters.from && !filters.to && !filters.source && !filters.versions.length)
@@ -351,6 +400,9 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
           </button>
           <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.common.refresh} onClick={() => { setSpin((turns) => turns + 1); refresh() }}>
             <motion.span animate={{ rotate: spin * 360 }} transition={{ duration: 0.5, ease }} style={{ display: 'inline-flex' }}><RefreshCw size={16} strokeWidth={1.75} /></motion.span>
+          </button>
+          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.chats.deleteShown(realShown.length)} title={t.chats.deleteShown(realShown.length)} onClick={() => setDeleting(realShown.map((item) => item.id))} disabled={!realShown.length || pendingQuery || searching}>
+            <Trash size={16} strokeWidth={1.75} />
           </button>
           <button type="button" className="k1-icon-btn k1-icon-btn--solid k1-icon-btn--lg" aria-label={t.common.exportCsv} onClick={exportCsv} disabled={!items.length}>
             <Download size={16} strokeWidth={1.75} />
@@ -414,7 +466,12 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       onTab={setTab}
       backLabel={t.chats.backTo}
       onBack={compact ? () => go({ page: 'chats', id: null }) : undefined}
-      menu={[{
+      menu={[...(!showcase ? [{
+        label: t.chats.deleteOne,
+        icon: <Trash size={14} strokeWidth={1.75} />,
+        tone: 'danger' as const,
+        onSelect: () => setDeleting([conversation.id]),
+      }] : []), {
         label: t.common.copyLink,
         icon: <Link2 size={14} strokeWidth={1.75} />,
         onSelect: () => {
@@ -471,6 +528,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   return (
     <>
       {compact ? <div className="k1-split k1-split--compact"><MobileSwap showDetail={Boolean(id)} list={list} detail={detail} /></div> : <div className="k1-split">{list}{detail}</div>}
+      <ConfirmDelete ids={deleting} onClose={() => setDeleting(null)} onDeleted={afterDelete} notify={notify} />
       <FilterDialog open={filterOpen} filters={filters} config={config} onChange={onFilters} onClose={() => setFilterOpen(false)} />
     </>
   )

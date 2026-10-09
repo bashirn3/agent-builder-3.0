@@ -36,6 +36,8 @@ export type Lead = {
   isClosed: boolean
   plateNumber: string
   product: string
+  vehicleCategory?: string
+  powerType?: string
   nextInspection: string | null
   phoneNumber: string
   language: string

@@ -1,0 +1,528 @@
+[
+ {
+  "id": "faq-01",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "What should I do if the post-inspection period has elapsed?",
+  "answer": "You must book a new appointment for your car for a periodic inspection. The emission measurement certificate obtained, also called the ‘inspection card’, from the previous inspection is valid for three months from the time of measuring. If the emissions have complied with the limit values and the certificate is still valid, the statutory measuring does not need to be repeated.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-02",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "When should the car be taken to a post-inspection at the latest?",
+  "answer": "The period is one month from the date the vehicle first failed a periodic inspection.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-03",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "What documents are required for the periodic inspection of a passenger car or van?",
+  "answer": "If the statutory measuring has already been carried out during a maintenance event, for example, bring a certificate of the results with you to the inspection. In this case, measuring does not need to be carried out at the time of the inspection. Please remember that the certificate must not be older than 3 months and must be intended as a certificate to be presented for the inspection.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-04",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "Does the post-inspection have to be carried out at the same station as the original inspection?",
+  "answer": "No. The post-inspection following a periodic inspection may also be carried out at an inspection station other than where the original inspection took place.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-05",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "Can I leave the car at the inspection station in the morning and then pick it up in the evening after it has been inspected?",
+  "answer": "The facilities and practices of the stations vary, so you must agree on this with the inspection station staff in advance.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-06",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "The car was ordered to have a follow-up inspection and some of the defects have been repaired. Will there be an extension to the post-inspection if I come and show you the parts that have been repaired?",
+  "answer": "You can come and show the vehicle at times and get the list of faults shortened, but it is not possible to get an extension.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-07",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "How do I cancel a vehicle inspection appointment that I've already paid for?",
+  "answer": "Both prepaid and unpaid appointments can be cancelled at any time before the appointment time. If you have paid for the appointment in advance, please contact our national appointment booking service to have the payment refunded to your account. If you fail to arrive at the scheduled time, the paid appointment will not be refunded.\n\n[Appointment booking and customer service](https://www.a-katsastus.fi/en/booking-and-customer-service/)",
+  "links": [
+   {
+    "text": "Appointment booking and customer service",
+    "url": "https://www.a-katsastus.fi/en/booking-and-customer-service/"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-08",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "How much does it cost to get a car inspected?",
+  "answer": "You can find service point-specific prices on the service point pages and by starting an appointment booking process. Prices vary by station and time, as well as during promotional periods, for example. There is also a limited number of cheaper vehicle inspection timeslots available online. They always require booking and paying in advance. You can recognise these timeslots by the orange colour.\n\n[Prices for vehicle inspection services](https://www.a-katsastus.fi/en/service-points-and-prices/vehicle-inspection-service-prices/)\n\nThe price of a periodic inspection consists of the inspection and statutory measuring. Usually, the measuring is carried out at the inspection station, but it is possible that the measuring has been performed during a maintenance event, for example. If you have a valid certificate meant for vehicle inspection, measuring does not need to be carried out during the inspection.\n\nA-Katsastus’ vehicle inspection for cars always includes a free check of the engine oil level and an assessment of the condition of the wiper blades.",
+  "links": [
+   {
+    "text": "Prices for vehicle inspection services",
+    "url": "https://www.a-katsastus.fi/en/service-points-and-prices/vehicle-inspection-service-prices/"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-09",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "Can I convert my car to a van?",
+  "answer": "Depends on the vehicle model and body type. For example, it is possible to change a station wagon to a van, but this usually requires reducing the number of seats. You should check with the inspector before making any modifications. The seat structures of the removed seats must be completely removed, and the seat anchorages cannot be readily accessible. After the modifications have been made, the vehicle must be brought for a modification inspection.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-10",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "Where do I get a receipt for a prepaid appointment?",
+  "answer": "You can get the actual sales receipt at the service point when the service takes place. The appointment confirmation you get by email for a vehicle inspection is not a valid receipt for the tax authorities, for example.",
+  "links": [],
+  "also_in": [
+   "Driving licences and permits"
+  ]
+ },
+ {
+  "id": "faq-11",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "Can I get my leasing car inspected and receive an invoice for the service?",
+  "answer": "As a contractual customer of certain leasing companies, you can come to the inspection and the invoice is sent directly to your leasing company. If you do not know whether the inspection is part of your leasing contract and the inspection is urgent, make an appointment at our service point or come without an appointment and pay for the inspection yourself. You can later check the payment policies and collect the amount back from your leasing company against a receipt, if the inspection is part of your contract.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-12",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "What are the limit values in emission testing carried out during the vehicle inspection?",
+  "answer": "The details inspected during a periodic inspection and the criteria for the assessment are set out in general terms in the Directive. On this basis, each EU country acts in accordance with its own legislation. You can check the assessment criteria of statutory measuring in Finlex-service, which is an Internet service on legal information, owned by the Finnish Ministry of Justice. It is a public service, available free of charge.\n\n[Vehicle inspection assessment criteria in Finnish](https://www.finlex.fi/fi/viranomaiset/normi/454001/48302) (Finlex)",
+  "links": [
+   {
+    "text": "Vehicle inspection assessment criteria in Finnish",
+    "url": "https://www.finlex.fi/fi/viranomaiset/normi/454001/48302"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-13",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "How does booking an Etuaika inspection work and how is the payment made?",
+  "answer": "You can find information about Etuaika inspections and advance payment on the page: [How to book an appointment for inspection services.](https://www.a-katsastus.fi/en/vehicle-inspection-services/how-to-book-an-appointment-for-inspection-services/)",
+  "links": [
+   {
+    "text": "How to book an appointment for inspection services.",
+    "url": "https://www.a-katsastus.fi/en/vehicle-inspection-services/how-to-book-an-appointment-for-inspection-services/"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-14",
+  "category": "Registrations, insurance and licence plates",
+  "question": "When the vehicle’s owner changes, how soon must the vehicle be registered?",
+  "answer": "The vehicle must be registered within 7 days if the vehicle’s owner or holder information changes. Please note that any changes to the owner or holder information of vehicles that have been decommissioned from traffic must also be notified to the register within seven days.\n\nFor example, if the owner information changes on Monday, the change of ownership must be notified on Monday of the following week at the latest. If the last possible date is on Saturday or a holiday, you can submit a notification on the following working day at the latest.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-15",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How to decommission a vehicle that is part of an estate of a deceased person?",
+  "answer": "A shareholder of the estate can decommission the vehicle from traffic at an A-Katsastus or Ajovarma service points that handle registrations. A valid notification part (Part II) of the registration certificate needs to be provided. If the estate does not have the notification part, the shareholder of the estate can decommission the vehicle from traffic by presenting an inventory of the estate or an official certificate of the deceased as proof of being a shareholder in the estate.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-16",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How can I commission a vehicle that belongs to an estate of a deceased person?",
+  "answer": "The shareholder of the estate can take care of commissioning the vehicle for traffic at an A-Katsastus or Ajovarma service point that handles registrations. A valid registration certificate notification part (Part II) is required. If the estate does not have the notification part, the shareholder of the estate can commission the vehicle for traffic by presenting an inventory of the estate or an official certificate of the deceased as proof of being a shareholder in the estate.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-17",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How can I get my vehicle commissioned for traffic?",
+  "answer": "If you are the owner or holder of a vehicle that is registered in the vehicle register, you can recommission the vehicle for traffic at an A-Katsastus or Ajovarma service point that handles registrations. You will need to provide the notification part of the registration certificate if one exists for the vehicle (not mandatory) and an identity card. Alternatively, an agent authorised by the owner or holder of the vehicle can take care of the matter on your behalf.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-18",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How can I get my vehicle decommissioned from traffic?",
+  "answer": "If you are the owner or holder of a vehicle that is registered in the vehicle register, you can decommission the vehicle from traffic at an A-Katsastus or Ajovarma service point that handles registrations. You will need to provide the notification part of the registration certificate if one exists for the vehicle (not mandatory) and an identity card.\n\nAlternatively, an agent authorised by the owner or holder of the vehicle can take care of the matter on your behalf.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-19",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How much does commissioning a vehicle for traffic cost?",
+  "answer": "The current prices can be found in the inspection service price list:\n\n[Prices for vehicle inspection services](https://www.a-katsastus.fi/en/service-points-and-prices/vehicle-inspection-service-prices/)",
+  "links": [
+   {
+    "text": "Prices for vehicle inspection services",
+    "url": "https://www.a-katsastus.fi/en/service-points-and-prices/vehicle-inspection-service-prices/"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-20",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How much does decommissioning a vehicle from traffic cost?",
+  "answer": "The current prices can be found in the inspection service price list:\n\n[Prices for vehicle inspection and registration services](https://www.a-katsastus.fi/en/service-points-and-prices/vehicle-inspection-service-prices/)",
+  "links": [
+   {
+    "text": "Prices for vehicle inspection and registration services",
+    "url": "https://www.a-katsastus.fi/en/service-points-and-prices/vehicle-inspection-service-prices/"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-21",
+  "category": "Registrations, insurance and licence plates",
+  "question": "What happens to the vehicle tax and motor insurance when a vehicle is decommissioned from traffic?",
+  "answer": "The vehicle tax period ends at the time of decommissioning and the motor insurance becomes inactive.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-22",
+  "category": "Registrations, insurance and licence plates",
+  "question": "What does commissioning a vehicle for traffic mean?",
+  "answer": "Commissioning a vehicle for traffic means bringing a vehicle that has previously been decommissioned back into traffic use. When you commission a vehicle for traffic, the commission is effective immediately after the notification and will be valid indefinitely.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-23",
+  "category": "Registrations, insurance and licence plates",
+  "question": "What does decommissioning a vehicle from traffic mean?",
+  "answer": "Decommissioning a vehicle from traffic means temporarily removing a vehicle that has been registered in Finland from use in traffic. The decommissioning is valid indefinitely.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-24",
+  "category": "Registrations, insurance and licence plates",
+  "question": "I sold my car, but the new owner hasn't registered it yet. What can I do?",
+  "answer": "When a vehicle is sold, it is always important to draw up a separate handover document that includes the buyer’s details, the handover date and the vehicle identification information, i.e. the registration number or the vehicle identification number.\n\nIf the buyer of the vehicle does not register the vehicle within seven days, the seller may submit a handover notification at an A-Katsastus or Ajovarma service point that handles registrations. Thus, the seller’s obligations in relation to taxes and insurance end on the date on which the vehicle is handed over.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-25",
+  "category": "Registrations, insurance and licence plates",
+  "question": "I bought a vehicle. How can I make a change of ownership?",
+  "answer": "In order to change ownership, you need either a certificate issued by the seller or a notification part of the registration certificate (Part II). You can also change ownership without a certificate or Part II if the previous owner has provided you with a handover notification. You can take care of the change of ownership at an A-Katsastus or Ajovarma service point that handles registrations.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-26",
+  "category": "Registrations, insurance and licence plates",
+  "question": "Does the vehicle need to be registered under the estate of a deceased person after the owner’s death?",
+  "answer": "You do not need to file a register notification under the estate of a deceased. If the estate is selling or buying the vehicle, you can find more information on Traficom’s website:\n\n[Changes in the registration data of a vehicle belonging to the estate of a deceased person](https://www.traficom.fi/en/transport/drivers-and-vehicles/vehicle-registration/changes-registration-data-vehicle-belonging) (Traficom)",
+  "links": [
+   {
+    "text": "Changes in the registration data of a vehicle belonging to the estate of a deceased person",
+    "url": "https://www.traficom.fi/en/transport/drivers-and-vehicles/vehicle-registration/changes-registration-data-vehicle-belonging"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-27",
+  "category": "Registrations, insurance and licence plates",
+  "question": "Does the vehicle need to be insured when the ownership is changed?",
+  "answer": "Motor insurance is a legal obligation. Every motor-driven vehicle used in traffic must be covered by at least a motor insurance. Car insurance is also recommended, but not mandatory.\n\nYou can have your vehicle insured with the insurance company of your choice during the change of ownership at the A-Katsastus and Ajovarma offices that handle registrations. We cover almost all insurance companies.\n\nIf the insurance is taken out at the time of registration and the policyholder (vehicle’s owner or holder) is not present, the paying agent must have a power of attorney to take out the insurance. The power of attorney must indicate that the authorised person has the right to take out insurance, the vehicle identification data (registration number or vehicle identification number), the insurance company to which the vehicle is insured and the type of insurance to take out on the vehicle. In addition, it must indicate the transfer of any bonuses and in how many instalments the insurance will be paid for.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-28",
+  "category": "Registrations, insurance and licence plates",
+  "question": "Can I drive a vehicle that has been decommissioned?",
+  "answer": "It is prohibited to use a vehicle that has been decommissioned from traffic. If the licence plates of a vehicle that has been decommissioned from traffic have not been returned and the vehicle is covered by a valid motor insurance, the vehicle may be used in traffic until the end of the day on which the decommissioning has been completed.\n\nA vehicle that has been decommissioned may be moved to a pre-arranged vehicle inspection test and, from there, to repair or storage if the vehicle number plates have not been returned and the vehicle’s motor insurance has not ended.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-29",
+  "category": "Registrations, insurance and licence plates",
+  "question": "Can I use the vehicle in traffic as soon as I have completed the commissioning for traffic?",
+  "answer": "Once you have commissioned the vehicle back for use in traffic, you can use the vehicle immediately if the vehicle’s periodic inspection and traffic insurance are valid, the licence plates are attached, and the vehicle tax is paid.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-30",
+  "category": "Registrations, insurance and licence plates",
+  "question": "Do I need to return the license plates when I decommission a vehicle from traffic?",
+  "answer": "It is not necessary to return the license plates when a vehicle is decommissioned from traffic. Returning the licence plates has no impact on the validity of the registration number or the validity of the motor insurance. The validity of the registration number expires only when the vehicle is decommissioned abroad, in Åland, permanently removed or when the registration number is changed.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-31",
+  "category": "Registrations, insurance and licence plates",
+  "question": "How do I get an additional registration plate for my car?",
+  "answer": "You can apply for an additional registration plate for your vehicle if the original registration plate is covered by temporary equipment attached to the vehicle, such as a bike rack, for instance. You can order an additional plate via any inspection station offering registration services.\n\nMore information in Traficom’s web service: [Order a registration plate for a vehicle](https://www.traficom.fi/en/transport/drivers-and-vehicles/vehicle-registration/order-registration-plate-vehicle)",
+  "links": [
+   {
+    "text": "Order a registration plate for a vehicle",
+    "url": "https://www.traficom.fi/en/transport/drivers-and-vehicles/vehicle-registration/order-registration-plate-vehicle"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-32",
+  "category": "Car equipment and free additional services",
+  "question": "What is the reasonable interval for replacing the wiper blades?",
+  "answer": "Usually, the wiper blades should be replaced approximately once a year. If the car is driven a lot, a reasonable interval for replacing the wiper blades may be six months. It is recommended to replace the wiper blades whenever you notice that the wiping performance has deteriorated. Poorly maintained wiper blades may scratch the surface of the windshield. Even newer wiper blades may be damaged in freezing temperatures if the wiper blades are pulled off from a frozen windshield too hard, for example. After that, the wiper blade will no longer work well.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-33",
+  "category": "Car equipment and free additional services",
+  "question": "Various alcohol compounds are used in screenwash fluids. Is there a difference between methanol and ethanol?",
+  "answer": "Methanol is more toxic than ethanol. In addition, methanol is produced from fossil fuels, unlike ethanol, which is renewable. The screenwash fluids in the A-Katsastus’ range do not contain methanol and do not have a strong smell. We will refill your vehicle’s screenwash fluid tank for you when you buy screenwash fluid from us.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-34",
+  "category": "Car equipment and free additional services",
+  "question": "Is it possible to set the arrival time manually on the electronic parking disc?",
+  "answer": "Yes, it is. The instructions can be found in the sales package of the parking disc. This function is only available when the vehicle is parked.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-35",
+  "category": "Car equipment and free additional services",
+  "question": "In the summer, can I just use water as the screenwash fluid?",
+  "answer": "Water is better than no washer fluid at all, of course, but it does not clean the windshield very effectively. The A-Katsastus’ screenwash fluid for summer is specially designed to remove insects from the windscreen. The ready-to-use screenwash solution should also be used to wipe down the wiper blades from time to time. This way, the wiper blades stay clean and in good condition for longer. When you purchase screenwash fluid from A-Katsastus, we will refill the screenwash fluid tank for you.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-36",
+  "category": "Autotohtori and other services",
+  "question": "How does an Autotohtori inspection differ from an ordinary vehicle inspection?",
+  "answer": "The Autotohtori inspection is a comprehensive vehicle condition inspection that covers almost 100 different checkpoints, which means that the Autotohtori service is a much more thorough check than a simple periodic inspection. For example, an Autotohtori inspection will measure the boiling point of the brake fluids and the freezing resistance of the coolant, the tyre pressures and the tyre tread, and check the operation of all electrical equipment. The detected faults and deficiencies are also assessed on a broader scale than during a vehicle inspection.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-37",
+  "category": "Autotohtori and other services",
+  "question": "If I want to have an Autotohtori inspection in conjunction with a vehicle inspection, do I have to book consecutive times for them?",
+  "answer": "In the nationwide appointment booking, you can book the inspection and the Autotohtori service for the same reservation, in which case you are booking one combined longer timeslot. The duration of the Autotohtori inspection is about 60 minutes. In connection with the vehicle inspection, the price of a Autotohtori service is €79. If an Autotohtori service is booked without the vehicle inspection, it costs €99. Please note that there are less times available for the Autotohtori service than there is for the periodic inspections. The Autotohtori service is available for cars and vans with a total mass of 3500 kg or less.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-38",
+  "category": "Autotohtori and other services",
+  "question": "Can I subscribe to an inspection reminder for any type of vehicle from the Muistakatsastus.fi service?",
+  "answer": "You can subscribe to an inspection reminder for cars, vans, campers, moped cars, heavy vehicles or quad bikes at the Muistakatsastus.fi service. Trailers are not included in the regular reminders. You can subscribe to a reminder as an individual or subscribe to a reminder for a company-owned vehicle.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-39",
+  "category": "Autotohtori and other services",
+  "question": "Can I subscribe to a vehicle inspection reminder through the Muistakatsastus.fi service for vehicles owned by a company?",
+  "answer": "Yes, you can. We check the vehicle data in the VIS before sending reminders to make sure that cars have not changed ownership or that the cars have not already been scrapped. In the case of business customers, it is possible to get a reminder for a vehicle if the information provided to us matches the company/registration number combination found in the business customer register. This also applies to vehicles without a second holder.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-40",
+  "category": "Autotohtori and other services",
+  "question": "How often should the BG carbon deposit removal process be carried out on the car engine?",
+  "answer": "The best benefit is obtained if the removal is carried out once a year on average, or if there is a high accumulation of mileage, at intervals of about 30,000 kilometres, i.e. even before the accumulation of dirt in the engine causes problems.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-41",
+  "category": "Autotohtori and other services",
+  "question": "What are the benefits of the BG carbon deposit removal?",
+  "answer": "When driving, a fuel-powered engine accumulates carbon deposits. Carbon deposits in the engine can also cause smoke and jerking of the engine. When the engine is cleaned with a cleaning agent and the fire event in the engine is intensified, the vehicle produces less emissions and also consumes less fuel. In addition, the wear of the engine and its components is slowed down.",
+  "links": [],
+  "also_in": []
+ },
+ {
+  "id": "faq-42",
+  "category": "Driving licences and permits",
+  "question": "How long is the processing time for age exemption applications?",
+  "answer": "You can find up-to-date information on processing times on Traficom’s website:\n\n[Apply for an age exception permit for a driving licence (Traficom.fi)](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-age-exception-permit-driving-licence)",
+  "links": [
+   {
+    "text": "Apply for an age exception permit for a driving licence (Traficom.fi)",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-age-exception-permit-driving-licence"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-43",
+  "category": "Driving licences and permits",
+  "question": "How long is the processing time for driving instruction permit applications?",
+  "answer": "You can find up-to-date information on processing times on Traficom’s website:\n\n[Apply for a driving instruction permit (Traficom.fi)](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-instruction-permit)",
+  "links": [
+   {
+    "text": "Apply for a driving instruction permit (Traficom.fi)",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-instruction-permit"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-44",
+  "category": "Driving licences and permits",
+  "question": "My driving license was lost, destroyed or stolen. What should I do?",
+  "answer": "You can order a new driving license by visiting an Ajovarma service point. You’ll need to take 2 passport photos with you. (You do not need new photos if you have a valid Finnish passport or ID card, or you have submitted photos in 2013 or later for a driving license, driver card, professional qualification card, ADR license or taxi driver’s license.) Please note that the photo code from a photography studio cannot be used to apply for a driving license.\n\nSame services are also available in Traficom’s website. You can find more information on ordering a new driving license on Traficom’s website: [Order new driving license](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/order-new-driving-license).",
+  "links": [
+   {
+    "text": "Order new driving license",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/order-new-driving-license"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-45",
+  "category": "Driving licences and permits",
+  "question": "My driving license is about to expire. What should I do?",
+  "answer": "A driving licence can be renewed at an Ajovarma service point. Bring your previous driver’s license and 2 passport photos with you to the appointment. (You do not need new photos if you have a valid Finnish passport or ID card, or you have submitted photos in 2013 or later for a driving licence, driver card, professional qualification card, ADR license or taxi driver’s license.)\n\nBring a medical report that is less than 6 months old or an extended medical report with you, if necessary. You can find more information on medical reports and renewing a driving licence at Traficom’s website: [Renew your driving license (Traficom)](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/renew-your-driving-licence)",
+  "links": [
+   {
+    "text": "Renew your driving license (Traficom)",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/renew-your-driving-licence"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-46",
+  "category": "Driving licences and permits",
+  "question": "I want to start teaching with an instructor permit. What are the requirements?",
+  "answer": "You can apply for an instructor permit at an Ajovarma service point. If you have an ID or a driving licence that is issued in an EU or EEA country, please bring it with you. In Traficom’s ‘How to obtain a driving licence for a passenger car – Instructions for teachers with an instruction permit’ guide, you will find a lot of additional information about the instruction permit. You can find the guide and other information at Traficom’s website: [Apply driving instruction permit](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-instruction-permit)\n\nYou can check in [Traficom’s e-Services](https://traficom.fi/en/asioi-kanssamme/my-e-services) whether you have already been granted the driving instruction permit you have applied for.",
+  "links": [
+   {
+    "text": "Apply driving instruction permit",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-instruction-permit"
+   },
+   {
+    "text": "Traficom’s e-Services",
+    "url": "https://traficom.fi/en/asioi-kanssamme/my-e-services"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-47",
+  "category": "Driving licences and permits",
+  "question": "When can I take the driving examination and what does it involve?",
+  "answer": "The driving examination is divided into a theory test and a driving test. Some categories also have a handling test. A driving examination is carried out at an Ajovarma service point. The following prerequisites must be met for admission to the driving examination: you must meet the age requirements for a specific driving licence category, have a valid driving licence permit, not have a driving ban, and you must have completed the training corresponding to the specific examination category.\n\nMore information on the driving licence can be found at Traficom’s website: [Driving examination](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/driving-examination)",
+  "links": [
+   {
+    "text": "Driving examination",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/driving-examination"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-48",
+  "category": "Driving licences and permits",
+  "question": "What category driving license do I need to tow a trailer?",
+  "answer": "Trailer towing in traffic is regulated by the maximum permissible (theoretical) total weight of the towing vehicle and trailer, for example. You need to make sure what kind of trailer you have the right to tow with your driving licence and what kind of trailer you are allowed to tow with your own car.\n\nInformation about towing a trailer, videos and a useful checklist for towing a trailer can be found at Traficom’s website: [Towing a trailer by car](https://traficom.fi/en/transport/motorist/towing-trailer-car)",
+  "links": [
+   {
+    "text": "Towing a trailer by car",
+    "url": "https://traficom.fi/en/transport/motorist/towing-trailer-car"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-49",
+  "category": "Driving licences and permits",
+  "question": "Which vehicles can I drive with a B licence?",
+  "answer": "On Traficom’s website, you can find a list of the types of vehicles you are allowed to drive under each driving licence category: [What vehicles can you drive with different driving licences](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/what-vehicles-can-you-drive-different-driving)",
+  "links": [
+   {
+    "text": "What vehicles can you drive with different driving licences",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/what-vehicles-can-you-drive-different-driving"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-50",
+  "category": "Driving licences and permits",
+  "question": "What requirements does the driver have for driving health?",
+  "answer": "Driving ability is the sum of many things. Different symptoms, illnesses or injuries may affect the driver’s ability to drive. On Traficom’s website you will find comprehensive information about driving health: [Apply for a driving licence permit for your first driving licence](https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-licence-permit-your-first-driving)",
+  "links": [
+   {
+    "text": "Apply for a driving licence permit for your first driving licence",
+    "url": "https://traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-licence-permit-your-first-driving"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-51",
+  "category": "Driving licences and permits",
+  "question": "I want to modify a reservation I made with Ajovarma or make a payment for it. How can I do that?",
+  "answer": "You can find information about this topic:\n\n[Look up an Ajovarma appointment](https://www.a-katsastus.fi/en/booking-and-customer-service/pay-for-or-change-your-appointment/look-up-an-ajovarma-appointment/)",
+  "links": [
+   {
+    "text": "Look up an Ajovarma appointment",
+    "url": "https://www.a-katsastus.fi/en/booking-and-customer-service/pay-for-or-change-your-appointment/look-up-an-ajovarma-appointment/"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-52",
+  "category": "Driving licences and permits",
+  "question": "Does the dual brake pedal in a vehicle with a driving instructor permit need to undergo a modification inspection?",
+  "answer": "The dual brake pedal does not need to undergo a modification inspection, but when installing the pedal, it must be ensured that the pedal functions and withstands use. On Traficom’s website, you can find more information about installing the pedal: [Apply for a driving instructor permit](https://www.traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-instruction-permit)",
+  "links": [
+   {
+    "text": "Apply for a driving instructor permit",
+    "url": "https://www.traficom.fi/en/transport/drivers-and-vehicles/driving-licenses/apply-driving-instruction-permit"
+   }
+  ],
+  "also_in": []
+ },
+ {
+  "id": "faq-53",
+  "links": [],
+  "also_in": [],
+  "source": "dev brief",
+  "category": "Vehicle inspections and statutory measuring",
+  "question": "When should the emission tests be done? Which cars need an emission test?",
+  "answer": "Emission tests (statutory measuring) apply to cars registered after August 1976 (1976/8). Anything older is a historic vehicle. The measuring is normally done at the periodic inspection, and a certificate from an earlier measuring is valid for three months."
+ }
+]
