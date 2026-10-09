@@ -99,8 +99,18 @@ def library():
     return code.replace('const FAQ = __FAQ__', 'const FAQ = ' + faq).replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal()).replace('__STAGING_PROXY_MODE__', json.dumps(proxy_mode()))
 
 
+def all_workflows():
+    items, cursor = [], None
+    while True:
+        page = gate.request('GET', '/workflows?limit=250' + (f'&cursor={cursor}' if cursor else ''))
+        items += page['data']
+        cursor = page.get('nextCursor')
+        if not cursor:
+            return items
+
+
 def by_name(name):
-    for item in gate.request('GET', '/workflows?limit=250')['data']:
+    for item in all_workflows():
         if item['name'] == name:
             return item['id']
     return None
@@ -362,10 +372,7 @@ def replace_once(text, pair, label):
 
 
 def business_prompt(current):
-    head = current
-    for marker in PROMPT_MARKERS:
-        head = head.split(marker)[0]
-    head = head.rstrip()
+    head = (ROOT / 'prompts/k1-conversational-head.md').read_text().rstrip()
     rules = (ROOT / 'prompts/k1-business-prompt-v2.md').read_text().strip()
     return f'{head}\n\n{rules}\n'
 
