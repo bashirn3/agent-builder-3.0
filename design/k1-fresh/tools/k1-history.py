@@ -2,7 +2,7 @@
 """Writes evaluation conversations into the platform's chat history (Test chats of a saved version).
 
   k1-history.py list [--started-by TEXT]
-  k1-history.py record RESULTS.json --ids ID,ID,... [--version 7] [--started-by "Wasup v7 replay"] [--replace]
+  k1-history.py record RESULTS.json --ids ID,ID,... [--version 7] [--started-by "Wasup v7 replay"] [--replace] [--allow-flagged]
 
 `record` takes the scripted conversations from an evaluation results file and stores them through the same record_test_turn function the
 playground uses (opener bubble, then customer message and agent reply per turn), tagged with the saved version and `started_by`, so the
@@ -111,7 +111,7 @@ def listing(started_by=''):
         print(json.dumps(row, ensure_ascii=False))
 
 
-def record(path, ids, number, started_by, replace):
+def record(path, ids, number, started_by, replace, allow_flagged=False):
     data = json.loads(Path(path).read_text())
     data = data['results'] if isinstance(data, dict) else data
     wanted = [item for item in data if item['id'] in ids]
@@ -120,7 +120,8 @@ def record(path, ids, number, started_by, replace):
         raise SystemExit(f'not in results: {sorted(missing)}')
     bad = [item['id'] for item in wanted if item['flags']]
     if bad:
-        raise SystemExit(f'refusing to record flagged conversations: {bad}')
+        if not allow_flagged:
+            raise SystemExit(f'refusing to record flagged conversations: {bad} (use --allow-flagged to show a failing version)')
     vid = version_id(number)
     existing = read(f'agent_builder_test_conversation_list?select=id,title&version_id=eq.{vid}&started_by=eq.' + urllib.request.quote(started_by))
     existing = [row for row in existing if row.get('id')]
@@ -155,11 +156,12 @@ def main():
     parser.add_argument('--version', type=int, default=7)
     parser.add_argument('--started-by', default='Wasup v7 replay')
     parser.add_argument('--replace', action='store_true')
+    parser.add_argument('--allow-flagged', action='store_true')
     args = parser.parse_args()
     if args.command == 'list':
         listing(args.started_by if '--started-by' in sys.argv else '')
     else:
-        record(args.results, [part for part in args.ids.split(',') if part], args.version, args.started_by, args.replace)
+        record(args.results, [part for part in args.ids.split(',') if part], args.version, args.started_by, args.replace, args.allow_flagged)
 
 
 if __name__ == '__main__':
