@@ -66,15 +66,16 @@ const showcaseStamp = (iso: string) => new Intl.DateTimeFormat(locale(), {
   timeZone: 'Europe/Helsinki', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 }).format(new Date(iso))
 
-function FilterDialog({ open, filters, config, onChange, onClose }: {
+function FilterDialog({ open, filters, config, onChange, onClose, debug }: {
   open: boolean
+  debug?: { on: boolean; onChange: (on: boolean) => void }
   filters: ChatFilters
   config: AgentConfig | null
   onChange: (filters: ChatFilters) => void
   onClose: () => void
 }) {
   const t = useCopy()
-  const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId(), drafts: useId(), draftsHint: useId() }
+  const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId(), drafts: useId(), draftsHint: useId(), debug: useId() }
   const ordered = orderVersions(config?.versions ?? [])
   const tested = ordered.filter((version) => version.live || version.conversations > 0)
   const untested = ordered.filter((version) => !version.live && version.conversations === 0)
@@ -132,6 +133,12 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
           <label htmlFor={ids.range}>{t.chats.dateRange}</label>
           <DateRangeField id={ids.range} from={filters.from} to={filters.to} onChange={(range) => onChange({ ...filters, ...range })} />
         </div>
+        {debug && (
+          <div className="k1-switch-row">
+            <span className="k1-switch-row__label" id={ids.debug}>{t.chats.debugMode}</span>
+            <Switch checked={debug.on} onChange={debug.onChange} labelledBy={ids.debug} />
+          </div>
+        )}
       </div>
       <footer className="k1-dialog__foot">
         <button type="button" className="k1-link k1-link--danger" onClick={() => onChange({ ...EMPTY_CHAT_FILTERS, query: filters.query })} disabled={!chatFilterCount(filters)}>{t.common.clearAll}</button>
@@ -266,7 +273,6 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const session = useSession()
   const canDebug = canSeeShowcase(session.user?.email)
   const debug = useDebugMode(canDebug)
-  const debugId = useId()
   const showcaseAllowed = Boolean(debug.thumbs)
   const showcaseFor = (chatId: string) => (showcaseAllowed ? showcaseById(chatId) : null)
   const [items, setItems] = useState<TestChatSummary[]>(() => listCache.get(listKey(toApi(filters))) ?? [])
@@ -454,12 +460,6 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
             <input className="k1-input" value={query} placeholder={t.chats.search} aria-label={t.chats.searchLabel} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Chips filters={filters} onChange={(next) => { setQuery(next.query); onFilters(next) }} />
-          {canDebug && (
-            <div className="k1-debug-toggle">
-              <span id={debugId}>{t.chats.debugMode}</span>
-              <Switch checked={showcaseAllowed} onChange={toggleDebug} labelledBy={debugId} />
-            </div>
-          )}
           {!loading && shown.length > 0 && <Totals items={showcaseAllowed ? shown : realShown} thumbs={debug.thumbs ?? undefined} />}
         </>
       )}
@@ -562,7 +562,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     <>
       {compact ? <div className="k1-split k1-split--compact"><MobileSwap showDetail={Boolean(id)} list={list} detail={detail} /></div> : <div className="k1-split">{list}{detail}</div>}
       <ConfirmDelete ids={deleting} onClose={() => setDeleting(null)} onDeleted={afterDelete} notify={notify} />
-      <FilterDialog open={filterOpen} filters={filters} config={config} onChange={onFilters} onClose={() => setFilterOpen(false)} />
+      <FilterDialog open={filterOpen} filters={filters} config={config} onChange={onFilters} onClose={() => setFilterOpen(false)} debug={canDebug ? { on: showcaseAllowed, onChange: toggleDebug } : undefined} />
     </>
   )
 }
