@@ -141,7 +141,11 @@ def evaluate(scenario, turns):
             flags.append(f'{tag} MANY_QUESTIONS({reply.count("?")})')
         expected = (langs[i] if langs and i < len(langs) else scenario.get('expect') or lead_lang)
         got = detect(reply)
-        if expected and expected != 'any' and got and got != expected:
+        if expected == 'user':
+            allowed = {lead_lang, detect(turn['user']), detect(turns[i - 1]['user']) if i else None}
+            if got and got not in allowed:
+                flags.append(f'{tag} LANG expected one of {sorted(a for a in allowed if a)} got {got}')
+        elif expected and expected != 'any' and got and got != expected:
             flags.append(f'{tag} LANG expected {expected} got {got}')
         clock_question = re.search(r'\b(right now|from now|now\?|kello nyt|nyt kello|just nu)\b', turn['user'], re.I)
         for hit in ([] if clock_question else times_in(reply)):
