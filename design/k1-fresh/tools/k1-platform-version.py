@@ -3,7 +3,7 @@
 
 A version is the builder prompt, additional information, opener, reminders and translations that the playground sends with every turn.
 
-  k1-platform-version.py render          write prompts/k1-platform-v7.json (conversational head + business rules v2) from the repo
+  k1-platform-version.py render          write prompts/k1-platform-v8.json (conversational head + business rules v2) from the repo
   k1-platform-version.py show            print the latest saved versions (numbers, notes, who saved them)
   k1-platform-version.py fold            write the rendered content into version 5, make it active, delete newer versions
   k1-platform-version.py save FILE       save FILE (as written by render) as the next version; keeps the current lock flag
@@ -29,10 +29,10 @@ spec.loader.exec_module(gate)
 SUPABASE = 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/'
 CREDENTIAL = {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}}
 TENANT = 'k1_katsastus_demo'
-OUT = ROOT / 'prompts/k1-platform-v7.json'
-NOTE = ('Agent v7: no price until the fuel type is known (never the website "from" prices), the measuring is optional and an old car or a question about it never escalates, '
-        'a rejected weekday finds the next one by itself, "book it" goes straight on without re-asking the plate, no hours hedging on bookable times, follow-ups about "they" mean the stations just named, '
-        'plus everything from v6 (measuring included by default but removable, direct staging calls)')
+OUT = ROOT / 'prompts/k1-platform-v8.json'
+NOTE = ('Agent v8: never claims a booking failed without a tool error and never sends the customer to 0306 over a name (a first name with any surname is booked), '
+        'a rejected name gets one question that says why, opt-out replies are friendly, fit the reason (already inspected or stop messages) and are never repeated word for word, '
+        'a booking made in the chat is named with an offer to cancel it when the car turns out to be inspected; plus everything in v7')
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
               'Book at the lead\'s station unless the customer asks for another one or it is closed; use the lead\'s product and vehicle category unless the customer talks about another vehicle. A booking can only be cancelled or moved from the phone that made it; find it with get_my_bookings instead of asking the customer for details. Never quote prices or confirm bookings without a tool result.')
@@ -106,7 +106,7 @@ def save(path):
     print('current', config)
     result = call('POST', 'rpc/save_agent_builder_version', {
         'p_tenant_key': TENANT, 'p_master_prompt': data['masterPrompt'], 'p_opening_message': data['openingMessage'], 'p_additional_information': data['additionalInformation'],
-        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v7', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
+        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v8', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
     })
     print('saved', json.dumps(result, ensure_ascii=False))
 
@@ -122,7 +122,7 @@ def fold(path=None, into=5):
         raise SystemExit(f'v{into} does not exist')
     newer = [row for row in rows if row['version_number'] > into]
     content = {'master_prompt': data['masterPrompt'], 'additional_information': data['additionalInformation'], 'opening_message': data['openingMessage'],
-               'note': data['note'][:500], 'saved_by': 'Wasup agent v7', 'reminders': data['reminders'], 'translations': data['translations']}
+               'note': data['note'][:500], 'saved_by': 'Wasup agent v8', 'reminders': data['reminders'], 'translations': data['translations']}
     for row in newer:
         print('deactivate', row['version_number'], call('PATCH', f'agent_builder_versions?id=eq.{row["id"]}', {'is_active': False}))
         print('retag chats', call('PATCH', f'agent_builder_test_conversations?version_id=eq.{row["id"]}', {'version_id': target['id'], 'version_number': into}))

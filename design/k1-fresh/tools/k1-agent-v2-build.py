@@ -390,6 +390,8 @@ def build_agent(booking_id):
             for item in node['parameters']['assignments']['assignments']:
                 if item['name'] == 'business_prompt':
                     item['value'] = business_prompt(item['value'])
+        if node['name'] == 'opt_out':
+            node['parameters']['description'] = 'Stop reminders for this number. Call when the customer asks to stop messages or not be contacted, refuses reminders, or says the car is already inspected. Never for a sold car, a new plate or another vehicle. Pass puhelin.'
         if node['name'] == 'escalate_to_human':
             node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, demands compensation, refuses to continue, or reports a legal, safety or accident matter. Never for swearing or rudeness alone, payment methods, phone hours, off-topic chat, or a question you can answer or point to 0306 100 100 for. Pass syy.'
         if node['name'] == 'AI Agent':

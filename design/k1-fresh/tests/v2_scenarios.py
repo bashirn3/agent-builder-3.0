@@ -416,13 +416,14 @@ def build(Customer, Auto):
             ld('cancel', [ASK[lang], Auto(Customer(lang, 'first')), CANCEL[lang], Auto(Customer(lang), 'cancelled', 3)], [('booked',), ('cancelled',)], books=True)
             ld('move', [ASK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('rescheduled',)], books=True)
 
-    from v2_devil_extended import extend, extend_voice, extend_pilot, extend_v7, extend_brief, extend_hyper
+    from v2_devil_extended import extend, extend_voice, extend_pilot, extend_v7, extend_brief, extend_hyper, extend_v8
     extend(add, Auto, Customer, NOBOOK, LEAK, GETS, LINK, RAW, SECRET)
     extend_voice(add, Auto, Customer, NOBOOK, GETS)
     extend_pilot(add, Auto, Customer, NOBOOK, GETS)
     extend_v7(add, Auto, Customer, NOBOOK, GETS)
     extend_brief(add, Auto, Customer, NOBOOK, GETS)
     extend_hyper(add, Auto, Customer, LEAK, SECRET)
+    extend_v8(add)
     for item in scenarios:
         item['lead'].update(item.get('lead_patch', {}))
         stations = {'pilot.replay.chat1': ('K1 Katsastus Kouvola Kankaanpää', '23.10.2026', '23.10.2025'), 'pilot.replay.chat2': ('K1 Katsastus Helsinki Vuosaari', '2.11.2026', '2.11.2025'), 'pilot.replay.chat3': ('K1 Katsastus Tampere Lakalaiva', '18.10.2026', '18.10.2024')}
