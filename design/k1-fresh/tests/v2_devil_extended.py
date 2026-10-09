@@ -720,13 +720,16 @@ def extend_hyper(add, Auto, Customer, LEAK, SECRET):
         ENDED)
 
 
-def extend_v8(add):
+def extend_v8(add, Auto, Customer):
     """Tester chats of 9 Oct 2026 on v7, replayed word for word."""
     NOT_STOPPED_ONLY = ('max_replies', r'^\s*(Muistutukset on lopetettu|Reminders are stopped|Påminnelserna är stoppade)\.?\s*$', 0)
     add('pilot.v8.maria_kouvola.fi', 'pilot', 'fi', [
         'Moikka, ajan voisi varata, mutta en halua Kouvolaan', 'Missä Palokka on?', 'Mitä aikoja siellä on vapaana?', '16.30',
         'Testi testi', 'Maria Markkinointi', 'Maria Pyy', 'autoni on jo katsastettu'],
-        [('booked',), ('tool', 'opt_out'), ('no_reply', r'(en|ei) (saanut|onnistu).{0,40}varau'), NOT_STOPPED_ONLY, ('final', r'peru'), ('no_success', 'cancel_booking')],
+        [('booked',), ('tool', 'opt_out'), ('no_reply', r'(en|ei) (saanut|onnistu).{0,40}varau'), NOT_STOPPED_ONLY, ('final', r'peru'), ('no_tool', 'escalate_to_human'), ('reply', r'Itäharju'), ('max_success', 'book_inspection_invite', 1)],
         station='kou', plate='ABC-123', books=True)
     add('pilot.v8.optout_inspected.fi', 'pilot', 'fi', ['autoni on jo katsstettu', 'en halua näitä viestejä enää'],
         [('tool', 'opt_out'), NOT_STOPPED_ONLY, ('no_tool', 'escalate_to_human'), ('no_reply', r'0306')], plate='ABC-888')
+    for lang, change, yes in (('fi', 'Vaihda varauksen nimeksi Maria Pyy', 'Kyllä'), ('en', 'Please change the name on the booking to Maria Pyy', 'Yes'), ('sv', 'Ändra namnet på bokningen till Maria Pyy', 'Ja')):
+        add(f'pilot.v8.rename.{lang}', 'pilot', lang, [{'fi': 'joo', 'en': 'sure', 'sv': 'visst'}[lang], Auto(Customer(lang, 'first')), change, yes],
+            [('booked',), ('success', 'cancel_booking'), ('max_success', 'book_inspection_invite', 2), ('no_tool', 'escalate_to_human'), ('no_reply', r'0306'), ('final', r'Pyy|\d{1,2}[:.]\d{2}')], books=True)

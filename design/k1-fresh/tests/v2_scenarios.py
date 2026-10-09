@@ -423,7 +423,7 @@ def build(Customer, Auto):
     extend_v7(add, Auto, Customer, NOBOOK, GETS)
     extend_brief(add, Auto, Customer, NOBOOK, GETS)
     extend_hyper(add, Auto, Customer, LEAK, SECRET)
-    extend_v8(add)
+    extend_v8(add, Auto, Customer)
     for item in scenarios:
         item['lead'].update(item.get('lead_patch', {}))
         stations = {'pilot.replay.chat1': ('K1 Katsastus Kouvola Kankaanpää', '23.10.2026', '23.10.2025'), 'pilot.replay.chat2': ('K1 Katsastus Helsinki Vuosaari', '2.11.2026', '2.11.2025'), 'pilot.replay.chat3': ('K1 Katsastus Tampere Lakalaiva', '18.10.2026', '18.10.2024')}
