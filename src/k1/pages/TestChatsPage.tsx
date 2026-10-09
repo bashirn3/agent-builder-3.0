@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
 import { getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
@@ -11,12 +11,13 @@ import { DateRangeField } from '../ui/DateRange'
 import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, X } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { Bubble } from './PlaygroundPage'
-import { copy, useCopy } from '../i18n'
+import { copy, locale, useCopy } from '../i18n'
 import { onCacheReset } from '../data/builderApi'
 import { Spinner } from '../ui/controls'
 import { ThreadSkeleton } from '../ui/skeletons'
 import { orderVersions, versionHint } from './versionText'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
+import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../data/tjShowcase'
 
 export type ChatFilters = Omit<TestChatFilters, 'from' | 'to' | 'query'> & { from: string | null; to: string | null; query: string }
 
@@ -60,6 +61,9 @@ export function versionTag(chat: Pick<TestChatSummary, 'isDraft' | 'versionNumbe
 }
 
 const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source === 'compare' ? 'compare' : 'playground']
+const showcaseStamp = (iso: string) => new Intl.DateTimeFormat(locale(), {
+  timeZone: 'Europe/Helsinki', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+}).format(new Date(iso))
 
 function FilterDialog({ open, filters, config, onChange, onClose }: {
   open: boolean
@@ -266,11 +270,18 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   }, [])
 
   useEffect(() => {
-    if (!compact && !id && items[0]) go({ page: 'chats', id: items[0].id }, true)
-  }, [compact, id, items])
+    if (!compact && !id) go({ page: 'chats', id: TJ_SHOWCASE[0].conversation.id }, true)
+  }, [compact, id])
 
   useEffect(() => {
     if (!id) { setSelected(null); return }
+    const showcase = showcaseById(id)
+    if (showcase) {
+      setSelected(showcase)
+      setMessages(toMessages(showcase))
+      setDetailLoading(false)
+      return
+    }
     let cancelled = false
     const cached = chatCache.get(id)
     if (cached) {
@@ -304,7 +315,9 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   }
 
   const pendingQuery = query.trim() !== filters.query.trim()
-  const shown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
+  const realShown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
+  const showcaseShown = matchingShowcase(query).filter(() => !filters.feedback && !filters.from && !filters.to && !filters.source && !filters.versions.length)
+  const shown = [...showcaseShown.map((chat) => chat.conversation), ...realShown]
   const count = chatFilterCount(filters)
   const tracking = config?.tracking !== false
 
@@ -326,7 +339,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const list = (
     <ListPane
       title={t.chats.title}
-      loading={loading || (!shown.length && (pendingQuery || searching))}
+      loading={loading && !showcaseShown.length && !realShown.length}
       selectedId={id}
       actions={(
         <>
@@ -351,24 +364,27 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
             <input className="k1-input" value={query} placeholder={t.chats.search} aria-label={t.chats.searchLabel} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Chips filters={filters} onChange={(next) => { setQuery(next.query); onFilters(next) }} />
-          {!loading && shown.length > 0 && <Totals items={shown} />}
+          {!loading && realShown.length > 0 && <Totals items={realShown} />}
         </>
       )}
-      items={shown.map((item) => ({
-        id: item.id,
-        title: item.title || t.chats.openerOnly,
-        subtitle: item.lastReply || t.chats.noReply,
-        meta: relativeTime(item.updatedAt),
-        href: href({ page: 'chats', id: item.id }),
-        tags: (
-          <>
-            <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>
-            {item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
-            {item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
-            {item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
-          </>
-        ),
-      }))}
+      items={shown.map((item) => {
+        const illustrative = Boolean(showcaseById(item.id))
+        return {
+          id: item.id,
+          title: item.title || t.chats.openerOnly,
+          subtitle: illustrative ? t.chats.showcasePreview : item.lastReply || t.chats.noReply,
+          meta: illustrative ? showcaseStamp(item.updatedAt) : relativeTime(item.updatedAt),
+          href: href({ page: 'chats', id: item.id }),
+          tags: (
+            <>
+              {illustrative ? <span className="k1-vtag is-showcase">{t.chats.showcaseTag}</span> : <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>}
+              {!illustrative && item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
+              {!illustrative && item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
+              {!illustrative && item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
+            </>
+          ),
+        }
+      })}
       empty={loadError ? (
         <>
           <p><strong>{loadError}</strong></p>
@@ -386,6 +402,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   )
 
   const conversation = selected?.conversation?.id === id ? selected.conversation : null
+  const showcase = conversation ? showcaseById(conversation.id) : null
   const detail = detailLoading && !conversation ? (
     <ThreadSkeleton label={t.chats.loadingChat} />
   ) : conversation ? (
@@ -408,22 +425,42 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       }]}
     >
       {tab === 'chat' ? (
-        <div className="k1-thread">
-          <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>
-          {messages.map((message) => (
+        <div className={`k1-thread${showcase ? ' k1-thread--showcase' : ''}`}>
+          {showcase ? (
+            <div className="k1-showcase__notice" role="note">
+              <strong>{t.chats.showcaseNotice}</strong>
+              <p>{t.chats.showcaseClock}</p>
+              <p>{showcase.evidence}</p>
+            </div>
+          ) : <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>}
+          {messages.map((message, index) => showcase ? (
+            <div key={message.id} className="k1-showcase__message">
+              {index > 0 && showcase.messages[index].origin !== showcase.messages[index - 1].origin && <span className="k1-showcase__section">{showcase.messages[index].origin === 'illustrative' ? t.chats.showcaseIllustrative : t.chats.showcaseSupplied}</span>}
+              <div className={`k1-msg k1-msg--${message.role}`}>
+                <div className="k1-msg__bubble">{message.text}</div>
+                <time className="k1-showcase__time" dateTime={showcase.messages[index].createdAt}>{showcaseStamp(showcase.messages[index].createdAt)} · {showcase.messages[index].origin === 'illustrative' ? t.chats.showcaseIllustrative : t.chats.showcaseSupplied}</time>
+              </div>
+            </div>
+          ) : (
             <Bubble key={message.id} message={message} onRate={(value) => rate(message.id, value)} />
           ))}
         </div>
       ) : (
         <Facts rows={[
-          [t.chats.version, versionTag(conversation)],
-          [t.chats.source, sourceLabel(conversation.source)],
-          [t.chats.started, formatStamp(conversation.createdAt)],
-          [t.chats.lastMessage, formatStamp(conversation.updatedAt)],
+          ...(showcase ? [
+            [t.chats.showcaseStatus, t.chats.showcaseNotice],
+            [t.chats.showcaseTimeLabel, t.chats.showcaseClock],
+            [t.chats.showcaseEvidence, showcase.evidence],
+          ] as Array<[string, ReactNode]> : [
+            [t.chats.version, versionTag(conversation)],
+            [t.chats.source, sourceLabel(conversation.source)],
+            [t.chats.thumbsUp, String(messages.filter((message) => message.feedback === 'up').length)],
+            [t.chats.thumbsDown, String(messages.filter((message) => message.feedback === 'down').length)],
+            [t.chats.conversationId, <code>{conversation.id}</code>],
+          ] as Array<[string, ReactNode]>),
+          [t.chats.started, showcase ? showcaseStamp(conversation.createdAt) : formatStamp(conversation.createdAt)],
+          [t.chats.lastMessage, showcase ? showcaseStamp(conversation.updatedAt) : formatStamp(conversation.updatedAt)],
           [t.chats.messages, String(conversation.messageCount)],
-          [t.chats.thumbsUp, String(messages.filter((message) => message.feedback === 'up').length)],
-          [t.chats.thumbsDown, String(messages.filter((message) => message.feedback === 'down').length)],
-          [t.chats.conversationId, <code>{conversation.id}</code>],
         ]} />
       )}
     </DetailPane>
