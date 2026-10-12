@@ -326,6 +326,23 @@ RECORD_USER_TEXT = (
     'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().trim()',
     'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().replace(/\\n\\[REPLY LANGUAGE:[\\s\\S]*$/, "").trim()',
 )
+# Prompt caching reuses the longest unchanged start of a request, so everything that changes per turn goes last:
+# the clock moves from the system message into the [TURN] block, and the builder prompt is not sent a second time
+# when it is the same text as the business brief already in the system message.
+HELSINKI_NOW = "$now.setZone('Europe/Helsinki').toFormat('yyyy-MM-dd EEEE HH:mm')"
+CURRENT_DATE_LINE = "`current_date: ${" + HELSINKI_NOW + "} (Europe/Helsinki)`,"
+SYSTEM_DATE = (
+    'CURRENT DATE (Europe/Helsinki, authoritative for relative dates): {{ $now.setZone("Europe/Helsinki").toFormat("yyyy-MM-dd EEEE HH:mm") }}. ISO week starts Monday.',
+    'CURRENT DATE: the current_date line of each [TURN] block (Europe/Helsinki) is authoritative for relative dates. ISO week starts Monday.',
+)
+PLAYGROUND_DATE = ("  'turn_type: user_message',", "  'turn_type: user_message',\n  " + CURRENT_DATE_LINE)
+BUILD_TURN_DATE = ("  `local_time: ${new Date().toISOString()}`,", "  `local_time: ${new Date().toISOString()}`,\n  " + CURRENT_DATE_LINE)
+AGENT_TEXT = (
+    '={{ $json.agent_input }}',
+    "={{ (() => { const input = String($json.agent_input || ''); const brief = String($('⚙️ CONFIG').first().json.business_prompt || '').trim(); "
+    "const head = '[BUILDER PROMPT]\\n'; if (!brief || !input.startsWith(head) || !input.slice(head.length).startsWith(brief)) return input; "
+    "return head + '(Same text as the K1 business brief in the system message; it is not repeated here.)' + input.slice(head.length + brief.length) })() }}",
+)
 PLAYGROUND_OPENER = (
     "  '[LEAD]',",
     "  '[OPENER ALREADY SENT TO CUSTOMER]',\n  String(body.opener || ''),\n  'The customer is replying to this message. Do not send the opener again; answer what they said.',\n  '',\n  '[LEAD]',",
@@ -373,6 +390,14 @@ def replace_once(text, pair, label):
     if text.count(old) != 1:
         raise SystemExit(f'cannot patch {label}: expected one match, found {text.count(old)}')
     return text.replace(old, new)
+
+
+def cache_layout(named):
+    agent = named['AI Agent']['parameters']
+    agent['options']['systemMessage'] = replace_once(agent['options']['systemMessage'], SYSTEM_DATE, 'system message date')
+    agent['text'] = replace_once(agent['text'], AGENT_TEXT, 'agent text')
+    for name, pair in (('Playground Turn', PLAYGROUND_DATE), ('Build Turn', BUILD_TURN_DATE), ('Build Follow-up Turn', BUILD_TURN_DATE)):
+        named[name]['parameters']['jsCode'] = replace_once(named[name]['parameters']['jsCode'], pair, f'{name} date')
 
 
 def business_prompt(current):
@@ -430,6 +455,9 @@ def build_agent(booking_id):
             code = replace_once(code, ("new Set(['get_slots',", "new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
             node['parameters']['jsCode'] = code
+
+    if os.environ.get('K1_CACHE_LAYOUT', '1') != '0':
+        cache_layout(named)
 
     def define(node, ai, fixed):
         values = {'email': '', 'start_time': '', 'name': '', 'rek': '', 'language': '', 'date_from': '', 'date_to': '', 'event_id': '', 'station_id': ''}
