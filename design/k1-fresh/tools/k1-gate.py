@@ -4,6 +4,7 @@
   python3 k1-gate.py check --base BASE.json[,MORE.json] --cand CAND.json[,MORE.json]
                            [--judge-base S.json --judge-cand S.json] [--pairs P.json] [--golden G.json] [--out FILE]
   python3 k1-gate.py verify           exit 0 only if gates/ holds a passing gate for the prompt the build would ship now
+  python3 k1-gate.py subset --sections language,flow,voice    the test ids of those catalog sections, for k1-v2-eval.py --only
 
 A run fails the gate when
 - any catalog rule's pass rate (its test scenarios without flags) drops more than RULE_DROP points and more scenarios fail,
@@ -165,7 +166,8 @@ def verify(quiet=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['check', 'verify'])
+    parser.add_argument('command', choices=['check', 'verify', 'subset'])
+    parser.add_argument('--sections', default='')
     parser.add_argument('--base')
     parser.add_argument('--cand')
     parser.add_argument('--judge-base')
@@ -176,6 +178,10 @@ def main():
     args = parser.parse_args()
     if args.command == 'verify':
         return 0 if verify() else 1
+    if args.command == 'subset':
+        wanted = set(args.sections.split(','))
+        print(','.join(sorted({t for g in load_catalog()['guidelines'] if g['section'] in wanted for t in g.get('tests') or []})))
+        return 0
     if not (args.base and args.cand):
         parser.error('check needs --base and --cand')
     return check(args)
