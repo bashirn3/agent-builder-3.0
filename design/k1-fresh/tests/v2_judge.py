@@ -5,7 +5,8 @@
   python3 tests/v2_judge.py pair A.json B.json --out PAIRS.json             which version handled each shared scenario better
   python3 tests/v2_judge.py golden RESULTS --out GOLDEN.json                the candidate against the golden chats (tests/golden)
 
-Provider: K1_JUDGE_PROVIDER = openai (OPENAI_API_KEY), anthropic (ANTHROPIC_API_KEY) or offline (rule-based, no key; for
+Provider: K1_JUDGE_PROVIDER = openai (OPENAI_API_KEY), anthropic (ANTHROPIC_API_KEY), azure (AZURE_OPENAI_ENDPOINT plus
+AZURE_OPENAI_API_KEY or an `az login` session; K1_JUDGE_MODEL is the deployment name) or offline (rule-based, no key; for
 self-tests and a rough first look). Model: K1_JUDGE_MODEL. Temperature 0, and every pair is judged twice with the order
 swapped, so a judge that prefers whatever comes first cancels out. Answers are cached in /tmp/k1judge by content hash.
 """
@@ -89,6 +90,22 @@ def http_json(url, body, headers, timeout=120):
         time.sleep(3 * (attempt + 1))
 
 
+_AZURE_TOKEN = {}
+
+
+def azure_auth():
+    if os.environ.get('AZURE_OPENAI_API_KEY'):
+        return {'api-key': os.environ['AZURE_OPENAI_API_KEY']}
+    # Without a key, borrow an Entra token from the logged-in az CLI; tokens live about an hour.
+    if _AZURE_TOKEN.get('expires', 0) < time.time() + 300:
+        import subprocess
+        out = subprocess.run(['az', 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '-o', 'json'],
+                             check=True, capture_output=True, text=True).stdout
+        token = json.loads(out)
+        _AZURE_TOKEN.update(value=token['accessToken'], expires=float(token.get('expires_on') or time.time() + 3000))
+    return {'Authorization': 'Bearer ' + _AZURE_TOKEN['value']}
+
+
 def ask(prompt):
     provider = os.environ.get('K1_JUDGE_PROVIDER', 'openai')
     if provider == 'openai':
@@ -104,6 +121,16 @@ def ask(prompt):
                          {'model': model, 'max_tokens': 2000, 'temperature': 0, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}]},
                          {'x-api-key': os.environ['ANTHROPIC_API_KEY'], 'anthropic-version': '2023-06-01'})
         text = ''.join(part.get('text', '') for part in data['content'])
+    elif provider == 'azure':
+        deployment = os.environ.get('K1_JUDGE_MODEL', 'gpt-6-luna')
+        endpoint = os.environ['AZURE_OPENAI_ENDPOINT'].rstrip('/')
+        version = os.environ.get('AZURE_OPENAI_API_VERSION', '2025-04-01-preview')
+        body = {'response_format': {'type': 'json_object'},
+                'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]}
+        if os.environ.get('K1_JUDGE_TEMPERATURE'):
+            body['temperature'] = float(os.environ['K1_JUDGE_TEMPERATURE'])
+        data = http_json(f'{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={version}', body, azure_auth())
+        text = data['choices'][0]['message']['content']
     else:
         raise RuntimeError(f'unknown provider {provider}')
     match = re.search(r'\{.*\}', text, re.S)
@@ -114,7 +141,7 @@ def ask(prompt):
 
 def model_id():
     provider = os.environ.get('K1_JUDGE_PROVIDER', 'openai')
-    default = {'openai': 'gpt-4.1', 'anthropic': 'claude-sonnet-4-5', 'offline': 'rules'}.get(provider, '?')
+    default = {'openai': 'gpt-4.1', 'anthropic': 'claude-sonnet-4-5', 'azure': 'gpt-6-luna', 'offline': 'rules'}.get(provider, '?')
     return f"{provider}:{os.environ.get('K1_JUDGE_MODEL', default)}"
 
 
