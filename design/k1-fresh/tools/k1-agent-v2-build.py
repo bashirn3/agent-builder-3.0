@@ -9,7 +9,8 @@ Usage:
   python3 k1-agent-v2-build.py smoke     run the Code node inside n8n against staging, production (GET only) and the K1 site
   python3 k1-agent-v2-build.py delete    remove both candidates
   python3 k1-agent-v2-build.py promote   REPLACE the live booking + agent workflows with the candidates (live paths, ids and names are kept);
-                                         the previous live workflows are saved to design/k1-fresh/backups/ first
+                                         the previous live workflows are saved to design/k1-fresh/backups/ first; refused unless
+                                         k1-gate.py check passed for the prompt being shipped (--without-gate only for an emergency fix)
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
@@ -604,9 +605,16 @@ def candidate_booking_id():
     return by_name(BOOKING_NAME)
 
 
-def promote():
+def promote(without_gate=False):
     booking_id, agent_id = by_name(BOOKING_NAME), by_name(AGENT_NAME)
     assert booking_id and agent_id, 'build the candidates first'
+    gate_spec = importlib.util.spec_from_file_location('k1_gate', HERE / 'k1-gate.py')
+    k1_gate = importlib.util.module_from_spec(gate_spec)
+    gate_spec.loader.exec_module(k1_gate)
+    if without_gate:
+        print('WARNING: promoting without a passing regression gate')
+    elif not k1_gate.verify():
+        raise SystemExit('promote refused: no passing gate for this prompt (k1-gate.py check), or pass --without-gate for an emergency fix')
     live_booking, live_agent = snapshot(LIVE_BOOKING), snapshot(LIVE_AGENT)
     BACKUPS.mkdir(exist_ok=True)
     stamp = time.strftime('%Y%m%d-%H%M%S')
@@ -641,7 +649,7 @@ def main():
     elif command == 'smoke':
         smoke()
     elif command == 'promote':
-        promote()
+        promote(without_gate='--without-gate' in sys.argv)
     elif command == 'rollback':
         rollback()
     elif command == 'delete':
