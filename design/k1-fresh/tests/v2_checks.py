@@ -3,6 +3,7 @@
 Anything flagged here is read by a person; a clean result is only "nothing mechanical found". Tone, friendliness and
 whether the answer really helped are judged by reading the transcripts.
 """
+import difflib
 import json
 import re
 
@@ -263,6 +264,18 @@ def evaluate(scenario, turns):
                         covered = True
             if not covered:
                 flags.append(f'CHECK no slot search covered any of {list(check[1:])}')
+        elif kind == 'no_repeat_question':
+            asked = []
+            for i, r in enumerate(replies):
+                for q in re.findall(r'[^.!?\n]*\?', r):
+                    q = re.sub(r'\s+', ' ', q).strip().lower()
+                    if len(q) < 15:
+                        continue
+                    twin = next((a for a in asked if difflib.SequenceMatcher(None, q, a).ratio() >= 0.85), None)
+                    if twin:
+                        flags.append(f'CHECK t{i + 1} repeats an earlier question "{q[:60]}"')
+                        break
+                    asked.append(q)
         elif kind == 'no_output' and re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output matched /{check[1]}/')
         elif kind == 'output' and not re.search(check[1], all_out, re.I):

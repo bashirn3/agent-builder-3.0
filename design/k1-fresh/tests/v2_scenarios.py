@@ -50,6 +50,7 @@ def build(Customer, Auto):
 
     NOBOOK = ('no_tool', 'book_inspection_invite')
     HOURS = r'\d{1,2}[:.]\d{2}|klo \d{1,2}\b|kl\.? \d{1,2}\b|\d{1,2}\s?[–-]\s?\d{1,2}'
+    NAME_ASK = r'what name|which name|name (should|for|on)|your name|millä nimellä|mikä nimi|nimesi|nimen varaukseen|vilket namn|ditt namn'
     MEASURING = r'mittau|päästö|measur|emission|mätning|avgas|OBD'
 
     # ---------- everyday chat ----------
@@ -224,7 +225,7 @@ def build(Customer, Auto):
     d('spam_long', 'en', 'lorem ipsum dolor sit amet ' * 90, [NOBOOK])
     d('unicode', 'en', 'Z̷a̸l̶g̵o̷ ̸t̶e̶x̷t̶ ̷b̸o̶o̷k̶ ̶m̷e̷ ⁣⁣ العربية 中文 book', [NOBOOK])
     d('salad', 'fi', 'Hei, I want boka en tid huomenna please, kiitos tack', [('any_tool', ['get_slots', 'get_station_info']), NOBOOK])
-    d('repeat', 'fi', ['moi', 'moi', 'moi'], [NOBOOK])
+    d('repeat', 'fi', ['moi', 'moi', 'moi'], [NOBOOK, ('no_repeat_question',)])
     d('impatient', 'en', 'ANSWER QUICKLY!!! I have no time!!! WHAT TIMES TOMORROW???', [('any_tool', ['get_slots', 'get_station_info'])])
     d('swearing', 'fi', 'Tää botti on ihan paska, vittu', [NOBOOK])
     d('legal', 'en', 'I will sue K1 and my lawyer will contact you about the inspection failure.', [NOBOOK, ('no_reply', r'we (are|were) (sorry|liable|at fault)|our fault')])
@@ -262,8 +263,33 @@ def build(Customer, Auto):
     for lang, ask, pick in (('fi', 'Haluan varata ajan huomiselle', lambda t: f'Klo {Auto.steal_slot(t)} sopii'),
                             ('sv', 'Jag vill boka tid imorgon', lambda t: f'Kl {Auto.steal_slot(t)} passar'),
                             ('en', 'I want to book a time tomorrow', lambda t: f'The {Auto.steal_slot(t)} one works')):
-        d(f'slot_taken.{lang}', lang, [ask, pick, Auto(Customer(lang, 'second'))], [('booked',), ('no_reply', r'0306')],
-          note='another customer takes the offered slot; the agent must recover by offering other times')
+        d(f'slot_taken.{lang}', lang, [ask, pick, Auto(Customer(lang, 'second'))], [('booked',), ('no_reply', r'0306'), ('max_replies', NAME_ASK, 1)],
+          note='another customer takes the offered slot; the agent must recover by offering other times, and keep the name it already has')
+
+    # Vapi-style information collection and repair: never ask for what you have, answer the side question first, answer every question.
+    VAPI = {
+        'fi': {'book_named': 'Varaa minulle aika huomiselle, nimellä Matti Meikäläinen.', 'price': 'Paljonko katsastus maksaa?', 'why': 'Miksi sitä pitää tietää?',
+               'fuel': 'Bensiini', 'book': 'Haluan varata ajan huomiselle', 'bring': 'Pitääkö mukaan ottaa jotain?',
+               'two': 'Paljonko katsastus maksaa ja onko perjantaina vapaita aikoja?', 'hours_price': 'Mihin asti olette auki huomenna ja paljonko katsastus maksaa?'},
+        'sv': {'book_named': 'Boka en tid åt mig imorgon, i namnet Anna Andersson.', 'price': 'Vad kostar besiktningen?', 'why': 'Varför behöver du veta det?',
+               'fuel': 'Bensin', 'book': 'Jag vill boka tid imorgon', 'bring': 'Behöver jag ta med något?',
+               'two': 'Vad kostar besiktningen och finns det lediga tider på fredag?', 'hours_price': 'Hur länge har ni öppet imorgon och vad kostar besiktningen?'},
+        'en': {'book_named': 'Book me a time tomorrow, the name is John Smith.', 'price': 'How much does an inspection cost?', 'why': 'Why do you need to know that?',
+               'fuel': 'Petrol', 'book': 'I want to book a time tomorrow', 'bring': 'Do I need to bring anything with me?',
+               'two': 'How much is the inspection, and do you have anything free on Friday?', 'hours_price': 'How late are you open tomorrow, and how much does it cost?'},
+    }
+    WHY_FUEL = r'riippu|vaikuttaa|eri hint|hinta on eri|sähköauto|beror|påverkar|olika pris|elbil|depends|different price|affects|electric'
+    LOOKUPS = ['get_slots', 'get_station_info']
+    for lang, say in VAPI.items():
+        d(f'vapi.name_upfront.{lang}', lang, [say['book_named'], Auto(Customer(lang, 'first'))], [('booked',), ('max_replies', NAME_ASK, 0)],
+          note='the name came with the request; picking a time is enough to book')
+        d(f'vapi.why_fuel.{lang}', lang, [say['price'], say['why'], say['fuel']],
+          [NOBOOK, ('reply', WHY_FUEL), ('reply', r'76'), ('no_repeat_question',)], lead_patch={'noproduct': True},
+          note='the customer asks why instead of answering; answer, then ask again in other words')
+        d(f'vapi.side_question.{lang}', lang, [say['book'], lambda t, l=lang: Customer(l, 'first').respond(t[-1]['reply']), say['bring'], Auto(Customer(lang, 'first'))],
+          [('booked',), ('no_repeat_question',)], note='a side question while the agent waits for the name')
+        d(f'vapi.two_questions.{lang}', lang, say['two'], [NOBOOK, ('reply', r'76'), ('any_tool', LOOKUPS), ('min_times', 2), ('slots_cover', nextday(4))])
+        d(f'vapi.hours_and_price.{lang}', lang, say['hours_price'], [NOBOOK, ('tool', 'get_station_info'), ('reply', HOURS), ('reply', r'76')])
 
     F = 'final'
 
