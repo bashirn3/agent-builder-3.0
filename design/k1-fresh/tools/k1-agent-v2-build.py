@@ -516,22 +516,41 @@ const fallbackLang = { finnish: 'fi', swedish: 'sv', english: 'en' }[leadLanguag
 const lang = /\b(hej|visst|tack|boka|besiktning|vad|hur|vilken|var|har|du|fått|jag|mitt|min|inte|och|det)\b|nästa|imorgon/i.test(text) ? 'sv'
   : /\b(joo|moi|hei|kiitos|huomenna|ensi|varaa|katsastus|mitä|milloin|mistä|olet|minun|miksi)\b|kyllä/i.test(text) ? 'fi'
   : /\b(the|what|when|where|how|can|please|you|my|is|are|do|does)\b/i.test(text) ? 'en' : fallbackLang
-const reply = { fi: 'En voinut käsitellä tuota viestiä. Voitko kirjoittaa sen toisin, tai soittaa numeroon 0306 100 100?',
-  sv: 'Jag kunde inte behandla det meddelandet. Kan du skriva det på ett annat sätt, eller ringa 0306 100 100?',
-  en: "I couldn't process that message. Could you rephrase it, or call 0306 100 100?" }[lang]
+const reply = { fi: 'Pahoittelut, meillä meni jokin vikaan. Lähetä viesti uudelleen hetken päästä, tai soita 0306 100 100.',
+  sv: 'Förlåt, något gick fel hos oss. Skicka meddelandet igen om en stund, eller ring 0306 100 100.',
+  en: 'Sorry, something went wrong on our side. Send that again in a minute, or call 0306 100 100.' }[lang]
 return [{ json: { reply, mode: 'muster', recorded: false, messageId: null, userMessageId: null, toolCalls: [], fallback: true } }]"""
+
+# Without this a failed model call on WhatsApp sent the customer nothing, and the run still counted as a success.
+AGENT_ERROR_WHATSAPP_JS = r"""let playground = false
+try { playground = Boolean($('Playground Turn').isExecuted) } catch (error) { playground = false }
+if (playground) return []
+const turn = $('Build Turn').first().json || {}
+const text = String(turn.raw_text || '')
+const lang = /\b(hej|tack|boka|besiktning|vad|hur|vilken|jag|inte|och|det)\b|nästa|imorgon/i.test(text) ? 'sv'
+  : /\b(the|what|when|where|how|can|please|you|my|is|are|do|does)\b/i.test(text) ? 'en' : 'fi'
+const message = { fi: 'Pahoittelut, meillä meni jokin vikaan. Lähetä viesti uudelleen hetken päästä, tai soita 0306 100 100.',
+  sv: 'Förlåt, något gick fel hos oss. Skicka meddelandet igen om en stund, eller ring 0306 100 100.',
+  en: 'Sorry, something went wrong on our side. Send that again in a minute, or call 0306 100 100.' }[lang]
+return [{ json: { output: { messages: [message], reaction: '', end_conversation: false, handoff: false }, agent_error: true } }]"""
 
 
 def add_agent_error_branch(nodes, connections):
     agent = next(n for n in nodes if n['name'] == 'AI Agent')
     agent['onError'] = 'continueErrorOutput'
-    if not any(n['name'] == 'Agent error reply' for n in nodes):
-        nodes.append({'id': str(uuid.uuid4()), 'name': 'Agent error reply', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [agent['position'][0] + 400, agent['position'][1] + 520],
-                      'parameters': {'mode': 'runOnceForAllItems', 'jsCode': AGENT_ERROR_JS}})
+    agent.update({'retryOnFail': True, 'maxTries': 2, 'waitBetweenTries': 1500})
+    for name, code, dy in (('Agent error reply', AGENT_ERROR_JS, 520), ('Agent error WhatsApp', AGENT_ERROR_WHATSAPP_JS, 680)):
+        node = next((n for n in nodes if n['name'] == name), None)
+        if node is None:
+            nodes.append({'id': str(uuid.uuid4()), 'name': name, 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [agent['position'][0] + 400, agent['position'][1] + dy],
+                          'parameters': {'mode': 'runOnceForAllItems', 'jsCode': code}})
+        else:
+            node['parameters']['jsCode'] = code
     main = connections['AI Agent']['main']
     assert len(main) >= 1
-    connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}]]
+    connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}, {'node': 'Agent error WhatsApp', 'type': 'main', 'index': 0}]]
     connections['Agent error reply'] = {'main': [[{'node': 'Respond to playground', 'type': 'main', 'index': 0}]]}
+    connections['Agent error WhatsApp'] = {'main': [[{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
 
 
 SMOKE_CASES = [
