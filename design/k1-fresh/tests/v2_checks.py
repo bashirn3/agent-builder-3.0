@@ -100,7 +100,7 @@ def is_sum(number, text):
 
 
 DATE_WORDS = r'\d{1,2}\.\s?\d{1,2}\.|\d{1,2}\.\d{1,2}(?=\s+(?:kl|klo|at|klockan)\b)|\d{1,2}\.?\s*(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)|\b(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)\w*\s+\d{1,2}\b'
-WEEKDAY_WORDS = r'\b(ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\b|maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag|monday|tuesday|wednesday|thursday|friday|saturday|sunday'
+WEEKDAY_WORDS = r'\b(ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\b|maanantai|tiistai|keskiviik|torstai|perjantai|lauantai|sunnuntai|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag|monday|tuesday|wednesday|thursday|friday|saturday|sunday'
 
 
 def tool_values(turns, names, key):
