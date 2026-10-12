@@ -3,6 +3,7 @@
 
   python3 k1-v2-eval.py run [--suite usual|devil|all] [--only TEXT] [--workers N] [--out FILE]
   python3 k1-v2-eval.py cleanup            cancel every booking the run created, delete the eval copies
+  python3 k1-v2-eval.py recheck FILE...     re-apply the current checks to saved results (no n8n calls)
 
 How it works
 - An isolated copy of the candidate agent gets a random webhook path and a random header key. The Clerk gate is bypassed on the
@@ -487,9 +488,27 @@ def _run(state, scenario, events):
     return turns
 
 
+def recheck(files, by_id, checks_module):
+    for name in files:
+        path = Path(name)
+        data = json.loads(path.read_text())
+        results = data if isinstance(data, list) else data['results']
+        changed = 0
+        for result in results:
+            scenario = by_id.get(result['id'].split('#', 1)[0])
+            if not scenario:
+                continue
+            flags = checks_module.evaluate(scenario, result['turns'])
+            changed += flags != result['flags']
+            result['flags'] = flags
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=1))
+        print(f'{path}: {changed} of {len(results)} results changed, {sum(bool(r["flags"]) for r in results)} flagged')
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['run', 'cleanup'])
+    parser.add_argument('command', choices=['run', 'cleanup', 'recheck'])
+    parser.add_argument('files', nargs='*')
     parser.add_argument('--suite', default='all')
     parser.add_argument('--only', default='')
     parser.add_argument('--workers', type=int, default=8)
@@ -506,6 +525,9 @@ def main():
     Auto.steal_slot = staticmethod(steal_slot)
     Auto.last_event = staticmethod(lambda: getattr(CTX, 'last_event', ''))
     scenarios = scenarios_module.build(Customer, Auto)
+    if args.command == 'recheck':
+        recheck(args.files, {s['id']: s for s in scenarios}, checks_module)
+        return
     if args.suite != 'all':
         scenarios = [s for s in scenarios if s['suite'] == args.suite]
     if args.only:

@@ -229,10 +229,13 @@ guidelines:
     condition: the day the customer named ("tomorrow", "Friday") is closed or has nothing free
     action: >-
       Say so in one short sentence and in the same message offer up to three times from the next day that has free
-      times, keeping the part of the day they asked for. Never suggest a day the station is closed and do not ask which
-      day instead. Ask for a day only when get_slots shows nothing in the next 7 days.
+      times, keeping the part of the day they asked for. Search the named day and the six days after it in one get_slots
+      call, so the next open day is already in the result. Never suggest a day the station is closed, and never ask
+      which day or whether to look further instead of offering times. Ask for a day only when get_slots shows nothing in
+      the next 7 days.
     examples:
       fi: ["Palokka on huomenna la 10.10. kiinni. Ma 12.10. klo 9.00, 9.15 tai 10.30. Mikä sopii?"]
+      sv: ["Palokka har stängt lördag 17.10. Mån 19.10. kl. 9.00, 13.00 eller 16.45, vilken tid passar?"]
     tests: [pilot.v7.friday, devil.saturday_book, times_weekend, final.times.3]
 
   - id: flow.part_of_day

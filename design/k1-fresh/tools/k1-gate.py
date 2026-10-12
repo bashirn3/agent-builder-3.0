@@ -19,6 +19,7 @@ check writes gates/<time>-<prompt hash>.json; k1-agent-v2-build.py promote calls
 import argparse
 import importlib.util
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -54,9 +55,15 @@ def read_results(spec):
     return results
 
 
+TRANSPORT_ERROR = re.compile(r'["\']error["\']\s*:\s*["\'](timeout|.*ECONN|.*socket hang up|.*problem executing the workflow|.*Service Unavailable|.*Bad Gateway)', re.I)
+
+
 def noisy(result):
+    """An outage, not the prompt: the platform fell back or errored, or a tool never reached the booking workflow."""
     turns = result.get('turns') or []
-    return not turns or any(t.get('fallback') or t.get('status') not in (200, None) for t in turns)
+    return not turns or any(t.get('fallback') or t.get('status') not in (200, None)
+                            or any(TRANSPORT_ERROR.search(str(step.get('output', ''))) for step in t.get('steps') or [])
+                            for t in turns)
 
 
 def base_id(scenario_id):

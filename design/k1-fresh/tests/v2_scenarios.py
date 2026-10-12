@@ -297,7 +297,7 @@ def build(Customer, Auto):
     f('vehicle.4', 'en', ['It is for a different vehicle, JKL-987', 'It is a camper, petrol engine', 'What times tomorrow?'], [('any_tool', GET), ('reply', r'camper|motorhome|0040|' + LINK), NOBOOK])
     f('vehicle.5', 'fi', 'Haluan varata ajan perävaunulle', [NOBOOK, ('reply', LINK)])
     # stations and hours
-    f('stations.1', 'fi', 'Mihin asti olette tänään auki?', [('tool', 'get_station_info'), ('reply', r'Palokka|17'), ('no_reply', r'Itäharju')])
+    f('stations.1', 'fi', 'Mihin asti olette tänään auki?', [('tool', 'get_station_info'), ('reply', r'Palok'), ('no_reply', r'Itäharju')])
     f('stations.2', 'sv', 'Vilka öppettider har Kuopio Sorsasalo imorgon?', [('tool', 'get_station_info'), ('reply', r'Sorsasalo'), ('reply', r'8|08'), NOBOOK])
     f('stations.3', 'en', 'Is the Oulu station open tomorrow?', [('tool', 'get_station_info'), ('reply', r'Alppila|Limingantulli|which'), ('reply', r'\?')])
     f('stations.4', 'fi', ['Haluan varata ajan Kuopion asemalle huomiselle'], [NOBOOK, ('reply', LINK)])

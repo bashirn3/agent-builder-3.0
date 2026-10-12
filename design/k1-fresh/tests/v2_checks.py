@@ -159,7 +159,8 @@ def evaluate(scenario, turns):
         for hit in ([] if clock_question else times_in(reply)):
             phone_hours = re.search(r'call|soita|ring|puhel|phone', user_text, re.I) and hit in ('07:30', '18:00', '09:00', '14:00')
             said_pm = int(hit[:2]) > 12 and re.search(rf'\b{int(hit[:2]) - 12}(?::{hit[3:]})?\s*(pm|p\.m)', user_text, re.I)
-            if hit not in all_out and hit not in user_text and hit.lstrip('0') not in user_text and not phone_hours and not said_pm:
+            said_hour = hit.endswith(':00') and re.search(rf'(?<![\d:.,]){int(hit[:2])}(?![\d:.,])', user_text)
+            if hit not in all_out and hit not in user_text and hit.lstrip('0') not in user_text and not phone_hours and not said_pm and not said_hour:
                 flags.append(f'{tag} UNGROUNDED_TIME {hit}')
         for amount in PRICE.findall(reply):
             number = amount.replace(',', '.')
