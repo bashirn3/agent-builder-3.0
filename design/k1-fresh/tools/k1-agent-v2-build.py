@@ -29,6 +29,9 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 spec = importlib.util.spec_from_file_location('gate', HERE / 'n8n-gate.py')
 gate = importlib.util.module_from_spec(spec)
+prompt_spec = importlib.util.spec_from_file_location('k1_prompt', HERE / 'k1-prompt.py')
+k1_prompt = importlib.util.module_from_spec(prompt_spec)
+prompt_spec.loader.exec_module(k1_prompt)
 spec.loader.exec_module(gate)
 
 BACKUPS = ROOT / 'backups'
@@ -372,9 +375,7 @@ def replace_once(text, pair, label):
 
 
 def business_prompt(current):
-    head = (ROOT / 'prompts/k1-conversational-head.md').read_text().rstrip()
-    rules = (ROOT / 'prompts/k1-business-prompt-v2.md').read_text().strip()
-    return f'{head}\n\n{rules}\n'
+    return k1_prompt.prompt()
 
 
 def build_agent(booking_id):

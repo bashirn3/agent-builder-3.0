@@ -211,7 +211,7 @@ OPENERS = {
     'sv': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {plate}. Vill du att jag hjälper dig hitta en tid?',
     'en': 'Hi, this is K1 Katsastus. Your vehicle {plate} is due for inspection soon. Would you like me to find you a time?',
 }
-PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v7.json')
+PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v8.json' if os.environ.get('K1_PROMPT_SOURCE') == 'legacy' else 'prompts/k1-platform-v9.json')
 MASTER = """You are the appointment-booking assistant for K1 Katsastus, a Finnish vehicle inspection company.
 
 Ask whether the customer wants to book an inspection and collect the details needed to check availability: registration number, preferred K1 station, preferred date or time window, and contact details when needed.

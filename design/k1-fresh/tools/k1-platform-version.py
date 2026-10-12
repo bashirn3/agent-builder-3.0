@@ -3,7 +3,7 @@
 
 A version is the builder prompt, additional information, opener, reminders and translations that the playground sends with every turn.
 
-  k1-platform-version.py render          write prompts/k1-platform-v8.json (conversational head + business rules v2) from the repo
+  k1-platform-version.py render          write prompts/k1-platform-v9.json from the rule catalog (K1_PROMPT_SOURCE=legacy: v8.json from the old head + brief)
   k1-platform-version.py show            print the latest saved versions (numbers, notes, who saved them)
   k1-platform-version.py fold            write the rendered content into version 5, make it active, delete newer versions
   k1-platform-version.py save FILE       save FILE (as written by render) as the next version; keeps the current lock flag
@@ -25,14 +25,21 @@ ROOT = HERE.parent
 spec = importlib.util.spec_from_file_location('gate', HERE / 'n8n-gate.py')
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
+prompt_spec = importlib.util.spec_from_file_location('k1_prompt', HERE / 'k1-prompt.py')
+k1_prompt = importlib.util.module_from_spec(prompt_spec)
+prompt_spec.loader.exec_module(k1_prompt)
 
 SUPABASE = 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/'
 CREDENTIAL = {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}}
 TENANT = 'k1_katsastus_demo'
-OUT = ROOT / 'prompts/k1-platform-v8.json'
-NOTE = ('Agent v8: never claims a booking failed without a tool error and never sends the customer to 0306 over a name (a first name with any surname is booked), '
+LEGACY = os.environ.get('K1_PROMPT_SOURCE') == 'legacy'
+OUT = ROOT / ('prompts/k1-platform-v8.json' if LEGACY else 'prompts/k1-platform-v9.json')
+NOTE_V8 = ('Agent v8: never claims a booking failed without a tool error and never sends the customer to 0306 over a name (a first name with any surname is booked), '
         'a rejected name gets one question that says why, opt-out replies are friendly, fit the reason (already inspected or stop messages) and are never repeated word for word, '
         'a booking made in the chat is named with an offer to cancel it when the car turns out to be inspected; plus everything in v7')
+NOTE_V9 = ('Agent v9: the prompt is rendered from the rule catalog (prompts/k1-guidelines.yaml): one rule per condition and action, with a priority, '
+           'no duplicated language rules, one stated order between the apology and the no-apology rules, and a test for every rule. Same behaviour as v8 intended.')
+NOTE = NOTE_V8 if LEGACY else NOTE_V9
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
               'Book at the lead\'s station unless the customer asks for another one or it is closed; use the lead\'s product and vehicle category unless the customer talks about another vehicle. A booking can only be cancelled or moved from the phone that made it; find it with get_my_bookings instead of asking the customer for details. Never quote prices or confirm bookings without a tool result.')
@@ -73,14 +80,12 @@ def call(method, path, body=None):
 
 
 def render():
-    head = (ROOT / 'prompts/k1-conversational-head.md').read_text().rstrip()
-    rules = (ROOT / 'prompts/k1-business-prompt-v2.md').read_text().strip()
     translations = {
         'fi': {'opener': 'Hei! Täällä {{station}}. Autosi {{registration_number}} katsastusaika lähestyy. Haluatko, että etsin sinulle sopivan ajan?', 'reminders': [{'days': None, 'text': ''}] * 3},
         'sv': {'opener': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {{registration_number}}. Vill du att jag hjälper dig hitta en tid?', 'reminders': [{'days': None, 'text': ''}] * 3},
     }
     version = {
-        'masterPrompt': f'{head}\n\n{rules}\n', 'additionalInformation': ADDITIONAL,
+        'masterPrompt': k1_prompt.prompt(), 'additionalInformation': ADDITIONAL,
         'openingMessage': "Hi! It's K1 Katsastus. Your car {{registration_number}} is due for inspection soon. Want me to find a time that works for you?",
         'reminders': [{'days': 3, 'text': ''}, {'days': None, 'text': ''}, {'days': None, 'text': ''}], 'translations': translations, 'note': NOTE,
     }
