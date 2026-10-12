@@ -12,8 +12,9 @@ What maps where:
 - opt-out confirmations    canned responses, so their wording cannot drift
 - lead context             a variable filled per session by the eval (or later by the WhatsApp bridge)
 
-NLP: K1_PARLANT_NLP = azure (AZURE_API_KEY, AZURE_ENDPOINT, AZURE_GENERATIVE_MODEL_NAME, AZURE_EMBEDDING_MODEL_NAME;
-the same Azure gpt-5 deployment as the n8n agent), openai (OPENAI_API_KEY) or anthropic (ANTHROPIC_API_KEY).
+NLP: K1_PARLANT_NLP = azure (AZURE_ENDPOINT, AZURE_GENERATIVE_MODEL_NAME, AZURE_EMBEDDING_MODEL_NAME and its _DIMS and
+_WINDOW, optional K1_EMBED_ENDPOINT; AZURE_API_KEY or an `az login` session), openai (OPENAI_API_KEY) or anthropic
+(ANTHROPIC_API_KEY).
 """
 import asyncio
 import os
@@ -143,9 +144,48 @@ async def configure_api(app: FastAPI) -> None:
         return {'steps': tools.steps_since(session_id, offset)}
 
 
+def azure_service(container):
+    """Parlant's Azure service, adjusted for gpt-6 deployments and for embeddings that live on another resource.
+
+    gpt-6 models reject temperature, max_tokens and logit_bias, and tiktoken does not know their names yet.
+    K1_EMBED_ENDPOINT points the embedder at a second Azure resource (the generative one has no embedding deployment).
+    """
+    import tiktoken
+    from parlant.adapters.nlp import azure_service as az
+
+    az.AzureSchematicGenerator.unsupported_params_by_model.setdefault('gpt-6', ['temperature', 'max_tokens', 'logit_bias'])
+    known = tiktoken.encoding_for_model
+
+    def encoding_for_model(name):
+        try:
+            return known(name)
+        except KeyError:
+            return tiktoken.get_encoding('o200k_base')
+    az.tiktoken.encoding_for_model = encoding_for_model
+
+    service = p.NLPServices.azure(container)
+    embed_endpoint = os.environ.get('K1_EMBED_ENDPOINT')
+    if embed_endpoint:
+        # Parlant resolves embedders by class from the container, so the instance is registered under its own class.
+        class K1AzureEmbedder(az.CustomAzureEmbedder):
+            pass
+        main = os.environ['AZURE_ENDPOINT']
+        os.environ['AZURE_ENDPOINT'] = embed_endpoint
+        try:
+            embedder = K1AzureEmbedder(service.logger, service._tracer, service._meter)
+        finally:
+            os.environ['AZURE_ENDPOINT'] = main
+        container[K1AzureEmbedder] = embedder
+
+        async def get_embedder(hints={}):
+            return embedder
+        service.get_embedder = get_embedder
+    return service
+
+
 def nlp_service():
     choice = os.environ.get('K1_PARLANT_NLP', 'azure')
-    return {'azure': p.NLPServices.azure, 'openai': p.NLPServices.openai, 'anthropic': p.NLPServices.anthropic}[choice]
+    return {'azure': azure_service, 'openai': p.NLPServices.openai, 'anthropic': p.NLPServices.anthropic}[choice]
 
 
 async def main():
