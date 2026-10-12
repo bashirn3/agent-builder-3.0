@@ -1,8 +1,25 @@
 # Parlant pilot: status and recommendation
 
-Status, 12 Oct 2026: the Parlant agent is built and checked offline, but it has not talked to a customer yet. Running it
-needs an LLM key (Azure, OpenAI or Anthropic), and the battery needs the n8n key; neither is on this VM. Below is what
-is measured, what is estimated from Parlant's source, and the rule for deciding once the run is done.
+Status, 12 Oct 2026: Parlant ran live on gpt-6-luna (Azure) against the shared n8n booking workflow, on a sample of
+147 conversational runs and 60 booking runs. It is worse than v8 and slower, so the decision is to keep n8n with the
+catalog-rendered prompt (rule 3 below).
+
+## Measured
+
+| | v8 (n8n) | v9 final (n8n) | Parlant |
+|---|---|---|---|
+| Conversational real flags | 3 of 908 | 4 of 1063 | 3 of 144 |
+| Booking real flags | 2 of 172 | 1 of 180 | 14 of 56 |
+| Judge average (1 to 5) | 4.500 | 4.502 | 4.378 |
+| Median turn, bookings | 14.5 s | 11 s | 40 s |
+| Input tokens per turn | about 65k in 1 to 3 calls | about 19k, about half cached | about 53k in about 11 calls |
+
+Most of Parlant's booking failures (9 of 14) are moves and cancels, and they come from the pilot's wiring, not from
+Parlant: right after a successful booking, `get_my_bookings` returns no bookings, so there is nothing to move or cancel.
+The bookings Parlant makes are not recorded under the customer's phone the way the n8n agent records them. Its booking
+row is therefore not a fair measure until that is fixed. The conversational numbers are: its judge scores are lowest
+on `one_question` (4.54 against v8's 4.73) and `brief` (4.56 against 4.71), and per-turn rule matching did not make it
+follow the voice rules better than the full prompt does. Latency is about 2.5 times n8n's on the same workflow.
 
 ## What exists
 
@@ -72,9 +89,9 @@ Run the battery on v8 (live), on v9 (the catalog prompt in n8n) and on Parlant, 
    wrong, check whether Parlant, which only sees the matching rules, gets it right. If it does, that rule is being
    drowned out in the full prompt, and the fix is a shorter or higher-priority rule, not another paragraph.
 
-## My recommendation now
+## Recommendation
 
-Go with v9 first and treat Parlant as the measured second option, not the plan of record.
+Keep n8n. Even leaving the bookings aside, Parlant fails rule 2 on the judge and on latency.
 
 - v9 already fixes the measured causes of the regressions:
   - duplicated and conflicting rules;

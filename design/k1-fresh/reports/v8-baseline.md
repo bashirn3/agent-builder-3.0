@@ -1,9 +1,8 @@
 # v8 baseline and why each version lost something
 
-Status, 12 Oct 2026: the live v8 run could not be done yet. This VM has no n8n API key, no Supabase or Muster access and no
-LLM key, and none can be added from inside the run. Everything that works without them is done and committed: the rule
-catalog, the judge, the golden chats, the gate and the battery script. Section 3 explains how to run the live baseline in one
-command once the secrets are added. Sections 1 and 2 use the result files already in the repo (v4 to v7).
+Status, 12 Oct 2026: the live v8 baseline and the v9 candidate have both been run on the shared n8n with gpt-6-luna,
+judged with gpt-6-luna on Azure. Section 3 has the numbers. Sections 1 and 2 use the result files already in the repo
+(v4 to v7).
 
 ## 1. What each patch broke, measured
 
@@ -42,11 +41,39 @@ touched greetings, yet greetings lost their question. That is the "one huge prom
   shared scenarios), even though v6 is clearly colder in the greetings above. Hearing that difference needs the LLM judge and
   pairwise A/B, which are now in `tests/v2_judge.py`.
 
-## 3. The live v8 baseline, once the secrets exist
+## 3. The live v8 baseline and v9
 
-Add these as Cloud Agent secrets (Cursor Dashboard, Cloud Agents, Secrets): `N8N_RAPID_API_KEY` and `N8N_RAPID_BASE_URL`,
-and `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY` with `K1_JUDGE_PROVIDER=anthropic`). Supabase and Muster are reached through
-n8n's own credentials, so no separate keys are needed for the battery.
+Runs of 12 Oct 2026. Conversational means every non-booking scenario once plus the language, flow and voice scenarios twice
+more. Outages are runs with a fallback reply, an HTTP error or a tool transport error; they are left out on both sides.
+Real flags are flagged runs that are not outages. Latency depends heavily on how loaded the shared n8n was at the time,
+so compare it only within one row.
+
+| Version | Conversational runs | Outages | Real flags | Booking runs | Real booking flags | Judge (1 to 5) |
+|---|---|---|---|---|---|---|
+| v8 (live) | 949 | 41 | 3 | 180 | 2 | 4.500 |
+| v9, first render | 949 | 16 | 3 | not run | | 4.525 |
+| v9 with the clock moved to each turn | 949 | 0 | 12 | not run | | |
+| v9 final (`11b8cf9`) | 1063 | 0 | 4 | 180 | 1 | 4.502 |
+| Parlant, sample | 147 | 3 | 3 | 60 | 14 | 4.378 |
+
+- **v9 final against v8, conversational.** The judge average is 4.502 against 4.500, and no criterion moved more than
+  0.05. Pairwise on 621 shared scenarios, v8 wins 204, v9 193, tie 217, which is inside the gate's margin. The rule
+  gate fails on `pilot.consent.en.sure` (one English reply in Finnish) and `voice.ack.fi.4` (one reply offered times
+  without calling `get_slots`). Each failed one of three battery runs. Ten more runs of each, on both versions: v9 0 of
+  20 flagged, v8 0 of 20. With those added, the gate still fails, because a single failure is more than the 2-point drop
+  on a rule where v8 never failed.
+- **The same gate fails v8 against v9.** Run the other way round (v9 as base), v8 fails `scope.bookable_only`
+  (`book_other_nonbookable.sv`, a Swedish reply in Finnish), and against the first v9 also `vehicle.products`.
+  The per-rule test catches one-off slips in both directions. A failure that does not repeat on rerun is noise, not a
+  regression; deciding automatically needs the gate to rerun newly failing scenarios before it fails them.
+- **Bookings.** The gate passes v9 against v8: 1 real flag in 180 runs against 2. The v9 flag is
+  `pilot.replay.chat3_price.fi`: asked why the price is "suuntaa-antava", it agreed the price is an estimate.
+- **What made v9 worse at first, and the fix.** On 36 runs of the 12 hardest scenarios, v8 flagged 2. The first v9
+  render flagged 7, because its catalog wording for station referents and part-of-day times was shorter than v8's.
+  Moving the clock out of the system message into each turn, for prompt caching, made it 11. With v8's full wording
+  restored and only the date (not the minute) in the system message, it flagged 1.
+
+### Re-running it
 
 ```bash
 cd design/k1-fresh
@@ -60,10 +87,9 @@ python3 tools/k1-gate.py check --base runs/v8/all.json --cand runs/v9/all.json \
 The battery covers all 835 scenarios, including hyper chaos (`hyper.chaos`), the Maria replay (`pilot.v8.maria_kouvola`),
 the opt-out replay (`pilot.v8.optout_inspected`) and rename (`pilot.v8.rename`). The 85 conversational scenario groups
 (language, booking flow, voice) run three times in total, so a single outage does not decide pass or fail. Fallback
-replies and HTTP errors are left out of the rule rates on both sides.
-
-The bar for every later version is then `runs/v8/all.json` with its judge scores. Record the numbers in this file when
-the run is done.
+replies, HTTP errors and tool transport errors are left out of the rule rates on both sides. Results from runs made
+before a check changed are compared only after `tools/k1-v2-eval.py recheck FILE...` has re-run the current checks on
+both sides.
 
 ## 4. Not done, and why
 
