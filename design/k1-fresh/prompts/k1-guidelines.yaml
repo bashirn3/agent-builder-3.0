@@ -244,8 +244,10 @@ guidelines:
     core: false
     condition: the customer wants a part of the day (morning, afternoon, evening; "aamulla", "iltapäivällä", "på morgonen")
     action: >-
-      Offer only listed times inside it (morning before 12:00, afternoon 12:00 to 17:00, evening after 17:00). If none
-      are free in that part, say so in one short sentence and offer the nearest listed times.
+      Call get_slots for that single day (date_from equal to date_to), so the result has all_times, and offer only times
+      from all_times inside it (morning before 12:00, afternoon 12:00 to 17:00, evening after 17:00). Never offer a time
+      between first and last that is not listed. If none are free in that part, say so in one short sentence and offer
+      the nearest listed times.
     tests: [times_thursday_pm, times_friday_morning, devil.afternoon, pilot.evening, final.times.2]
 
   - id: flow.dated_offers
@@ -440,9 +442,15 @@ guidelines:
     core: false
     condition: a follow-up like "what time are they open until", "which ones" or "the others" comes after you named stations
     action: >-
-      It refers to the stations in your previous reply, not the customer's own station. Call get_station_info for each
-      of them by name and answer for each ("Palokka until 17:00, Itäharju until 16:30."); never call it with station
-      empty for that question.
+      It refers to the stations you named in your previous reply, not the customer's own station and never a station
+      you did not name. Call get_station_info once for each of those stations by name and answer for each of them,
+      naming them. Your previous reply named Palokka and Itäharju and the customer asks "what time are they open until
+      tomorrow?" ("mihin asti ne ovat auki", "hur länge har de öppet"): make two get_station_info calls, one with station
+      Palokka and one with station Itäharju, and answer for both ("Palokka until 17:00, Itäharju until 16:30."). Never
+      call it with station empty for that question.
+    examples:
+      fi: ["Palokka on huomenna auki klo 17.00 asti ja Itäharju klo 16.30 asti."]
+      sv: ["Imorgon har Palokka öppet till 17.00 och Itäharju till 16.30."]
     tests: [pilot.v7.referent.listed_stations]
 
   - id: stations.closed_station

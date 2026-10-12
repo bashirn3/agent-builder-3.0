@@ -326,14 +326,17 @@ RECORD_USER_TEXT = (
     'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().trim()',
     'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().replace(/\\n\\[REPLY LANGUAGE:[\\s\\S]*$/, "").trim()',
 )
-# Prompt caching reuses the longest unchanged start of a request, so everything that changes per turn goes last:
-# the clock moves from the system message into the [TURN] block, and the builder prompt is not sent a second time
-# when it is the same text as the business brief already in the system message.
-HELSINKI_NOW = "$now.setZone('Europe/Helsinki').toFormat('yyyy-MM-dd EEEE HH:mm')"
-CURRENT_DATE_LINE = "`current_date: ${" + HELSINKI_NOW + "} (Europe/Helsinki)`,"
+# Prompt caching reuses a request only up to the first change, and the system message is the first block. The date stays
+# where the model has always read it, but only to the day, so the system message changes once a day instead of every
+# minute; the clock moves into the [TURN] block (moving the whole date there cost replies their referents). Caching
+# stops at the end of the system message, so the second copy of the brief in [BUILDER PROMPT] stays at full price;
+# K1_DEDUPE_BRIEF=1 drops it when it equals the business brief, which flagged more scenarios in a small A/B (4 of 36
+# against 1 of 36), so it is off by default.
+HELSINKI_CLOCK = "$now.setZone('Europe/Helsinki').toFormat('HH:mm')"
+CURRENT_DATE_LINE = "`current_time: ${" + HELSINKI_CLOCK + "} (Europe/Helsinki)`,"
 SYSTEM_DATE = (
     'CURRENT DATE (Europe/Helsinki, authoritative for relative dates): {{ $now.setZone("Europe/Helsinki").toFormat("yyyy-MM-dd EEEE HH:mm") }}. ISO week starts Monday.',
-    'CURRENT DATE: the current_date line of each [TURN] block (Europe/Helsinki) is authoritative for relative dates. ISO week starts Monday.',
+    'CURRENT DATE (Europe/Helsinki, authoritative for relative dates): {{ $now.setZone("Europe/Helsinki").toFormat("yyyy-MM-dd EEEE") }}; the current clock time is the current_time line of each [TURN] block. ISO week starts Monday.',
 )
 PLAYGROUND_DATE = ("  'turn_type: user_message',", "  'turn_type: user_message',\n  " + CURRENT_DATE_LINE)
 BUILD_TURN_DATE = ("  `local_time: ${new Date().toISOString()}`,", "  `local_time: ${new Date().toISOString()}`,\n  " + CURRENT_DATE_LINE)
@@ -395,7 +398,8 @@ def replace_once(text, pair, label):
 def cache_layout(named):
     agent = named['AI Agent']['parameters']
     agent['options']['systemMessage'] = replace_once(agent['options']['systemMessage'], SYSTEM_DATE, 'system message date')
-    agent['text'] = replace_once(agent['text'], AGENT_TEXT, 'agent text')
+    if os.environ.get('K1_DEDUPE_BRIEF') == '1':
+        agent['text'] = replace_once(agent['text'], AGENT_TEXT, 'agent text')
     for name, pair in (('Playground Turn', PLAYGROUND_DATE), ('Build Turn', BUILD_TURN_DATE), ('Build Follow-up Turn', BUILD_TURN_DATE)):
         named[name]['parameters']['jsCode'] = replace_once(named[name]['parameters']['jsCode'], pair, f'{name} date')
 
