@@ -22,3 +22,15 @@ jobs:
         run: python3 design/k1-fresh/tests/test_catalog.py
       - name: Judge, gate and golden chats self-tests
         run: python3 design/k1-fresh/tests/test_judge.py
+      - name: Parlant eval adapter protocol
+        run: python3 design/k1-fresh/tests/test_parlant_adapter.py
+  parlant-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r design/k1-fresh/parlant/requirements.txt
+      - name: The Parlant agent builds from the catalog (no LLM)
+        run: python3 design/k1-fresh/parlant/check_build.py

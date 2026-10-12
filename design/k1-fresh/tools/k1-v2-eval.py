@@ -165,6 +165,56 @@ def post_once(url, secret, payload, timeout=170):
     return status, data, round(time.monotonic() - started, 1)
 
 
+# ---------- Parlant target (K1_EVAL_TARGET=parlant): the same scenarios against parlant/k1_agent.py ----------
+TARGET = os.environ.get('K1_EVAL_TARGET', 'n8n')
+PARLANT_URL = os.environ.get('K1_PARLANT_URL', 'http://localhost:8800').rstrip('/')
+PARLANT_AGENT = {}
+
+
+def parlant_call(method, path, body=None, timeout=90):
+    req = urllib.request.Request(PARLANT_URL + path, data=json.dumps(body).encode() if body is not None else None, method=method,
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        return json.load(res)
+
+
+def parlant_session(state, lead):
+    if 'id' not in PARLANT_AGENT:
+        agents = parlant_call('GET', '/agents')
+        agents = agents.get('items', agents) if isinstance(agents, dict) else agents
+        PARLANT_AGENT['id'] = next(a['id'] for a in agents if a['name'] == 'K1 Katsastus')
+    customer = parlant_call('POST', '/customers', {'name': lead['phone'], 'metadata': {'phone': lead['phone']}})
+    session = parlant_call('POST', '/sessions?allow_greeting=false', {'agent_id': PARLANT_AGENT['id'], 'customer_id': customer['id']})
+    parlant_call('POST', '/k1/lead', {'session_id': session['id'], 'lead': lead, 'booking_url': state['booking_url'], 'secret': state['secret'], 'lead_context': lead_context(lead)})
+    opener = parlant_call('POST', f"/sessions/{session['id']}/events", {'kind': 'message', 'source': 'human_agent_on_behalf_of_ai_agent', 'message': OPENERS[lead['lang']].format(plate=lead['plate'])})
+    return {'id': session['id'], 'offset': opener['offset'], 'steps': 0}
+
+
+def parlant_turn(conversation, text, timeout=170):
+    started = time.monotonic()
+    try:
+        sent = parlant_call('POST', f"/sessions/{conversation['id']}/events", {'kind': 'message', 'source': 'customer', 'message': text})
+        offset, replies, done, failed = sent['offset'], [], False, False
+        while not done and time.monotonic() - started < timeout:
+            events = parlant_call('GET', f"/sessions/{conversation['id']}/events?min_offset={offset + 1}&wait_for_data=60", timeout=75)
+            for event in events:
+                offset = max(offset, event['offset'])
+                if event['kind'] == 'message' and event['source'] == 'ai_agent':
+                    replies.append(event['data'].get('message', ''))
+                elif event['kind'] == 'status' and event['data'].get('status') in ('ready', 'error'):
+                    done, failed = True, event['data'].get('status') == 'error'
+        conversation['offset'] = offset
+        steps = parlant_call('GET', f"/k1/steps?session_id={conversation['id']}&offset={conversation['steps']}")['steps']
+        conversation['steps'] += len(steps)
+        data = {'reply': '\n'.join(replies), 'steps': steps, 'toolCalls': [{'name': s['tool'], 'params': s['input']} for s in steps],
+                'fallback': not replies, 'error': 'engine error' if failed else ('' if done else 'timeout')}
+        return (200 if done and not failed else 500), data, round(time.monotonic() - started, 1)
+    except urllib.error.HTTPError as error:
+        return error.code, {'error': error.read().decode()[:300]}, round(time.monotonic() - started, 1)
+    except Exception as error:
+        return 0, {'error': f'{type(error).__name__}: {str(error)[:200]}'}, round(time.monotonic() - started, 1)
+
+
 def cleanup(state=None):
     state = state or (json.loads(STATE.read_text()) if STATE.exists() else None)
     if not state:
@@ -386,6 +436,7 @@ def run_scenario(state, scenario):
 def _run(state, scenario, events):
     lead = {'phone': f"35899{abs(hash(scenario['id'])) % 10**8:08d}", **scenario['lead']}
     conversation_id = str(uuid.uuid4())
+    parlant = parlant_session(state, lead) if TARGET == 'parlant' else None
     turns, history_steps = [], []
     queue = list(scenario['turns'])
     auto = None
@@ -414,7 +465,10 @@ def _run(state, scenario, events):
             text = item(turns) if callable(item) else item
             if text is None:
                 continue
-        status, data, latency = post(state['agent_url'], state['secret'], payload_for(lead, text, conversation_id))
+        if parlant:
+            status, data, latency = parlant_turn(parlant, text)
+        else:
+            status, data, latency = post(state['agent_url'], state['secret'], payload_for(lead, text, conversation_id))
         data = data if isinstance(data, dict) else {}
         steps = data.get('steps') or []
         for step in steps:
