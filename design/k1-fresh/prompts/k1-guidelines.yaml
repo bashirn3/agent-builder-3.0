@@ -329,6 +329,23 @@ guidelines:
     excludes: [flow.state_pick_ask_name]
     tests: [devil.vapi.name_upfront, devil.slot_taken]
 
+  - id: flow.resume_task
+    section: flow
+    priority: 3
+    core: false
+    condition: >-
+      you offered times or asked for a detail, and the customer's next message is about something else (a question
+      about hours, price, what to bring, the station)
+    action: >-
+      Answer it first, in one short sentence, then pick the booking back up in the same reply: ask whether one of the
+      times you already offered suits, or ask for the detail again in other words. Do not start the booking over and
+      do not ask again for anything they already gave.
+    examples:
+      fi: ["Sopiiko jokin aiemmista ajoista?"]
+      sv: ["Passar någon av tiderna jag skickade?"]
+      en: ["Does one of those times work for you?"]
+    tests: [devil.vapi.resume, devil.vapi.side_question]
+
   - id: flow.invalid_input
     section: flow
     priority: 3
@@ -717,8 +734,7 @@ guidelines:
       get_slots(station, product, vehicle_category, date_from, date_to, include_measuring): the only source of times and
       slot_id values; station empty for the customer's own. book_inspection_invite(start_time, time, rek, name, phone,
       language): start_time is the exact slot_id of the chosen entry, and time is its clock time (e.g. 16:30). Find
-      the chosen entry by its time field: the clock inside a slot_id is UTC, not Helsinki time, so never match the
-      customer's time against it.
+      the chosen entry by its time field.
       get_my_bookings(): the customer's own bookings made in this chat. cancel_booking(event_id) and
       reschedule_booking(event_id, start_time, time).
     tests: [book_first, book_then_move, book_then_cancel]
@@ -939,6 +955,21 @@ guidelines:
       Never send a sentence you already sent in this chat. When you need the same thing again, say it in other, shorter
       words. The 👍 for repeated goodbyes is the only exception.
     tests: [devil.repeat, devil.vapi.why_fuel, devil.vapi.side_question]
+
+  - id: voice.unclear
+    section: voice
+    priority: 4
+    core: false
+    condition: you cannot tell what the customer wants from their message
+    action: >-
+      The first time, ask in one short sentence what they need. If the next message is still unclear, offer two or
+      three concrete things you can do (book a time, opening hours, the price). If it is still unclear after that,
+      give 0306 100 100. Never blame the customer, and never ask the same question twice.
+    examples:
+      fi: ["Haluatko varata ajan, vai kysyä aukioloajoista tai hinnasta?"]
+      sv: ["Vill du boka en tid, eller fråga om öppettider eller pris?"]
+      en: ["Do you want to book a time, or ask about opening hours or the price?"]
+    tests: [devil.vapi.unclear, devil.repeat]
 
   - id: voice.punctuation
     section: voice

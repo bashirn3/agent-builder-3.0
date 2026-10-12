@@ -278,6 +278,12 @@ def build(Customer, Auto):
                'fuel': 'Petrol', 'book': 'I want to book a time tomorrow', 'bring': 'Do I need to bring anything with me?',
                'two': 'How much is the inspection, and do you have anything free on Friday?', 'hours_price': 'How late are you open tomorrow, and how much does it cost?'},
     }
+    VAPI['fi'].update(late='Mihin asti olette muuten auki huomenna?', unclear=['se juttu', 'no se toinen juttu', 'sitä mä just tarkotin'])
+    VAPI['sv'].update(late='Hur länge har ni öppet imorgon förresten?', unclear=['den grejen', 'nej den andra grejen', 'det var ju det jag menade'])
+    VAPI['en'].update(late='How late are you open tomorrow, by the way?', unclear=['that thing', 'no the other thing', 'that is what I meant'])
+    RESUME = r'\d{1,2}[:.]\d\d.*\?|sopi|käy|passar|funkar|work|suit|which (one|time)|mikä aika|mihin aikaan|vilken tid'
+    OFFER = r'varata|varaus|aukiolo|hinta|hinnasta|boka|öppet|pris|book|hours|price'
+    BLAME = r'en ymmärtänyt mitä|epäselv|ymmärrä viestiäsi|förstod inte vad du|didn.t understand (you|your)|unclear message|could you rephrase'
     WHY_FUEL = r'riippu|vaikuttaa|eri hint|hinta on eri|sähköauto|beror|påverkar|olika pris|elbil|depends|different price|affects|electric'
     LOOKUPS = ['get_slots', 'get_station_info']
     for lang, say in VAPI.items():
@@ -290,6 +296,10 @@ def build(Customer, Auto):
           [('booked',), ('no_repeat_question',)], note='a side question while the agent waits for the name')
         d(f'vapi.two_questions.{lang}', lang, say['two'], [NOBOOK, ('reply', r'76'), ('any_tool', LOOKUPS), ('min_times', 2), ('slots_cover', nextday(4))])
         d(f'vapi.hours_and_price.{lang}', lang, say['hours_price'], [NOBOOK, ('tool', 'get_station_info'), ('reply', HOURS), ('reply', r'76')])
+        d(f'vapi.resume.{lang}', lang, [say['book'], say['late']], [NOBOOK, ('final', RESUME), ('no_repeat_question',)],
+          note='a side question after times were offered; answer it and come back to those times')
+        d(f'vapi.unclear.{lang}', lang, say['unclear'], [NOBOOK, ('final', r'0306|' + OFFER), ('no_repeat_question',), ('no_reply', BLAME)],
+          note='three unclear messages: ask, then offer concrete options, then 0306, never blaming the customer')
 
     F = 'final'
 
