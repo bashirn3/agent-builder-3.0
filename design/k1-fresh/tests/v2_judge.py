@@ -76,6 +76,10 @@ def cached(key, compute):
     return value
 
 
+class JudgeFiltered(RuntimeError):
+    """The provider's content filter refused the transcript (swearing and abuse scenarios); it is skipped, not scored."""
+
+
 def http_json(url, body, headers, timeout=120):
     for attempt in range(5):
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method='POST', headers={'Content-Type': 'application/json', **headers})
@@ -83,8 +87,11 @@ def http_json(url, body, headers, timeout=120):
             with urllib.request.urlopen(req, timeout=timeout) as res:
                 return json.load(res)
         except urllib.error.HTTPError as error:
+            detail = error.read().decode()[:300]
+            if error.code == 400 and ('content management policy' in detail or 'content_filter' in detail):
+                raise JudgeFiltered(detail)
             if error.code not in (429, 500, 502, 503, 529) or attempt == 4:
-                raise RuntimeError(f'judge HTTP {error.code}: {error.read().decode()[:300]}')
+                raise RuntimeError(f'judge HTTP {error.code}: {detail}')
         except (urllib.error.URLError, TimeoutError) as error:
             if attempt == 4:
                 raise RuntimeError(f'judge unreachable: {error}')
@@ -207,27 +214,39 @@ def score_one(result):
         text = transcript(result)
         count = len(result.get('turns') or [])
         prompt = SCORE_PROMPT.format(criteria='\n'.join(f'- {k}: {v}' for k, v in CRITERIA.items()), count=count, transcript=text)
-        data = cached(f'score|{RUBRIC_VERSION}|{model_id()}|{text}', lambda: ask(prompt))
+        try:
+            data = cached(f'score|{RUBRIC_VERSION}|{model_id()}|{text}', lambda: ask(prompt))
+        except JudgeFiltered:
+            return {'filtered': True}
     turns = [{k: (max(1, min(5, int(t.get(k, 3)))) if k in CRITERIA else t.get(k, '')) for k in [*CRITERIA, 'reason']} for t in data.get('turns', [])]
     means = {k: round(sum(t[k] for t in turns) / len(turns), 2) for k in CRITERIA} if turns else {}
     return {'turns': turns, 'mean': means, 'overall': round(sum(means.values()) / len(means), 2) if means else None}
 
 
+TRANSPORT_ERROR = re.compile(r'["\']error["\']\s*:\s*["\'](timeout|.*ECONN|.*socket hang up|.*problem executing the workflow|.*Service Unavailable|.*Bad Gateway)', re.I)
+
+
 def judgeable(result):
     turns = result.get('turns') or []
-    return bool(turns) and not any(t.get('status') not in (200, None) or t.get('fallback') for t in turns)
+    return bool(turns) and not any(t.get('status') not in (200, None) or t.get('fallback')
+                                   or any(TRANSPORT_ERROR.search(str(step.get('output', ''))) for step in t.get('steps') or [])
+                                   for t in turns)
 
 
 def score(results, workers=6):
     out = {}
     todo = [r for r in results if judgeable(r)]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        filtered = []
         for result, scored in zip(todo, pool.map(score_one, todo)):
-            out[result['id']] = scored
+            if scored.get('filtered'):
+                filtered.append(result['id'])
+            else:
+                out[result['id']] = scored
     skipped = sorted(r['id'] for r in results if not judgeable(r))
     overall = [s['overall'] for s in out.values() if s['overall'] is not None]
     by_criterion = {k: round(sum(s['mean'][k] for s in out.values() if s['mean']) / max(1, len(out)), 3) for k in CRITERIA}
-    return {'meta': {'judge': model_id(), 'rubric': RUBRIC_VERSION, 'scored': len(out), 'skipped': skipped,
+    return {'meta': {'judge': model_id(), 'rubric': RUBRIC_VERSION, 'scored': len(out), 'skipped': skipped, 'filtered': sorted(filtered),
                      'overall': round(sum(overall) / len(overall), 3) if overall else None, 'by_criterion': by_criterion},
             'scores': out}
 
@@ -261,7 +280,10 @@ def pair_one(a, b):
     criteria = ', '.join(CRITERIA)
     votes = []
     for first, second, first_name, second_name in ((ta, tb, 'a', 'b'), (tb, ta, 'b', 'a')):
-        answer = cached(f'pair|{RUBRIC_VERSION}|{model_id()}|{first}|{second}', lambda f=first, s=second: ask(PAIR_PROMPT.format(criteria=criteria, one=f, two=s)))
+        try:
+            answer = cached(f'pair|{RUBRIC_VERSION}|{model_id()}|{first}|{second}', lambda f=first, s=second: ask(PAIR_PROMPT.format(criteria=criteria, one=f, two=s)))
+        except JudgeFiltered:
+            return {'winner': None, 'votes': [], 'filtered': True}
         winner = str(answer.get('winner', 'tie')).strip()
         votes.append({'1': first_name, '2': second_name}.get(winner, 'tie'))
     decided = [v for v in votes if v != 'tie']
@@ -287,8 +309,10 @@ def pair(a_results, b_results, workers=6):
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         for sid, verdict in zip(shared, pool.map(lambda sid: pair_one(a[sid], b[sid]), shared)):
             out[sid] = verdict
+    filtered = sorted(sid for sid, v in out.items() if v.get('filtered'))
+    out = {sid: v for sid, v in out.items() if not v.get('filtered')}
     tally = {k: sum(v['winner'] == k for v in out.values()) for k in ('a', 'b', 'tie')}
-    return {'meta': {'judge': model_id(), 'rubric': RUBRIC_VERSION, 'shared': len(shared), **tally}, 'pairs': out}
+    return {'meta': {'judge': model_id(), 'rubric': RUBRIC_VERSION, 'shared': len(shared), 'filtered': filtered, **tally}, 'pairs': out}
 
 
 def golden_results():
