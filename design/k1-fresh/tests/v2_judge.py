@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -25,7 +26,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 GOLDEN = HERE / 'golden'
 CACHE = Path(os.environ.get('K1_JUDGE_CACHE', '/tmp/k1judge'))
-RUBRIC_VERSION = 1
+RUBRIC_VERSION = 2
 CRITERIA = {
     'natural': 'Sounds like a friendly person at a K1 station texting on WhatsApp, not a form, a script or a call centre.',
     'brief': 'As short as it can be: one short bubble, two at most, no filler, no restating the customer.',
@@ -49,7 +50,7 @@ def load_v2_checks():
     return module
 
 
-def transcript(result, tool_chars=500):
+def transcript(result, tool_chars=4000):
     lead = result.get('lead') or {}
     lines = [f"Lead: language {lead.get('lang', '?')}, station {lead.get('station', '?')}, product {lead.get('product', '?')}, plate {lead.get('plate', '?')}"]
     for index, turn in enumerate(result.get('turns') or [], 1):
@@ -91,12 +92,18 @@ def http_json(url, body, headers, timeout=120):
 
 
 _AZURE_TOKEN = {}
+_AZURE_LOCK = threading.Lock()
 
 
 def azure_auth():
     if os.environ.get('AZURE_OPENAI_API_KEY'):
         return {'api-key': os.environ['AZURE_OPENAI_API_KEY']}
     # Without a key, borrow an Entra token from the logged-in az CLI; tokens live about an hour.
+    with _AZURE_LOCK:
+        return _azure_token_header()
+
+
+def _azure_token_header():
     if _AZURE_TOKEN.get('expires', 0) < time.time() + 300:
         import subprocess
         out = subprocess.run(['az', 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '-o', 'json'],
