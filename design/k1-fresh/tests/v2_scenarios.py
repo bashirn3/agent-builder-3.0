@@ -298,7 +298,7 @@ def build(Customer, Auto):
         d(f'vapi.hours_and_price.{lang}', lang, say['hours_price'], [NOBOOK, ('tool', 'get_station_info'), ('reply', HOURS), ('reply', r'76')])
         d(f'vapi.resume.{lang}', lang, [say['book'], say['late']], [NOBOOK, ('final', RESUME), ('no_repeat_question',)],
           note='a side question after times were offered; answer it and come back to those times')
-        d(f'vapi.unclear.{lang}', lang, say['unclear'], [NOBOOK, ('final', r'0306|' + OFFER), ('no_repeat_question',), ('no_reply', BLAME)],
+        d(f'vapi.unclear.{lang}', lang, say['unclear'], [NOBOOK, ('final', r'0306|\d{1,2}[:.]\d\d.*\?|' + OFFER), ('no_repeat_question',), ('no_reply', BLAME)],
           note='three unclear messages: ask, then offer concrete options, then 0306, never blaming the customer')
 
     F = 'final'

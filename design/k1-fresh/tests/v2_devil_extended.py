@@ -401,13 +401,14 @@ def extend_voice(add, Auto, Customer, NOBOOK, GETS):
     BOOK = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
     ASKS = r'what (date|time|day)|which (date|time|day)|when is|milloin|mikä päivä|mihin aikaan|vilken (dag|tid)|när är'
     NOCANT = r"can.t check|cannot check|unable to check|en voi tarkistaa|en pysty tarkistaa|kan inte kontrollera|kan inte se (min|din|dina|era)"
+    OFFERS_BOOKING = r'find you a (new )?time|book (you )?a (new )?time|want me to (find|book)|like me to (find|book)|varataanko|haluatko varata|etsinkö|uuden ajan|vill du boka|ska jag (leta|hitta|boka)|hjälpa dig (att )?boka|boka en (ny )?tid'
     for lang in ('fi', 'sv', 'en'):
         v(f'mine.none.{lang}', lang, HAVE[lang], [('tool', 'get_my_bookings'), ('no_reply', NOCANT), ('no_reply', r'0306'), NOBOOK])
         v(f'mine.after_booking.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), HAVE[lang]], [('booked',), ('tool', 'get_my_bookings'), ('no_reply', NOCANT), ('reply', r'\d{1,2}[:.]\d{2}')], books=True)
         v(f'mine.cancel.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), CANCEL[lang], Auto(Customer(lang), 'cancelled', 3)], [('booked',), ('tool', 'get_my_bookings'), ('cancelled',)], books=True)
         v(f'mine.cancel_no_questions.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), CANCEL[lang]], [('booked',), ('tool', 'get_my_bookings'), ('cancelled',)], books=True)
         v(f'mine.move.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('tool', 'get_my_bookings'), ('rescheduled',), ('max_success', 'book_inspection_invite', 1)], books=True)
-        v(f'mine.cancel_none.{lang}', lang, CANCEL[lang], [('tool', 'get_my_bookings'), ('no_success', 'cancel_booking'), ('no_reply', NOCANT), ('no_reply', ASKS)])
+        v(f'mine.cancel_none.{lang}', lang, CANCEL[lang], [('tool', 'get_my_bookings'), ('no_success', 'cancel_booking'), ('no_reply', NOCANT), ('no_reply', ASKS), ('no_reply', OFFERS_BOOKING)])
         v(f'mine.move_none.{lang}', lang, MOVE[lang], [('tool', 'get_my_bookings'), ('no_success', 'reschedule_booking'), ('no_reply', NOCANT)])
 
 

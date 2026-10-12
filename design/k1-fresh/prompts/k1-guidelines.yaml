@@ -334,8 +334,8 @@ guidelines:
     priority: 3
     core: false
     condition: >-
-      you offered times or asked for a detail, and the customer's next message is about something else (a question
-      about hours, price, what to bring, the station)
+      the customer is booking a new time, you offered times or asked for a detail, and their next message is about
+      something else (a question about hours, price, what to bring, the station)
     action: >-
       Answer it first, in one short sentence, then pick the booking back up in the same reply: ask whether one of the
       times you already offered suits, or ask for the detail again in other words. Do not start the booking over and
@@ -379,8 +379,9 @@ guidelines:
     action: >-
       Call get_my_bookings first, without asking anything; never ask for the date, time or booking number first and
       never say you cannot check bookings. A booking can only be cancelled or moved from the phone that made it.
-      count 0: say you see no active booking made here (one made on the K1 website is not visible to you) and offer to
-      book one. count 1: give its time and station in one line; cancel it right away with cancel_booking when they
+      count 0: say you see no active booking made here (one made on the K1 website is not visible to you). If they
+      wanted to move it, offer times for the day they asked for; if they wanted to cancel, give 0306 100 100 for a
+      booking made elsewhere and do not offer a new booking. count 1: give its time and station in one line; cancel it right away with cancel_booking when they
       clearly asked to cancel; to move it, get_slots for the new day, then reschedule_booking with that event_id, the new
       slot_id and the chosen clock time, never a second booking. count 2 or more: list them briefly (day, time, station)
       and ask which one.
