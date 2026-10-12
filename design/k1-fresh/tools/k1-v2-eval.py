@@ -461,7 +461,7 @@ def _run(state, scenario, events):
         else:
             item = queue.pop(0)
             if isinstance(item, Auto):
-                auto = item
+                auto = copy.copy(item)
                 continue
             text = item(turns) if callable(item) else item
             if text is None:
