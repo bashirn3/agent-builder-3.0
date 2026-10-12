@@ -73,6 +73,33 @@ so compare it only within one row.
   Moving the clock out of the system message into each turn, for prompt caching, made it 11. With v8's full wording
   restored and only the date (not the minute) in the system message, it flagged 1.
 
+### Vapi-style collection and repair rules (12 Oct 2026, after the table above)
+
+From Vapi's prompt-builder skill and OpenAI's realtime prompting guide, four rules were added to the catalog:
+`flow.known_name`, `voice.side_question`, `voice.every_question` and `voice.no_repeat`. Each came with devil tests
+(`devil.vapi.*`), plus a `no_repeat_question` check. `devil.slot_taken` now also fails when the name is asked twice.
+Clean runs, rechecked with the same checks on both sides:
+
+| Scenario group | v8 | v9 with the new rules |
+|---|---|---|
+| Name given with the request, booked without asking again (`devil.vapi.name_upfront`) | 8 of 12 | 12 of 12 |
+| Asked "why do you need that?", answers and rephrases (`devil.vapi.why_fuel`) | 5 of 9 | 8 of 9 |
+| Side question while waiting for the name (`devil.vapi.side_question`) | 6 of 12 | 5 of 12 |
+| Time taken after the name was given (`devil.slot_taken`) | 12 of 12 | 12 of 12 |
+| Two questions in one message (`devil.vapi.two_questions`, `hours_and_price`) | 18 of 18 | 18 of 18 |
+| Rest of the devil suite, one run each | 441 of 441 | 340 of 344 |
+
+- The side question is answered in every run on both versions. What still fails is the follow-up: the name question
+  comes back almost word for word.
+- The four devil failures were backend outages: the ownership check, `get_my_bookings` and the booking record could not
+  reach the database. The agent reported each one truthfully.
+- **A regression the devil run found, now fixed.** In 3 of 115 bookings, the first build with the new rules booked the
+  slot whose UTC clock matched the customer's time, so 10:15 became 13:15. v8 and v9d made 0 such bookings in 563.
+  `tools.reference` now says the clock in a slot_id is UTC and the entry is found by its time field. A new
+  `BOOKED_UTC_CLOCK` check flags it. After the fix: 0 in 107 bookings.
+- **A harness bug, fixed.** `--repeat` shared one simulated customer, and with it one turn budget, across the repeats
+  of a booking scenario. Later repeats were cut short, so the groups above were rerun with the fix on both versions.
+
 ### Re-running it
 
 ```bash
