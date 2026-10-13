@@ -409,7 +409,7 @@ def extend_voice(add, Auto, Customer, NOBOOK, GETS):
         v(f'mine.cancel_no_questions.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), CANCEL[lang]], [('booked',), ('tool', 'get_my_bookings'), ('cancelled',)], books=True)
         v(f'mine.move.{lang}', lang, [BOOK[lang], Auto(Customer(lang, 'first')), MOVE[lang], Auto(Customer(lang, 'last'), 'rescheduled', 4)], [('booked',), ('tool', 'get_my_bookings'), ('rescheduled',), ('max_success', 'book_inspection_invite', 1)], books=True)
         v(f'mine.cancel_none.{lang}', lang, CANCEL[lang], [('tool', 'get_my_bookings'), ('no_success', 'cancel_booking'), ('no_reply', NOCANT), ('no_reply', ASKS), ('no_reply', OFFERS_BOOKING)])
-        v(f'mine.move_none.{lang}', lang, MOVE[lang], [('tool', 'get_my_bookings'), ('no_success', 'reschedule_booking'), ('no_reply', NOCANT)])
+        v(f'mine.move_none.{lang}', lang, MOVE[lang], [('tool', 'get_my_bookings'), ('no_success', 'reschedule_booking'), ('no_reply', NOCANT), ('reply', r'0306')])
 
 
 def extend_pilot(add, Auto, Customer, NOBOOK, GETS):
