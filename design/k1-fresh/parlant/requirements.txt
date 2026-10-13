@@ -1,0 +1,4 @@
+parlant==3.3.2
+azure-identity>=1.19
+aiohttp>=3.9
+pyyaml>=6

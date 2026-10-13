@@ -3,6 +3,7 @@
 Anything flagged here is read by a person; a clean result is only "nothing mechanical found". Tone, friendliness and
 whether the answer really helped are judged by reading the transcripts.
 """
+import difflib
 import json
 import re
 
@@ -99,7 +100,7 @@ def is_sum(number, text):
 
 
 DATE_WORDS = r'\d{1,2}\.\s?\d{1,2}\.|\d{1,2}\.\d{1,2}(?=\s+(?:kl|klo|at|klockan)\b)|\d{1,2}\.?\s*(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)|\b(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)\w*\s+\d{1,2}\b'
-WEEKDAY_WORDS = r'\b(ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\b|maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag|monday|tuesday|wednesday|thursday|friday|saturday|sunday'
+WEEKDAY_WORDS = r'\b(ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\b|maanantai|tiistai|keskiviik|torstai|perjantai|lauantai|sunnuntai|måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag|monday|tuesday|wednesday|thursday|friday|saturday|sunday'
 
 
 def tool_values(turns, names, key):
@@ -157,9 +158,10 @@ def evaluate(scenario, turns):
             flags.append(f'{tag} LANG expected {expected} got {got}')
         clock_question = re.search(r'\b(right now|from now|now\?|kello nyt|nyt kello|just nu)\b', turn['user'], re.I)
         for hit in ([] if clock_question else times_in(reply)):
-            phone_hours = re.search(r'call|soita|ring|puhel|phone', user_text, re.I) and hit in ('07:30', '18:00', '09:00', '14:00')
+            phone_hours = (re.search(r'call|soita|ring|puhel|phone', user_text, re.I) or '0306' in reply) and hit in ('07:30', '18:00', '09:00', '14:00')
             said_pm = int(hit[:2]) > 12 and re.search(rf'\b{int(hit[:2]) - 12}(?::{hit[3:]})?\s*(pm|p\.m)', user_text, re.I)
-            if hit not in all_out and hit not in user_text and hit.lstrip('0') not in user_text and not phone_hours and not said_pm:
+            said_hour = hit.endswith(':00') and re.search(rf'(?<![\d:.,]){int(hit[:2])}(?![\d:.,])', user_text)
+            if hit not in all_out and hit not in user_text and hit.lstrip('0') not in user_text and not phone_hours and not said_pm and not said_hour:
                 flags.append(f'{tag} UNGROUNDED_TIME {hit}')
         for amount in PRICE.findall(reply):
             number = amount.replace(',', '.')
@@ -175,8 +177,14 @@ def evaluate(scenario, turns):
         if any(step['tool'] in ('book_inspection_invite', 'reschedule_booking') and (ok_output(step) or {}).get('success') for step in turn['steps']):
             if not (re.search(DATE_WORDS, reply, re.I) and re.search(WEEKDAY_WORDS, reply, re.I)):
                 flags.append(f'{tag} CONFIRMATION_WITHOUT_WEEKDAY_DATE')
+        recent_users = ' '.join(t['user'] for t in turns[max(0, i - 2): i + 1])
         for step in turn['steps']:
             data = ok_output(step)
+            utc = re.search(r'T(\d\d):(\d\d):00Z', str(step['input'].get('start_time', ''))) if step['tool'] in ('book_inspection_invite', 'reschedule_booking') else None
+            local = str(step['input'].get('time', ''))
+            if utc and data and data.get('success') and f'{utc[1]}:{utc[2]}' != local and re.search(rf'\b{int(utc[1])}[:.]{utc[2]}\b', recent_users) \
+                    and not re.search(rf'\b{int(local[:2] or 0)}[:.]{local[3:5]}\b', recent_users):
+                flags.append(f'{tag} BOOKED_UTC_CLOCK picked {utc[1]}:{utc[2]} but booked {local}')
             if step['tool'] in ('book_inspection_invite', 'reschedule_booking') and data and data.get('ok') is False and not data.get('slot_unavailable') and ' is required' not in str(data.get('error')) and 'does not look like a person' not in str(data.get('error')):
                 flags.append(f'{tag} BOOK_TOOL_FAILED {str(data.get("error"))[:80]}')
             if data and str(data.get('error', '')).startswith('unknown action'):
@@ -262,6 +270,18 @@ def evaluate(scenario, turns):
                         covered = True
             if not covered:
                 flags.append(f'CHECK no slot search covered any of {list(check[1:])}')
+        elif kind == 'no_repeat_question':
+            asked = []
+            for i, r in enumerate(replies):
+                for q in re.findall(r'[^.!?\n]*\?', r):
+                    q = re.sub(r'\s+', ' ', q).strip().lower()
+                    if len(q) < 15:
+                        continue
+                    twin = next((a for a in asked if difflib.SequenceMatcher(None, q, a).ratio() >= 0.85), None)
+                    if twin:
+                        flags.append(f'CHECK t{i + 1} repeats an earlier question "{q[:60]}"')
+                        break
+                    asked.append(q)
         elif kind == 'no_output' and re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output matched /{check[1]}/')
         elif kind == 'output' and not re.search(check[1], all_out, re.I):

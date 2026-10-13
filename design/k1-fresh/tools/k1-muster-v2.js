@@ -313,10 +313,16 @@ function pageEstimate(prices, code, includeMeasuring = true) {
 const VEHICLE_QUESTION = 'The vehicle type is unknown. Ask ONE short question: is the car petrol/diesel/hybrid or fully electric (assume a normal passenger car unless they say van or camper)? Then call again with product 004 (petrol/diesel/hybrid), 004e (fully electric) or 0040 (camper or larger car), and vehicle_category M1 (car/camper) or N1 (van).'
 
 // ---------- Availability ----------
-const slotId = (time, stationId, ids, category) => `${time}|${stationId}|${ids.join('+')}|${category}`
+// The clock in a slot_id is Helsinki time with its offset, the same digits the customer sees: a UTC clock there made
+// the model book 13:15 for a customer who asked for 10:15. UTC ids (older chats, tests) still parse.
+const localStamp = (iso) => { const l = helsinki(new Date(iso)); return `${l.date}T${l.hm}${helsinkiOffset(l.date)}` }
+const slotId = (time, stationId, ids, category) => `${localStamp(time)}|${stationId}|${ids.join('+')}|${category}`
 function parseSlot(value) {
-  const [time, station, product, category] = String(value || '').split('|')
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(time || '')) return null
+  const [stamp, station, product, category] = String(value || '').split('|')
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})$/.test(stamp || '')) return null
+  const at = new Date(stamp)
+  if (Number.isNaN(at.getTime())) return null
+  const time = at.toISOString().replace('.000Z', 'Z')
   const ids = String(product || '2246').split('+').map(Number).filter(Boolean)
   return { time, stationId: Number(station || 256), productIds: ids.length ? ids : [2246], category: normalizeCategory(category) }
 }

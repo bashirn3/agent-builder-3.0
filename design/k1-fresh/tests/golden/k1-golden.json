@@ -1,0 +1,1488 @@
+[
+ {
+  "id": "voice.greet.fi.0",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "moi",
+    "reply": "Moi! Etsinkö sulle katsastusajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "voice.greet.sv.0",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "hej",
+    "reply": "Hej! Ska jag hitta en besiktningstid åt dig?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "voice.greet.en.0",
+  "suite": "golden",
+  "lang": "en",
+  "source": "edited",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "hey",
+    "reply": "Hey! Want me to find you an inspection time?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "joke.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Hahaa, sait mut viestittelemään kesken pelin 😂",
+    "reply": "Pelaa rauhassa loppuun 😄 Etsinkö sitten katsastusajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "joke.en",
+  "suite": "golden",
+  "lang": "en",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Haha you caught me mid-game 😂",
+    "reply": "No worries, I won’t pause the match 😄 Want me to find a time for the inspection?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "howareyou.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Mitä kuuluu?",
+    "reply": "Hyvää kiitos! Etsinkö sulle katsastusajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "devil.x.turns.compliment",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "edited",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Olet kiva!",
+    "reply": "Kiitos! 😊 Etsinkö sulle katsastusajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Mitä aikoja on huomenna?",
+    "reply": "To 15.10. klo 9.15, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:15\", \"slot_id\": \"K1-20261015-0915\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.consent.fi.joo",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 15.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.consent.sv.visst",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 15.10. kl. 9.00, 13.00 eller 16.45. Vilken passar?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.consent.en.sure",
+  "suite": "golden",
+  "lang": "en",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "sure",
+    "reply": "Thu 15 Oct: 09:00, 13:00 or 16:45. Which one?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.fast_book.fi.pal",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-710"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 15.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Klo 09:00 sopii",
+    "reply": "To 15.10. klo 9.00, TST-710. Millä nimellä varaan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Varattu! To 15.10. klo 9.00, K1 Katsastus Jyväskylä Palokka, varausnumero KX7P2QLM. Yhteensä 76 €, maksetaan asemalla.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"KX7P2QLM\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Jyv\\u00e4skyl\\u00e4 Palokka\", \"total_eur\": 76}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.fast_book.sv.pal",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-711"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 15.10. kl. 9.00, 13.00 eller 16.45. Vilken passar?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Kl 09:00 passar bra",
+    "reply": "Tors 15.10. kl. 9.00 för TST-711. Vilket namn ska jag skriva?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Anna Andersson",
+    "reply": "Bokat! Tors 15.10. kl. 9.00 på K1 Katsastus Jyväskylä Palokka, bokningsnummer KX7P2QLM. Totalt 76 €, betalas på stationen.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"KX7P2QLM\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Jyv\\u00e4skyl\\u00e4 Palokka\", \"total_eur\": 76}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.fast_book.en.ita",
+  "suite": "golden",
+  "lang": "en",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Turku Itäharju",
+   "product": "004",
+   "plate": "TST-702"
+  },
+  "turns": [
+   {
+    "user": "yes",
+    "reply": "Thu 15 Oct: 09:00, 13:00 or 16:45. Which one?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Turku Itäharju\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "The 09:00 one works for me",
+    "reply": "Thu 15 Oct at 09:00 for TST-702. What name should I put on it?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "Booked for Thu 15 Oct at 09:00 at K1 Katsastus Turku Itäharju. Booking number KX7P2QLM, total €76, payable at the station.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"KX7P2QLM\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Turku It\\u00e4harju\", \"total_eur\": 76}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "times_next_week.en",
+  "suite": "golden",
+  "lang": "en",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Next week works, what times do you have?",
+    "reply": "Mon 19 Oct: 09:00, 12:30 or 16:15. Which one?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-19",
+       "date_to": "2026-10-25",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-19\", \"weekday\": \"Monday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261019-0900\"}, {\"time\": \"12:30\", \"slot_id\": \"K1-20261019-1230\"}, {\"time\": \"16:15\", \"slot_id\": \"K1-20261019-1615\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.v7.friday.reject_first.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Haluan ajan perjantaille, mahdollisimman myöhään.",
+    "reply": "Pe 16.10. myöhäisin vapaa on klo 16.45. Sopiiko?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-16",
+       "date_to": "2026-10-16",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-16\", \"weekday\": \"Friday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261016-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261016-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261016-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Ei tuo käy, muttei 16.10.",
+    "reply": "Pe 23.10. klo 16.30 on myöhäisin vapaa. Käykö se?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-23",
+       "date_to": "2026-10-30",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-23\", \"weekday\": \"Friday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:15\", \"slot_id\": \"K1-20261023-0915\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261023-1300\"}, {\"time\": \"16:30\", \"slot_id\": \"K1-20261023-1630\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.measurements.new_without.en",
+  "suite": "golden",
+  "lang": "en",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-735"
+  },
+  "turns": [
+   {
+    "user": "I want to book tomorrow, but without the measurements. I get those done at a garage.",
+    "reply": "Thu 15 Oct, inspection only: 09:00, 13:00 or 16:45. Which one?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "false"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 46}, \"product_ids\": [2246]}"
+     }
+    ]
+   },
+   {
+    "user": "The 09:00 one works for me",
+    "reply": "Thu 15 Oct at 09:00 for TST-735, inspection only. What name should I put on it?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "Booked for Thu 15 Oct at 09:00 at K1 Katsastus Jyväskylä Palokka, inspection only. Booking number KX7P2QLM, total €46, payable at the station.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"KX7P2QLM\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Jyv\\u00e4skyl\\u00e4 Palokka\", \"total_eur\": 46}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.done_acks.sv",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "edited",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-722"
+  },
+  "turns": [
+   {
+    "user": "visst",
+    "reply": "Tors 15.10. kl. 9.00, 13.00 eller 16.45. Vilken passar?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Kl 09:00 passar bra",
+    "reply": "Tors 15.10. kl. 9.00 för TST-722. Vilket namn ska jag skriva?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Anna Andersson",
+    "reply": "Bokat! Tors 15.10. kl. 9.00 på K1 Katsastus Jyväskylä Palokka, bokningsnummer KX7P2QLM. Totalt 76 €, betalas på stationen.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"KX7P2QLM\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Jyv\\u00e4skyl\\u00e4 Palokka\", \"total_eur\": 76}"
+     }
+    ]
+   },
+   {
+    "user": "Tack",
+    "reply": "Ha det bra!",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Ok",
+    "reply": "👍",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Ok",
+    "reply": "👍",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.handoff_acks.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Haluan puhua oikean ihmisen kanssa.",
+    "reply": "Täältä en saa sua yhdistettyä, mutta K1:n ajanvarauksessa vastaa ihminen: 0306 100 100.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "escalate_to_human",
+      "input": {},
+      "output": "{\"success\": true}"
+     }
+    ]
+   },
+   {
+    "user": "Joo",
+    "reply": "Hyvää päivänjatkoa!",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Joo",
+    "reply": "👍",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Joo",
+    "reply": "👍",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.replay.chat4a_filler_not_consent.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Kouvola Kankaanpää",
+   "product": "004",
+   "plate": "ABC-123"
+  },
+  "turns": [
+   {
+    "user": "Miks sun nimi on tuplana",
+    "reply": "En tiedä, miksi se näkyy noin. Pahoittelut sekaannuksesta!",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Ei mitää",
+    "reply": "Haluatko, että etsin katsastusajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "thanks.en",
+  "suite": "golden",
+  "lang": "en",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "thanks bye",
+    "reply": "Take care!",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "switch.sv_to_fi",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Hej",
+    "reply": "Hej! Ska jag hitta en besiktningstid åt dig?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Voidaanko jatkaa suomeksi? Mihin asti olette auki tänään?",
+    "reply": "Palokka on tänään auki klo 17.00 asti.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": ""
+      },
+      "output": "{\"ok\": true, \"station\": {\"name\": \"K1 Katsastus Jyväskylä Palokka\"}, \"hours\": {\"status\": \"open\", \"opens\": \"09:00\", \"closes\": \"17:00\"}, \"assistant_can_book\": true, \"price\": {\"total_eur\": 76, \"breakdown\": [{\"name\": \"Inspection\", \"eur\": 46}, {\"name\": \"Statutory measurements\", \"eur\": 30}]}}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "switch.fi_to_en",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Moi",
+    "reply": "Moi! Etsinkö sulle katsastusajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Actually, can we continue in English? What times tomorrow?",
+    "reply": "Thu 15 Oct: 09:00, 13:00 or 16:45. Which one?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "switch.mid_flow",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Onko huomenna aikoja?",
+    "reply": "To 15.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "What about the day after tomorrow?",
+    "reply": "Fri 16 Oct: 09:30, 12:15 or 16:00. Which one?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-16",
+       "date_to": "2026-10-16",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-16\", \"weekday\": \"Friday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:30\", \"slot_id\": \"K1-20261016-0930\"}, {\"time\": \"12:15\", \"slot_id\": \"K1-20261016-1215\"}, {\"time\": \"16:00\", \"slot_id\": \"K1-20261016-1600\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Och på fredag då?",
+    "reply": "Fre 16.10. kl. 9.30, 12.15 eller 16.00. Vilken passar?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-16",
+       "date_to": "2026-10-16",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-16\", \"weekday\": \"Friday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:30\", \"slot_id\": \"K1-20261016-0930\"}, {\"time\": \"12:15\", \"slot_id\": \"K1-20261016-1215\"}, {\"time\": \"16:00\", \"slot_id\": \"K1-20261016-1600\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "switch.en_to_sv",
+  "suite": "golden",
+  "lang": "en",
+  "source": "run",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Vad kostar besiktningen?",
+    "reply": "På Palokka kostar besiktningen 46 € och de lagstadgade mätningarna 30 €, totalt 76 €. Betalning sker på stationen.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": ""
+      },
+      "output": "{\"ok\": true, \"station\": {\"name\": \"K1 Katsastus Jyväskylä Palokka\"}, \"hours\": {\"status\": \"open\", \"opens\": \"09:00\", \"closes\": \"17:00\"}, \"assistant_can_book\": true, \"price\": {\"total_eur\": 76, \"breakdown\": [{\"name\": \"Inspection\", \"eur\": 46}, {\"name\": \"Statutory measurements\", \"eur\": 30}]}}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "other_lang_de",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Hallo, ich möchte einen Termin buchen",
+    "reply": "Hei! Palvelen suomeksi, ruotsiksi tai englanniksi. Etsinkö sulle ajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.where_number.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Mistä sait numeroni?",
+    "reply": "Autosi on katsastettu asemallamme ja jätit silloin meille numerosi, siksi muistutus tulee siihen.",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.v7.brief.origin.sv1",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Var har du fått mitt telefonnummer?",
+    "reply": "Din bil har besiktigats på en av våra stationer och du lämnade då ditt nummer till oss, därför kommer påminnelsen dit.",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "optout.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "edited",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Lopeta viestit",
+    "reply": "Lopetin muistutukset, et saa niitä enää.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "opt_out",
+      "input": {},
+      "output": "{\"success\": true, \"opted_out\": true}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "devil.x.opt.stop_sv",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Sluta skicka meddelanden",
+    "reply": "Jag har stoppat påminnelserna, du får inga fler.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "opt_out",
+      "input": {},
+      "output": "{\"success\": true, \"opted_out\": true}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.v8.optout_inspected.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "ABC-888"
+  },
+  "turns": [
+   {
+    "user": "autoni on jo katsstettu",
+    "reply": "Hienoa, kiitos tiedosta! Lopetin muistutukset tälle autolle.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "opt_out",
+      "input": {},
+      "output": "{\"success\": true, \"opted_out\": true}"
+     }
+    ]
+   },
+   {
+    "user": "en halua näitä viestejä enää",
+    "reply": "Muistutukset on jo lopetettu, et saa niitä enää.",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "plate_sold.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-061"
+  },
+  "turns": [
+   {
+    "user": "Myin auton, uusi rekisterinumero on DEF-456",
+    "reply": "Onko DEF-456 bensa-, diesel- tai hybridiauto vai täyssähkö?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Se on diesel",
+    "reply": "To 15.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Mitä aikoja huomenna on?",
+    "reply": "Huomenna to 15.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "devil.swearing",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Tää botti on ihan paska, vittu",
+    "reply": "Pahoittelut, että tämä on turhauttanut. Etsinkö sulle ajan, vai haluatko soittaa ajanvaraukseen 0306 100 100?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "angry.en",
+  "suite": "golden",
+  "lang": "en",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Last time everything went wrong, I am really angry",
+    "reply": "I’m sorry your last visit went badly. You can talk it through with K1 on 0306 100 100, or I can find you a new time here.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "escalate_to_human",
+      "input": {},
+      "output": "{\"success\": true}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "human.sv",
+  "suite": "golden",
+  "lang": "sv",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Jag vill prata med en människa",
+    "reply": "Här kan jag inte koppla dig vidare, men på K1:s bokning svarar en människa: 0306 100 100.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "escalate_to_human",
+      "input": {},
+      "output": "{\"success\": true}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "devil.pizza",
+  "suite": "golden",
+  "lang": "en",
+  "source": "edited",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Order me a large pizza with pineapple.",
+    "reply": "Pizza is beyond me, but I can find you an inspection time. Shall I?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "under18.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Olen 15-vuotias",
+    "reply": "Katsastuksen varaa täysi-ikäinen, jolla on ajokortti. Hän voi kirjoittaa tänne, kun on valmis.",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.capital.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Asun Helsingissä, voiko teillä varata ajan sinne?",
+    "reply": "Tässä chatissa en voi varata Helsinkiin. Helsingin asemille varaat linkistä tai numerosta 0306 100 100.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": ""
+      },
+      "output": "{\"ok\": true, \"station\": {\"name\": \"K1 Katsastus Helsinki Konala\"}, \"hours\": {\"status\": \"open\", \"opens\": \"09:00\", \"closes\": \"17:00\"}, \"assistant_can_book\": false, \"price\": {\"total_eur\": 76, \"breakdown\": [{\"name\": \"Inspection\", \"eur\": 46}, {\"name\": \"Statutory measurements\", \"eur\": 30}]}, \"official_booking_link\": \"https://www.k1katsastus.fi/ajanvaraus\"}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.v7.kouvola.book.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Kouvola Kankaanpää",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Haluan varata ajan huomiselle",
+    "reply": "Kouvolan ajat varataan linkistä tai numerosta 0306 100 100: https://www.k1katsastus.fi/ajanvaraus",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": ""
+      },
+      "output": "{\"ok\": true, \"station\": {\"name\": \"K1 Katsastus Kouvola Kankaanpää\"}, \"hours\": {\"status\": \"open\", \"opens\": \"09:00\", \"closes\": \"17:00\"}, \"assistant_can_book\": false, \"price\": {\"total_eur\": 76, \"breakdown\": [{\"name\": \"Inspection\", \"eur\": 46}, {\"name\": \"Statutory measurements\", \"eur\": 30}]}, \"official_booking_link\": \"https://www.k1katsastus.fi/ajanvaraus\"}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.v7.referent.listed_stations.en",
+  "suite": "golden",
+  "lang": "en",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Espoo Suomenoja",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Which stations can you book a time at?",
+    "reply": "Here I can book at Palokka (Jyväskylä) and Itäharju (Turku). Other stations go through the booking link or 0306 100 100.",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "What time are they open until tomorrow?",
+    "reply": "Palokka until 17:00, Itäharju until 16:30.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "Palokka"
+      },
+      "output": "{\"ok\": true, \"station\": {\"name\": \"K1 Katsastus Jyväskylä Palokka\"}, \"hours\": {\"status\": \"open\", \"opens\": \"09:00\", \"closes\": \"17:00\"}, \"assistant_can_book\": true, \"price\": {\"total_eur\": 76, \"breakdown\": [{\"name\": \"Inspection\", \"eur\": 46}, {\"name\": \"Statutory measurements\", \"eur\": 30}]}}"
+     },
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "Itäharju"
+      },
+      "output": "{\"ok\": true, \"station\": {\"name\": \"K1 Katsastus Turku Itäharju\"}, \"hours\": {\"status\": \"open\", \"opens\": \"09:00\", \"closes\": \"16:30\"}, \"assistant_can_book\": true, \"price\": {\"total_eur\": 76, \"breakdown\": [{\"name\": \"Inspection\", \"eur\": 46}, {\"name\": \"Statutory measurements\", \"eur\": 30}]}}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "voice.mine.cancel_none.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-700"
+  },
+  "turns": [
+   {
+    "user": "Haluan perua varaukseni",
+    "reply": "En näe täällä tehtyä varausta. K1:n sivuilla tehdyt varaukset eivät näy minulle. Varaanko sulle uuden ajan?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_my_bookings",
+      "input": {},
+      "output": "{\"count\": 0, \"bookings\": []}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ },
+ {
+  "id": "pilot.v8.rename.fi",
+  "suite": "golden",
+  "lang": "fi",
+  "source": "written",
+  "note": "",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "product": "004",
+   "plate": "TST-833"
+  },
+  "turns": [
+   {
+    "user": "joo",
+    "reply": "To 15.10. klo 9.00, 13.00 tai 16.45. Mikä sopii?",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-10-15",
+       "date_to": "2026-10-15",
+       "include_measuring": "true"
+      },
+      "output": "{\"ok\": true, \"station\": \"K1 Katsastus Jyväskylä Palokka\", \"days\": [{\"date\": \"2026-10-15\", \"weekday\": \"Thursday\", \"free_count\": 14, \"suggestions\": [{\"time\": \"09:00\", \"slot_id\": \"K1-20261015-0900\"}, {\"time\": \"13:00\", \"slot_id\": \"K1-20261015-1300\"}, {\"time\": \"16:45\", \"slot_id\": \"K1-20261015-1645\"}]}], \"price\": {\"total_eur\": 76}, \"product_ids\": [2246, 2250]}"
+     }
+    ]
+   },
+   {
+    "user": "Klo 09:00 sopii",
+    "reply": "To 15.10. klo 9.00, TST-833. Millä nimellä varaan?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Varattu! To 15.10. klo 9.00, K1 Katsastus Jyväskylä Palokka, varausnumero KX7P2QLM. Yhteensä 76 €, maksetaan asemalla.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"KX7P2QLM\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Jyv\\u00e4skyl\\u00e4 Palokka\", \"total_eur\": 76}"
+     }
+    ]
+   },
+   {
+    "user": "Vaihda varauksen nimeksi Maria Pyy",
+    "reply": "Vaihdanko varauksen nimeksi Maria Pyy?",
+    "status": 200,
+    "fallback": false,
+    "steps": []
+   },
+   {
+    "user": "Kyllä",
+    "reply": "Vaihdettu! To 15.10. klo 9.00 nimellä Maria Pyy, uusi varausnumero R4TQ9WEX.",
+    "status": 200,
+    "fallback": false,
+    "steps": [
+     {
+      "tool": "cancel_booking",
+      "input": {},
+      "output": "{\"success\": true, \"recorded\": true}"
+     },
+     {
+      "tool": "book_inspection_invite",
+      "input": {},
+      "output": "{\"success\": true, \"booking_number\": \"R4TQ9WEX\", \"event_id\": \"ev1\", \"station_name\": \"K1 Katsastus Jyv\\u00e4skyl\\u00e4 Palokka\", \"total_eur\": 76}"
+     }
+    ]
+   }
+  ],
+  "flags": []
+ }
+]
