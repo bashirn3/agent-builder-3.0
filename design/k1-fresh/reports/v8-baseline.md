@@ -100,6 +100,41 @@ Clean runs, rechecked with the same checks on both sides:
 - **A harness bug, fixed.** `--repeat` shared one simulated customer, and with it one turn budget, across the repeats
   of a booking scenario. Later repeats were cut short, so the groups above were rerun with the fix on both versions.
 
+### v9 new2: the conversation-design fixes, full battery against v8
+
+Changes, from the chatbot-conversation-design and Agentforce conversation-design skills ("never a dead end",
+"business rules in code, not in instructions", "return to the task after an interruption", "three-step fallback"):
+
+- A failed model call is retried once. If it still fails, WhatsApp gets a short apology with 0306 100 100 (before, it
+  got no reply, and the run still counted as a success). The playground message no longer asks the customer to
+  rephrase.
+- slot_id clocks are Helsinki time with the offset (`2026-10-13T10:15+03:00|…`), so the UTC trap is gone in code and its
+  prompt warning is deleted. UTC ids still parse.
+- New rules `flow.resume_task` (answer the side question, then come back to the offered times) and `voice.unclear`
+  (ask, then offer two or three things, then 0306), with devil tests `devil.vapi.resume` and `devil.vapi.unclear`.
+
+Full battery (1,182 runs) plus the devil suite (372 runs), both versions under the current checks:
+
+| | v8 | v9 new2 |
+|---|---|---|
+| Runs with an outage (fallback reply, HTTP error) | 49 of 1,129 | 7 of 1,182 |
+| Real failures, scenarios both ran | 7 | 7 |
+| Devil suite, shared scenarios, real failures | 1 of 351 | 1 of 351 |
+| `devil.vapi.resume` and `devil.vapi.unclear` | 13 of 18 fail | 0 of 6 fail |
+| LLM judge, conversational runs | 4.50 | 4.48 |
+| LLM pairwise, 620 shared | 214 wins | 185 wins, 214 ties |
+
+- The outage drop fits the retry, but the two runs were on different days, so part of it can be staging load.
+- 6 of v9 new2's booking failures were the staging database save timing out (Muster booked, the record did not
+  save); the agent reported each truthfully.
+- The pairwise gap is mostly near-identical replies. The one real pattern: after "cancel my booking" found nothing,
+  the new resume rule made the agent offer a new booking (7 of 9 versus 2 of 9). Fixed in `bookings.lookup_first`
+  (cancel: 0306, no offer; move: times plus 0306 so the customer does not end up with two bookings; only asking:
+  offer to book), checked by `voice.mine.cancel_none` and `voice.mine.move_none`, 39 of 39 clean after the fix. The
+  judge still prefers v8's shorter cancel and move replies without 0306 (8 to 2 on 13 single pairs).
+- A booking confirmation check missed inflected Finnish weekdays ("keskiviikolle"); 12 false flags, fixed.
+- Open: `voice.side_question` still re-asks the name or fuel type in near-identical words in about 1 run in 3.
+
 ### Re-running it
 
 ```bash
