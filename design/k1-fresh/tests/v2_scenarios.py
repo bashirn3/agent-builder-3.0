@@ -23,7 +23,7 @@ def nextday(weekday):
 
 
 def build(Customer, Auto):
-    import datetime, os, sys
+    import datetime, os, re, sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from v2_devil_extended import iso, TODAY, MOVE_DAY
     scenarios = []
@@ -175,7 +175,7 @@ def build(Customer, Auto):
     flows('book_other_bookable', lambda l: [{'fi': 'Haluaisin varata ajan Jyväskylän Palokkaan huomiselle', 'sv': 'Jag vill boka tid på Palokka i Jyväskylä imorgon', 'en': 'I would like to book at the Jyväskylä Palokka station tomorrow'}[l], Auto(Customer(l, 'first'))],
           [('booked',), ('param', 'get_slots', 'station', 'palokka|jyv')], station='ita')
     flows('book_diesel_other_plate', lambda l: [{'fi': 'Auto on vaihtunut, uusi rekisterinumero on HIJ-987. Haluan ajan huomiselle', 'sv': 'Bilen är ny, registreringsnumret är HIJ-987. Jag vill ha tid imorgon', 'en': 'The car changed, the new plate is HIJ-987. I want a time tomorrow'}[l],
-                                                 Auto(Customer(l, 'first', fuel={'fi': 'Diesel', 'sv': 'Diesel', 'en': 'Diesel'}[l], plate='HIJ-987'))], [('booked',)])
+                                                 Auto(Customer(l, 'first', fuel={'fi': 'Diesel', 'sv': 'Diesel', 'en': 'Diesel'}[l], plate='HIJ-987'))], [('booked',), ('param', 'book_inspection_invite', 'rek', 'HIJ-987')])
     flows('book_then_cancel', lambda l: [{'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}[l], Auto(Customer(l, 'first')),
                                           {'fi': 'Valitettavasti en pääsekään, peruuta se varaus', 'sv': 'Tyvärr kan jag inte komma, avboka tiden', 'en': "Sorry, I can't make it after all, please cancel that booking"}[l], Auto(Customer(l), 'cancelled', 3)],
           [('booked',), ('cancelled',)])
@@ -281,6 +281,43 @@ def build(Customer, Auto):
     VAPI['fi'].update(late='Mihin asti olette muuten auki huomenna?', unclear=['se juttu', 'no se toinen juttu', 'sitä mä just tarkotin'])
     VAPI['sv'].update(late='Hur länge har ni öppet imorgon förresten?', unclear=['den grejen', 'nej den andra grejen', 'det var ju det jag menade'])
     VAPI['en'].update(late='How late are you open tomorrow, by the way?', unclear=['that thing', 'no the other thing', 'that is what I meant'])
+    class GarbagePlate(Customer):
+        """Gives words where a registration belongs, then insists, and never supplies a plate."""
+        def __init__(self, lang):
+            super().__init__(lang, 'first', fuel={'fi': 'Hybridi', 'sv': 'Hybrid', 'en': 'Hybrid'}[lang])
+            self.plate_asks = 0
+
+        def respond(self, reply):
+            if re.search(r'plate|registration|rekisteri|registrering', self.question(reply)):
+                self.plate_asks += 1
+                first = {'fi': 'testi testaa', 'sv': 'test test', 'en': 'test test'}[self.lang]
+                again = {'fi': 'niin mä sanoin', 'sv': 'det var det jag sa', 'en': 'that is what I said'}[self.lang]
+                return first if self.plate_asks == 1 else again
+            return super().respond(reply)
+
+    NEW = {'fi': 'Minulla on uusi auto, haluan varata sille ajan.', 'sv': 'Jag har en ny bil, jag vill boka en tid för den.', 'en': 'I have a new car, I want to book a time for it.'}
+    FUEL_EV = {'fi': 'täyssähkö', 'sv': 'helt eldriven', 'en': 'fully electric'}
+    DUE_Q = {'fi': 'En tiedä milloin auto pitää katsastaa.', 'sv': 'Jag vet inte när bilen måste besiktas.', 'en': "I don't know when the car needs to be inspected."}
+    GREEN = {'fi': 'Onko teillä vihreitä aikoja vapaana?', 'sv': 'Har ni några gröna tider lediga?', 'en': 'Do you have any green times free?'}
+    CANT_CHECK = r"0306|en (tiedä|pysty|voi|näe)|ei (tieto|näy)|kan inte|inte kan|can.?t|cannot|don.?t know|unable|not able"
+    for lang in LANGS:
+        d(f'draft.garbage_plate.{lang}', lang, [NEW[lang], Auto(GarbagePlate(lang), 'booked', 8)],
+          [NOBOOK, ('reply', r'rekister|registrering|registration|plate'), ('reply', r'0306')],
+          books=True, note='words are not a plate: ask once, then 0306, never invent one or book the reminder plate')
+        d(f'draft.other_due.{lang}', lang, [NEW[lang], FUEL_EV[lang], DUE_Q[lang]],
+          [NOBOOK, ('no_reply', r'3\.3\.20?26|03\.03\.2026|3 March|3 mars|3\. maalisk'), ('final', CANT_CHECK)],
+          lead_patch={'due': '3.3.2026', 'last': '3.3.2024'},
+          note='the reminder due date belongs to the lead plate, not the new car')
+        d(f'draft.green_time.{lang}', lang, GREEN[lang],
+          [NOBOOK, ('reply', r'0306'), ('no_tool', 'escalate_to_human'), ('no_reply', r'\d{1,2}[:.]\d{2}|\bklo\s+\d|\bkl\.?\s+\d{1,2}\b|\bat\s+\d{1,2}\b')],
+          note='a green time is not an ordinary slot: say you cannot confirm it, give 0306, do not list clocks')
+    SISTER = {'fi': 'myin tämän auton siskolleni', 'sv': 'jag sålde den här bilen till min syster', 'en': 'I sold this car to my sister'}
+    SISTER_OFFER = r'apua sisk|siskosi|siskoasi|siskollesi|hjälp\w* .{0,40}syster|boka .{0,30}syster|help .{0,40}sister|book .{0,30}sister'
+    for lang in LANGS:
+        d(f'draft.sister_sale.{lang}', lang, SISTER[lang],
+          [NOBOOK, ('no_tool', 'opt_out'), ('no_reply', SISTER_OFFER)],
+          note='reporting a sale is not a request to book for the new owner')
+
     RESUME = r'\d{1,2}[:.]\d\d.*\?|sopi|käy|passar|funkar|work|suit|which (one|time)|mikä aika|mihin aikaan|vilken tid'
     OFFER = r'varata|varaus|aukiolo|hinta|hinnasta|boka|öppet|pris|book|hours|price'
     BLAME = r'en ymmärtänyt mitä|epäselv|ymmärrä viestiäsi|förstod inte vad du|didn.t understand (you|your)|unclear message|could you rephrase'

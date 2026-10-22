@@ -96,7 +96,7 @@ export function leadContext(lead: TemplateLead, openerLang: Lang) {
     powerTypeOf(lead) && `- Power type of the vehicle: ${powerTypeOf(lead)}. Use it in your answers about this vehicle.`,
     lead.phoneNumber && `- Customer phone: ${lead.phoneNumber}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.`,
     lead.plateNumber && `- Registration: ${lead.plateNumber}`,
-    lead.nextInspection && `- Inspection due by: ${formatDate(lead.nextInspection, 'fi')}`,
+    lead.nextInspection && `- Inspection due by: ${formatDate(lead.nextInspection, 'fi')} (this registration only)`,
     lead.lastInspection && `- Last inspection: ${formatDate(lead.lastInspection, 'fi')}`,
   ]
   return lines.filter(Boolean).join('\n')

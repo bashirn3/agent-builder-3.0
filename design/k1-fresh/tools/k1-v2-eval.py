@@ -284,7 +284,7 @@ def lead_context(lead):
         *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}.", f"- Power type of the vehicle: {lead.get('power') or POWER_TYPES[lead['product']]}. Use it in your answers about this vehicle."]),
         f"- Customer phone: {lead['phone']}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.",
         f"- Registration: {lead['plate']}",
-        f"- Inspection due by: {lead.get('due', '20.10.2026')}",
+        f"- Inspection due by: {lead.get('due', '20.10.2026')} (this registration only)",
         f"- Last inspection: {lead.get('last', '20.10.2024')}",
     ]
     return '\n'.join(lines)
