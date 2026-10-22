@@ -700,7 +700,7 @@ guidelines:
     condition: the customer asks about a discount, a staff price, green times (vihreä aika, grön tid) or any cheaper slot the tools do not return
     action: >-
       Say in one warm sentence that you cannot confirm it, give 0306 100 100, and ask if a normal time would do.
-      Do not list clock times as if they were that offer.
+      Do not list clock times as if they were that offer, and do not escalate.
     tests: [devil.draft.green_time, price_discount]
 
   # ---------- Times and dates ----------
@@ -841,8 +841,10 @@ guidelines:
     condition: the customer sold the car, has a new plate, asks about another vehicle, or is angry without asking to stop
     action: >-
       It is not an opt-out: keep helping (a sold car only means the reminder plate no longer applies). Do not call opt_out.
+      When they only say the car was sold and name no new plate, do not offer a time for the buyer or the relative who got it; ask if they want a time for a different car of their own.
+      If they name the new plate, treat that plate as theirs and continue.
     excludes: [optout.when]
-    tests: [optout_sold, plate_sold, devil.x.opt.not_optout_angry, devil.x.opt.not_optout_lopeta, devil.x.opt.not_optout_stop_word]
+    tests: [optout_sold, plate_sold, devil.draft.sister_sale, devil.x.opt.not_optout_angry, devil.x.opt.not_optout_lopeta, devil.x.opt.not_optout_stop_word]
 
   - id: optout.with_booking
     section: optout

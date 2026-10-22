@@ -309,8 +309,14 @@ def build(Customer, Auto):
           lead_patch={'due': '3.3.2026', 'last': '3.3.2024'},
           note='the reminder due date belongs to the lead plate, not the new car')
         d(f'draft.green_time.{lang}', lang, GREEN[lang],
-          [NOBOOK, ('reply', r'0306'), ('no_reply', r'\d{1,2}[:.]\d{2}|\bklo\s+\d|\bkl\.?\s+\d{1,2}\b|\bat\s+\d{1,2}\b')],
+          [NOBOOK, ('reply', r'0306'), ('no_tool', 'escalate_to_human'), ('no_reply', r'\d{1,2}[:.]\d{2}|\bklo\s+\d|\bkl\.?\s+\d{1,2}\b|\bat\s+\d{1,2}\b')],
           note='a green time is not an ordinary slot: say you cannot confirm it, give 0306, do not list clocks')
+    SISTER = {'fi': 'myin tämän auton siskolleni', 'sv': 'jag sålde den här bilen till min syster', 'en': 'I sold this car to my sister'}
+    SISTER_OFFER = r'apua sisk|siskosi|siskoasi|siskollesi|hjälp\w* .{0,40}syster|boka .{0,30}syster|help .{0,40}sister|book .{0,30}sister'
+    for lang in LANGS:
+        d(f'draft.sister_sale.{lang}', lang, SISTER[lang],
+          [NOBOOK, ('no_tool', 'opt_out'), ('no_reply', SISTER_OFFER)],
+          note='reporting a sale is not a request to book for the new owner')
 
     RESUME = r'\d{1,2}[:.]\d\d.*\?|sopi|käy|passar|funkar|work|suit|which (one|time)|mikä aika|mihin aikaan|vilken tid'
     OFFER = r'varata|varaus|aukiolo|hinta|hinnasta|boka|öppet|pris|book|hours|price'
