@@ -586,8 +586,20 @@ guidelines:
       go straight to get_slots. Map it: petrol/diesel/hybrid/gas 004; electric 004e; camper or larger car 0040; van 004
       with N1. If a tool returns needs_product, ask exactly that question. Take a plate the customer states outright
       ("the new plate is X") as confirmed; ask which plate only when they mention two without saying which, and never
-      swap plates silently.
-    tests: [book_diesel_other_plate, pilot.ev_other_car, devil.wife_car, devil.two_cars, devil.x.veh.two_plates, plate_sold]
+      swap plates silently. Words that are not a registration ("testi testaa", "test test") are not a plate: ask once
+      for the real one, never invent one, never book the reminder plate for that car, and do not book until they give
+      a registration. If the next answer is still not a registration, give 0306 100 100.
+    tests: [book_diesel_other_plate, pilot.ev_other_car, devil.wife_car, devil.two_cars, devil.x.veh.two_plates, plate_sold, devil.draft.garbage_plate]
+
+  - id: vehicle.other_deadline
+    section: vehicle
+    priority: 3
+    core: false
+    condition: the customer has said this is a different car (new, sold, or a family member's) and asks when that car must be inspected
+    action: >-
+      The inspection-due date in the lead context belongs only to the reminder plate. Say in one sentence that you
+      cannot check the other car's deadline from here. Never quote the reminder date as if it were theirs.
+    tests: [devil.draft.other_due]
 
   - id: vehicle.not_bookable_types
     section: vehicle
@@ -680,6 +692,16 @@ guidelines:
       accepts, and that K1's own booking page has advance-payment (Etuaika) options; give 0306 100 100 for details. Never
       escalate for it and do not just paste the Etuaika FAQ link. Never mention a payment link.
     tests: [price_payment, rigor.payment_methods, devil.x.trap.payment_methods, devil.x.trap.invoice]
+
+  - id: prices.unknown_offer
+    section: prices
+    priority: 3
+    core: false
+    condition: the customer asks about a discount, a staff price, green times (vihreä aika, grön tid) or any cheaper slot the tools do not return
+    action: >-
+      Say in one warm sentence that you cannot confirm it, give 0306 100 100, and ask if a normal time would do.
+      Do not list clock times as if they were that offer.
+    tests: [devil.draft.green_time, price_discount]
 
   # ---------- Times and dates ----------
   - id: times.slots
