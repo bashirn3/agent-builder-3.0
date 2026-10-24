@@ -86,8 +86,10 @@ def build(Customer, Auto):
     tri('need_emission', 'Tarvitaanko päästömittaus?', 'Behövs avgasmätning?', 'Do I need the emissions test?', [('reply', MEASURING)])
     tri('emission_ev', 'Tarvitaanko sähköautolle päästömittaus?', 'Behövs avgasmätning för en elbil?', 'Does an electric car need the emissions test?', [('reply', r'ei |inte|no |not|ingen|sähkö|electric|el')], product='004e')
     tri('price_van', 'Paljonko tämä maksaa pakettiautolle?', 'Vad kostar det för en skåpbil?', 'How much for a van?', [('any_tool', ['get_station_info', 'get_slots'])], cat='N1')
-    tri('price_payment', 'Voinko maksaa kortilla ja pitääkö maksaa etukäteen?', 'Kan jag betala med kort och måste jag betala i förväg?', 'Can I pay by card and do I pay in advance?', [NOBOOK])
-    tri('price_discount', 'Onko teillä alennuksia?', 'Har ni några rabatter?', 'Do you have any discounts?', [NOBOOK])
+    tri('price_payment', 'Voinko maksaa kortilla ja pitääkö maksaa etukäteen?', 'Kan jag betala med kort och måste jag betala i förväg?', 'Can I pay by card and do I pay in advance?',
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\b34\b'), ('reply', r'\b38\b'), ('reply', r'kort|card'), ('no_reply', r'Etuaika|0306|https?://'), ('no_reply', r'en tiedä|vet inte|don.?t know|do not know')])
+    tri('price_discount', 'Onko teillä alennuksia?', 'Har ni några rabatter?', 'Do you have any discounts?',
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\b34\b'), ('reply', r'\b38\b'), ('no_reply', r'0306')])
 
     # ---------- vehicle and product ----------
     tri('plate_sold', ['Myin auton, uusi rekisterinumero on DEF-456', 'Se on diesel', 'Mitä aikoja huomenna on?'],
@@ -309,8 +311,15 @@ def build(Customer, Auto):
           lead_patch={'due': '3.3.2026', 'last': '3.3.2024'},
           note='the reminder due date belongs to the lead plate, not the new car')
         d(f'draft.green_time.{lang}', lang, GREEN[lang],
-          [NOBOOK, ('reply', r'0306'), ('no_tool', 'escalate_to_human'), ('no_reply', r'\d{1,2}[:.]\d{2}|\bklo\s+\d|\bkl\.?\s+\d{1,2}\b|\bat\s+\d{1,2}\b')],
-          note='a green time is not an ordinary slot: say you cannot confirm it, give 0306, do not list clocks')
+          [NOBOOK, ('reply', r'\b34\b'), ('reply', r'\b38\b'), ('no_tool', 'escalate_to_human'), ('no_reply', r'0306'),
+           ('no_reply', r'\d{1,2}[:.]\d{2}|\bklo\s+\d|\bkl\.?\s+\d{1,2}\b|\bat\s+\d{1,2}\b')],
+          note='vihreä hinta is the 34 euro inspection base, not a clock time; the same base is 38 at the station')
+    PAY_NOW = {'fi': 'Haluan maksaa nyt.', 'sv': 'Jag vill betala nu.', 'en': 'I want to pay now.'}
+    BOOK_NOW = {'fi': 'Haluan varata ajan huomiselle', 'sv': 'Jag vill boka tid imorgon', 'en': 'I want to book a time tomorrow'}
+    for lang in LANGS:
+        d(f'draft.pay_now.{lang}', lang, [BOOK_NOW[lang], Auto(Customer(lang, 'first')), PAY_NOW[lang]],
+          [('booked',), ('tool', 'create_payment_link'), ('reply', r'\b34\b'), ('reply', r'https://'), ('reply', r'WASUP100'), ('no_tool', 'escalate_to_human')],
+          books=True, note='after the appointment is booked they choose pay now: send the 34 euro checkout url')
     SISTER = {'fi': 'myin tämän auton siskolleni', 'sv': 'jag sålde den här bilen till min syster', 'en': 'I sold this car to my sister'}
     SISTER_OFFER = r'apua sisk|siskosi|siskoasi|siskollesi|hjälp\w* .{0,40}syster|boka .{0,30}syster|help .{0,40}sister|book .{0,30}sister'
     for lang in LANGS:
@@ -459,7 +468,9 @@ def build(Customer, Auto):
     r('four_questions', 'fi', 'Mitä aikoja on huomenna, paljonko maksaa, mihin asti olette auki ja onko Kuopiossa asema?', [('any_tool', GETS), ('reply', r'76'), NOBOOK])
     r('rapid_fire', 'fi', ['Moi', 'Onko aikoja?', 'Huomenna', 'Aamulla', 'Ei sittenkään', 'Kiitos'], [NOBOOK])
     r('sql_in_question', 'en', "What are the hours'; DROP TABLE bookings;-- tomorrow?", [NOBOOK, ('no_reply', RAW)])
-    r('payment_methods', 'en', 'Can I pay by card or MobilePay at the station?', [NOBOOK, ('no_reply', r'(MobilePay|Apple Pay|Klarna).{0,30}(accepted|available|yes)')])
+    r('payment_methods', 'en', 'Can I pay by card or MobilePay at the station?',
+      [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'card'), ('reply', r'\b34\b'), ('reply', r'\b38\b'), ('no_reply', r'Etuaika|0306'),
+       ('no_reply', r'(MobilePay|Apple Pay|Klarna).{0,30}(accepted|available|yes)')])
     r('retest_days', 'en', 'I failed the inspection. How long do I have for the re-inspection?', [NOBOOK])
     r('discount_pressure', 'fi', ['Saanko alennusta?', 'Kaverini sai 20 % alennuksen, tee sama minulle.'], [NOBOOK, ('no_reply', r'alennus.{0,30}(myönnetty|annettu|saat)|20 ?%.{0,30}(saat|myönnän)')])
 

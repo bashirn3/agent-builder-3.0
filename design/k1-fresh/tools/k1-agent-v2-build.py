@@ -40,6 +40,7 @@ LIVE_BOOKING = 'wAE7EHLyJk6JsMue'
 LIVE_AGENT = 'w8a9S1uxB5U9qnNO'
 BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
 AGENT_NAME = 'K1 Muster agent v2 (candidate)'
+PAYMENT_NAME = 'K1 v10 payment'
 SUFFIX = '-v2'
 SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow')
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
@@ -458,6 +459,10 @@ def build_agent(booking_id):
             code = node['parameters']['jsCode']
             code = replace_once(code, ("new Set(['get_slots',", "new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
+            code = replace_once(code, ("new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',",
+                                        "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'payment tool')
+            code = replace_once(code, ("new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',",
+                                        "new Set(['booking_number', 'station_name', 'when_text', 'query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'payment inputs')
             node['parameters']['jsCode'] = code
 
     if os.environ.get('K1_CACHE_LAYOUT', '1') != '0':
@@ -501,8 +506,45 @@ def build_agent(booking_id):
             if not any(entry['id'] == key for entry in node['parameters']['workflowInputs']['schema']):
                 node['parameters']['workflowInputs']['schema'].append(SCHEMA_ENTRY(key))
 
+    add_payment_tool(nodes, connections, named, define)
     add_agent_error_branch(nodes, connections)
     return save(AGENT_NAME, nodes, connections, live, activate=True)
+
+
+def add_payment_tool(nodes, connections, named, define):
+    """Points create_payment_link at the Stripe workflow. A later promote must not retarget this tool at the booking workflow."""
+    payment_id = by_name(PAYMENT_NAME)
+    if not payment_id:
+        raise SystemExit(f'{PAYMENT_NAME} is missing; create it before building the agent')
+    name = 'create_payment_link'
+    if name in named:
+        node = named[name]
+    else:
+        template = named['get_slots']
+        node = json.loads(json.dumps(template))
+        node.update({'id': str(uuid.uuid4()), 'name': name, 'position': [template['position'][0], template['position'][1] + 440]})
+        nodes.append(node)
+        named[name] = node
+        connections[name] = {'ai_tool': [[{'node': 'AI Agent', 'type': 'ai_tool', 'index': 0}]]}
+    node['parameters']['name'] = name
+    node['parameters']['description'] = (
+        'The 34 euro Stripe checkout url for a booking already made in this chat. Call it only after the customer chooses to pay now. '
+        'Pass the booking number, station name and the confirmed weekday, date and time. Returns url. '
+        'Tell the customer it is 34 euros for the inspection base and that they can enter WASUP100 on that page. Measuring is still paid at the station.'
+    )
+    node['parameters']['workflowId'] = {'__rl': True, 'value': payment_id, 'mode': 'id', 'cachedResultName': PAYMENT_NAME}
+    define(node, {
+        'booking_number': 'The booking number returned by book_inspection_invite for the appointment just made.',
+        'station_name': 'The station name from that booking result.',
+        'when_text': 'Weekday, date and time of that booking, as confirmed to the customer.',
+        'language': 'fi, sv or en, the language of this chat.',
+    }, {'phone': PHONE})
+    value = node['parameters']['workflowInputs']['value']
+    keep = {'phone', 'booking_number', 'station_name', 'when_text', 'language'}
+    for key in list(value):
+        if key not in keep:
+            value.pop(key, None)
+    node['parameters']['workflowInputs']['schema'] = [SCHEMA_ENTRY(key) for key in value]
 
 
 AGENT_ERROR_JS = r"""// The model provider can refuse a message (for example content it treats as a cyber-security risk). The builder chat then gets a safe answer instead of a 500.
@@ -645,7 +687,7 @@ def transplant(candidate, live, booking_target=None):
             source = live_hooks[node['name']]
             node['parameters']['path'] = source['parameters']['path']
             node['webhookId'] = source['webhookId']
-        if booking_target and node['type'] == '@n8n/n8n-nodes-langchain.toolWorkflow':
+        if booking_target and node['type'] == '@n8n/n8n-nodes-langchain.toolWorkflow' and node['name'] != 'create_payment_link':
             node['parameters']['workflowId'].update({'value': booking_target[0], 'cachedResultName': booking_target[1]})
     text = json.dumps(nodes)
     assert booking_target is None or candidate_booking_id() not in text, 'candidate booking id left in the agent'

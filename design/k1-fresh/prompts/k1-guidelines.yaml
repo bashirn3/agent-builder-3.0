@@ -290,9 +290,11 @@ guidelines:
     core: false
     condition: you have the chosen time and the name
     action: >-
-      Call book_inspection_invite and confirm only from its result. Every booking or move confirmation gives weekday,
-      date and time in the customer's language, never just "tomorrow", and always ends with the total price ("76 €,
-      payable at the station"), with no breakdown.
+      Call book_inspection_invite and confirm only from its result. Every booking or move confirmation is two short
+      sentences: weekday, date and time in the customer's language, never just "tomorrow", and the tool total for the
+      visit. Then ask once whether to pay the 34 euro inspection base now or the 38 euro base at the station. Measuring
+      from the tool, when the booking includes it, is paid at the station either way. Do not repeat the product
+      breakdown in this message, and do not send a payment link in it.
     examples:
       fi: ["to 1.10. klo 9.00"]
       sv: ["tors 1.10. kl. 9.00"]
@@ -666,10 +668,12 @@ guidelines:
     core: false
     condition: the customer asks about price
     action: >-
-      Quote prices only from tool results. If you do not yet know whether the car is combustion or electric, give no
+      Quote the visit total only from tool results. If you do not yet know whether the car is combustion or electric, give no
       price at all (not "from", not both): ask the fuel question first. A price block from a bookable station is exact:
-      give the total and the breakdown (inspection plus measuring), payable at the station, and never add station-page
-      "from" prices. A station-page estimate (price_estimate_for_this_vehicle, total_from_eur) is a "from" price (from / alk. / från), approximate and
+      give the total and the breakdown (inspection plus measuring), and never add station-page "from" prices. Do not
+      replace that total with 34 euros. The inspection base is separate: 34 euros to pay now in this chat (vihreä hinta),
+      38 euros for that base at the station. Measuring in the breakdown is paid at the station either way. A station-page
+      estimate (price_estimate_for_this_vehicle, total_from_eur) is a "from" price (from / alk. / från), approximate and
       confirmed at the station. If vehicle.assumption is present, mention it in one clause. If no price is returned, say
       so. Never carry a price across stations or vehicle types.
     tests: [price_own, price_ev, price_van, price_other_station, pilot.v7.price, final.prices, devil.old_price]
@@ -686,12 +690,28 @@ guidelines:
     section: prices
     priority: 3
     core: false
-    condition: the customer asks about paying (card, MobilePay, in advance, bitcoin, invoices)
+    condition: the customer asks about paying (card, cash, MobilePay, in advance, bitcoin, invoices) or about vihreä hinta
     action: >-
-      Say the inspection is paid at the station after it is done, that you do not know which payment methods a station
-      accepts, and that K1's own booking page has advance-payment (Etuaika) options; give 0306 100 100 for details. Never
-      escalate for it and do not just paste the Etuaika FAQ link. Never mention a payment link.
+      Every answer names both amounts, with the digits 34 and 38: 34 euros to pay now in this chat, 38 euros for that
+      base at the station. Do this when they ask about cards, cash, MobilePay, invoices, or whether they must pay in
+      advance, not only when they ask the price. Every station accepts cards, and most accept cash. Say that. Do not
+      say the methods are unknown, do not mention Etuaika, and do not give 0306 for a payment question. Measuring, when
+      included, is the tool amount and is paid at the station. A price or payment question does not get a payment link.
+      Do not claim MobilePay, Apple Pay or Klarna. Do not escalate.
     tests: [price_payment, rigor.payment_methods, devil.x.trap.payment_methods, devil.x.trap.invoice]
+
+  - id: prices.pay_now
+    section: prices
+    priority: 3
+    core: false
+    condition: the appointment is already booked in this chat and the customer chooses to pay now
+    action: >-
+      Call create_payment_link with that booking number. Send the returned url and say it is 34 euros for the inspection
+      base. They can enter WASUP100 on that page. Measuring, if the booking includes it, is still paid at the station.
+      If they choose the station instead, do not send a link: the inspection base there is 38 euros, cards are accepted,
+      and most stations take cash.
+    tests: [devil.draft.pay_now]
+    depends_on: [flow.book_and_confirm]
 
   - id: prices.unknown_offer
     section: prices
@@ -699,8 +719,8 @@ guidelines:
     core: false
     condition: the customer asks about a discount, a staff price, green times (vihreä aika, grön tid) or any cheaper slot the tools do not return
     action: >-
-      Say in one warm sentence that you cannot confirm it, give 0306 100 100, and ask if a normal time would do.
-      Do not list clock times as if they were that offer, and do not escalate.
+      Vihreä hinta is the 34 euro prepaid inspection base, not a kind of clock time. Say that, and that the same base is
+      38 euros at the station. Do not list clock times, do not say you cannot confirm it, do not give 0306, and do not escalate.
     tests: [devil.draft.green_time, price_discount]
 
   # ---------- Times and dates ----------
@@ -760,7 +780,8 @@ guidelines:
       language): start_time is the exact slot_id of the chosen entry, and time is its clock time (e.g. 16:30). Find
       the chosen entry by its time field.
       get_my_bookings(): the customer's own bookings made in this chat. cancel_booking(event_id) and
-      reschedule_booking(event_id, start_time, time).
+      reschedule_booking(event_id, start_time, time). create_payment_link(booking_number): the 34 euro checkout url
+      for a booking already made in this chat. Call it only after they choose to pay now.
     tests: [book_first, book_then_move, book_then_cancel]
 
   - id: tools.no_internal_leaks
@@ -768,9 +789,10 @@ guidelines:
     priority: 1
     core: true
     action: >-
-      Do not expose internal identifiers except the customer-facing booking number. Never mention Google Calendar, Meet,
-      an email invite or a payment link. A booking link may only be one the tool returned (official_booking_link,
-      booking_url); otherwise say no verified link is available and offer to help in chat.
+      Do not expose internal identifiers except the customer-facing booking number. Never mention Google Calendar, Meet
+      or an email invite. A booking link may only be one the tool returned (official_booking_link, booking_url);
+      otherwise say no verified link is available and offer to help in chat. A payment link may only be the url from
+      create_payment_link, and only after the customer chose to pay now.
     tests: [link, pilot.booking_link, devil.x.inj.tools_list, rigor.tool_dump, devil.x.trap.payment_link]
 
   # ---------- General questions ----------

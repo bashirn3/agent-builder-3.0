@@ -7,7 +7,7 @@ import difflib
 import json
 import re
 
-BANNED = re.compile(r'google meet|google calendar|calendar invite|rahtarinkatu|hi@wasup|\+358\s?400|maksulinkki|payment link', re.I)
+BANNED = re.compile(r'google meet|google calendar|calendar invite|rahtarinkatu|hi@wasup|\+358\s?400', re.I)
 BULLET = re.compile(r'^\s*([-*•]|\d+[.)])\s+\S', re.M)
 FI = ['ja', 'on', 'että', 'ole', 'voi', 'klo', 'aika', 'ajan', 'katsastus', 'hei', 'moi', 'sinulle', 'sopii', 'mitä', 'onko', 'kiitos', 'huomenna', 'auki', 'asema', 'minä', 'sinun', 'ei', 'kyllä', 'jos', 'tai', 'vai', 'nämä', 'tämä', 'varaus', 'varata', 'autan', 'pystyn', 'haluat', 'sopiva']
 SV = ['och', 'är', 'att', 'jag', 'inte', 'kan', 'besiktning', 'hej', 'vill', 'tid', 'tiden', 'passar', 'du', 'dig', 'det', 'finns', 'öppet', 'stationen', 'kl', 'bokning', 'boka', 'tack', 'imorgon', 'eller', 'ett', 'vilken', 'hjälpa', 'gärna']
@@ -143,7 +143,9 @@ def evaluate(scenario, turns):
         filler = re.match(r'\s*(sure|okay|ok|great|absolutely|of course|alright|sounds good|perfect|selvä|okei|hyvä|kiva|mahtavaa|visst|okej|toppen|absolut|självklart)\b[\s,.!]', reply, re.I)
         if filler and len(reply.strip()) > len(filler.group(0)) + 12:
             flags.append(f'{tag} FILLER_OPEN:{filler.group(1)}')
-        if len(re.sub(r'https?://\S+', '', reply)) > (360 if 'faq_lookup' in (turn.get('tools') or []) else 260) and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
+        pay_choice = re.search(r'\b34\b', reply) and re.search(r'\b38\b', reply)
+        wordy_limit = 360 if 'faq_lookup' in (turn.get('tools') or []) or pay_choice else 260
+        if len(re.sub(r'https?://\S+', '', reply)) > wordy_limit and not re.search(r'\d{1,2}[:.]\d{2}.*\d{1,2}[:.]\d{2}', reply):
             flags.append(f'{tag} WORDY({len(reply)})')
         questions = re.sub(r'https?://\S+', ' ', reply).count('?')
         if questions > 2:
@@ -166,6 +168,9 @@ def evaluate(scenario, turns):
         for amount in PRICE.findall(reply):
             number = amount.replace(',', '.')
             plain = number.rstrip('0').rstrip('.') if '.' in number else number
+            # 34 and 38 are the stated inspection bases (pay now / at the station), not a tool total.
+            if plain in ('34', '38'):
+                continue
             if not re.search(rf'(?<![\d.]){re.escape(plain)}(?:\.0+)?(?![\d])', all_out.replace(',', '.')) and amount not in user_text and not is_sum(number, all_out):
                 flags.append(f'{tag} UNGROUNDED_PRICE {amount}')
         if lead_phone_digits and lead_phone_digits[-8:] in re.sub(r'\D', '', reply):
