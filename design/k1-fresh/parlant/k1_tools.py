@@ -7,6 +7,7 @@ is recorded per session in the same shape as the n8n playground's `steps`, so th
 """
 import asyncio
 import json
+import os
 import threading
 import time
 import urllib.error
@@ -197,5 +198,26 @@ async def escalate_to_human(context: p.ToolContext, reason: str) -> p.ToolResult
     return result(data)
 
 
+@p.tool
+async def create_payment_link(context: p.ToolContext, booking_number: str, station_name: str = '', when_text: str = '', language: str = '') -> p.ToolResult:
+    """The 34 euro checkout url for a booking already made in this chat. Call only after the customer chooses to pay now."""
+    url = os.environ.get('K1_PAYMENT_URL', '').strip()
+    payload = {'booking_number': booking_number, 'station_name': station_name, 'when_text': when_text, 'language': language or session(context)['lead'].get('lang', '')}
+    if not url:
+        data = {'ok': False, 'error': 'No payment url is available from this session.'}
+    else:
+        state = session(context)
+        body = json.dumps({**payload, 'phone': state['lead'].get('phone', '')}).encode()
+        req = urllib.request.Request(url, data=body, method='POST', headers={'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as res:
+                data = json.load(res)
+                data = data[0] if isinstance(data, list) and data else data
+        except Exception as error:
+            data = {'ok': False, 'error': f'payment workflow unreachable: {type(error).__name__}'}
+    record(context, 'create_payment_link', payload, data)
+    return result(data)
+
+
 ALL = {t.tool.name: t for t in (get_station_info, get_slots, book_inspection_invite, get_my_bookings, cancel_booking,
-                                reschedule_booking, faq_lookup, opt_out, escalate_to_human)}
+                                reschedule_booking, faq_lookup, opt_out, escalate_to_human, create_payment_link)}

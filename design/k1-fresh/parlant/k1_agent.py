@@ -44,6 +44,7 @@ TOOLS_FOR = {
     'bookings.lookup_first': ['get_my_bookings', 'cancel_booking', 'reschedule_booking', 'get_slots'],
     'stations.hours': ['get_station_info'], 'stations.hours_status': ['get_station_info'], 'stations.referent': ['get_station_info'],
     'scope.lead_not_bookable': ['get_station_info'], 'scope.lives_elsewhere': ['get_station_info'], 'prices.rules': ['get_station_info'],
+    'prices.pay_now': ['create_payment_link'],
     'info.faq': ['faq_lookup'],
     'optout.when': ['opt_out'], 'optout.with_booking': ['opt_out', 'get_my_bookings', 'cancel_booking'],
     'escalation.when': ['escalate_to_human'],
@@ -58,7 +59,7 @@ GLOSSARY = [
     ('0040', 'Periodic inspection of a camper or larger car (M1, up to 3500 kg), booked with measuring; not offered at every station.', ['matkailuauto', 'husbil']),
     ('004e', 'Periodic inspection of a fully electric car; no measuring.', ['sähköauto', 'elbil']),
     ('statutory measuring', 'Lakisääteiset mittaukset, the emissions or OBD test (0020). For combustion engines, included by default, optional, never for electric cars; cars registered before August 1976 are not measured.', ['lakisääteiset mittaukset', 'päästömittaus', 'avgasmätning', 'emission test']),
-    ('Etuaika', 'Advance-payment option on K1\'s own booking page.', []),
+    ('vihreä hinta', 'The prepaid inspection base: 34 euros paid now in the chat, or 38 euros for that base at the station. Not a kind of clock time.', ['green price', 'grönt pris']),
     ('Muistakatsastus', 'The inspection reminder service.', []),
     ('slot_id', 'The identifier of a free time returned by get_slots (K1-YYYYMMDD-HHMM). Only these can be booked.', []),
 ]
@@ -114,7 +115,7 @@ async def build_booking_journey(agent):
     book = await ask_name.target.transition_to(condition='The customer gave a name', tool_state=tools.ALL['book_inspection_invite'],
                                                tool_instruction='start_time is the slot_id of the chosen time, time is its clock time, name exactly as given.')
     confirm = await book.target.transition_to(condition='The booking succeeded',
-                                              chat_state='Confirm from the tool result: weekday, date, time, the station name, the booking number and the total price, payable at the station.')
+                                              chat_state='Confirm from the tool result: weekday, date, time, the station name, the booking number and the tool total. Then ask once whether to pay the 34 euro inspection base now or the 38 euro base at the station. Do not send a payment link in that message.')
     await confirm.target.transition_to(state=p.END_JOURNEY)
     retry = await book.target.transition_to(condition='The tool says the time was just taken (slot_unavailable)',
                                             chat_state='Say in one friendly sentence that the time was just taken and nothing was booked.')

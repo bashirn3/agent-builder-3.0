@@ -39,7 +39,10 @@ NOTE_V8 = ('Agent v8: never claims a booking failed without a tool error and nev
         'a booking made in the chat is named with an offer to cancel it when the car turns out to be inspected; plus everything in v7')
 NOTE_V9 = ('Agent v9: the prompt is rendered from the rule catalog (prompts/k1-guidelines.yaml): one rule per condition and action, with a priority, '
            'no duplicated language rules, one stated order between the apology and the no-apology rules, and a test for every rule. Same behaviour as v8 intended.')
-NOTE = NOTE_V8 if LEGACY else NOTE_V9
+NOTE_V11 = ('Agent v11: vihreä hinta is a 34 euro inspection base paid now in the chat, or 38 euros for that base at the station. '
+            'Every station takes cards and most take cash. A payment link is sent only after the appointment is booked and the customer chooses to pay now. '
+            'Measuring stays the tool amount and is paid at the station.')
+NOTE = NOTE_V8 if LEGACY else NOTE_V11
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
               'Book at the lead\'s station unless the customer asks for another one or it is closed; use the lead\'s product and vehicle category unless the customer talks about another vehicle. A booking can only be cancelled or moved from the phone that made it; find it with get_my_bookings instead of asking the customer for details. Never quote prices or confirm bookings without a tool result.')
@@ -111,7 +114,7 @@ def save(path):
     print('current', config)
     result = call('POST', 'rpc/save_agent_builder_version', {
         'p_tenant_key': TENANT, 'p_master_prompt': data['masterPrompt'], 'p_opening_message': data['openingMessage'], 'p_additional_information': data['additionalInformation'],
-        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': 'Wasup agent v8', 'p_reminders': data['reminders'], 'p_translations': data['translations'],
+        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': os.environ.get('K1_SAVED_BY', 'Wasup agent v8'), 'p_reminders': data['reminders'], 'p_translations': data['translations'],
     })
     print('saved', json.dumps(result, ensure_ascii=False))
 

@@ -398,7 +398,7 @@ async function priceBlock(src, plan, sample) {
     total_eur: sample.eur,
     breakdown: (breakdown || []).map((p, i) => ({ item: plan.names[plan.product_ids.indexOf(p.productId)] || plan.names[i] || String(p.productId), eur: Number(p.onlineReservationPrice) })),
     source: src.bookable ? 'booking price for this visit' : 'live K1 online booking price for this visit',
-    note: 'Payment is at the station.',
+    note: 'This total is the station price for the visit. Do not replace it with 34 euros. The inspection base can be paid now in the chat at 34 EUR (vihreä hinta) or at the station at 38 EUR. Measuring in the breakdown is paid at the station either way.',
   }
 }
 const wantsMeasuring = (body_) => !(body_.include_measuring === false || /^(false|no|0)$/i.test(String(body_.include_measuring ?? '')))
@@ -550,6 +550,27 @@ function holdFailure(held) {
   if (held.status === 400 && /not sold online/i.test(text)) return { ok: false, step: 'hold', status: 400, error: 'That product cannot be booked online at this station. Ask the customer about the vehicle again or offer another station.' }
   return { ok: false, step: 'hold', status: held.status, error: text.slice(0, 300) }
 }
+const WHATSAPP_NOTE = 'Varattu WhatsApp-botin kautta'
+const fromWhatsApp = () => /whatsapp/i.test(String(body.source || body.channel || ''))
+// Group-level additionalInformation is accepted and then dropped. The value that comes back on
+// GET /Reservations/{groupId} is reservations[].meta.additionalInformation. The reservation also
+// gets the same string on additionalInformation, which is what the booking client sends.
+async function postReservation(payload) {
+  const note = payload.additionalInformation
+  if (!note) return muster('POST', '/Reservations', payload)
+  const withNote = { ...payload }
+  delete withNote.additionalInformation
+  withNote.reservations = (payload.reservations || []).map((row) => ({
+    ...row,
+    additionalInformation: row.additionalInformation || note,
+    meta: { ...(row.meta || {}), additionalInformation: (row.meta && row.meta.additionalInformation) || note },
+  }))
+  const reserved = await muster('POST', '/Reservations', withNote)
+  if (reserved.status === 200) return reserved
+  const plain = { ...payload }
+  delete plain.additionalInformation
+  return muster('POST', '/Reservations', plain)
+}
 async function book() {
   const slot = chosenSlot()
   if (!slot) return { ok: false, error: 'start_time must be an exact slot_id from get_slots.' }
@@ -565,10 +586,11 @@ async function book() {
   if (held.status !== 200) return holdFailure(held)
   const customer = await muster('POST', '/B2CCustomer', customerBody(body, slot.stationId))
   if (customer.status !== 200) return { ok: false, step: 'customer', status: customer.status, error: customer.data, groupId: held.data.groupId }
-  const reserved = await muster('POST', '/Reservations', {
+  const reserved = await postReservation({
     groupId: held.data.groupId,
     reservations: [{ pendingReservationUid: held.data.reservationUid, plateNumber: plate, vehicleCategory: slot.category, productIds: slot.productIds }],
     b2CCustomerUid: customer.data.uid, language: languageName(body.language), externalPriceId: null,
+    ...(fromWhatsApp() ? { additionalInformation: WHATSAPP_NOTE } : {}),
   })
   if (reserved.status !== 200) return { ok: false, step: 'reserve', status: reserved.status, error: reserved.data, groupId: held.data.groupId }
   const confirmed = await muster('POST', '/Reservations/confirm', { groupId: held.data.groupId, reservations: [{ pendingReservationUid: held.data.reservationUid }], sendConfirmation: false })
@@ -631,10 +653,11 @@ async function moveBooking() {
   const held = await muster('POST', '/PendingReservations', { time, stationId: slot.stationId, productIds: slot.productIds, plateNumber: plate, vehicleCategory: slot.category, groupId })
   if (held.status !== 200) return holdFailure(held)
   await muster('PUT', `/B2CCustomer/${customerUid}`, customerBody(body, slot.stationId))
-  const reserved = await muster('POST', '/Reservations', {
+  const reserved = await postReservation({
     groupId: held.data.groupId,
     reservations: [{ pendingReservationUid: held.data.reservationUid, originalReservationUid: reservationUid, plateNumber: plate, vehicleCategory: slot.category, productIds: slot.productIds }],
     b2CCustomerUid: customerUid, language: languageName(body.language), externalPriceId: null,
+    ...(fromWhatsApp() ? { additionalInformation: WHATSAPP_NOTE } : {}),
   })
   if (reserved.status !== 200) return { ok: false, step: 'reserve', status: reserved.status, error: reserved.data }
   const confirmed = await muster('POST', '/Reservations/confirm', { groupId: held.data.groupId, reservations: [{ pendingReservationUid: held.data.reservationUid, originalReservationUid: reservationUid }], sendConfirmation: false })
