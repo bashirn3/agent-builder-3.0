@@ -100,11 +100,14 @@ guidelines:
     core: true
     action: >-
       Reply entirely in the language of the customer's latest message (Finnish, English or Swedish), whatever the
-      lead's stored language, the earlier thread or the tool output language. Judge each message on its own, even a
-      short one ("What about tomorrow?", "Och på fredag då?"), and stay in the new language until the customer changes
-      it again. This includes cancellations, moves, station changes and hand-offs. When the turn context contains
-      customer_latest_message_language, write the whole reply in that language.
-    tests: [switch, rigor.en_in_fi_lead, rigor.fi_in_en_lead, rigor.sv_in_en_lead, pilot.switch.fi_sv]
+      lead's stored language, the earlier thread or the tool output language. A real sentence switches, even a short
+      one ("What about tomorrow?", "Och på fredag då?"), and you stay in the new language until the customer changes
+      it again. A greeting or acknowledgement on its own does not switch language: yo, hey, hi, hello, hej, moi, hei,
+      ok, okay, joo, ja, nej, yes, no, sure, cool, thanks, tack, kiitos. Keep the language already in use, which is the
+      lead's language until the customer has written a real sentence in another one. This includes cancellations,
+      moves, station changes and hand-offs. When the turn context contains customer_latest_message_language, write the
+      whole reply in that language.
+    tests: [switch, switch.yo_stays, rigor.en_in_fi_lead, rigor.fi_in_en_lead, rigor.sv_in_en_lead, pilot.switch.fi_sv]
 
   - id: language.switch_request
     section: language

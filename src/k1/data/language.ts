@@ -88,7 +88,7 @@ export function leadContext(lead: TemplateLead, openerLang: Lang) {
   const product = (lead.product ?? '').trim().toLowerCase()
   const lines = [
     "LEAD CONTEXT (from K1's lead data for this customer)",
-    `- Customer's language: ${LANGUAGE_NAMES[lang]}. Reply in ${LANGUAGE_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.`,
+    `- Customer's language: ${LANGUAGE_NAMES[lang]}. Reply in ${LANGUAGE_NAMES[lang]} unless the customer writes a real sentence in another language; then follow the LANGUAGE rules. A greeting on its own (yo, hey, hi, hej, moi, ok) does not change the language.`,
     openerLang !== lang && `- The opening message was sent in ${LANGUAGE_NAMES[openerLang]} because no ${LANGUAGE_NAMES[lang]} version exists yet.`,
     station ? `- Station the customer last visited: ${station}. Default to this station; use get_station_info for its live opening hours and for any other station they ask about.` : '- Station: unknown. Ask which K1 station or city they mean.',
     product && `- Product on the reminder: ${product}${PRODUCT_NOTES[product] ? ` (${PRODUCT_NOTES[product]})` : ''}. This applies to the registration below only.`,

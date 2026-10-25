@@ -41,7 +41,7 @@ NOTE_V9 = ('Agent v9: the prompt is rendered from the rule catalog (prompts/k1-g
            'no duplicated language rules, one stated order between the apology and the no-apology rules, and a test for every rule. Same behaviour as v8 intended.')
 NOTE_V11 = ('Agent v11: vihreä hinta is a 34 euro inspection base paid now in the chat, or 38 euros for that base at the station. '
             'Every station takes cards and most take cash. A payment link is sent only after the appointment is booked and the customer chooses to pay now. '
-            'Measuring stays the tool amount and is paid at the station.')
+            'Measuring stays the tool amount and is paid at the station. A greeting on its own, such as yo, does not switch language.')
 NOTE = NOTE_V8 if LEGACY else NOTE_V11
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '

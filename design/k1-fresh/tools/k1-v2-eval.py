@@ -279,7 +279,7 @@ def lead_context(lead):
     lang = lead['lang']
     lines = [
         "LEAD CONTEXT (from K1's lead data for this customer)",
-        f"- Customer's language: {LANG_NAMES[lang]}. Reply in {LANG_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.",
+        f"- Customer's language: {LANG_NAMES[lang]}. Reply in {LANG_NAMES[lang]} unless the customer writes a real sentence in another language; then follow the LANGUAGE rules. A greeting on its own (yo, hey, hi, hej, moi, ok) does not change the language.",
         f"- Station the customer last visited: {lead['station']}. Default to this station; use get_station_info for its live opening hours and for any other station they ask about.",
         *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}.", f"- Power type of the vehicle: {lead.get('power') or POWER_TYPES[lead['product']]}. Use it in your answers about this vehicle."]),
         f"- Customer phone: {lead['phone']}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.",
