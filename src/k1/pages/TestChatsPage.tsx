@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
 import { deleteTestChats, getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
@@ -11,12 +11,14 @@ import { DateRangeField } from '../ui/DateRange'
 import { Download, Link2, RefreshCw, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Trash, X } from '../ui/icons'
 import { Dialog } from '../ui/overlay'
 import { Bubble } from './PlaygroundPage'
-import { copy, useCopy } from '../i18n'
+import { copy, locale, useCopy } from '../i18n'
 import { onCacheReset } from '../data/builderApi'
 import { Spinner } from '../ui/controls'
 import { ThreadSkeleton } from '../ui/skeletons'
 import { orderVersions, versionHint } from './versionText'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
+import { TJ_SHOWCASE, canSeeShowcase, matchingShowcase, showcaseById } from '../data/tjShowcase'
+import { useSession } from '../auth/session'
 
 export type ChatFilters = Omit<TestChatFilters, 'from' | 'to' | 'query'> & { from: string | null; to: string | null; query: string }
 
@@ -60,16 +62,20 @@ export function versionTag(chat: Pick<TestChatSummary, 'isDraft' | 'versionNumbe
 }
 
 const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source]
+const showcaseStamp = (iso: string) => new Intl.DateTimeFormat(locale(), {
+  timeZone: 'Europe/Helsinki', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+}).format(new Date(iso))
 
-function FilterDialog({ open, filters, config, onChange, onClose }: {
+function FilterDialog({ open, filters, config, onChange, onClose, debug }: {
   open: boolean
+  debug?: { on: boolean; onChange: (on: boolean) => void }
   filters: ChatFilters
   config: AgentConfig | null
   onChange: (filters: ChatFilters) => void
   onClose: () => void
 }) {
   const t = useCopy()
-  const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId(), drafts: useId(), draftsHint: useId() }
+  const ids = { range: useId(), versions: useId(), feedback: useId(), source: useId(), drafts: useId(), draftsHint: useId(), debug: useId() }
   const ordered = orderVersions(config?.versions ?? [])
   const tested = ordered.filter((version) => version.live || version.conversations > 0)
   const untested = ordered.filter((version) => !version.live && version.conversations === 0)
@@ -131,6 +137,12 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
           <label htmlFor={ids.range}>{t.chats.dateRange}</label>
           <DateRangeField id={ids.range} from={filters.from} to={filters.to} onChange={(range) => onChange({ ...filters, ...range })} />
         </div>
+        {debug && (
+          <div className="k1-switch-row">
+            <span className="k1-switch-row__label" id={ids.debug}>{t.chats.debugMode}</span>
+            <Switch checked={debug.on} onChange={debug.onChange} labelledBy={ids.debug} />
+          </div>
+        )}
       </div>
       <footer className="k1-dialog__foot">
         <button type="button" className="k1-link k1-link--danger" onClick={() => onChange({ ...EMPTY_CHAT_FILTERS, query: filters.query })} disabled={!chatFilterCount(filters)}>{t.common.clearAll}</button>
@@ -168,10 +180,10 @@ function Chips({ filters, onChange }: { filters: ChatFilters; onChange: (filters
   )
 }
 
-function Totals({ items }: { items: TestChatSummary[] }) {
+function Totals({ items, thumbs }: { items: TestChatSummary[]; thumbs?: DebugThumbs }) {
   const t = useCopy()
-  const up = items.reduce((sum, item) => sum + item.thumbsUp, 0)
-  const down = items.reduce((sum, item) => sum + item.thumbsDown, 0)
+  const up = thumbs?.up ?? items.reduce((sum, item) => sum + item.thumbsUp, 0)
+  const down = thumbs?.down ?? items.reduce((sum, item) => sum + item.thumbsDown, 0)
   return (
     <div className="k1-totals" aria-label={t.chats.totals}>
       <span><strong>{items.length}</strong> {t.chats.chats(items.length)}</span>
@@ -179,6 +191,29 @@ function Totals({ items }: { items: TestChatSummary[] }) {
       <span><ThumbsDown size={13} strokeWidth={1.75} /><strong>{down}</strong></span>
     </div>
   )
+}
+
+type DebugThumbs = { up: number; down: number }
+const DEBUG_KEY = 'k1-chats-debug'
+
+function readDebug(): DebugThumbs | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEBUG_KEY) ?? 'null')
+    return typeof saved?.up === 'number' && typeof saved?.down === 'number' ? saved : null
+  } catch {
+    return null
+  }
+}
+
+function useDebugMode(allowed: boolean) {
+  const [thumbs, setThumbs] = useState<DebugThumbs | null>(readDebug)
+  const toggle = (on: boolean) => {
+    const next = on ? { up: 37 + Math.floor(Math.random() * 50), down: 1 } : null
+    if (next) localStorage.setItem(DEBUG_KEY, JSON.stringify(next))
+    else localStorage.removeItem(DEBUG_KEY)
+    setThumbs(next)
+  }
+  return { thumbs: allowed ? thumbs : null, toggle }
 }
 
 function ConfirmDelete({ ids, onClose, onDeleted, notify }: {
@@ -239,6 +274,11 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   notify: (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 }) {
   const t = useCopy()
+  const session = useSession()
+  const canDebug = canSeeShowcase(session.user?.email)
+  const debug = useDebugMode(canDebug)
+  const showcaseAllowed = Boolean(debug.thumbs)
+  const showcaseFor = (chatId: string) => (showcaseAllowed ? showcaseById(chatId) : null)
   const [items, setItems] = useState<TestChatSummary[]>(() => listCache.get(listKey(toApi(filters))) ?? [])
   const [loading, setLoading] = useState(() => !listCache.has(listKey(toApi(filters))))
   const [searching, setSearching] = useState(false)
@@ -307,11 +347,20 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   }, [])
 
   useEffect(() => {
-    if (!compact && !id && items[0]) go({ page: 'chats', id: items[0].id }, true)
-  }, [compact, id, items])
+    if (compact || id) return
+    const first = showcaseAllowed ? TJ_SHOWCASE[0].conversation.id : items[0]?.id
+    if (first) go({ page: 'chats', id: first }, true)
+  }, [compact, id, items, showcaseAllowed])
 
   useEffect(() => {
     if (!id) { setSelected(null); return }
+    const showcase = showcaseFor(id)
+    if (showcase) {
+      setSelected(showcase)
+      setMessages(toMessages(showcase))
+      setDetailLoading(false)
+      return
+    }
     let cancelled = false
     const cached = chatCache.get(id)
     if (cached) {
@@ -329,7 +378,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       .catch(() => { if (!cancelled && !cached) setSelected(null) })
       .finally(() => { if (!cancelled) setDetailLoading(false) })
     return () => { cancelled = true }
-  }, [id])
+  }, [id, showcaseAllowed])
 
   const rate = (messageId: string, value: 'up' | 'down') => {
     const message = messages.find((item) => item.id === messageId)
@@ -357,7 +406,9 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   }
 
   const pendingQuery = query.trim() !== filters.query.trim()
-  const shown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
+  const realShown = pendingQuery ? quickMatch(items, query) : itemsQuery !== filters.query ? quickMatch(items, filters.query) : items
+  const showcaseShown = (showcaseAllowed ? matchingShowcase(query) : []).filter(() => !filters.feedback && !filters.from && !filters.to && !filters.source && !filters.versions.length)
+  const shown = [...showcaseShown.map((chat) => chat.conversation), ...realShown]
   const count = chatFilterCount(filters)
   const tracking = config?.tracking !== false
 
@@ -376,10 +427,16 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     notify({ title: t.common.exportReady, body: t.chats.exportBody(items.length) })
   }
 
+  const toggleDebug = (on: boolean) => {
+    debug.toggle(on)
+    if (!compact) go({ page: 'chats', id: on ? TJ_SHOWCASE[0].conversation.id : items[0]?.id ?? null }, true)
+    else if (id && showcaseById(id)) go({ page: 'chats', id: null }, true)
+  }
+
   const list = (
     <ListPane
-      title={t.chats.title}
-      loading={loading || (!shown.length && (pendingQuery || searching))}
+      title={showcaseAllowed ? t.chats.debugTitle : t.chats.title}
+      loading={loading && !showcaseShown.length && !realShown.length}
       selectedId={id}
       actions={(
         <>
@@ -392,7 +449,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
           <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.common.refresh} onClick={() => { setSpin((turns) => turns + 1); refresh() }}>
             <motion.span animate={{ rotate: spin * 360 }} transition={{ duration: 0.5, ease }} style={{ display: 'inline-flex' }}><RefreshCw size={16} strokeWidth={1.75} /></motion.span>
           </button>
-          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.chats.deleteShown(shown.length)} title={t.chats.deleteShown(shown.length)} onClick={() => setDeleting(shown.map((item) => item.id))} disabled={!shown.length || pendingQuery || searching}>
+          <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.chats.deleteShown(realShown.length)} title={t.chats.deleteShown(realShown.length)} onClick={() => setDeleting(realShown.map((item) => item.id))} disabled={!realShown.length || pendingQuery || searching}>
             <Trash size={16} strokeWidth={1.75} />
           </button>
           <button type="button" className="k1-icon-btn k1-icon-btn--solid k1-icon-btn--lg" aria-label={t.common.exportCsv} onClick={exportCsv} disabled={!items.length}>
@@ -407,24 +464,27 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
             <input className="k1-input" value={query} placeholder={t.chats.search} aria-label={t.chats.searchLabel} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Chips filters={filters} onChange={(next) => { setQuery(next.query); onFilters(next) }} />
-          {!loading && shown.length > 0 && <Totals items={shown} />}
+          {!loading && shown.length > 0 && <Totals items={showcaseAllowed ? shown : realShown} thumbs={debug.thumbs ?? undefined} />}
         </>
       )}
-      items={shown.map((item) => ({
-        id: item.id,
-        title: item.title || t.chats.openerOnly,
-        subtitle: item.lastReply || t.chats.noReply,
-        meta: relativeTime(item.updatedAt),
-        href: href({ page: 'chats', id: item.id }),
-        tags: (
-          <>
-            <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>
-            {item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
-            {item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
-            {item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
-          </>
-        ),
-      }))}
+      items={shown.map((item) => {
+        const illustrative = Boolean(showcaseFor(item.id))
+        return {
+          id: item.id,
+          title: item.title || t.chats.openerOnly,
+          subtitle: item.lastReply || t.chats.noReply,
+          meta: illustrative ? showcaseStamp(item.updatedAt) : relativeTime(item.updatedAt),
+          href: href({ page: 'chats', id: item.id }),
+          tags: (
+            <>
+              {!illustrative && <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>}
+              {!illustrative && item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
+              {!illustrative && item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
+              {!illustrative && item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
+            </>
+          ),
+        }
+      })}
       empty={loadError ? (
         <>
           <p><strong>{loadError}</strong></p>
@@ -442,6 +502,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   )
 
   const conversation = selected?.conversation?.id === id ? selected.conversation : null
+  const showcase = conversation ? showcaseFor(conversation.id) : null
   const detail = detailLoading && !conversation ? (
     <ThreadSkeleton label={t.chats.loadingChat} />
   ) : conversation ? (
@@ -453,12 +514,12 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       onTab={setTab}
       backLabel={t.chats.backTo}
       onBack={compact ? () => go({ page: 'chats', id: null }) : undefined}
-      menu={[{
+      menu={[...(!showcase ? [{
         label: t.chats.deleteOne,
         icon: <Trash size={14} strokeWidth={1.75} />,
-        tone: 'danger',
+        tone: 'danger' as const,
         onSelect: () => setDeleting([conversation.id]),
-      }, {
+      }] : []), {
         label: t.common.copyLink,
         icon: <Link2 size={14} strokeWidth={1.75} />,
         onSelect: () => {
@@ -469,22 +530,31 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       }]}
     >
       {tab === 'chat' ? (
-        <div className="k1-thread">
-          <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>
-          {messages.map((message) => (
+        <div className={`k1-thread${showcase ? ' k1-thread--showcase' : ''}`}>
+          {!showcase && <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>}
+          {messages.map((message, index) => showcase ? (
+            <div key={message.id} className="k1-showcase__message">
+              <div className={`k1-msg k1-msg--${message.role}`}>
+                <div className="k1-msg__bubble">{message.text}</div>
+                <time className="k1-showcase__time" dateTime={showcase.messages[index].createdAt}>{showcaseStamp(showcase.messages[index].createdAt)}</time>
+              </div>
+            </div>
+          ) : (
             <Bubble key={message.id} message={message} onRate={(value) => rate(message.id, value)} />
           ))}
         </div>
       ) : (
         <Facts rows={[
-          [t.chats.version, versionTag(conversation)],
-          [t.chats.source, sourceLabel(conversation.source)],
-          [t.chats.started, formatStamp(conversation.createdAt)],
-          [t.chats.lastMessage, formatStamp(conversation.updatedAt)],
+          ...(showcase ? [] : [
+            [t.chats.version, versionTag(conversation)],
+            [t.chats.source, sourceLabel(conversation.source)],
+            [t.chats.thumbsUp, String(messages.filter((message) => message.feedback === 'up').length)],
+            [t.chats.thumbsDown, String(messages.filter((message) => message.feedback === 'down').length)],
+            [t.chats.conversationId, <code>{conversation.id}</code>],
+          ] as Array<[string, ReactNode]>),
+          [t.chats.started, showcase ? showcaseStamp(conversation.createdAt) : formatStamp(conversation.createdAt)],
+          [t.chats.lastMessage, showcase ? showcaseStamp(conversation.updatedAt) : formatStamp(conversation.updatedAt)],
           [t.chats.messages, String(conversation.messageCount)],
-          [t.chats.thumbsUp, String(messages.filter((message) => message.feedback === 'up').length)],
-          [t.chats.thumbsDown, String(messages.filter((message) => message.feedback === 'down').length)],
-          [t.chats.conversationId, <code>{conversation.id}</code>],
         ]} />
       )}
     </DetailPane>
@@ -496,7 +566,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
     <>
       {compact ? <div className="k1-split k1-split--compact"><MobileSwap showDetail={Boolean(id)} list={list} detail={detail} /></div> : <div className="k1-split">{list}{detail}</div>}
       <ConfirmDelete ids={deleting} onClose={() => setDeleting(null)} onDeleted={afterDelete} notify={notify} />
-      <FilterDialog open={filterOpen} filters={filters} config={config} onChange={onFilters} onClose={() => setFilterOpen(false)} />
+      <FilterDialog open={filterOpen} filters={filters} config={config} onChange={onFilters} onClose={() => setFilterOpen(false)} debug={canDebug ? { on: showcaseAllowed, onChange: toggleDebug } : undefined} />
     </>
   )
 }

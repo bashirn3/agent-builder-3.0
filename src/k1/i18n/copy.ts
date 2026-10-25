@@ -310,6 +310,8 @@ export const en = {
   },
   chats: {
     title: 'Test chats',
+    debugTitle: 'Chats',
+    debugMode: 'Debug',
     filterBy: 'Filter by',
     version: 'Version',
     drafts: 'Drafts',
@@ -985,6 +987,8 @@ export const fi: Copy = {
   },
   chats: {
     title: 'Testikeskustelut',
+    debugTitle: 'Keskustelut',
+    debugMode: 'Debug',
     filterBy: 'Suodata',
     version: 'Versio',
     drafts: 'Luonnokset',

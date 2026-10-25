@@ -15,10 +15,20 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
+import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message)
 }
+
+assert(TJ_SHOWCASE.length === 4, 'four editorial TJ journeys must stay available')
+assert(new Set(TJ_SHOWCASE.map((chat) => chat.conversation.id)).size === 4, 'showcase chat links must be stable and unique')
+assert(TJ_SHOWCASE.every((chat) => chat.messages.every((message, i) =>
+  (message.origin === 'supplied' || message.origin === 'illustrative') &&
+  (!i || new Date(message.createdAt) >= new Date(chat.messages[i - 1].createdAt)))), 'showcase turns must carry provenance and chronological display times')
+assert(TJ_SHOWCASE.every((chat) => chat.conversation.messageCount === chat.messages.length), 'showcase counts must match visible turns')
+assert(TJ_SHOWCASE.every((chat) => showcaseById(chat.conversation.id)?.conversation.id === chat.conversation.id), 'showcase detail links must resolve')
+assert(matchingShowcase('CGP-3').length === 1 && matchingShowcase('viikolla 41').length === 1, 'showcase search must include plates and customer messages')
 
 for (const route of [
   { page: 'signin' },
