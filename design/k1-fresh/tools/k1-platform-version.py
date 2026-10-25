@@ -43,6 +43,7 @@ NOTE_V11 = ('Agent v11: vihreä hinta is a 34 euro inspection base paid now in t
             'Every station takes cards and most take cash. A payment link is sent only after the appointment is booked and the customer chooses to pay now. '
             'Measuring stays the tool amount and is paid at the station. A greeting on its own, such as yo, does not switch language.')
 NOTE_V12 = ('Agent v12: free, vapaa or ledig next to a day means that day is open or closed, from get_station_info, never a price. '
+            'The reply is two short texts: the day, then the next booking step (a Monday offer, or the station link). '
             'A joke, an insult or a puncture gets one friendly line and then the booking again. '
             'The system date stays the day only, so the prompt cache still holds. Same prices as v11.')
 NOTE = NOTE_V8 if LEGACY else NOTE_V12

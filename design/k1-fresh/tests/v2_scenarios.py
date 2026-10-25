@@ -124,7 +124,7 @@ def build(Customer, Auto):
     # "Sunday free" is whether that day is open. It is not a claim that the inspection costs nothing.
     SUNDAY_DAY = [('any_tool', ['get_station_info', 'get_slots']),
                   ('reply', r'sunday|sunnuntai|söndag|closed|not open|kiinni|suljettu|stäng'),
-                  ('no_reply', r'€|\beur\b|\b99\b|\b39\b|isn.?t free|not free|ain.?t free|ilmainen|gratis')]
+                  ('no_reply', r"€|\beur\b|\b99\b|\b39\b|isn.?t free|not free|ain.?t free|ilmainen|gratis|availability|can.?t confirm|cannot confirm|can.?t check|cannot check|has passed")]
     add('sunday_free.en', 'usual', 'en', ['Bro so if I book now Sunday free'],
         [*SUNDAY_DAY, ('reply', r'\?|monday|weekday|book')], note='free beside a day is availability')
     add('sunday_free.fi', 'usual', 'fi', ['Jos varaan nyt, onko sunnuntai vapaa?'], SUNDAY_DAY)
