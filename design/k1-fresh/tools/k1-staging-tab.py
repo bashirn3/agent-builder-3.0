@@ -298,6 +298,32 @@ def hold_composing(nodes, connections):
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
 
 
+OFFER_TIME_JS = r"""const wantsTime = /reconcil|täsm|tasma|stämmer inte|somewhere else|muualle|annanstan|somwehre/i.test(rawUser)
+if (wantsTime && msgs.length && !msgs.join('\n').includes('?')) {
+  const sample = (rawUser + '\n' + msgs.join('\n')).toLowerCase()
+  const swedish = /\b(varför|jag|inte|stämmer|annanstan|besikt)\b/.test(sample)
+  const finnish = /[äö]|miksi|mitä|lähden|muualle|etsitä/.test(sample)
+  const ask = finnish && !swedish ? 'Etsitäänkö silti aika?' : swedish ? 'Ska jag hitta en tid?' : 'Want me to find you a time?'
+  msgs[msgs.length - 1] = msgs[msgs.length - 1].replace(/[.!\s]+$/, '') + '. ' + ask
+}
+"""
+
+
+def offer_time(nodes):
+    """A price clash or a customer about to leave always ends by offering a time."""
+    named = {item['name']: item for item in nodes}
+    plan = named.get('Plan Delivery')
+    if not plan:
+        return
+    code = plan['parameters'].get('jsCode') or ''
+    if 'const wantsTime' in code:
+        return
+    needle = 'if (msgs.length === 0) {'
+    if needle not in code:
+        return
+    plan['parameters']['jsCode'] = code.replace(needle, OFFER_TIME_JS + needle, 1)
+
+
 def read_agent_output(nodes):
     """The staging save sits in front of delivery, so the bubble must still come from the agent.
 
@@ -883,6 +909,7 @@ def patch_agent(workflow, payment_id):
     keep_replies(nodes)
     only_customer_messages(nodes)
     read_agent_output(nodes)
+    offer_time(nodes)
     hold_composing(nodes, connections)
     arm_typed_sends(nodes, connections)
     return nodes, connections
@@ -1141,6 +1168,7 @@ def check_agent(workflow, payment_id):
     assert 'last_inbound_message_id' not in latest
     plan = named['Plan Delivery']['parameters']['jsCode']
     assert "$('AI Agent').first().json.output" in plan
+    assert 'const wantsTime' in plan
     assert '$input.first().json.output' not in plan
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
     assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
