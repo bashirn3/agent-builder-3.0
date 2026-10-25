@@ -176,6 +176,91 @@ def keep_replies(nodes):
             node['parameters']['query'] = query.replace(REPLY_HEAD_OLD, REPLY_HEAD_NEW, 1)
 
 
+QUEUE_OLD = """WITH ins AS (
+  INSERT INTO inbound_message_queue (message_id, from_phone, to_phone, message, created_at)
+  VALUES (
+    '{{ $('Webhook').first().json.body.message_id }}',
+    '{{ $('Webhook').first().json.body.from_phone }}',
+    '{{ $('Webhook').first().json.body.to_phone }}',
+    '{{ ($('Webhook').first().json.body.message || '').replace(/'/g, "''") }}',
+    COALESCE(NULLIF('{{ $('Webhook').first().json.body.created_at || '' }}', '')::timestamptz, NOW())
+  )
+  ON CONFLICT (message_id) DO NOTHING
+  RETURNING id
+),"""
+
+QUEUE_NEW = """WITH incoming AS (
+  SELECT
+    '{{ $('Webhook').first().json.body.message_id }}' AS message_id,
+    '{{ $('Webhook').first().json.body.from_phone }}' AS from_phone,
+    '{{ $('Webhook').first().json.body.to_phone }}' AS to_phone,
+    '{{ ($('Webhook').first().json.body.message || '').replace(/'/g, "''") }}' AS message,
+    COALESCE(NULLIF('{{ $('Webhook').first().json.body.created_at || '' }}', '')::timestamptz, NOW()) AS created_at,
+    lower('{{ String($('Webhook').first().json.body.event || 'message').replace(/'/g, '') }}') AS event,
+    lower('{{ String($('Webhook').first().json.body.status || 'received').replace(/'/g, '') }}') AS status
+),
+ins AS (
+  INSERT INTO inbound_message_queue (message_id, from_phone, to_phone, message, created_at)
+  SELECT message_id, from_phone, to_phone, message, created_at
+  FROM incoming
+  WHERE length(trim(coalesce(message, ''))) > 0
+    AND event = 'message'
+    AND status IN ('received', '')
+  ON CONFLICT (message_id) DO NOTHING
+  RETURNING id
+),"""
+
+LATEST_OLD = """SELECT COALESCE(
+  (SELECT last_inbound_message_id FROM conversation_state WHERE session_key = '{{ $('⚙️ CONFIG').first().json.tenant_key }}_{{ $('Webhook').first().json.body.from_phone }}')
+  = '{{ $('Webhook').first().json.body.message_id }}', FALSE) AS is_latest;"""
+
+LATEST_NEW = """SELECT NOT EXISTS (
+  SELECT 1 FROM inbound_message_queue q
+  WHERE regexp_replace(q.from_phone, '\\D', '', 'g') = regexp_replace('{{ $('Webhook').first().json.body.from_phone }}', '\\D', '', 'g')
+    AND q.message_id IS DISTINCT FROM '{{ $('Webhook').first().json.body.message_id }}'
+    AND length(trim(coalesce(q.message, ''))) > 0
+    AND q.created_at > COALESCE(
+      (SELECT created_at FROM inbound_message_queue WHERE message_id = '{{ $('Webhook').first().json.body.message_id }}'),
+      NOW()
+    )
+) AS is_latest;"""
+
+
+def only_customer_messages(nodes):
+    """A delivery receipt is not a new customer turn.
+
+    Wasup posts a fresh id when a tick arrives. The old queue treated that id
+    as the latest inbound, so the answer was saved and the send was skipped.
+    Only a non-empty message with status received is queued, and an execution
+    stays latest unless a newer customer text is actually waiting.
+    """
+    named = {item['name']: item for item in nodes}
+    queue = named.get('Queue Inbound')
+    if queue and QUEUE_OLD in (queue['parameters'].get('query') or ''):
+        queue['parameters']['query'] = queue['parameters']['query'].replace(QUEUE_OLD, QUEUE_NEW, 1)
+    latest = named.get('Am I The Latest?')
+    if latest and (latest['parameters'].get('query') or '').strip() == LATEST_OLD.strip():
+        latest['parameters']['query'] = LATEST_NEW
+
+
+def read_agent_output(nodes):
+    """The staging save sits in front of delivery, so the bubble must still come from the agent.
+
+    Plan Delivery used to read whatever node ran immediately before it. After the
+    staging row is written, that input is the database result and the reply is
+    saved with nothing to send. Read the agent output by name instead.
+    """
+    named = {item['name']: item for item in nodes}
+    node = named.get('Plan Delivery')
+    if not node:
+        return
+    code = node['parameters'].get('jsCode') or ''
+    old = 'const out = $input.first().json.output || {};'
+    new = "const out = $('AI Agent').first().json.output || {};"
+    if old in code:
+        node['parameters']['jsCode'] = code.replace(old, new, 1)
+
+
 def arm_sends(nodes):
     for item in nodes:
         raw = SEND_RAW.get(item['name'])
@@ -668,6 +753,8 @@ def patch_agent(workflow, payment_id):
     quote_records(nodes)
     arm_sends(nodes)
     keep_replies(nodes)
+    only_customer_messages(nodes)
+    read_agent_output(nodes)
     return nodes, connections
 
 
@@ -916,6 +1003,15 @@ def check_agent(workflow, payment_id):
         replied = named[name]['parameters']['query']
         assert 'inbound_message_queue q' in replied
         assert 'last_inbound_message_id' not in replied
+    queued = named['Queue Inbound']['parameters']['query']
+    assert "event = 'message'" in queued
+    assert "status IN ('received', '')" in queued
+    latest = named['Am I The Latest?']['parameters']['query']
+    assert 'inbound_message_queue q' in latest
+    assert 'last_inbound_message_id' not in latest
+    plan = named['Plan Delivery']['parameters']['jsCode']
+    assert "$('AI Agent').first().json.output" in plan
+    assert '$input.first().json.output' not in plan
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
     assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
     assert "let tag = 'stg'" not in named['Prepare staging record']['parameters']['jsCode']
