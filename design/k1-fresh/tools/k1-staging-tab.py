@@ -243,11 +243,25 @@ def only_customer_messages(nodes):
         latest['parameters']['query'] = LATEST_NEW
 
 
-HOLD_JS = """// Wasup closes the inbound webhook after 10s. Keep it open just inside that
-// limit so the chat can show composing from the moment the message arrives.
-// The reply itself still goes out through sendRaw.
-await new Promise((resolve) => setTimeout(resolve, 7500))
-return $input.all()
+HOLD_JS = """// Wasup closes this webhook after 10s. A customer message keeps it open until
+// the answer exists, or 8s, whichever comes first. sendRaw still delivers.
+// Anything else is acked at once so a receipt is not held open.
+const body = $('Webhook').first().json.body || {}
+const event = String(body.event || 'message').toLowerCase()
+const incoming = String(body.message || '').trim()
+if (event !== 'message' || !incoming) return [{ json: { skip: true } }]
+const limit = Date.now() + 8000
+while (Date.now() < limit - 300) {
+  try {
+    const out = $('AI Agent').first().json.output || {}
+    const msgs = Array.isArray(out.messages) ? out.messages : []
+    if (msgs.some((item) => String(item || '').trim())) break
+  } catch (error) {}
+  await new Promise((resolve) => setTimeout(resolve, 200))
+}
+const tail = Math.max(0, Math.min(300, limit - Date.now()))
+if (tail) await new Promise((resolve) => setTimeout(resolve, tail))
+return [{ json: { skip: true } }]
 """
 
 
@@ -264,6 +278,8 @@ def hold_composing(nodes, connections):
         nodes.append(node('Hold For Composing', 'n8n-nodes-base.code', 2, [pos[0] - 220, pos[1]], {
             'mode': 'runOnceForAllItems', 'jsCode': HOLD_JS,
         }))
+    else:
+        named['Hold For Composing']['parameters']['jsCode'] = HOLD_JS
     links = webhook.get('main', [[]])[0] or []
     kept = [link for link in links if link.get('node') != 'Ack Webhook (empty)']
     if not any(link.get('node') == 'Hold For Composing' for link in kept):
