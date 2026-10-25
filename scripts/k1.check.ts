@@ -15,6 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
+import { composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
 function assert(condition: boolean, message: string) {
@@ -137,6 +138,16 @@ const missing = (a: Record<string, unknown>, b: Record<string, unknown>, path = 
 })
 assert(!missing(en, fi).length, `Finnish copy is missing: ${missing(en, fi).join(', ')}`)
 assert(detectLanguage('Suomi') === 'fi' && detectLanguage('svenska') === 'sv' && detectLanguage('Deutsch') === 'en' && detectLanguage('') === 'fi', 'a missing language is Finnish and other languages get English')
+const fiMobile = composePhone('fi', '040 123 4567')
+assert(fiMobile.ok && fiMobile.display === '+358 40 123 4567' && fiMobile.digits === '358401234567', 'a Finnish number keeps +358 and drops the trunk zero')
+assert(composePhone('se', '70 123 45 67').display === '+46 70 123 45 67', 'Sweden is +46')
+assert(composePhone('gb', '07123 456789').display === '+44 7123 456789', 'the UK is +44')
+assert(!composePhone('fi', '40 123').ok, 'a short number is not sent')
+assert(composePhone('fi', '40 000 0101').placeholder, 'the sample block stays blocked')
+assert(composePhone('fi', '+46 70 123 45 67').ok === false, 'a pasted number from another country is not sent under Finland')
+assert(prefillPhone('+358 40 000 0101', 'fi') === null, 'a sample lead does not fill the WhatsApp field')
+assert(prefillPhone('0701234567', 'sv')?.country === 'se', 'a Swedish local number prefills Sweden')
+assert(prefillPhone('07123456789', 'en')?.country === 'gb', 'a UK local number prefills the UK')
 assert(fillTemplate('Hi {{first_name}}, {{registration_number}} is due by {{due_date}} at {{station}} (last {{last_inspection}}).', lead) === 'Hi, JJ-190 is due by 23.9.2026 at K1 Katsastus Kouvola (last 23.9.2025).', 'placeholders fill from the lead; first name is dropped')
 assert(fillTemplate('{{due_date}}', { ...lead, language: 'English' }) === '23 Sep 2026', 'English dates are written out')
 assert(fillTemplate('Täällä K1 Katsastus {{station}}.', lead) === 'Täällä K1 Katsastus Kouvola.', 'the brand is not written twice when the station name already carries it')

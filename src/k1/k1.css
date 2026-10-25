@@ -1108,12 +1108,26 @@ body { overscroll-behavior: none; }
 .k1-skel-compare .k1-compare__head { display: flex; align-items: center; gap: 8px; }
 .k1-skel-compare .k1-compare__thread { padding: 16px; }
 
-.k1-staging__grid { display: grid; grid-template-columns: minmax(280px, 420px) minmax(260px, 1fr); gap: 28px; align-items: start; max-width: 980px; }
+.k1-staging__intro { max-width: 680px; margin-top: 8px; color: var(--k1-para); font-size: 14px; line-height: 1.5; }
+.k1-staging__note { margin-top: 6px; }
+.k1-staging__grid { display: grid; grid-template-columns: minmax(280px, 460px) minmax(240px, 420px); gap: 28px 40px; align-items: start; margin-top: 28px; }
 .k1-staging__form { display: grid; gap: 16px; }
-.k1-staging__preview { display: grid; gap: 8px; }
-.k1-staging__bubble { white-space: pre-wrap; margin: 0; padding: 14px 16px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-md); background: #fafafa; color: var(--k1-ink); font-size: 14px; line-height: 1.5; }
+.k1-staging__preview { display: grid; gap: 8px; align-content: start; }
+.k1-staging__bubble { max-width: 420px; margin: 0; padding: 11px 14px; border-radius: 16px; background: var(--k1-bubble); color: var(--k1-ink); font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .k1-staging__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.k1-staging__table { margin-top: 36px; }
-@media (max-width: 800px) {
-  .k1-staging__grid { grid-template-columns: 1fr; }
+.k1-staging__table { margin-top: 8px; }
+.k1-staging__table .k1-table-card { margin-top: 12px; }
+.k1-phone { display: grid; gap: 8px; }
+.k1-phone__countries { width: 100%; height: 38px; }
+.k1-phone__countries button { height: 30px; padding: 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.k1-phone__number { display: flex; align-items: center; height: 38px; padding: 0 12px; border: 1px solid var(--k1-field-line); border-radius: var(--k1-r-md); background: var(--k1-surface); box-shadow: var(--k1-inner); }
+.k1-phone__number:focus-within { border-color: #9f9fa9; box-shadow: 0 0 0 3px var(--k1-ring); }
+.k1-phone__number[data-invalid='true'] { border-color: #fca5a5; }
+.k1-phone__dial { flex: none; margin-right: 8px; color: var(--k1-ink-2); font-variant-numeric: tabular-nums; }
+.k1-phone__number input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; background: transparent; box-shadow: none; }
+.k1-phone__number input:focus, .k1-phone__number input:focus-visible { box-shadow: none; }
+.k1-phone__number input::placeholder { color: var(--k1-placeholder); }
+@media (max-width: 900px) {
+  .k1-staging__grid { grid-template-columns: 1fr; margin-top: 20px; }
+  .k1-phone__countries button { padding: 0 4px; }
 }
