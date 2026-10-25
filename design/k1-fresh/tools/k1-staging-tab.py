@@ -244,19 +244,23 @@ def only_customer_messages(nodes):
 
 
 HOLD_JS = """// Wasup closes this webhook after 10s. A customer message keeps it open until
-// the answer exists, or 8s, whichever comes first. sendRaw still delivers.
-// Anything else is acked at once so a receipt is not held open.
+// the send has run, or 8s, whichever comes first. The ack stays {skip:true}
+// so Wasup does not send a second copy. Anything else is acked at once.
 const body = $('Webhook').first().json.body || {}
 const event = String(body.event || 'message').toLowerCase()
 const incoming = String(body.message || '').trim()
 if (event !== 'message' || !incoming) return [{ json: { skip: true } }]
 const limit = Date.now() + 8000
+function sent() {
+  for (const name of ['Type Bubble', 'Type Double-Text', 'Send Bubble', 'Send Bubble CTA', 'Skip Bubble']) {
+    try {
+      if ($(name).isExecuted) return true
+    } catch (error) {}
+  }
+  return false
+}
 while (Date.now() < limit - 300) {
-  try {
-    const out = $('AI Agent').first().json.output || {}
-    const msgs = Array.isArray(out.messages) ? out.messages : []
-    if (msgs.some((item) => String(item || '').trim())) break
-  } catch (error) {}
+  if (sent()) break
   await new Promise((resolve) => setTimeout(resolve, 200))
 }
 const tail = Math.max(0, Math.min(300, limit - Date.now()))
@@ -315,6 +319,69 @@ def arm_sends(nodes):
         params['resource'] = 'message'
         params['operation'] = 'sendRaw'
         params['rawBody'] = raw
+
+
+# Plain bubbles try Wasup's own typing send first. That path is the one that
+# shows the indicator. A chat with no privacy token comes back cold-blocked
+# and the existing sendRaw still delivers. CTA buttons stay on sendRaw.
+TYPED_SENDS = (
+    ('Send Bubble', 'Send Bubble CTA?', 'Loop Bubbles', 'Type Bubble', 'Bubble Keep', 'Bubble Typed?'),
+    ('Send Double-Text', 'Send Double-Text CTA?', 'Mark Follow-up Sent', 'Type Double-Text', 'Double-Text Keep', 'Double-Text Typed?'),
+)
+
+
+def _keep_js(source):
+    return (
+        "const sent = $input.item.json || {}\n"
+        "let bubble = {}\n"
+        f"try {{ bubble = $('{source}').item.json || {{}} }} catch (error) {{ bubble = {{}} }}\n"
+        "const id = String(sent.message_id || sent.messageId || '')\n"
+        "const via = String(sent.via || '')\n"
+        "const delivered = id.length > 0 && sent.success === true && via !== 'cold-blocked'\n"
+        "return { json: { ...bubble, _typed: delivered ? 'yes' : 'no' } }\n"
+    )
+
+
+def arm_typed_sends(nodes, connections):
+    named = {item['name']: item for item in nodes}
+    for raw_name, source, nxt, type_name, keep_name, if_name in TYPED_SENDS:
+        raw = named.get(raw_name)
+        source_links = connections.get(source, {}).get('main') or []
+        if not raw or len(source_links) < 2:
+            continue
+        if type_name not in named:
+            x, y = raw.get('position') or [0, 0]
+            typed = node(type_name, 'n8n-nodes-wasup.wasup', 1, [x, y + 160], {
+                'resource': 'message',
+                'operation': 'sendText',
+                'instanceId': json.loads(json.dumps(raw['parameters'].get('instanceId') or {})),
+                'to': '={{ $json.to_phone }}',
+                'message': '={{ $json.text }}',
+                'linkPreview': False,
+                'advancedOptions': {'typingSimulation': True, 'delayEnabled': True},
+            }, json.loads(json.dumps(raw.get('credentials') or {})), {'onError': 'continueRegularOutput'})
+            keep = node(keep_name, 'n8n-nodes-base.code', 2, [x + 200, y + 160], {
+                'mode': 'runOnceForEachItem', 'jsCode': _keep_js(source),
+            })
+            typed_if = node(if_name, 'n8n-nodes-base.if', 2.2, [x + 400, y + 160], equals_if('={{ $json._typed }}', 'yes'))
+            nodes.extend([typed, keep, typed_if])
+            named[type_name] = typed
+            named[keep_name] = keep
+            named[if_name] = typed_if
+        else:
+            named[keep_name]['parameters']['jsCode'] = _keep_js(source)
+            named[type_name]['parameters']['operation'] = 'sendText'
+            named[type_name]['parameters']['advancedOptions'] = {'typingSimulation': True, 'delayEnabled': True}
+        for link_item in source_links[1]:
+            if link_item.get('node') == raw_name:
+                link_item['node'] = type_name
+        connections[type_name] = link(keep_name)
+        connections[keep_name] = link(if_name)
+        connections[if_name] = {'main': [
+            [{'node': nxt, 'type': 'main', 'index': 0}],
+            [{'node': raw_name, 'type': 'main', 'index': 0}],
+        ]}
+        connections[raw_name] = link(nxt)
 
 
 PREPARE_RECORD = DOLLAR_JS + r"""const turn = $('Build Turn').first().json || {}
@@ -801,6 +868,7 @@ def patch_agent(workflow, payment_id):
     only_customer_messages(nodes)
     read_agent_output(nodes)
     hold_composing(nodes, connections)
+    arm_typed_sends(nodes, connections)
     return nodes, connections
 
 
@@ -1066,6 +1134,15 @@ def check_agent(workflow, payment_id):
         assert params['operation'] == 'sendRaw'
         assert 'allowColdWithoutToken: true' in params['rawBody']
         assert 'typingSimulation: true' in params['rawBody']
+    for raw_name, source, nxt, type_name, keep_name, if_name in TYPED_SENDS:
+        assert named[type_name]['parameters']['operation'] == 'sendText'
+        assert named[type_name]['parameters']['advancedOptions']['typingSimulation'] is True
+        assert workflow['connections'][source]['main'][1][0]['node'] == type_name
+        assert workflow['connections'][if_name]['main'][0][0]['node'] == nxt
+        assert workflow['connections'][if_name]['main'][1][0]['node'] == raw_name
+        assert "_typed: delivered ? 'yes' : 'no'" in named[keep_name]['parameters']['jsCode']
+    hold = named['Hold For Composing']['parameters']['jsCode']
+    assert 'Type Bubble' in hold and 'isExecuted' in hold and '8000' in hold
     config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
     assert config['wasup_instance_id'] == INSTANCE
 
