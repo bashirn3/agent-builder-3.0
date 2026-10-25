@@ -230,7 +230,12 @@ function hoursFor(page, day) {
   const first = page.rows[0].date
   const last = page.rows[page.rows.length - 1].date
   if (day >= first && day <= last) return { status: 'closed', source: 'not listed on the station page (weekend or holiday)' }
-  if (day < first) return { status: 'unknown', reason: 'That date is in the past.' }
+  // The table starts at the next open day, so a closed Sunday that is still today sits before the first row.
+  if (day < first) {
+    const today = helsinki(nowDate()).date
+    if (day >= today) return { status: 'closed', source: 'not listed on the station page (weekend or holiday)' }
+    return { status: 'unknown', reason: 'That date is in the past.' }
+  }
   const same = page.rows.filter((r) => weekdayOf(r.date) === weekdayOf(day) && r.open)
   if (!same.length) return { status: 'closed', estimated: true, source: 'no opening hours on this weekday in the published table' }
   return { status: 'open', estimated: true, open: same[same.length - 1].open, close: same[same.length - 1].close, source: 'estimated from the same weekday in the published table; exact hours not published yet' }
