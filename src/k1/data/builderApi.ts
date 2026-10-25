@@ -591,7 +591,7 @@ export async function sendStaging(input: {
       plate: input.lead.plateNumber,
       stationName: input.lead.stationName,
       versionId: input.versionId,
-      versionNumber: null,
+      versionNumber: readLocal().versions.find((item) => item.id === input.versionId)?.versionNumber ?? null,
       conversationId: newId(),
       updatedAt: new Date().toISOString(),
     }

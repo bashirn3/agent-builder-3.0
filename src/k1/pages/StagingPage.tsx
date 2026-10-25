@@ -10,16 +10,15 @@ import {
 } from '../data/builderApi'
 import { shortStation } from '../data/fixtures'
 import { detectLanguage, leadContext } from '../data/language'
+import { composePhone, dialCode, DIAL_COUNTRIES, nationalExample, prefillPhone, type DialCountry } from '../data/phone'
 import type { PlaygroundStore } from '../data/usePlayground'
 import { useCopy } from '../i18n'
 import { href } from '../routes'
 import { Select, Spinner } from '../ui/controls'
 import { Dialog } from '../ui/overlay'
-import { RefreshCw, WhatsApp } from '../ui/icons'
+import { RefreshCw } from '../ui/icons'
 import { formatStamp } from './SplitView'
 import { orderVersions, versionHint } from './versionText'
-
-const placeholderPhone = (phone: string) => /^\+358\s*40\s*000/.test(phone.trim())
 
 export function StagingPage({ store, notify }: {
   store: PlaygroundStore
@@ -33,7 +32,9 @@ export function StagingPage({ store, notify }: {
   const [sessions, setSessions] = useState<StagingSession[] | null>(null)
   const [sending, setSending] = useState(false)
   const [resetting, setResetting] = useState<StagingSession | null>(null)
-  const ids = { version: useId(), lead: useId() }
+  const [country, setCountry] = useState<DialCountry>('fi')
+  const [national, setNational] = useState('')
+  const ids = { version: useId(), lead: useId(), phone: useId() }
 
   useEffect(() => {
     if (versionId || !store.config) return
@@ -61,21 +62,35 @@ export function StagingPage({ store, notify }: {
   useEffect(refresh, [])
 
   const lead = store.lead
-  const phone = lead?.phoneNumber?.trim() ?? ''
+  useEffect(() => {
+    const next = prefillPhone(lead?.phoneNumber, lead ? detectLanguage(lead.language) : 'fi')
+    setCountry(next?.country ?? 'fi')
+    setNational(next?.national ?? '')
+  }, [lead?.id])
+
+  const composed = composePhone(country, national)
   const used = version && lead ? localized(version, lead) : null
   const opener = used && lead ? openerPreview(used.opener, lead, used.lang) : ''
-  const blocked = !phone ? t.staging.noPhone : lead?.sample || placeholderPhone(phone) ? t.staging.samplePhone : !opener ? t.staging.openerEmpty : ''
-  const canSend = Boolean(version && lead && opener && phone && !blocked && !sending && !loadingVersion)
+  const blocked = national.trim() && !composed.ok
+    ? t.staging.invalidPhone
+    : composed.placeholder
+      ? t.staging.samplePhone
+      : version && lead && !loadingVersion && !opener
+        ? t.staging.openerEmpty
+        : ''
+  const canSend = Boolean(version && lead && opener && composed.ok && !composed.placeholder && !sending && !loadingVersion)
 
   const send = async () => {
-    if (!canSend || !version || !lead || !used) return
+    if (!canSend || !version || !lead || !used || !composed.ok) return
+    const phone = composed.display
+    const messaged = { ...lead, phoneNumber: phone }
     setSending(true)
     try {
       const result = await sendStaging({
         phone,
         versionId: version.id,
         opener,
-        leadContext: leadContext(lead, used.lang),
+        leadContext: leadContext(messaged, used.lang),
         startedBy: currentActor()?.name ?? null,
         lead: {
           plateNumber: lead.plateNumber,
@@ -99,18 +114,14 @@ export function StagingPage({ store, notify }: {
   }
 
   return (
-    <div className="k1-deploy">
-      <header className="k1-deploy__head">
-        <h1 className="k1-deploy__title">{t.staging.title}</h1>
+    <div className="k1-page k1-staging">
+      <header className="k1-page__head">
+        <h1 className="k1-page-title">{t.staging.title}</h1>
       </header>
-      <div className="k1-deploy__body">
-        <section className="k1-deploy-summary" aria-label={t.staging.title}>
-          <div className="k1-deploy-summary__identity"><span className="k1-deploy-summary__mark" aria-hidden="true"><WhatsApp size={21} /></span><span>{t.nav.bookingAgent}</span></div>
-          <p>{t.staging.intro}</p>
-          <p className="k1-deploy-summary__note">{t.staging.stripeNote}</p>
-        </section>
+      <p className="k1-staging__intro">{t.staging.intro}</p>
+      <p className="k1-hint k1-staging__note">{t.staging.stripeNote}</p>
 
-        <div className="k1-staging__grid" style={{ marginTop: 28 }}>
+      <div className="k1-staging__grid">
           <div className="k1-staging__form">
             <div className="k1-field">
               <label htmlFor={ids.version}>{t.staging.version}</label>
@@ -149,6 +160,31 @@ export function StagingPage({ store, notify }: {
                 }))}
                 onChange={(id) => store.setLeadId(id)}
               />
+            </div>
+            <div className="k1-field">
+              <label htmlFor={ids.phone}>{t.staging.number}</label>
+              <div className="k1-phone">
+                <div className="k1-segmented k1-phone__countries" role="group" aria-label={t.staging.country}>
+                  {DIAL_COUNTRIES.map((code) => (
+                    <button key={code} type="button" className={country === code ? 'is-active' : undefined} aria-pressed={country === code} onClick={() => setCountry(code)}>
+                      {t.staging.countries[code]} +{dialCode(code)}
+                    </button>
+                  ))}
+                </div>
+                <div className="k1-phone__number" data-invalid={national.trim() && !composed.ok ? 'true' : undefined}>
+                  <span className="k1-phone__dial" aria-hidden="true">+{dialCode(country)}</span>
+                  <input
+                    id={ids.phone}
+                    value={national}
+                    inputMode="tel"
+                    autoComplete="tel-national"
+                    placeholder={nationalExample(country)}
+                    aria-label={t.staging.number}
+                    aria-invalid={national.trim() && !composed.ok ? true : undefined}
+                    onChange={(event) => setNational(event.target.value)}
+                  />
+                </div>
+              </div>
             </div>
             {blocked && <p className="k1-hint">{blocked}</p>}
             <div className="k1-staging__actions">
@@ -203,7 +239,6 @@ export function StagingPage({ store, notify }: {
             </div>
           )}
         </section>
-      </div>
       <ResetDialog
         session={resetting}
         onClose={() => setResetting(null)}
