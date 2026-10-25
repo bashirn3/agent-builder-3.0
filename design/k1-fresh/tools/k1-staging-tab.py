@@ -600,8 +600,52 @@ def patch_booking(workflow):
     return nodes, workflow['connections']
 
 
+READ_VERSION_JS = r"""let raw = $input.first().json
+if (typeof raw === 'string') { try { raw = JSON.parse(raw) } catch (error) { raw = {} } }
+if (Array.isArray(raw)) raw = raw[0] || {}
+if (!raw || typeof raw !== 'object') raw = {}
+if (raw.body && typeof raw.body === 'object' && raw.body.versionNumber != null) raw = raw.body
+const versionNumber = Number(raw.versionNumber)
+const lookupFailed = Boolean(raw.error) && !Number.isInteger(versionNumber)
+return [{ json: { versionNumber: Number.isInteger(versionNumber) && versionNumber > 0 ? versionNumber : null, error: lookupFailed ? 'version_lookup_failed' : null } }]
+"""
+
+EXPLAIN_JS = r"""function ran(name) { try { return $(name).isExecuted } catch (error) { return false } }
+const version = ran('Read version') ? ($('Read version').first().json || {}) : {}
+const claim = ran('Unwrap claim') ? ($('Unwrap claim').first().json || {}) : null
+const sent = ran('Send opener') ? ($('Send opener').first().json || {}) : null
+let error = 'send_failed'
+if (!version.versionNumber) error = version.error || 'unknown_version'
+else if (!claim || String(claim.ok) !== 'true') {
+  const reason = claim && typeof claim.error === 'string' ? claim.error : ''
+  error = /^[a-z0-9_.:-]{1,80}$/i.test(reason) && reason !== 'send_failed' ? reason : 'claim_failed'
+} else if (sent && sent.error) error = 'whatsapp_failed'
+if (typeof error !== 'string' || !/^[a-z0-9_.:-]{1,80}$/i.test(error)) error = 'send_failed'
+return [{ json: { ok: false, error } }]
+"""
+
+THREAD_JS = r"""const digits = String($('Normalize').first().json.phone || '').replace(/\D/g, '')
+if (!/^\d+$/.test(digits)) return [{ json: { query: "select json_build_object('ok', false, 'error', 'phone_required') as result" } }]
+const query = `select json_build_object(
+  'ok', true,
+  'found', s.phone_key is not null,
+  'phone', s.phone,
+  'plate', coalesce(s.lead->>'plateNumber', ''),
+  'stationName', coalesce(s.lead->>'stationName', ''),
+  'versionNumber', s.version_number,
+  'updatedAt', s.updated_at,
+  'messages', coalesce((
+    select json_agg(json_build_object('id', m.id, 'role', m.role, 'text', m.text, 'at', m.created_at) order by m.created_at)
+    from k1_staging_messages m where m.conversation_id = s.conversation_id
+  ), '[]'::json)
+) as result
+from (select 1) seed
+left join k1_staging_sessions s on s.phone_key = '${digits}'`
+return [{ json: { query } }]
+"""
+
 CLAIM_JS = DOLLAR_JS + r"""const body = $('Normalize').first().json || {}
-const version = $('Fetch saved version').first().json || {}
+const version = $('Read version').first().json || {}
 const phone = String(body.phone || '').trim()
 const digits = phone.replace(/\D/g, '')
 const versionId = String(body.versionId || '')
@@ -690,24 +734,34 @@ const action = String(body.action || 'list')
 const phone = String(body.phone || '').trim()
 return [{ json: { ...body, action, phone, to: phone.replace(/\D/g, '') } }]"""),
         node('Send?', 'n8n-nodes-base.if', 2.2, [680, 300], equals_if('={{ $json.action }}', 'send')),
-        node('Reset?', 'n8n-nodes-base.if', 2.2, [900, 520], equals_if('={{ $json.action }}', 'reset')),
+        node('Thread?', 'n8n-nodes-base.if', 2.2, [900, 420], equals_if('={{ $json.action }}', 'thread')),
+        node('Reset?', 'n8n-nodes-base.if', 2.2, [1120, 620], equals_if('={{ $json.action }}', 'reset')),
         http_rpc('Fetch saved version', 'get_agent_builder_version',
                  "={{ { p_tenant_key: 'k1_katsastus_demo', p_version_id: $('Normalize').first().json.versionId } }}", [900, 120]),
-        node('Version ok?', 'n8n-nodes-base.if', 2.2, [1120, 120], equals_if("={{ $json.versionNumber ? 'yes' : 'no' }}", 'yes')),
-        code('Prepare claim', [1340, 40], CLAIM_JS),
-        pg('Claim session', '={{ $json.query }}', [1560, 40]),
-        code('Unwrap claim', [1780, 40], UNWRAP_RESULT_JS),
-        node('Claimed?', 'n8n-nodes-base.if', 2.2, [2000, 40], equals_if("={{ String($json.ok) }}", 'true')),
-        node('Send opener', 'n8n-nodes-wasup.wasup', 1, [2220, -40], {
+        code('Read version', [1120, 120], READ_VERSION_JS),
+        node('Version ok?', 'n8n-nodes-base.if', 2.2, [1340, 120], equals_if("={{ $json.versionNumber ? 'yes' : 'no' }}", 'yes')),
+        code('Prepare claim', [1560, 40], CLAIM_JS),
+        pg('Claim session', '={{ $json.query }}', [1780, 40]),
+        code('Unwrap claim', [2000, 40], UNWRAP_RESULT_JS),
+        node('Claimed?', 'n8n-nodes-base.if', 2.2, [2220, 40], equals_if("={{ String($json.ok) }}", 'true')),
+        node('Send opener', 'n8n-nodes-wasup.wasup', 1, [2440, -40], {
+            'resource': 'message',
+            'operation': 'sendText',
             'instanceId': {'__rl': True, 'value': INSTANCE, 'mode': 'id'},
             'to': "={{ $('Normalize').first().json.to }}",
             'message': "={{ $('Normalize').first().json.opener }}",
+            'linkPreview': False,
             'advancedOptions': {},
         }, WASUP, {'onError': 'continueRegularOutput'}),
-        node('Sent?', 'n8n-nodes-base.if', 2.2, [2440, -40], equals_if("={{ $json.error ? 'no' : 'yes' }}", 'yes')),
-        respond('Respond send', [2660, -80], "={{ { ok: true, conversationId: $('Unwrap claim').first().json.conversationId, versionNumber: $('Unwrap claim').first().json.versionNumber, phone: $('Normalize').first().json.phone } }}"),
-        respond('Respond send failed', [2220, 180], "={{ { ok: false, error: $json.error || 'send_failed' } }}", 400),
-        code('Prepare reset', [1120, 400], RESET_SEND_JS),
+        node('Sent?', 'n8n-nodes-base.if', 2.2, [2660, -40], equals_if("={{ $json.error ? 'no' : 'yes' }}", 'yes')),
+        respond('Respond send', [2880, -80], "={{ { ok: true, conversationId: $('Unwrap claim').first().json.conversationId, versionNumber: $('Unwrap claim').first().json.versionNumber, phone: $('Normalize').first().json.phone } }}"),
+        code('Explain failure', [2440, 180], EXPLAIN_JS),
+        respond('Respond send failed', [2660, 180], "={{ { ok: false, error: $json.error || 'send_failed' } }}", 400),
+        code('Prepare thread', [1120, 420], THREAD_JS),
+        pg('Read thread', '={{ $json.query }}', [1340, 420]),
+        code('Unwrap thread', [1560, 420], UNWRAP_RESULT_JS),
+        respond('Respond thread', [1780, 420], '={{ $json }}'),
+        code('Prepare reset', [1340, 620], RESET_SEND_JS),
         pg('Reset session', '={{ $json.query }}', [1340, 400]),
         code('Unwrap reset', [1560, 400], UNWRAP_RESULT_JS),
         respond('Respond reset', [1780, 400], '={{ $json }}'),
@@ -718,15 +772,21 @@ return [{ json: { ...body, action, phone, to: phone.replace(/\D/g, '') } }]"""),
     connections = {
         'Webhook': link('Normalize'),
         'Normalize': link('Send?'),
-        'Send?': {'main': [[{'node': 'Fetch saved version', 'type': 'main', 'index': 0}], [{'node': 'Reset?', 'type': 'main', 'index': 0}]]},
-        'Fetch saved version': link('Version ok?'),
-        'Version ok?': {'main': [[{'node': 'Prepare claim', 'type': 'main', 'index': 0}], [{'node': 'Respond send failed', 'type': 'main', 'index': 0}]]},
+        'Send?': {'main': [[{'node': 'Fetch saved version', 'type': 'main', 'index': 0}], [{'node': 'Thread?', 'type': 'main', 'index': 0}]]},
+        'Thread?': {'main': [[{'node': 'Prepare thread', 'type': 'main', 'index': 0}], [{'node': 'Reset?', 'type': 'main', 'index': 0}]]},
+        'Fetch saved version': link('Read version'),
+        'Read version': link('Version ok?'),
+        'Version ok?': {'main': [[{'node': 'Prepare claim', 'type': 'main', 'index': 0}], [{'node': 'Explain failure', 'type': 'main', 'index': 0}]]},
         'Prepare claim': link('Claim session'),
         'Claim session': link('Unwrap claim'),
         'Unwrap claim': link('Claimed?'),
-        'Claimed?': {'main': [[{'node': 'Send opener', 'type': 'main', 'index': 0}], [{'node': 'Respond send failed', 'type': 'main', 'index': 0}]]},
+        'Claimed?': {'main': [[{'node': 'Send opener', 'type': 'main', 'index': 0}], [{'node': 'Explain failure', 'type': 'main', 'index': 0}]]},
         'Send opener': link('Sent?'),
-        'Sent?': {'main': [[{'node': 'Respond send', 'type': 'main', 'index': 0}], [{'node': 'Respond send failed', 'type': 'main', 'index': 0}]]},
+        'Sent?': {'main': [[{'node': 'Respond send', 'type': 'main', 'index': 0}], [{'node': 'Explain failure', 'type': 'main', 'index': 0}]]},
+        'Explain failure': link('Respond send failed'),
+        'Prepare thread': link('Read thread'),
+        'Read thread': link('Unwrap thread'),
+        'Unwrap thread': link('Respond thread'),
         'Reset?': {'main': [[{'node': 'Prepare reset', 'type': 'main', 'index': 0}], [{'node': 'List sessions', 'type': 'main', 'index': 0}]]},
         'Prepare reset': link('Reset session'),
         'Reset session': link('Unwrap reset'),
@@ -928,7 +988,14 @@ def dry():
     send = send_workflow(agent.get('settings'))
     assert any(item['name'].endswith(' · Check Access') for item in send['nodes'])
     assert any(item['parameters'].get('path') == SEND_PATH for item in send['nodes'])
-    assert any(item['name'] == 'Prepare claim' and 'k1_staging_sessions' in item['parameters']['jsCode'] for item in send['nodes'])
+    assert any(item['name'] == 'Prepare claim' and 'k1_staging_sessions' in item['parameters']['jsCode'] and "$('Read version')" in item['parameters']['jsCode'] for item in send['nodes'])
+    assert any(item['name'] == 'Read version' for item in send['nodes'])
+    assert any(item['name'] == 'Explain failure' for item in send['nodes'])
+    assert any(item['name'] == 'Prepare thread' for item in send['nodes'])
+    opener = next(item for item in send['nodes'] if item['name'] == 'Send opener')
+    assert opener['parameters']['resource'] == 'message'
+    assert opener['parameters']['operation'] == 'sendText'
+    assert opener['parameters']['linkPreview'] is False
     chat_nodes, chat_connections = patch_chats(chats_stub())
     check_chats({'nodes': chat_nodes, 'connections': chat_connections})
     print('dry ok')
@@ -1024,7 +1091,11 @@ def save_send(body):
             body['payment_id'] = item['id']
     if existing:
         gate.request('POST', f'/workflows/{existing}/deactivate')
-        gate.request('PUT', f'/workflows/{existing}', {'name': body['name'], 'nodes': body['nodes'], 'connections': body['connections'], 'settings': body['settings']})
+        try:
+            gate.request('PUT', f'/workflows/{existing}', {'name': body['name'], 'nodes': body['nodes'], 'connections': body['connections'], 'settings': body['settings']})
+        except Exception:
+            gate.request('POST', f'/workflows/{existing}/activate')
+            raise
         wid = existing
     else:
         wid = gate.request('POST', '/workflows', {'name': body['name'], 'nodes': body['nodes'], 'connections': body['connections'], 'settings': body['settings']})['id']

@@ -253,8 +253,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     if (response.status === 401 && attempt === 0 && sessionToken) continue
     if (response.status === 401) throw new AccessError('signin_required')
     if (response.status === 403) throw new AccessError('team_required')
-    if (!response.ok) throw new Error(`request_failed:${response.status}`)
-    return await response.json() as T
+    const data = await response.json().catch(() => null) as ({ error?: unknown } & T) | null
+    if (!response.ok || !data) {
+      const reason = typeof data?.error === 'string' ? data.error.trim() : ''
+      if (/^[a-z0-9_.:-]{1,80}$/i.test(reason)) throw new Error(reason)
+      throw new Error(`request_failed:${response.status}`)
+    }
+    return data
   }
 }
 
@@ -539,6 +544,23 @@ export type StagingSession = {
   updatedAt: string
 }
 
+export type StagingMessage = {
+  id: string
+  role: 'user' | 'agent'
+  text: string
+  at: string
+}
+
+export type StagingThread = {
+  found: boolean
+  phone: string
+  plate: string
+  stationName: string
+  versionNumber: number | null
+  updatedAt: string | null
+  messages: StagingMessage[]
+}
+
 export type StagingLead = {
   plateNumber: string
   stationName: string
@@ -553,16 +575,18 @@ export type StagingLead = {
 
 const STAGING_KEY = 'k1-staging-sessions'
 
-function readStaging(): StagingSession[] {
+type StoredStagingSession = StagingSession & { messages?: StagingMessage[] }
+
+function readStaging(): StoredStagingSession[] {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STAGING_KEY) || '[]') as StagingSession[]
+    const parsed = JSON.parse(localStorage.getItem(STAGING_KEY) || '[]') as StoredStagingSession[]
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
   }
 }
 
-function writeStaging(sessions: StagingSession[]) {
+function writeStaging(sessions: StoredStagingSession[]) {
   try { localStorage.setItem(STAGING_KEY, JSON.stringify(sessions)) } catch { /* storage blocked */ }
 }
 
@@ -585,7 +609,8 @@ export async function sendStaging(input: {
   startedBy: string | null
 }): Promise<{ conversationId: string; versionNumber: number | null }> {
   if (!remote) {
-    const session: StagingSession = {
+    const now = new Date().toISOString()
+    const session: StoredStagingSession = {
       phone: input.phone,
       phoneKey: input.phone.replace(/\D/g, ''),
       plate: input.lead.plateNumber,
@@ -593,10 +618,11 @@ export async function sendStaging(input: {
       versionId: input.versionId,
       versionNumber: readLocal().versions.find((item) => item.id === input.versionId)?.versionNumber ?? null,
       conversationId: newId(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
+      messages: input.opener ? [{ id: newId(), role: 'agent', text: input.opener, at: now }] : [],
     }
     writeStaging([session, ...readStaging().filter((item) => item.phoneKey !== session.phoneKey)])
-    return { conversationId: session.conversationId, versionNumber: null }
+    return { conversationId: session.conversationId, versionNumber: session.versionNumber }
   }
   const result = await call<{ ok?: boolean; conversationId?: string; versionNumber?: number; error?: string }>('/staging-send', {
     method: 'POST',
@@ -610,7 +636,8 @@ export async function sendStaging(input: {
 // This does not send a WhatsApp message, and it does not change the assigned version.
 export async function resetStagingSession(phone: string): Promise<{ found: boolean; conversationId: string | null }> {
   if (!remote) {
-    const next = readStaging().map((item) => item.phone === phone ? { ...item, conversationId: newId(), updatedAt: new Date().toISOString() } : item)
+    const now = new Date().toISOString()
+    const next = readStaging().map((item) => item.phone === phone ? { ...item, conversationId: newId(), updatedAt: now, messages: [] } : item)
     writeStaging(next)
     return { found: next.some((item) => item.phone === phone), conversationId: next.find((item) => item.phone === phone)?.conversationId ?? null }
   }
@@ -620,6 +647,38 @@ export async function resetStagingSession(phone: string): Promise<{ found: boole
   })
   if (result.ok === false) throw new Error(result.error ?? 'reset_failed')
   return { found: Boolean(result.found), conversationId: result.conversationId ?? null }
+}
+
+export async function getStagingThread(phone: string): Promise<StagingThread> {
+  const empty: StagingThread = { found: false, phone, plate: '', stationName: '', versionNumber: null, updatedAt: null, messages: [] }
+  if (!remote) {
+    const key = phone.replace(/\D/g, '')
+    const session = readStaging().find((item) => item.phone === phone || item.phoneKey === key)
+    if (!session) return empty
+    return {
+      found: true,
+      phone: session.phone,
+      plate: session.plate,
+      stationName: session.stationName,
+      versionNumber: session.versionNumber,
+      updatedAt: session.updatedAt,
+      messages: session.messages ?? [],
+    }
+  }
+  const result = await call<StagingThread & { ok?: boolean; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'thread', phone }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'request_failed')
+  return {
+    found: Boolean(result.found),
+    phone: result.phone || phone,
+    plate: result.plate || '',
+    stationName: result.stationName || '',
+    versionNumber: result.versionNumber ?? null,
+    updatedAt: result.updatedAt ?? null,
+    messages: Array.isArray(result.messages) ? result.messages : [],
+  }
 }
 
 export async function setFeedback(messageId: string, feedback: Feedback): Promise<void> {
