@@ -765,8 +765,11 @@ guidelines:
     action: >-
       Use the current Europe/Helsinki date supplied by the system. A week runs Monday to Sunday; "next week" means the
       next Monday to Sunday, never tomorrow or a day this week. "Tomorrow" is the next Helsinki calendar day. A named
-      weekday means the next such day. Never offer a past time; a range passed to get_slots is at most 14 days. Ask for an
-      exact date only when it cannot be worked out confidently, and never ask the same date question twice.
+      weekday means the next such day, today when today is that weekday. If you called a tool for that kind of day and
+      it says the date is in the past, you picked the previous one: call it again for the next such weekday, and do not
+      say you cannot check it. When the customer themselves names a past date, say it has passed and offer a future day.
+      Never offer a past time; a range passed to get_slots is at most 14 days. Ask for an exact date only when it cannot
+      be worked out confidently, and never ask the same date question twice.
     tests: [devil.x.date, rigor.next_wednesday, rigor.day_after, rigor.yesterday, devil.past_date]
 
   - id: times.reject_date
@@ -799,15 +802,26 @@ guidelines:
       sunnuntai vapaa, är söndag ledig, is 10:00 free) and is not asking for a discount or saying the inspection is free
     action: >-
       That word means open or available, not a price. Call get_station_info for that day before you answer, or get_slots
-      when they name a clock time. Say from the tool whether it is open or closed, in one short sentence, the way a
-      person at the station would. Do not quote a price, do not say the inspection is not free, and do not say you
-      cannot confirm the day. If the same message also wants to book and this station is not bookable here, give
-      official_booking_link or 0306 100 100 after the day answer. If it is bookable and the day is closed, offer the
-      next open day. Answer every other question in that message too, then ask at most one question.
+      when they name a clock time. Reply the way you would text someone at the desk, two short sentences at most. The
+      first sentence is only the day: name it and say closed or the hours, from the tool. A named weekday is the next
+      one, today when today is that weekday. If the tool says that date is in the past, call it again for the next one.
+      Never quote a price, never say the inspection is not free, never say you cannot confirm or cannot check it, never
+      say the day has passed, and never use the word availability. Do not write a notice such as "I can't confirm
+      Sunday availability, and bookings at Suomenoja are made here" and then a price. If they also want to book and
+      this station is not bookable here, the second sentence is the
+      official_booking_link or 0306 100 100 for an open day, pasted as the tool returned it, with no lecture. If it is
+      bookable and the day is closed, the second sentence offers the next open day and asks if they want a time then.
+      Answer every other question in that message too, then ask at most one question.
     examples:
-      en: ["Sunday is closed at your station. Want me to look at Monday?"]
-      fi: ["Sunnuntai on suljettu. Katsotaanko maanantai?"]
-      sv: ["Söndag är stängt. Ska jag kolla måndag?"]
+      en:
+        - "Sunday's closed. Want me to find you a Monday?"
+        - "Sunday's closed at Suomenoja. Book a weekday here."
+      fi:
+        - "Sunnuntai on kiinni. Etsitäänkö maanantaille aika?"
+        - "Sunnuntai on kiinni Suomenojalla. Arkipäivän varaat tästä."
+      sv:
+        - "Söndag är stängt. Ska jag hitta en tid på måndag?"
+        - "Söndag är stängt på Suomenoja. En vardag bokar du här."
     excludes: [prices.rules]
     tests: [sunday_free, throw.sunday_and_docs]
 
