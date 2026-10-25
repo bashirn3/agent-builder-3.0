@@ -752,12 +752,9 @@ return [{ json: { ...body, action, phone, to: phone.replace(/\D/g, '') } }]"""),
         node('Claimed?', 'n8n-nodes-base.if', 2.2, [2220, 40], equals_if("={{ String($json.ok) }}", 'true')),
         node('Send opener', 'n8n-nodes-wasup.wasup', 1, [2440, -40], {
             'resource': 'message',
-            'operation': 'sendText',
+            'operation': 'sendRaw',
             'instanceId': {'__rl': True, 'value': INSTANCE, 'mode': 'id'},
-            'to': "={{ $('Normalize').first().json.to }}",
-            'message': "={{ $('Normalize').first().json.opener }}",
-            'linkPreview': False,
-            'advancedOptions': {},
+            'rawBody': "={{ JSON.stringify({ to: $('Normalize').first().json.to, message: $('Normalize').first().json.opener, linkPreview: false, allowColdWithoutToken: true }) }}",
         }, WASUP, {'onError': 'continueRegularOutput'}),
         node('Sent?', 'n8n-nodes-base.if', 2.2, [2660, -40], equals_if("={{ $json.error ? 'no' : 'yes' }}", 'yes')),
         respond('Respond send', [2880, -80], "={{ { ok: true, conversationId: $('Unwrap claim').first().json.conversationId, versionNumber: $('Unwrap claim').first().json.versionNumber, phone: $('Normalize').first().json.phone } }}"),
@@ -1002,8 +999,8 @@ def dry():
     assert any(item['name'] == 'Prepare thread' for item in send['nodes'])
     opener = next(item for item in send['nodes'] if item['name'] == 'Send opener')
     assert opener['parameters']['resource'] == 'message'
-    assert opener['parameters']['operation'] == 'sendText'
-    assert opener['parameters']['linkPreview'] is False
+    assert opener['parameters']['operation'] == 'sendRaw'
+    assert 'allowColdWithoutToken: true' in opener['parameters']['rawBody']
     chat_nodes, chat_connections = patch_chats(chats_stub())
     check_chats({'nodes': chat_nodes, 'connections': chat_connections})
     print('dry ok')
