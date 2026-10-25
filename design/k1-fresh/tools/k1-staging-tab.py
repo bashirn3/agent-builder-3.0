@@ -243,6 +243,35 @@ def only_customer_messages(nodes):
         latest['parameters']['query'] = LATEST_NEW
 
 
+HOLD_JS = """// Wasup closes the inbound webhook after 10s. Keep it open just inside that
+// limit so the chat can show composing from the moment the message arrives.
+// The reply itself still goes out through sendRaw.
+await new Promise((resolve) => setTimeout(resolve, 7500))
+return $input.all()
+"""
+
+
+def hold_composing(nodes, connections):
+    """Hold the Wasup webhook open, then tell it not to send its own reply."""
+    named = {item['name']: item for item in nodes}
+    ack = named.get('Ack Webhook (empty)')
+    webhook = connections.get('Webhook')
+    if not ack or not webhook:
+        return
+    ack['parameters']['responseBody'] = '={{ { skip: true } }}'
+    if 'Hold For Composing' not in named:
+        pos = ack.get('position') or [0, 0]
+        nodes.append(node('Hold For Composing', 'n8n-nodes-base.code', 2, [pos[0] - 220, pos[1]], {
+            'mode': 'runOnceForAllItems', 'jsCode': HOLD_JS,
+        }))
+    links = webhook.get('main', [[]])[0] or []
+    kept = [link for link in links if link.get('node') != 'Ack Webhook (empty)']
+    if not any(link.get('node') == 'Hold For Composing' for link in kept):
+        kept.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
+    webhook['main'][0] = kept
+    connections['Hold For Composing'] = link('Ack Webhook (empty)')
+
+
 def read_agent_output(nodes):
     """The staging save sits in front of delivery, so the bubble must still come from the agent.
 
@@ -755,6 +784,7 @@ def patch_agent(workflow, payment_id):
     keep_replies(nodes)
     only_customer_messages(nodes)
     read_agent_output(nodes)
+    hold_composing(nodes, connections)
     return nodes, connections
 
 
