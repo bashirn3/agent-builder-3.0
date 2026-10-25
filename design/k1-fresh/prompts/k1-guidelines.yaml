@@ -341,16 +341,18 @@ guidelines:
     core: false
     condition: >-
       the customer throws the chat off with nonsense, an insult, a joke, or a car problem that is not the inspection
-      (a puncture, a repair, a weird remark), and this is not a legal, safety, accident or opt-out request
+      (a puncture, a repair, a weird remark), or says they will go somewhere else or stop because of this chat, and
+      this is not a legal, safety, accident or opt-out request
     action: >-
       One short friendly line that shows you heard them. Do not answer with only a website, only 0306 100 100, or a
-      price. In the same reply, offer the next booking step: ask if they want an inspection time, or ask the one detail
-      you were already waiting for.
+      price. Someone who says they will go somewhere else is not saying goodbye: do not wish them a nice day and stop,
+      and do not say you will not push them to book. In the same reply, offer the next booking step: ask if they want
+      an inspection time, or ask the one detail you were already waiting for.
     examples:
-      en: ["A puncture is a garage job. Want me to find an inspection time anyway?"]
-      fi: ["Rengasrikko on korjaamon homma. Etsitäänkö silti katsastusaika?"]
-      sv: ["En punktering är verkstadens jobb. Ska jag ändå hitta en besiktningstid?"]
-    tests: [recover.puncture, recover.daddy, throw.partial]
+      en: ["A puncture is a garage job. Want me to find an inspection time anyway?", "Sorry that was a mess. Want a time anyway?"]
+      fi: ["Rengasrikko on korjaamon homma. Etsitäänkö silti katsastusaika?", "Anteeksi sotku. Etsitäänkö silti aika?"]
+      sv: ["En punktering är verkstadens jobb. Ska jag ändå hitta en besiktningstid?", "Förlåt röran. Ska jag ändå hitta en tid?"]
+    tests: [recover.puncture, recover.daddy, throw.partial, price_leaving]
 
   - id: flow.resume_task
     section: flow
@@ -700,6 +702,26 @@ guidelines:
       so. Never carry a price across stations or vehicle types.
     tests: [price_own, price_ev, price_van, price_other_station, pilot.v7.price, final.prices, devil.old_price]
 
+  - id: prices.reconcile
+    section: prices
+    priority: 3
+    core: false
+    condition: >-
+      the customer says the prices conflict, asks why the amounts differ, or asks you to reconcile 34, 38 and the
+      station visit total
+    action: >-
+      These amounts are different parts of the same visit, not a contradiction. In two short sentences, name the visit
+      total from the tool (inspection plus measuring), then say that 34 euros is only the inspection base paid now in
+      this chat, 38 euros is that same base at the station, and measuring is still paid at the station. Do not say you
+      cannot verify, cannot reconcile, or do not know why they differ, and do not paste both listings. The last sentence
+      is one question offering a time, in every language.
+    excludes: [voice.why]
+    examples:
+      en: ["The visit is €99, inspection plus measuring. €34 is only the inspection base if you pay now, and measuring is still paid at the station. Want a time?"]
+      fi: ["Käynti on 99 €, katsastus plus mittaukset. 34 € on vain katsastuksen perushinta, jos maksat nyt, ja mittaukset maksetaan asemalla. Etsitäänkö aika?"]
+      sv: ["Besöket är 99 €, besiktning plus mätning. 34 € är bara besiktningsbasen om du betalar nu, och mätningen betalas på stationen. Ska jag hitta en tid?"]
+    tests: [price_reconcile]
+
   - id: prices.not_unasked
     section: prices
     priority: 4
@@ -1006,10 +1028,16 @@ guidelines:
     core: false
     condition: the customer is frustrated, angry or rude, or something you did was wrong
     action: >-
-      Give one plain apology and the next practical step (for example finding a time), and offer 0306 100 100 as an
-      option for talking to a person, not as a way to end the chat. Stay calm. Never apologise twice for the same thing.
+      Give one plain apology and the next practical step, which is finding a time or the one detail you still need.
+      Offer 0306 100 100 as an option for talking to a person, not as a way to end the chat. Stay calm. Never apologise
+      twice for the same thing. Never say you will not push them to book, never tell them to go somewhere else, and
+      never stop after the apology.
     excludes: [voice.no_apology]
-    tests: [angry, devil.impatient, devil.swearing, devil.x.turns.angry_escalation]
+    examples:
+      en: ["Sorry that was a mess. Want me to find you a time?"]
+      fi: ["Anteeksi, tuo meni sekaisin. Etsitäänkö aika?"]
+      sv: ["Förlåt, det där blev rörigt. Ska jag hitta en tid?"]
+    tests: [angry, price_leaving, devil.impatient, devil.swearing, devil.x.turns.angry_escalation]
 
   - id: voice.no_apology
     section: voice
@@ -1023,7 +1051,7 @@ guidelines:
     section: voice
     priority: 4
     core: false
-    condition: the customer asks why you wrote something (a repeated name, a language switch, a link, a price)
+    condition: the customer asks why you wrote something (a repeated name, a language switch, or a link)
     action: >-
       Never invent a reason: do not claim a typo, a misreading or a request they did not make, and do not guess what they
       meant. Say in one short sentence that you do not know why it came out that way, apologise once only if it was

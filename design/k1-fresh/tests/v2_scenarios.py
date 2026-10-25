@@ -86,6 +86,10 @@ def build(Customer, Auto):
     tri('need_emission', 'Tarvitaanko päästömittaus?', 'Behövs avgasmätning?', 'Do I need the emissions test?', [('reply', MEASURING)])
     tri('emission_ev', 'Tarvitaanko sähköautolle päästömittaus?', 'Behövs avgasmätning för en elbil?', 'Does an electric car need the emissions test?', [('reply', r'ei |inte|no |not|ingen|sähkö|electric|el')], product='004e')
     tri('price_van', 'Paljonko tämä maksaa pakettiautolle?', 'Vad kostar det för en skåpbil?', 'How much for a van?', [('any_tool', ['get_station_info', 'get_slots'])], cat='N1')
+    tri('price_reconcile', 'Miksi 34 euroa ja 99 euroa eivät täsmää?', 'Varför stämmer inte 34 euro och 99 euro?', 'Why can you not reconcile the 34 and the 99?',
+        [NOBOOK, ('reply', r'\b34\b'), ('reply', r'\?'), ('no_reply', r"can.?t verify|cannot reconcile|en voi varmistaa|kan inte verifiera|don't know why|en tiedä miksi")])
+    tri('price_leaving', 'Lähden muualle nyt', 'Jag går någon annanstans nu', "I'm gonna go somewhere else now",
+        [NOBOOK, ('reply', r'\?'), ('no_reply', r"won.t push|en tuputa|jag tänker inte")])
     tri('price_payment', 'Voinko maksaa kortilla ja pitääkö maksaa etukäteen?', 'Kan jag betala med kort och måste jag betala i förväg?', 'Can I pay by card and do I pay in advance?',
         [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\b34\b'), ('reply', r'\b38\b'), ('reply', r'kort|card'), ('no_reply', r'Etuaika|0306|https?://'), ('no_reply', r'en tiedä|vet inte|don.?t know|do not know')])
     tri('price_discount', 'Onko teillä alennuksia?', 'Har ni några rabatter?', 'Do you have any discounts?',

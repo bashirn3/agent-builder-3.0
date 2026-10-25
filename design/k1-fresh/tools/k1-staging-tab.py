@@ -298,6 +298,53 @@ def hold_composing(nodes, connections):
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
 
 
+OFFER_TIME_JS = r"""const wantsTime = /reconcil|täsm|tasma|stämmer inte|somewhere else|muualle|annanstan|somwehre/i.test(rawUser)
+if (wantsTime && msgs.length && !msgs.join('\n').includes('?')) {
+  const sample = (rawUser + '\n' + msgs.join('\n')).toLowerCase()
+  const swedish = /\b(varför|jag|inte|stämmer|annanstan|besikt)\b/.test(sample)
+  const finnish = /[äö]|miksi|mitä|lähden|muualle|etsitä/.test(sample)
+  const ask = finnish && !swedish ? 'Etsitäänkö silti aika?' : swedish ? 'Ska jag hitta en tid?' : 'Want me to find you a time?'
+  msgs[msgs.length - 1] = msgs[msgs.length - 1].replace(/[.!\s]+$/, '') + '. ' + ask
+}
+"""
+
+
+def prefetch_staging(nodes, connections):
+    """Read the assigned version while the debounce waits, so the model and its typing start sooner.
+
+    Only the latest message may continue into the agent. The version fetch ends on its own.
+    """
+    named = {item['name']: item for item in nodes}
+    merge = named.get('Merge Staging')
+    incoming = connections.get('New Message?', {}).get('main') or []
+    if not merge or not incoming:
+        return
+    merge['parameters']['jsCode'] = MERGE_STAGING
+    first = incoming[0]
+    if not any(item.get('node') == 'Load Staging Session' for item in first):
+        first.append({'node': 'Load Staging Session', 'type': 'main', 'index': 0})
+    connections['Drain Queue'] = link('Merge Staging')
+    connections['Fetch staging version'] = {'main': [[]]}
+    assigned = connections.get('Staging assigned?', {}).get('main')
+    if assigned and len(assigned) > 1:
+        assigned[1] = []
+
+
+def offer_time(nodes):
+    """A price clash or a customer about to leave always ends by offering a time."""
+    named = {item['name']: item for item in nodes}
+    plan = named.get('Plan Delivery')
+    if not plan:
+        return
+    code = plan['parameters'].get('jsCode') or ''
+    if 'const wantsTime' in code:
+        return
+    needle = 'if (msgs.length === 0) {'
+    if needle not in code:
+        return
+    plan['parameters']['jsCode'] = code.replace(needle, OFFER_TIME_JS + needle, 1)
+
+
 def read_agent_output(nodes):
     """The staging save sits in front of delivery, so the bubble must still come from the agent.
 
@@ -434,7 +481,17 @@ return [{ json: { staging } }]
 """
 
 MERGE_STAGING = r"""const drain = $('Drain Queue').first().json || {}
-const parsed = $('Parse Staging').first().json.staging || { found: false }
+const limit = Date.now() + 4000
+let parsed = { found: false }
+while (Date.now() < limit) {
+  try {
+    if ($('Parse Staging').isExecuted) {
+      parsed = $('Parse Staging').first().json.staging || { found: false }
+      if (parsed.found !== true || $('Fetch staging version').isExecuted) break
+    }
+  } catch (error) {}
+  await new Promise((resolve) => setTimeout(resolve, 50))
+}
 if (parsed.found !== true) return [{ json: { ...drain, staging: null } }]
 let version = $('Fetch staging version').isExecuted ? ($('Fetch staging version').first().json || {}) : {}
 if (Array.isArray(version)) version = version[0] || {}
@@ -853,6 +910,16 @@ def patch_agent(workflow, payment_id):
         connections['Prepare staging record'] = link('Record staging?')
         connections['Record staging?'] = {'main': [[{'node': 'Record staging turn', 'type': 'main', 'index': 0}], [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
         connections['Record staging turn'] = link('Plan Delivery')
+    # The WhatsApp send, and the typing that runs inside it, starts when the model
+    # reply exists. The staging insert runs beside it and does not hold the send.
+    if 'Staging turn?' in {item['name'] for item in nodes} and 'Plan Delivery' in {item['name'] for item in nodes}:
+        connections['Staging turn?'] = {'main': [[
+            {'node': 'Prepare staging record', 'type': 'main', 'index': 0},
+            {'node': 'Plan Delivery', 'type': 'main', 'index': 0},
+        ], [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
+        connections['Prepare staging record'] = link('Record staging?')
+        connections['Record staging?'] = {'main': [[{'node': 'Record staging turn', 'type': 'main', 'index': 0}], []]}
+        connections.pop('Record staging turn', None)
     if 'Staging follow-up?' not in names:
         spot = named['Plan Follow-up Delivery']['position']
         nodes.append(node('Staging follow-up?', 'n8n-nodes-base.if', 2.2, [spot[0] + 220, spot[1]],
@@ -873,6 +940,8 @@ def patch_agent(workflow, payment_id):
     keep_replies(nodes)
     only_customer_messages(nodes)
     read_agent_output(nodes)
+    offer_time(nodes)
+    prefetch_staging(nodes, connections)
     hold_composing(nodes, connections)
     arm_typed_sends(nodes, connections)
     return nodes, connections
@@ -1115,6 +1184,9 @@ def check_agent(workflow, payment_id):
     assert 'k1_staging_sessions' in named['Load Staging Session']['parameters']['query']
     assert 'get_agent_builder_version' in named['Fetch staging version']['parameters']['url']
     assert 'Fetch staging version' in workflow['connections']['Staging assigned?']['main'][0][0]['node']
+    assert any(item.get('node') == 'Load Staging Session' for item in workflow['connections']['New Message?']['main'][0])
+    assert workflow['connections']['Drain Queue']['main'][0][0]['node'] == 'Merge Staging'
+    assert 'Date.now() + 4000' in named['Merge Staging']['parameters']['jsCode']
     assert named['Record staging turn']['parameters']['query'] == '={{ $json.query }}'
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
@@ -1131,6 +1203,7 @@ def check_agent(workflow, payment_id):
     assert 'last_inbound_message_id' not in latest
     plan = named['Plan Delivery']['parameters']['jsCode']
     assert "$('AI Agent').first().json.output" in plan
+    assert 'const wantsTime' in plan
     assert '$input.first().json.output' not in plan
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
     assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
