@@ -140,6 +140,42 @@ SEND_RAW = {
 }
 
 
+REPLY_HEAD_OLD = """SELECT
+  COALESCE(
+    (SELECT last_inbound_message_id FROM conversation_state WHERE session_key = '{{ $json.session_key }}')
+    IS DISTINCT FROM '{{ $json.anchor_message_id }}', TRUE
+  ) AS user_replied,"""
+
+REPLY_HEAD_NEW = """SELECT
+  EXISTS (
+    SELECT 1 FROM inbound_message_queue q
+    WHERE regexp_replace(q.from_phone, '\\D', '', 'g') = regexp_replace('{{ $json.to_phone }}', '\\D', '', 'g')
+      AND q.message_id IS DISTINCT FROM '{{ $json.anchor_message_id }}'
+      AND length(trim(coalesce(q.message, ''))) > 0
+  ) AS user_replied,"""
+
+REPLY_CHECK_NODES = ('User Replied?', 'Did They Reply?', 'Last Check Before Chase')
+
+
+def keep_replies(nodes):
+    """A receipt must not cancel the answer.
+
+    The old check treated any new id on the chat as "the customer spoke again"
+    and then dropped the bubble. Delivery receipts do that during the model
+    call, so the reply was saved and never sent. Skip only when a newer
+    non-empty customer text is actually waiting in the queue. The same check
+    guards the live send and the follow-up chase.
+    """
+    named = {item['name']: item for item in nodes}
+    for name in REPLY_CHECK_NODES:
+        node = named.get(name)
+        if not node:
+            continue
+        query = node['parameters'].get('query') or ''
+        if REPLY_HEAD_OLD in query:
+            node['parameters']['query'] = query.replace(REPLY_HEAD_OLD, REPLY_HEAD_NEW, 1)
+
+
 def arm_sends(nodes):
     for item in nodes:
         raw = SEND_RAW.get(item['name'])
@@ -631,6 +667,7 @@ def patch_agent(workflow, payment_id):
         connections['Reset Staging Session'] = link('Send Reset Notice')
     quote_records(nodes)
     arm_sends(nodes)
+    keep_replies(nodes)
     return nodes, connections
 
 
@@ -875,6 +912,10 @@ def check_agent(workflow, payment_id):
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
     assert '_staging_%' in named['Purge Session']['parameters']['query']
+    for name in REPLY_CHECK_NODES:
+        replied = named[name]['parameters']['query']
+        assert 'inbound_message_queue q' in replied
+        assert 'last_inbound_message_id' not in replied
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
     assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
     assert "let tag = 'stg'" not in named['Prepare staging record']['parameters']['jsCode']
