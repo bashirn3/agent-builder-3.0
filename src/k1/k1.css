@@ -761,7 +761,7 @@ body { overscroll-behavior: none; }
   .k1-auth__card { grid-template-columns: 1fr; height: auto; }
   .k1-auth__art { display: none; }
   .k1-auth__form-side { padding: 28px 20px 32px; }
-  .k1-input, .k1-textarea, .k1-select, .k1-tester__composer textarea { font-size: 16px; }
+  .k1-input, .k1-textarea, .k1-select, .k1-tester__composer textarea, .k1-phone__number input { font-size: 16px; }
   .k1-input, .k1-select, .k1-btn { min-height: 44px; }
   .k1-btn--sm { min-height: 36px; }
   .k1-icon-btn--boxed, .k1-icon-btn--lg { width: 40px; height: 40px; }
@@ -1108,26 +1108,42 @@ body { overscroll-behavior: none; }
 .k1-skel-compare .k1-compare__head { display: flex; align-items: center; gap: 8px; }
 .k1-skel-compare .k1-compare__thread { padding: 16px; }
 
-.k1-staging__intro { max-width: 680px; margin-top: 8px; color: var(--k1-para); font-size: 14px; line-height: 1.5; }
-.k1-staging__note { margin-top: 6px; }
-.k1-staging__grid { display: grid; grid-template-columns: minmax(280px, 460px) minmax(240px, 420px); gap: 28px 40px; align-items: start; margin-top: 28px; }
-.k1-staging__form { display: grid; gap: 16px; }
-.k1-staging__preview { display: grid; gap: 8px; align-content: start; }
-.k1-staging__bubble { max-width: 420px; margin: 0; padding: 11px 14px; border-radius: 16px; background: var(--k1-bubble); color: var(--k1-ink); font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.k1-staging { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: auto; background: var(--k1-surface); }
+.k1-staging__play { flex: none; min-height: 640px; display: flex; }
+.k1-staging__setup { flex: none; width: var(--k1-inspector); overflow: visible; padding: 24px 30px 12px; border-right: 1px solid var(--k1-line); }
+.k1-staging__setup > .k1-page-title { margin-bottom: 8px; }
+.k1-staging__intro { margin: 0 0 12px; color: var(--k1-para); font-size: 14px; line-height: 1.45; }
+.k1-staging__form { display: grid; gap: 12px; }
 .k1-staging__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.k1-staging__table { margin-top: 8px; }
-.k1-staging__table .k1-table-card { margin-top: 12px; }
-.k1-phone { display: grid; gap: 8px; }
-.k1-phone__countries { width: 100%; height: 38px; }
-.k1-phone__countries button { height: 30px; padding: 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
-.k1-phone__number { display: flex; align-items: center; height: 38px; padding: 0 12px; border: 1px solid var(--k1-field-line); border-radius: var(--k1-r-md); background: var(--k1-surface); box-shadow: var(--k1-inner); }
+.k1-staging__card { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--k1-line-soft); }
+.k1-staging__card dl { border: 1px solid var(--k1-line); border-radius: var(--k1-r-md); overflow: hidden; }
+.k1-staging__card dl > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; padding: 0 12px; }
+.k1-staging__card dl > div + div { border-top: 1px solid var(--k1-line-soft); }
+.k1-staging__card dt { color: var(--k1-muted); font-size: 13px; }
+.k1-staging__card dd { color: var(--k1-ink); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.k1-staging__lead { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--k1-ink); font-size: 13px; }
+.k1-phone { display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 8px; align-items: center; }
+.k1-phone .k1-select { min-width: 0; }
+.k1-phone__number { display: flex; align-items: center; height: 38px; min-width: 0; padding: 0 12px; border: 1px solid var(--k1-field-line); border-radius: var(--k1-r-md); background: var(--k1-surface); box-shadow: var(--k1-inner); }
 .k1-phone__number:focus-within { border-color: #9f9fa9; box-shadow: 0 0 0 3px var(--k1-ring); }
 .k1-phone__number[data-invalid='true'] { border-color: #fca5a5; }
 .k1-phone__dial { flex: none; margin-right: 8px; color: var(--k1-ink-2); font-variant-numeric: tabular-nums; }
-.k1-phone__number input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; background: transparent; box-shadow: none; }
+.k1-phone__number input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; background: transparent; box-shadow: none; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
 .k1-phone__number input:focus, .k1-phone__number input:focus-visible { box-shadow: none; }
-.k1-phone__number input::placeholder { color: var(--k1-placeholder); }
+.k1-phone__number input::placeholder { color: var(--k1-placeholder); letter-spacing: 0; }
+.k1-staging__play .k1-canvas { padding: 28px 24px; }
+.k1-staging__assigned { flex: none; display: grid; align-content: start; gap: 8px; padding: 14px 72px 16px 30px; border-top: 1px solid var(--k1-line); background: var(--k1-surface); }
+.k1-staging__assigned .k1-table-card { flex: none; min-height: 0; max-height: none; margin-top: 0; }
+.k1-staging__assigned .k1-table th:nth-child(n) { width: auto; }
+.k1-staging__assigned .k1-table th:last-child, .k1-staging__assigned .k1-table td:last-child { width: 1%; }
+.k1-staging__assigned .k1-table tbody tr { cursor: default; }
+
 @media (max-width: 900px) {
-  .k1-staging__grid { grid-template-columns: 1fr; margin-top: 20px; }
-  .k1-phone__countries button { padding: 0 4px; }
+  .k1-staging__play { flex: none; flex-direction: column; min-height: 0; }
+  .k1-staging__setup { width: auto; border-right: 0; border-bottom: 1px solid var(--k1-line); padding: 20px 16px 24px; }
+  .k1-staging__play .k1-canvas { flex: none; height: 520px; min-height: 520px; padding: 16px; }
+  .k1-phone { grid-template-columns: 1fr; }
+  .k1-phone__number { min-height: 44px; }
+  .k1-staging__assigned { padding: 16px 16px 72px; }
+  .k1-staging__assigned .k1-table-card { overflow: auto; }
 }

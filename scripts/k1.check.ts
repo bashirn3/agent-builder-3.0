@@ -15,7 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
-import { composePhone, prefillPhone } from '../src/k1/data/phone.ts'
+import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
 function assert(condition: boolean, message: string) {
@@ -145,6 +145,10 @@ assert(composePhone('gb', '07123 456789').display === '+44 7123 456789', 'the UK
 assert(!composePhone('fi', '40 123').ok, 'a short number is not sent')
 assert(composePhone('fi', '40 000 0101').placeholder, 'the sample block stays blocked')
 assert(composePhone('fi', '+46 70 123 45 67').ok === false, 'a pasted number from another country is not sent under Finland')
+assert(applyPhoneInput('fi', 'abc040 123 4567').national === '401234567', 'the number field keeps digits and drops a trunk zero')
+assert(applyPhoneInput('fi', '+46 70 123 45 67').country === 'se' && applyPhoneInput('fi', '+46 70 123 45 67').national === '701234567', 'a pasted Swedish number selects Sweden')
+assert(applyPhoneInput('se', '+44 7123 456789').country === 'gb' && applyPhoneInput('se', '+44 7123 456789').national === '7123456789', 'a pasted UK number selects the UK')
+assert(applyPhoneInput('fi', '401234567890123').national.length === 12, 'extra digits are not kept')
 assert(prefillPhone('+358 40 000 0101', 'fi') === null, 'a sample lead does not fill the WhatsApp field')
 assert(prefillPhone('0701234567', 'sv')?.country === 'se', 'a Swedish local number prefills Sweden')
 assert(prefillPhone('07123456789', 'en')?.country === 'gb', 'a UK local number prefills the UK')

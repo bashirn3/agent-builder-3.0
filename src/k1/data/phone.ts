@@ -10,6 +10,8 @@ export const DIAL_COUNTRIES: DialCountry[] = ['fi', 'se', 'gb']
 
 export const dialCode = (country: DialCountry) => RULES[country].dial
 
+export const nationalLimit = (country: DialCountry) => RULES[country].max
+
 export const nationalExample = (country: DialCountry) => (
   country === 'se' ? '70 123 45 67' : country === 'gb' ? '7123 456789' : '40 123 4567'
 )
@@ -87,4 +89,21 @@ export function prefillPhone(raw: string | null | undefined, language?: 'en' | '
   if (national.length < rule.min || national.length > rule.max) return null
   if (isSamplePhone(rule.dial + national)) return null
   return { country, national: grouped(country, national) }
+}
+
+// The number field stores digits only. A pasted + or 00 number selects Finland, Sweden, or the UK when it matches one.
+export function applyPhoneInput(country: DialCountry, raw: string): { country: DialCountry; national: string } {
+  const original = raw.trim()
+  let digits = original.replace(/\D/g, '')
+  const international = original.includes('+') || digits.startsWith('00')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (international) {
+    for (const candidate of DIAL_COUNTRIES) {
+      const rule = RULES[candidate]
+      if (!digits.startsWith(rule.dial)) continue
+      const national = digits.slice(rule.dial.length).replace(/^0/, '').slice(0, rule.max)
+      return { country: candidate, national }
+    }
+  }
+  return { country, national: digits.replace(/^0/, '').slice(0, RULES[country].max) }
 }
