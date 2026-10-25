@@ -61,7 +61,7 @@ export function versionTag(chat: Pick<TestChatSummary, 'isDraft' | 'versionNumbe
   return chat.versionNumber ? `v${chat.versionNumber}` : t.chats.unsavedVersion
 }
 
-const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source === 'compare' ? 'compare' : 'playground']
+const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source]
 const showcaseStamp = (iso: string) => new Intl.DateTimeFormat(locale(), {
   timeZone: 'Europe/Helsinki', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 }).format(new Date(iso))
@@ -120,12 +120,16 @@ function FilterDialog({ open, filters, config, onChange, onClose, debug }: {
         </div>
         <div className="k1-field">
           <label htmlFor={ids.source}>{t.chats.source}</label>
-          <Select<'playground' | 'compare'>
+          <Select<'playground' | 'compare' | 'staging'>
             id={ids.source}
             label={t.chats.source}
             value={filters.source}
             placeholder={t.chats.selectSource}
-            options={[{ value: 'playground', label: t.chats.sources.playground }, { value: 'compare', label: t.chats.sources.compare }]}
+            options={[
+              { value: 'playground', label: t.chats.sources.playground },
+              { value: 'compare', label: t.chats.sources.compare },
+              { value: 'staging', label: t.chats.sources.staging },
+            ]}
             onChange={(source) => onChange({ ...filters, source })}
           />
         </div>

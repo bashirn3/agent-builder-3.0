@@ -85,7 +85,7 @@ export type BuilderState = {
 }
 
 export type Feedback = 'up' | 'down' | null
-export type ChatSource = 'playground' | 'compare'
+export type ChatSource = 'playground' | 'compare' | 'staging'
 
 export type TestChatSummary = {
   id: string
@@ -526,6 +526,100 @@ export async function resetCustomer(phone: string) {
     method: 'POST',
     body: JSON.stringify({ action: 'reset', phone }),
   })
+}
+
+export type StagingSession = {
+  phone: string
+  phoneKey: string
+  plate: string
+  stationName: string
+  versionId: string | null
+  versionNumber: number | null
+  conversationId: string
+  updatedAt: string
+}
+
+export type StagingLead = {
+  plateNumber: string
+  stationName: string
+  phoneNumber: string
+  product: string
+  language: string
+  nextInspection: string | null
+  lastInspection: string | null
+  vehicleCategory: string
+  powerType: string
+}
+
+const STAGING_KEY = 'k1-staging-sessions'
+
+function readStaging(): StagingSession[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STAGING_KEY) || '[]') as StagingSession[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeStaging(sessions: StagingSession[]) {
+  try { localStorage.setItem(STAGING_KEY, JSON.stringify(sessions)) } catch { /* storage blocked */ }
+}
+
+export async function listStagingSessions(): Promise<StagingSession[]> {
+  if (!remote) return readStaging()
+  const result = await call<{ ok?: boolean; sessions?: StagingSession[]; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'list' }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'request_failed')
+  return result.sessions ?? []
+}
+
+export async function sendStaging(input: {
+  phone: string
+  versionId: string
+  opener: string
+  lead: StagingLead
+  leadContext: string
+  startedBy: string | null
+}): Promise<{ conversationId: string; versionNumber: number | null }> {
+  if (!remote) {
+    const session: StagingSession = {
+      phone: input.phone,
+      phoneKey: input.phone.replace(/\D/g, ''),
+      plate: input.lead.plateNumber,
+      stationName: input.lead.stationName,
+      versionId: input.versionId,
+      versionNumber: null,
+      conversationId: newId(),
+      updatedAt: new Date().toISOString(),
+    }
+    writeStaging([session, ...readStaging().filter((item) => item.phoneKey !== session.phoneKey)])
+    return { conversationId: session.conversationId, versionNumber: null }
+  }
+  const result = await call<{ ok?: boolean; conversationId?: string; versionNumber?: number; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'send', ...input }),
+  })
+  if (!result.ok || !result.conversationId) throw new Error(result.error ?? 'send_failed')
+  return { conversationId: result.conversationId, versionNumber: result.versionNumber ?? null }
+}
+
+// Clears the staging conversation only. The caller still cancels Muster bookings through resetCustomer.
+// This does not send a WhatsApp message, and it does not change the assigned version.
+export async function resetStagingSession(phone: string): Promise<{ found: boolean; conversationId: string | null }> {
+  if (!remote) {
+    const next = readStaging().map((item) => item.phone === phone ? { ...item, conversationId: newId(), updatedAt: new Date().toISOString() } : item)
+    writeStaging(next)
+    return { found: next.some((item) => item.phone === phone), conversationId: next.find((item) => item.phone === phone)?.conversationId ?? null }
+  }
+  const result = await call<{ ok?: boolean; found?: boolean; conversationId?: string; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'reset', phone }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'reset_failed')
+  return { found: Boolean(result.found), conversationId: result.conversationId ?? null }
 }
 
 export async function setFeedback(messageId: string, feedback: Feedback): Promise<void> {

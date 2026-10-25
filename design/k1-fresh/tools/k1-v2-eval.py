@@ -3,6 +3,7 @@
 
   python3 k1-v2-eval.py run [--suite usual|devil|all] [--only TEXT] [--workers N] [--out FILE]
   python3 k1-v2-eval.py cleanup            cancel every booking the run created, delete the eval copies
+  python3 k1-v2-eval.py recheck FILE...     re-apply the current checks to saved results (no n8n calls)
 
 How it works
 - An isolated copy of the candidate agent gets a random webhook path and a random header key. The Clerk gate is bypassed on the
@@ -47,8 +48,18 @@ AGENT_NAME = os.environ.get('K1_EVAL_AGENT', 'K1 Muster agent v2 (candidate)')
 BOOKING_NAME = os.environ.get('K1_EVAL_BOOKING', 'K1 Muster Booking v2 (candidate)')
 
 
+def all_workflows():
+    items, cursor = [], None
+    while True:
+        page = gate.request('GET', '/workflows?limit=250' + (f'&cursor={cursor}' if cursor else ''))
+        items += page['data']
+        cursor = page.get('nextCursor')
+        if not cursor:
+            return items
+
+
 def workflow_id(name):
-    for item in gate.request('GET', '/workflows?limit=250')['data']:
+    for item in all_workflows():
         if item['name'] == name:
             return item['id']
     raise SystemExit(f'{name} does not exist. Run k1-agent-v2-build.py build first.')
@@ -155,6 +166,56 @@ def post_once(url, secret, payload, timeout=170):
     return status, data, round(time.monotonic() - started, 1)
 
 
+# ---------- Parlant target (K1_EVAL_TARGET=parlant): the same scenarios against parlant/k1_agent.py ----------
+TARGET = os.environ.get('K1_EVAL_TARGET', 'n8n')
+PARLANT_URL = os.environ.get('K1_PARLANT_URL', 'http://localhost:8800').rstrip('/')
+PARLANT_AGENT = {}
+
+
+def parlant_call(method, path, body=None, timeout=90):
+    req = urllib.request.Request(PARLANT_URL + path, data=json.dumps(body).encode() if body is not None else None, method=method,
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        return json.load(res)
+
+
+def parlant_session(state, lead):
+    if 'id' not in PARLANT_AGENT:
+        agents = parlant_call('GET', '/agents')
+        agents = agents.get('items', agents) if isinstance(agents, dict) else agents
+        PARLANT_AGENT['id'] = next(a['id'] for a in agents if a['name'] == 'K1 Katsastus')
+    customer = parlant_call('POST', '/customers', {'name': lead['phone'], 'metadata': {'phone': lead['phone']}})
+    session = parlant_call('POST', '/sessions?allow_greeting=false', {'agent_id': PARLANT_AGENT['id'], 'customer_id': customer['id']})
+    parlant_call('POST', '/k1/lead', {'session_id': session['id'], 'lead': lead, 'booking_url': state['booking_url'], 'secret': state['secret'], 'lead_context': lead_context(lead)})
+    opener = parlant_call('POST', f"/sessions/{session['id']}/events", {'kind': 'message', 'source': 'human_agent_on_behalf_of_ai_agent', 'message': OPENERS[lead['lang']].format(plate=lead['plate'])})
+    return {'id': session['id'], 'offset': opener['offset'], 'steps': 0}
+
+
+def parlant_turn(conversation, text, timeout=170):
+    started = time.monotonic()
+    try:
+        sent = parlant_call('POST', f"/sessions/{conversation['id']}/events", {'kind': 'message', 'source': 'customer', 'message': text})
+        offset, replies, done, failed = sent['offset'], [], False, False
+        while not done and time.monotonic() - started < timeout:
+            events = parlant_call('GET', f"/sessions/{conversation['id']}/events?min_offset={offset + 1}&wait_for_data=60", timeout=75)
+            for event in events:
+                offset = max(offset, event['offset'])
+                if event['kind'] == 'message' and event['source'] == 'ai_agent':
+                    replies.append(event['data'].get('message', ''))
+                elif event['kind'] == 'status' and event['data'].get('status') in ('ready', 'error'):
+                    done, failed = True, event['data'].get('status') == 'error'
+        conversation['offset'] = offset
+        steps = parlant_call('GET', f"/k1/steps?session_id={conversation['id']}&offset={conversation['steps']}")['steps']
+        conversation['steps'] += len(steps)
+        data = {'reply': '\n'.join(replies), 'steps': steps, 'toolCalls': [{'name': s['tool'], 'params': s['input']} for s in steps],
+                'fallback': not replies, 'error': 'engine error' if failed else ('' if done else 'timeout')}
+        return (200 if done and not failed else 500), data, round(time.monotonic() - started, 1)
+    except urllib.error.HTTPError as error:
+        return error.code, {'error': error.read().decode()[:300]}, round(time.monotonic() - started, 1)
+    except Exception as error:
+        return 0, {'error': f'{type(error).__name__}: {str(error)[:200]}'}, round(time.monotonic() - started, 1)
+
+
 def cleanup(state=None):
     state = state or (json.loads(STATE.read_text()) if STATE.exists() else None)
     if not state:
@@ -201,7 +262,7 @@ OPENERS = {
     'sv': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {plate}. Vill du att jag hjälper dig hitta en tid?',
     'en': 'Hi, this is K1 Katsastus. Your vehicle {plate} is due for inspection soon. Would you like me to find you a time?',
 }
-PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v7.json')
+PLATFORM_FILE = ROOT / os.environ.get('K1_EVAL_PLATFORM', 'prompts/k1-platform-v8.json' if os.environ.get('K1_PROMPT_SOURCE') == 'legacy' else 'prompts/k1-platform-v9.json')
 MASTER = """You are the appointment-booking assistant for K1 Katsastus, a Finnish vehicle inspection company.
 
 Ask whether the customer wants to book an inspection and collect the details needed to check availability: registration number, preferred K1 station, preferred date or time window, and contact details when needed.
@@ -223,7 +284,7 @@ def lead_context(lead):
         *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}.", f"- Power type of the vehicle: {lead.get('power') or POWER_TYPES[lead['product']]}. Use it in your answers about this vehicle."]),
         f"- Customer phone: {lead['phone']}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.",
         f"- Registration: {lead['plate']}",
-        f"- Inspection due by: {lead.get('due', '20.10.2026')}",
+        f"- Inspection due by: {lead.get('due', '20.10.2026')} (this registration only)",
         f"- Last inspection: {lead.get('last', '20.10.2024')}",
     ]
     return '\n'.join(lines)
@@ -263,7 +324,7 @@ class Customer:
         q = self.question(reply)
         if re.search(r'e-?mail|sähköposti|e-post', q):
             return self.email or self.phrases['noemail']
-        if re.search(r'\b(name|nimi|nimesi|nimellä|namn|namnet|heißt)\b', q):
+        if re.search(r'\b(name|nimi|nimen|nimesi|nimellä|namn|namnet|heißt)\b', q):
             return self.phrases['name']
         if re.search(r'petrol|diesel|bensa|electric|sähkö|hybrid|elbil|polttomoot|bensin', q) and self.fuel:
             return self.fuel
@@ -271,9 +332,13 @@ class Customer:
             return self.plate or self.phrases['yes']
         undated = re.sub(r'(?<!klo )(?<!kl )(?<![\d.:])([1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(?!\d)', ' ', reply)
         undated = re.sub(r'\b\d{1,2}\.\d{1,2}(?=\s+(?:kl|klo|at|klockan)\b)', ' ', undated)
-        undated = re.sub(r'\b(?:ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\.?\s+\d{1,2}\.\d{1,2}\b\.?(?![:\d])', ' ', undated, flags=re.I)
+        undated = re.sub(r'\b(?:ma|ti|ke|to|pe|la|su|mån|tis|ons|tors|fre|lör|sön|mon|tue|wed|thu|fri|sat|sun)\.?\s+\d{1,2}\.\d{1,2}\b\.?(?!\d)(?!:\d)', ' ', undated, flags=re.I)
+        gone = r'taken|not available|isn.t available|no longer|can.t book|upptagen|inte ledig|varattu|ei ole (enää )?vapaa|ei ole saatavilla|ei onnistu'
+        undated = ' '.join(p for p in re.split(r'(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])', undated) if not re.search(gone, p, re.I))
         times = [f'{int(h):02d}:{m}' for h, m in TIME.findall(undated)]
-        if times and re.search(r'time|kello|klo|tid|kl|which|kumpi|mikä|vilken|passar|sopii|works', q):
+        offered = [t for t in times if t in {f'{int(h):02d}:{m}' for h, m in TIME.findall(q)}]
+        times = offered or times
+        if times and (offered or re.search(r'time|kello|klo|tid|kl|which|kumpi|mikä|minkä|vilken|passar|sopii|works|valit|ajan|ajoista', q)):
             choice = {'first': times[0], 'last': times[-1], 'second': times[min(1, len(times) - 1)]}[self.pick]
             return self.phrases['time'].format(t=choice)
         if re.search(r'day|date|päivä|päivälle|dag|when|milloin|quando|vilken dag', q):
@@ -372,6 +437,7 @@ def run_scenario(state, scenario):
 def _run(state, scenario, events):
     lead = {'phone': f"35899{abs(hash(scenario['id'])) % 10**8:08d}", **scenario['lead']}
     conversation_id = str(uuid.uuid4())
+    parlant = parlant_session(state, lead) if TARGET == 'parlant' else None
     turns, history_steps = [], []
     queue = list(scenario['turns'])
     auto = None
@@ -379,6 +445,9 @@ def _run(state, scenario, events):
     while queue or auto:
         if auto:
             if auto.turns <= 0 or (auto.goal == 'booked' and any(tool_ok(t['steps'], 'book_inspection_invite') for t in turns)):
+                auto = None
+                continue
+            if auto.goal == 'rebooked' and sum(bool(tool_ok(t['steps'], 'book_inspection_invite')) for t in turns) >= 2:
                 auto = None
                 continue
             if auto.goal == 'cancelled' and any(tool_ok(t['steps'], 'cancel_booking') for t in turns):
@@ -392,12 +461,15 @@ def _run(state, scenario, events):
         else:
             item = queue.pop(0)
             if isinstance(item, Auto):
-                auto = item
+                auto = copy.copy(item)
                 continue
             text = item(turns) if callable(item) else item
             if text is None:
                 continue
-        status, data, latency = post(state['agent_url'], state['secret'], payload_for(lead, text, conversation_id))
+        if parlant:
+            status, data, latency = parlant_turn(parlant, text)
+        else:
+            status, data, latency = post(state['agent_url'], state['secret'], payload_for(lead, text, conversation_id))
         data = data if isinstance(data, dict) else {}
         steps = data.get('steps') or []
         for step in steps:
@@ -416,9 +488,27 @@ def _run(state, scenario, events):
     return turns
 
 
+def recheck(files, by_id, checks_module):
+    for name in files:
+        path = Path(name)
+        data = json.loads(path.read_text())
+        results = data if isinstance(data, list) else data['results']
+        changed = 0
+        for result in results:
+            scenario = by_id.get(result['id'].split('#', 1)[0])
+            if not scenario:
+                continue
+            flags = checks_module.evaluate(scenario, result['turns'])
+            changed += flags != result['flags']
+            result['flags'] = flags
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=1))
+        print(f'{path}: {changed} of {len(results)} results changed, {sum(bool(r["flags"]) for r in results)} flagged')
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['run', 'cleanup'])
+    parser.add_argument('command', choices=['run', 'cleanup', 'recheck'])
+    parser.add_argument('files', nargs='*')
     parser.add_argument('--suite', default='all')
     parser.add_argument('--only', default='')
     parser.add_argument('--workers', type=int, default=8)
@@ -435,6 +525,9 @@ def main():
     Auto.steal_slot = staticmethod(steal_slot)
     Auto.last_event = staticmethod(lambda: getattr(CTX, 'last_event', ''))
     scenarios = scenarios_module.build(Customer, Auto)
+    if args.command == 'recheck':
+        recheck(args.files, {s['id']: s for s in scenarios}, checks_module)
+        return
     if args.suite != 'all':
         scenarios = [s for s in scenarios if s['suite'] == args.suite]
     if args.only:

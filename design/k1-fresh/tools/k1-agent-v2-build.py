@@ -9,7 +9,8 @@ Usage:
   python3 k1-agent-v2-build.py smoke     run the Code node inside n8n against staging, production (GET only) and the K1 site
   python3 k1-agent-v2-build.py delete    remove both candidates
   python3 k1-agent-v2-build.py promote   REPLACE the live booking + agent workflows with the candidates (live paths, ids and names are kept);
-                                         the previous live workflows are saved to design/k1-fresh/backups/ first
+                                         the previous live workflows are saved to design/k1-fresh/backups/ first; refused unless
+                                         k1-gate.py check passed for the prompt being shipped (--without-gate only for an emergency fix)
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
@@ -29,6 +30,9 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 spec = importlib.util.spec_from_file_location('gate', HERE / 'n8n-gate.py')
 gate = importlib.util.module_from_spec(spec)
+prompt_spec = importlib.util.spec_from_file_location('k1_prompt', HERE / 'k1-prompt.py')
+k1_prompt = importlib.util.module_from_spec(prompt_spec)
+prompt_spec.loader.exec_module(k1_prompt)
 spec.loader.exec_module(gate)
 
 BACKUPS = ROOT / 'backups'
@@ -36,6 +40,7 @@ LIVE_BOOKING = 'wAE7EHLyJk6JsMue'
 LIVE_AGENT = 'w8a9S1uxB5U9qnNO'
 BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
 AGENT_NAME = 'K1 Muster agent v2 (candidate)'
+PAYMENT_NAME = 'K1 v10 payment'
 SUFFIX = '-v2'
 SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow')
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
@@ -99,8 +104,18 @@ def library():
     return code.replace('const FAQ = __FAQ__', 'const FAQ = ' + faq).replace('const DIRECTORY = __DIRECTORY__', f'const DIRECTORY = {directory}').replace('__STAGING_PROXIES__', proxy_literal()).replace('__STAGING_PROXY_MODE__', json.dumps(proxy_mode()))
 
 
+def all_workflows():
+    items, cursor = [], None
+    while True:
+        page = gate.request('GET', '/workflows?limit=250' + (f'&cursor={cursor}' if cursor else ''))
+        items += page['data']
+        cursor = page.get('nextCursor')
+        if not cursor:
+            return items
+
+
 def by_name(name):
-    for item in gate.request('GET', '/workflows?limit=250')['data']:
+    for item in all_workflows():
         if item['name'] == name:
             return item['id']
     return None
@@ -251,7 +266,7 @@ SLOT_TOOLS = {
 LANGUAGE_CORE = '''const LANGUAGE_WORDS = {
   English: 'the a an and or is are was be you your can could would please do does have has what which when where how much many about after before tomorrow today times time day week next book booking me my we our to of for with on at in it this that yes no hi hello thanks thank want need move cancel price cost open close hours station',
   Swedish: 'och jag det att är på för inte kan vill har vilken vilka vilket imorgon idag tid tider boka bokning vad kostar hur en ett till av som då fredag måndag tisdag onsdag torsdag lördag söndag hej tack ja nej öppet öppettider stationen avboka flytta pris',
-  Finnish: 'ja on ei en mitä miten paljon huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette me ollaan oman omaa kanssa sulla sulle sun mun mut mutta muuten miks miksi mitäs mistä missä kuka mikä onks oon kyl tuo tämä nyt vielä siis vai tai jos kun niin vaan ihan voin voi pitää pitäisi mä sä ole ollut sinä sinun teidän ettei jotta tai myös',
+  Finnish: 'ja on ei en mitä miten paljon paljonko kauanko montako kuinkahan millon mihinkä huomenna tänään aikoja aika ajan haluan haluaisin varata varaus kiitos voisinko voidaanko onko olen minä minulle mulle sopii se että kuinka maksaa katsastus auki milloin mihin asti kello klo moi hei joo kyllä perjantaina maanantaina peruuta siirtää hinta asema aseman jatkaa suomeksi suomea suomi paremmin olette me ollaan oman omaa kanssa sulla sulle sun mun mut mutta muuten miks miksi mitäs mistä missä kuka mikä onks oon kyl tuo tämä nyt vielä siis vai tai jos kun niin vaan ihan voin voi pitää pitäisi mä sä ole ollut sinä sinun teidän ettei jotta tai myös',
 }
 const LANGUAGE_STEMS = {
   Finnish: ['peruu', 'peruut', 'varau', 'varat', 'tunniste', 'katsast', 'rekister', 'haluai', 'haluan', 'huomen', 'aukio', 'aikoj', 'maksa', 'suome', 'kiitos', 'tarvit', 'siirt', 'vapaa'],
@@ -312,6 +327,26 @@ RECORD_USER_TEXT = (
     'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().trim()',
     'p_user_text: $("Playground Turn").first().json.agent_input.split("[USER]").pop().replace(/\\n\\[REPLY LANGUAGE:[\\s\\S]*$/, "").trim()',
 )
+# Prompt caching reuses a request only up to the first change, and the system message is the first block. The date stays
+# where the model has always read it, but only to the day, so the system message changes once a day instead of every
+# minute; the clock moves into the [TURN] block (moving the whole date there cost replies their referents). Caching
+# stops at the end of the system message, so the second copy of the brief in [BUILDER PROMPT] stays at full price;
+# K1_DEDUPE_BRIEF=1 drops it when it equals the business brief, which flagged more scenarios in a small A/B (4 of 36
+# against 1 of 36), so it is off by default.
+HELSINKI_CLOCK = "$now.setZone('Europe/Helsinki').toFormat('HH:mm')"
+CURRENT_DATE_LINE = "`current_time: ${" + HELSINKI_CLOCK + "} (Europe/Helsinki)`,"
+SYSTEM_DATE = (
+    'CURRENT DATE (Europe/Helsinki, authoritative for relative dates): {{ $now.setZone("Europe/Helsinki").toFormat("yyyy-MM-dd EEEE HH:mm") }}. ISO week starts Monday.',
+    'CURRENT DATE (Europe/Helsinki, authoritative for relative dates): {{ $now.setZone("Europe/Helsinki").toFormat("yyyy-MM-dd EEEE") }}; the current clock time is the current_time line of each [TURN] block. ISO week starts Monday.',
+)
+PLAYGROUND_DATE = ("  'turn_type: user_message',", "  'turn_type: user_message',\n  " + CURRENT_DATE_LINE)
+BUILD_TURN_DATE = ("  `local_time: ${new Date().toISOString()}`,", "  `local_time: ${new Date().toISOString()}`,\n  " + CURRENT_DATE_LINE)
+AGENT_TEXT = (
+    '={{ $json.agent_input }}',
+    "={{ (() => { const input = String($json.agent_input || ''); const brief = String($('⚙️ CONFIG').first().json.business_prompt || '').trim(); "
+    "const head = '[BUILDER PROMPT]\\n'; if (!brief || !input.startsWith(head) || !input.slice(head.length).startsWith(brief)) return input; "
+    "return head + '(Same text as the K1 business brief in the system message; it is not repeated here.)' + input.slice(head.length + brief.length) })() }}",
+)
 PLAYGROUND_OPENER = (
     "  '[LEAD]',",
     "  '[OPENER ALREADY SENT TO CUSTOMER]',\n  String(body.opener || ''),\n  'The customer is replying to this message. Do not send the opener again; answer what they said.',\n  '',\n  '[LEAD]',",
@@ -361,13 +396,17 @@ def replace_once(text, pair, label):
     return text.replace(old, new)
 
 
+def cache_layout(named):
+    agent = named['AI Agent']['parameters']
+    agent['options']['systemMessage'] = replace_once(agent['options']['systemMessage'], SYSTEM_DATE, 'system message date')
+    if os.environ.get('K1_DEDUPE_BRIEF') == '1':
+        agent['text'] = replace_once(agent['text'], AGENT_TEXT, 'agent text')
+    for name, pair in (('Playground Turn', PLAYGROUND_DATE), ('Build Turn', BUILD_TURN_DATE), ('Build Follow-up Turn', BUILD_TURN_DATE)):
+        named[name]['parameters']['jsCode'] = replace_once(named[name]['parameters']['jsCode'], pair, f'{name} date')
+
+
 def business_prompt(current):
-    head = current
-    for marker in PROMPT_MARKERS:
-        head = head.split(marker)[0]
-    head = head.rstrip()
-    rules = (ROOT / 'prompts/k1-business-prompt-v2.md').read_text().strip()
-    return f'{head}\n\n{rules}\n'
+    return k1_prompt.prompt()
 
 
 def build_agent(booking_id):
@@ -383,6 +422,8 @@ def build_agent(booking_id):
             for item in node['parameters']['assignments']['assignments']:
                 if item['name'] == 'business_prompt':
                     item['value'] = business_prompt(item['value'])
+        if node['name'] == 'opt_out':
+            node['parameters']['description'] = 'Stop reminders for this number. Call when the customer asks to stop messages or not be contacted, refuses reminders, or says the car is already inspected. Never for a sold car, a new plate or another vehicle. Pass puhelin.'
         if node['name'] == 'escalate_to_human':
             node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, demands compensation, refuses to continue, or reports a legal, safety or accident matter. Never for swearing or rudeness alone, payment methods, phone hours, off-topic chat, or a question you can answer or point to 0306 100 100 for. Pass syy.'
         if node['name'] == 'AI Agent':
@@ -418,7 +459,14 @@ def build_agent(booking_id):
             code = node['parameters']['jsCode']
             code = replace_once(code, ("new Set(['get_slots',", "new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
+            code = replace_once(code, ("new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',",
+                                        "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'payment tool')
+            code = replace_once(code, ("new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',",
+                                        "new Set(['booking_number', 'station_name', 'when_text', 'query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'payment inputs')
             node['parameters']['jsCode'] = code
+
+    if os.environ.get('K1_CACHE_LAYOUT', '1') != '0':
+        cache_layout(named)
 
     def define(node, ai, fixed):
         values = {'email': '', 'start_time': '', 'name': '', 'rek': '', 'language': '', 'date_from': '', 'date_to': '', 'event_id': '', 'station_id': ''}
@@ -458,8 +506,45 @@ def build_agent(booking_id):
             if not any(entry['id'] == key for entry in node['parameters']['workflowInputs']['schema']):
                 node['parameters']['workflowInputs']['schema'].append(SCHEMA_ENTRY(key))
 
+    add_payment_tool(nodes, connections, named, define)
     add_agent_error_branch(nodes, connections)
     return save(AGENT_NAME, nodes, connections, live, activate=True)
+
+
+def add_payment_tool(nodes, connections, named, define):
+    """Points create_payment_link at the Stripe workflow. A later promote must not retarget this tool at the booking workflow."""
+    payment_id = by_name(PAYMENT_NAME)
+    if not payment_id:
+        raise SystemExit(f'{PAYMENT_NAME} is missing; create it before building the agent')
+    name = 'create_payment_link'
+    if name in named:
+        node = named[name]
+    else:
+        template = named['get_slots']
+        node = json.loads(json.dumps(template))
+        node.update({'id': str(uuid.uuid4()), 'name': name, 'position': [template['position'][0], template['position'][1] + 440]})
+        nodes.append(node)
+        named[name] = node
+        connections[name] = {'ai_tool': [[{'node': 'AI Agent', 'type': 'ai_tool', 'index': 0}]]}
+    node['parameters']['name'] = name
+    node['parameters']['description'] = (
+        'The 34 euro Stripe checkout url for a booking already made in this chat. Call it only after the customer chooses to pay now. '
+        'Pass the booking number, station name and the confirmed weekday, date and time. Returns url. '
+        'Tell the customer it is 34 euros for the inspection base and that they can enter WASUP100 on that page. Measuring is still paid at the station.'
+    )
+    node['parameters']['workflowId'] = {'__rl': True, 'value': payment_id, 'mode': 'id', 'cachedResultName': PAYMENT_NAME}
+    define(node, {
+        'booking_number': 'The booking number returned by book_inspection_invite for the appointment just made.',
+        'station_name': 'The station name from that booking result.',
+        'when_text': 'Weekday, date and time of that booking, as confirmed to the customer.',
+        'language': 'fi, sv or en, the language of this chat.',
+    }, {'phone': PHONE})
+    value = node['parameters']['workflowInputs']['value']
+    keep = {'phone', 'booking_number', 'station_name', 'when_text', 'language'}
+    for key in list(value):
+        if key not in keep:
+            value.pop(key, None)
+    node['parameters']['workflowInputs']['schema'] = [SCHEMA_ENTRY(key) for key in value]
 
 
 AGENT_ERROR_JS = r"""// The model provider can refuse a message (for example content it treats as a cyber-security risk). The builder chat then gets a safe answer instead of a 500.
@@ -473,22 +558,41 @@ const fallbackLang = { finnish: 'fi', swedish: 'sv', english: 'en' }[leadLanguag
 const lang = /\b(hej|visst|tack|boka|besiktning|vad|hur|vilken|var|har|du|fått|jag|mitt|min|inte|och|det)\b|nästa|imorgon/i.test(text) ? 'sv'
   : /\b(joo|moi|hei|kiitos|huomenna|ensi|varaa|katsastus|mitä|milloin|mistä|olet|minun|miksi)\b|kyllä/i.test(text) ? 'fi'
   : /\b(the|what|when|where|how|can|please|you|my|is|are|do|does)\b/i.test(text) ? 'en' : fallbackLang
-const reply = { fi: 'En voinut käsitellä tuota viestiä. Voitko kirjoittaa sen toisin, tai soittaa numeroon 0306 100 100?',
-  sv: 'Jag kunde inte behandla det meddelandet. Kan du skriva det på ett annat sätt, eller ringa 0306 100 100?',
-  en: "I couldn't process that message. Could you rephrase it, or call 0306 100 100?" }[lang]
+const reply = { fi: 'Pahoittelut, meillä meni jokin vikaan. Lähetä viesti uudelleen hetken päästä, tai soita 0306 100 100.',
+  sv: 'Förlåt, något gick fel hos oss. Skicka meddelandet igen om en stund, eller ring 0306 100 100.',
+  en: 'Sorry, something went wrong on our side. Send that again in a minute, or call 0306 100 100.' }[lang]
 return [{ json: { reply, mode: 'muster', recorded: false, messageId: null, userMessageId: null, toolCalls: [], fallback: true } }]"""
+
+# Without this a failed model call on WhatsApp sent the customer nothing, and the run still counted as a success.
+AGENT_ERROR_WHATSAPP_JS = r"""let playground = false
+try { playground = Boolean($('Playground Turn').isExecuted) } catch (error) { playground = false }
+if (playground) return []
+const turn = $('Build Turn').first().json || {}
+const text = String(turn.raw_text || '')
+const lang = /\b(hej|tack|boka|besiktning|vad|hur|vilken|jag|inte|och|det)\b|nästa|imorgon/i.test(text) ? 'sv'
+  : /\b(the|what|when|where|how|can|please|you|my|is|are|do|does)\b/i.test(text) ? 'en' : 'fi'
+const message = { fi: 'Pahoittelut, meillä meni jokin vikaan. Lähetä viesti uudelleen hetken päästä, tai soita 0306 100 100.',
+  sv: 'Förlåt, något gick fel hos oss. Skicka meddelandet igen om en stund, eller ring 0306 100 100.',
+  en: 'Sorry, something went wrong on our side. Send that again in a minute, or call 0306 100 100.' }[lang]
+return [{ json: { output: { messages: [message], reaction: '', end_conversation: false, handoff: false }, agent_error: true } }]"""
 
 
 def add_agent_error_branch(nodes, connections):
     agent = next(n for n in nodes if n['name'] == 'AI Agent')
     agent['onError'] = 'continueErrorOutput'
-    if not any(n['name'] == 'Agent error reply' for n in nodes):
-        nodes.append({'id': str(uuid.uuid4()), 'name': 'Agent error reply', 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [agent['position'][0] + 400, agent['position'][1] + 520],
-                      'parameters': {'mode': 'runOnceForAllItems', 'jsCode': AGENT_ERROR_JS}})
+    agent.update({'retryOnFail': True, 'maxTries': 2, 'waitBetweenTries': 1500})
+    for name, code, dy in (('Agent error reply', AGENT_ERROR_JS, 520), ('Agent error WhatsApp', AGENT_ERROR_WHATSAPP_JS, 680)):
+        node = next((n for n in nodes if n['name'] == name), None)
+        if node is None:
+            nodes.append({'id': str(uuid.uuid4()), 'name': name, 'type': 'n8n-nodes-base.code', 'typeVersion': 2, 'position': [agent['position'][0] + 400, agent['position'][1] + dy],
+                          'parameters': {'mode': 'runOnceForAllItems', 'jsCode': code}})
+        else:
+            node['parameters']['jsCode'] = code
     main = connections['AI Agent']['main']
     assert len(main) >= 1
-    connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}]]
+    connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}, {'node': 'Agent error WhatsApp', 'type': 'main', 'index': 0}]]
     connections['Agent error reply'] = {'main': [[{'node': 'Respond to playground', 'type': 'main', 'index': 0}]]}
+    connections['Agent error WhatsApp'] = {'main': [[{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
 
 
 SMOKE_CASES = [
@@ -583,7 +687,7 @@ def transplant(candidate, live, booking_target=None):
             source = live_hooks[node['name']]
             node['parameters']['path'] = source['parameters']['path']
             node['webhookId'] = source['webhookId']
-        if booking_target and node['type'] == '@n8n/n8n-nodes-langchain.toolWorkflow':
+        if booking_target and node['type'] == '@n8n/n8n-nodes-langchain.toolWorkflow' and node['name'] != 'create_payment_link':
             node['parameters']['workflowId'].update({'value': booking_target[0], 'cachedResultName': booking_target[1]})
     text = json.dumps(nodes)
     assert booking_target is None or candidate_booking_id() not in text, 'candidate booking id left in the agent'
@@ -594,9 +698,16 @@ def candidate_booking_id():
     return by_name(BOOKING_NAME)
 
 
-def promote():
+def promote(without_gate=False):
     booking_id, agent_id = by_name(BOOKING_NAME), by_name(AGENT_NAME)
     assert booking_id and agent_id, 'build the candidates first'
+    gate_spec = importlib.util.spec_from_file_location('k1_gate', HERE / 'k1-gate.py')
+    k1_gate = importlib.util.module_from_spec(gate_spec)
+    gate_spec.loader.exec_module(k1_gate)
+    if without_gate:
+        print('WARNING: promoting without a passing regression gate')
+    elif not k1_gate.verify():
+        raise SystemExit('promote refused: no passing gate for this prompt (k1-gate.py check), or pass --without-gate for an emergency fix')
     live_booking, live_agent = snapshot(LIVE_BOOKING), snapshot(LIVE_AGENT)
     BACKUPS.mkdir(exist_ok=True)
     stamp = time.strftime('%Y%m%d-%H%M%S')
@@ -631,7 +742,7 @@ def main():
     elif command == 'smoke':
         smoke()
     elif command == 'promote':
-        promote()
+        promote(without_gate='--without-gate' in sys.argv)
     elif command == 'rollback':
         rollback()
     elif command == 'delete':

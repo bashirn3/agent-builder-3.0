@@ -1,0 +1,14 @@
+{
+  "credential": "stripe demo",
+  "livemode": false,
+  "prices": {
+    "k1_inspection_now": "price_1UUCzw4IGYsEoXk7htfgJuPi",
+    "k1_inspection_station": "price_1UUD004IGYsEoXk7h8ydMeZr"
+  },
+  "coupon": "WASUP100",
+  "promotion_code": "promo_1UUD0Z4IGYsEoXk75pHelgoB",
+  "payment_links": {
+    "pay_now_34": "https://buy.stripe.com/test_4gMaEQa9TffU2SB8bF0Jq01",
+    "at_station_38": "https://buy.stripe.com/test_6oU14g6XH4BgfFnfE70Jq02"
+  }
+}
