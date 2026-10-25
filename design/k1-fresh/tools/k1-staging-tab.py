@@ -853,6 +853,16 @@ def patch_agent(workflow, payment_id):
         connections['Prepare staging record'] = link('Record staging?')
         connections['Record staging?'] = {'main': [[{'node': 'Record staging turn', 'type': 'main', 'index': 0}], [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
         connections['Record staging turn'] = link('Plan Delivery')
+    # The WhatsApp send, and the typing that runs inside it, starts when the model
+    # reply exists. The staging insert runs beside it and does not hold the send.
+    if 'Staging turn?' in {item['name'] for item in nodes} and 'Plan Delivery' in {item['name'] for item in nodes}:
+        connections['Staging turn?'] = {'main': [[
+            {'node': 'Prepare staging record', 'type': 'main', 'index': 0},
+            {'node': 'Plan Delivery', 'type': 'main', 'index': 0},
+        ], [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
+        connections['Prepare staging record'] = link('Record staging?')
+        connections['Record staging?'] = {'main': [[{'node': 'Record staging turn', 'type': 'main', 'index': 0}], []]}
+        connections.pop('Record staging turn', None)
     if 'Staging follow-up?' not in names:
         spot = named['Plan Follow-up Delivery']['position']
         nodes.append(node('Staging follow-up?', 'n8n-nodes-base.if', 2.2, [spot[0] + 220, spot[1]],
