@@ -160,6 +160,7 @@ def build(Customer, Auto):
     add('switch.sv_to_fi_cold', 'usual', 'sv', ['Voidaanko jatkaa suomeksi? Haluaisin varata ajan huomenna'], [('any_tool', ['get_slots', 'get_station_info'])], lang_turns=['fi'])
     add('switch.sv_to_fi_polite', 'usual', 'sv', ['Hej', 'Kan vi fortsätta på finska? Minulle sopii suomi paremmin.', 'Paljonko katsastus maksaa?'], [('reply', r'€|eur')], lang_turns=['sv', 'fi', 'fi'])
     add('switch.sv_to_en', 'usual', 'sv', ['Can you speak English please? What are the opening hours tomorrow?'], [('tool', 'get_station_info')], lang_turns=['en'])
+    add('switch.yo_stays', 'usual', 'sv', ['yo'], [NOBOOK], lang_turns=['sv'])
     add('switch.en_to_fi', 'usual', 'en', ['hi', 'Mitä aikoja huomenna on?'], [('any_tool', ['get_slots', 'get_station_info'])], lang_turns=['en', 'fi'])
     add('switch.en_to_sv', 'usual', 'en', ['Vad kostar besiktningen?'], [('reply', r'€|eur|kr')], lang_turns=['sv'])
     add('switch.mid_flow', 'usual', 'fi', ['Onko huomenna aikoja?', 'What about the day after tomorrow?', 'Och på fredag då?'], [('any_tool', ['get_slots', 'get_station_info'])], lang_turns=['fi', 'en', 'sv'])
