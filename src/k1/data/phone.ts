@@ -91,19 +91,19 @@ export function prefillPhone(raw: string | null | undefined, language?: 'en' | '
   return { country, national: grouped(country, national) }
 }
 
-// The number field stores digits only. A pasted + or 00 number selects Finland, Sweden, or the UK when it matches one.
+// The number field stores digits only. A pasted + or 00 number selects Finland, Sweden, or the UK.
+// Typing the country code as digits does the same when it is the selected country, longer than that
+// country's national number, or a full UK number (44 and 10 digits). A shorter Finnish number that
+// happens to start with 46 stays Finnish.
 export function applyPhoneInput(country: DialCountry, raw: string): { country: DialCountry; national: string } {
   const original = raw.trim()
   let digits = original.replace(/\D/g, '')
   const international = original.includes('+') || digits.startsWith('00')
   if (digits.startsWith('00')) digits = digits.slice(2)
-  if (international) {
-    for (const candidate of DIAL_COUNTRIES) {
-      const rule = RULES[candidate]
-      if (!digits.startsWith(rule.dial)) continue
-      const national = digits.slice(rule.dial.length).replace(/^0/, '').slice(0, rule.max)
-      return { country: candidate, national }
-    }
+  const recognized = splitPhone(digits)
+  const fullUk = recognized?.country === 'gb' && /^44\d{10}$/.test(digits)
+  if (recognized && (international || (!recognized.placeholder && (recognized.country === country || digits.length > RULES[country].max || fullUk)))) {
+    return { country: recognized.country, national: recognized.national }
   }
   return { country, national: digits.replace(/^0/, '').slice(0, RULES[country].max) }
 }

@@ -205,7 +205,7 @@ export function StagingPage({ store, notify }: {
                 </div>
               </div>
             </div>
-            {blocked && <p className="k1-hint">{blocked}</p>}
+            {blocked ? <p className="k1-hint">{blocked}</p> : composed.ok && <p className="k1-hint">{composed.display}</p>}
             <div className="k1-staging__actions">
               <button type="button" className="k1-btn k1-btn--primary" onClick={() => void send()} disabled={!canSend} aria-busy={sending}>
                 {sending && <Spinner />}{sending ? t.staging.sending : t.staging.send}
