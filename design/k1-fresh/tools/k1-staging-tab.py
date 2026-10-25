@@ -107,6 +107,50 @@ DOLLAR_JS = r"""function dollar(value) {
 }
 """
 
+OLD_DOLLAR = (
+    "function dollar(value) {\n"
+    "  const text = String(value ?? '')\n"
+    "  let tag = 'stg'\n"
+    "  while (text.includes('$' + tag + '$')) tag += 'x'\n"
+    "  return '$' + tag + '$' + text + '$' + tag + '$'\n"
+    "}\n"
+)
+
+
+def quote_records(nodes):
+    """Replace dollar-quoting that n8n Postgres treats as a parameter index."""
+    for item in nodes:
+        if item['name'] not in ('Prepare staging record', 'Prepare staging follow-up'):
+            continue
+        code = item['parameters'].get('jsCode') or ''
+        if OLD_DOLLAR in code:
+            item['parameters']['jsCode'] = code.replace(OLD_DOLLAR, DOLLAR_JS, 1)
+
+
+# Wasup refuses sendText when the chat has no privacy token (via cold-blocked) and
+# never starts the typing indicator. The flag is not a sendText field on this node,
+# so the reply goes out through sendRaw, which accepts allowColdWithoutToken and
+# still asks for typingSimulation.
+SEND_RAW = {
+    'Send Bubble': "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Double-Text': "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Reset Notice': "={{ JSON.stringify({ to: $('Webhook').first().json.body.from_phone, message: 'Conversation RESET (' + DateTime.now().toFormat('HH:mm:ss') + ')', linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Bubble CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Double-Text CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+}
+
+
+def arm_sends(nodes):
+    for item in nodes:
+        raw = SEND_RAW.get(item['name'])
+        if not raw:
+            continue
+        params = item['parameters']
+        params['resource'] = 'message'
+        params['operation'] = 'sendRaw'
+        params['rawBody'] = raw
+
+
 PREPARE_RECORD = DOLLAR_JS + r"""const turn = $('Build Turn').first().json || {}
 const out = $('AI Agent').first().json.output || {}
 const msgs = Array.isArray(out.messages) ? out.messages : []
@@ -585,6 +629,8 @@ def patch_agent(workflow, payment_id):
         nodes.append(pg('Reset Staging Session', RESET_AGENT_SQL, [spot[0] + 220, spot[1]]))
         point(connections, 'Purge Session', 'Send Reset Notice', 'Reset Staging Session')
         connections['Reset Staging Session'] = link('Send Reset Notice')
+    quote_records(nodes)
+    arm_sends(nodes)
     return nodes, connections
 
 
@@ -816,7 +862,9 @@ def check_agent(workflow, payment_id):
         assert named[tool_name]['parameters']['workflowId']['value'] == LIVE_BOOKING
     for send_name in ('Send Bubble CTA', 'Send Double-Text CTA'):
         params = named[send_name]['parameters']
-        assert params['operation'] == 'sendCta'
+        assert params['operation'] == 'sendRaw'
+        assert 'allowColdWithoutToken: true' in params['rawBody']
+        assert 'typingSimulation: true' in params['rawBody']
         assert params['ctaLabel'] == '={{ $json.cta_label }}'
         assert 'item.staging !== true' in named[f'{send_name[:-4]} CTA fields']['parameters']['jsCode']
     assert named['Load Staging Session']['type'] == 'n8n-nodes-base.postgres'
@@ -828,6 +876,13 @@ def check_agent(workflow, payment_id):
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
     assert '_staging_%' in named['Purge Session']['parameters']['query']
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
+    assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
+    assert "let tag = 'stg'" not in named['Prepare staging record']['parameters']['jsCode']
+    for send_name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+        params = named[send_name]['parameters']
+        assert params['operation'] == 'sendRaw'
+        assert 'allowColdWithoutToken: true' in params['rawBody']
+        assert 'typingSimulation: true' in params['rawBody']
     config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
     assert config['wasup_instance_id'] == INSTANCE
 
