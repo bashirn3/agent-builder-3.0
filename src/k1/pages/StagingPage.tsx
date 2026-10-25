@@ -2,10 +2,12 @@ import { useEffect, useId, useState } from 'react'
 import { describeError, localized, openerPreview, type AgentVersion } from '../data/agentConfig'
 import {
   currentActor,
+  getStagingThread,
   listStagingSessions,
   resetCustomer,
   resetStagingSession,
   sendStaging,
+  type StagingMessage,
   type StagingSession,
 } from '../data/builderApi'
 import { shortStation } from '../data/fixtures'
@@ -13,12 +15,20 @@ import { detectLanguage, leadContext } from '../data/language'
 import { applyPhoneInput, composePhone, dialCode, DIAL_COUNTRIES, nationalExample, nationalLimit, prefillPhone, type DialCountry } from '../data/phone'
 import type { PlaygroundStore } from '../data/usePlayground'
 import { useCopy } from '../i18n'
-import { href } from '../routes'
 import { Select, Spinner } from '../ui/controls'
 import { Dialog } from '../ui/overlay'
 import { RefreshCw } from '../ui/icons'
 import { formatStamp } from './SplitView'
 import { orderVersions, versionHint } from './versionText'
+
+function sendFailure(error: unknown, copy: ReturnType<typeof useCopy>) {
+  const message = error instanceof Error ? error.message : ''
+  if (message === 'unknown_version' || message === 'version_lookup_failed') return copy.staging.unknownVersion
+  if (message === 'claim_failed') return copy.staging.claimFailed
+  if (message === 'whatsapp_failed') return copy.staging.whatsappFailed
+  if (message === 'send_failed' || message === 'phone_required') return copy.staging.sendFailed
+  return describeError(error)
+}
 
 export function StagingPage({ store, notify }: {
   store: PlaygroundStore
@@ -30,11 +40,14 @@ export function StagingPage({ store, notify }: {
   const [version, setVersion] = useState<AgentVersion | null>(null)
   const [loadingVersion, setLoadingVersion] = useState(false)
   const [sessions, setSessions] = useState<StagingSession[] | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [messages, setMessages] = useState<StagingMessage[]>([])
+  const [loadingThread, setLoadingThread] = useState(false)
   const [sending, setSending] = useState(false)
   const [resetting, setResetting] = useState<StagingSession | null>(null)
   const [country, setCountry] = useState<DialCountry>('fi')
   const [national, setNational] = useState('')
-  const ids = { version: useId(), lead: useId(), phone: useId(), country: useId() }
+  const ids = { version: useId(), lead: useId(), phone: useId(), country: useId(), conversation: useId() }
 
   useEffect(() => {
     if (versionId || !store.config) return
@@ -49,17 +62,33 @@ export function StagingPage({ store, notify }: {
     setLoadingVersion(true)
     store.ensureVersion(versionId)
       .then((loaded) => { if (!cancelled) setVersion(loaded) })
-      .catch((error: unknown) => { if (!cancelled) notify({ tone: 'error', title: t.staging.failed, body: describeError(error) }) })
+      .catch((error: unknown) => { if (!cancelled) notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }) })
       .finally(() => { if (!cancelled) setLoadingVersion(false) })
     return () => { cancelled = true }
   }, [versionId])
 
   const refresh = () => {
     listStagingSessions()
-      .then(setSessions)
-      .catch((error: unknown) => notify({ tone: 'error', title: t.staging.failed, body: describeError(error) }))
+      .then((next) => {
+        setSessions(next)
+        setSelectedKey((current) => current && next.some((item) => item.phoneKey === current) ? current : next[0]?.phoneKey ?? null)
+      })
+      .catch((error: unknown) => notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }))
   }
   useEffect(refresh, [])
+
+  const selected = sessions?.find((item) => item.phoneKey === selectedKey) ?? null
+
+  useEffect(() => {
+    if (!selected) { setMessages([]); return }
+    let cancelled = false
+    setLoadingThread(true)
+    getStagingThread(selected.phone)
+      .then((thread) => { if (!cancelled) setMessages(thread.messages) })
+      .catch((error: unknown) => { if (!cancelled) notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }) })
+      .finally(() => { if (!cancelled) setLoadingThread(false) })
+    return () => { cancelled = true }
+  }, [selected?.phone, selected?.conversationId])
 
   const lead = store.lead
   useEffect(() => {
@@ -80,6 +109,10 @@ export function StagingPage({ store, notify }: {
         ? t.staging.openerEmpty
         : ''
   const canSend = Boolean(version && lead && opener && composed.ok && !composed.placeholder && !sending && !loadingVersion)
+  const replied = messages.some((message) => message.role === 'user')
+  const leadLabel = selected
+    ? [selected.plate, shortStation(selected.stationName)].filter(Boolean).join(' · ')
+    : ''
 
   const send = async () => {
     if (!canSend || !version || !lead || !used || !composed.ok) return
@@ -106,22 +139,14 @@ export function StagingPage({ store, notify }: {
         },
       })
       notify({ title: t.staging.sent, body: t.staging.sentBody(result.versionNumber ?? version.number, phone) })
+      setSelectedKey(phone.replace(/\D/g, ''))
       refresh()
     } catch (error) {
-      notify({ tone: 'error', title: t.staging.failed, body: describeError(error) })
+      notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) })
     } finally {
       setSending(false)
     }
   }
-
-  const preview = loadingVersion
-    ? t.staging.loadingOpener
-    : !version
-      ? t.staging.chooseVersion
-      : opener || t.staging.openerEmpty
-  const leadLabel = lead
-    ? `${lead.plateNumber} · ${shortStation(lead.stationName) || t.tester.noStation}`
-    : t.tester.chooseLead
 
   return (
     <div className="k1-staging">
@@ -169,7 +194,7 @@ export function StagingPage({ store, notify }: {
             </div>
             <div className="k1-field">
               <label htmlFor={ids.phone}>{t.staging.number}</label>
-              <div className="k1-phone">
+              <div className="k1-phone" data-invalid={national.trim() && !composed.ok ? 'true' : undefined}>
                 <Select
                   id={ids.country}
                   label={t.staging.country}
@@ -184,8 +209,7 @@ export function StagingPage({ store, notify }: {
                     setNational((current) => current.slice(0, nationalLimit(code)))
                   }}
                 />
-                <div className="k1-phone__number" data-invalid={national.trim() && !composed.ok ? 'true' : undefined}>
-                  <span className="k1-phone__dial" aria-hidden="true">+{dialCode(country)}</span>
+                <div className="k1-phone__number">
                   <input
                     id={ids.phone}
                     value={national}
@@ -206,6 +230,7 @@ export function StagingPage({ store, notify }: {
               </div>
             </div>
             {blocked ? <p className="k1-hint">{blocked}</p> : composed.ok && <p className="k1-hint">{composed.display}</p>}
+            {opener && <p className="k1-hint k1-staging__opener">{opener}</p>}
             <div className="k1-staging__actions">
               <button type="button" className="k1-btn k1-btn--primary" onClick={() => void send()} disabled={!canSend} aria-busy={sending}>
                 {sending && <Spinner />}{sending ? t.staging.sending : t.staging.send}
@@ -224,61 +249,53 @@ export function StagingPage({ store, notify }: {
           </section>
         </aside>
         <div className="k1-canvas">
-          <div className="k1-tester" aria-label={t.staging.opener}>
+          <div className="k1-tester" aria-label={t.staging.conversation}>
             <header className="k1-tester__head">
               <span className="k1-tester__avatar"><img src="/brand/k1-katsastus.jpg" alt="" width={26} height={26} /></span>
               <h2>K1 Katsastus</h2>
+              {selected && (
+                <button type="button" className="k1-icon-btn k1-tester__reset" aria-label={t.staging.reset} title={t.staging.reset} onClick={() => setResetting(selected)}>
+                  <RefreshCw size={16} strokeWidth={1.75} />
+                </button>
+              )}
             </header>
             <div className="k1-tester__context">
-              <span className="k1-tester__context-label">{t.tester.testingAs}</span>
-              <span className="k1-staging__lead">{leadLabel}</span>
+              <span className="k1-tester__context-label">{t.staging.conversation}</span>
+              <Select
+                id={ids.conversation}
+                label={t.staging.conversation}
+                className="k1-tester__lead"
+                value={selectedKey}
+                placeholder={t.staging.chooseConversation}
+                search={{ placeholder: t.staging.chooseConversation, emptyText: t.staging.empty }}
+                options={(sessions ?? []).map((item) => ({
+                  value: item.phoneKey,
+                  label: item.phone,
+                  hint: [item.plate, item.versionNumber ? `v${item.versionNumber}` : ''].filter(Boolean).join(' · '),
+                  keywords: `${item.phone} ${item.plate} ${item.stationName}`,
+                }))}
+                onChange={setSelectedKey}
+              />
             </div>
+            {selected && (
+              <p className="k1-staging__status">
+                <strong>{leadLabel}</strong>
+                <span>{selected.versionNumber ? `v${selected.versionNumber}` : ''}</span>
+                <span>{replied ? t.staging.statusReplied : t.staging.statusWaiting}</span>
+                <span>{formatStamp(selected.updatedAt)}</span>
+              </p>
+            )}
             <div className="k1-tester__thread">
-              <div className="k1-msg">
-                <p className="k1-msg__bubble">{preview}</p>
-              </div>
+              {sessions === null || loadingThread ? <p className="k1-hint">{t.common.loading}</p> : !selected ? <p className="k1-hint">{t.staging.noConversation}</p> : messages.length === 0 ? <p className="k1-hint">{t.staging.noMessages}</p> : messages.map((message) => (
+                <div key={message.id} className={message.role === 'user' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
+                  <p className="k1-msg__bubble">{message.text}</p>
+                </div>
+              ))}
             </div>
-            <p className="k1-tester__powered">{t.staging.repliesOnWhatsApp}</p>
+            <p className="k1-tester__powered">{t.staging.readOnly}</p>
           </div>
         </div>
       </div>
-
-      <section className="k1-staging__assigned" aria-labelledby="k1-staging-assigned">
-        <h2 id="k1-staging-assigned" className="k1-section-title">{t.staging.assigned}</h2>
-        {sessions === null ? <p className="k1-hint">{t.common.loading}</p> : sessions.length === 0 ? <p className="k1-hint">{t.staging.empty}</p> : (
-          <div className="k1-table-card">
-            <table className="k1-table">
-              <thead>
-                <tr>
-                  <th>{t.staging.phone}</th>
-                  <th>{t.staging.plate}</th>
-                  <th>{t.staging.versionColumn}</th>
-                  <th>{t.staging.activity}</th>
-                  <th>{t.staging.actions}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((session) => (
-                  <tr key={session.phoneKey}>
-                    <th scope="row">{session.phone}</th>
-                    <td>{session.plate || '—'}</td>
-                    <td>{session.versionNumber ? `v${session.versionNumber}` : '—'}</td>
-                    <td>{formatStamp(session.updatedAt)}</td>
-                    <td>
-                      <div className="k1-staging__actions">
-                        <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'chats', id: session.conversationId })}>{t.staging.view}</a>
-                        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setResetting(session)}>
-                          <RefreshCw size={14} strokeWidth={1.75} />{t.staging.reset}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
       <ResetDialog
         session={resetting}
         onClose={() => setResetting(null)}
@@ -288,7 +305,6 @@ export function StagingPage({ store, notify }: {
     </div>
   )
 }
-
 function ResetDialog({ session, onClose, onDone, notify }: {
   session: StagingSession | null
   onClose: () => void
