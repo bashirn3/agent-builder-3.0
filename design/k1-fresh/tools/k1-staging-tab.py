@@ -252,7 +252,13 @@ const incoming = String(body.message || '').trim()
 if (event !== 'message' || !incoming) return [{ json: { skip: true } }]
 const limit = Date.now() + 8000
 function sent() {
-  for (const name of ['Type Bubble', 'Type Double-Text', 'Send Bubble', 'Send Bubble CTA', 'Skip Bubble']) {
+  // A cold-blocked typing attempt is not delivery. Wait for the send that lands.
+  for (const name of ['Bubble Keep', 'Double-Text Keep']) {
+    try {
+      if ($(name).first().json._typed === 'yes') return true
+    } catch (error) {}
+  }
+  for (const name of ['Send Bubble', 'Send Bubble CTA', 'Send Double-Text', 'Send Double-Text CTA', 'Skip Bubble']) {
     try {
       if ($(name).isExecuted) return true
     } catch (error) {}
@@ -1142,7 +1148,7 @@ def check_agent(workflow, payment_id):
         assert workflow['connections'][if_name]['main'][1][0]['node'] == raw_name
         assert "_typed: delivered ? 'yes' : 'no'" in named[keep_name]['parameters']['jsCode']
     hold = named['Hold For Composing']['parameters']['jsCode']
-    assert 'Type Bubble' in hold and 'isExecuted' in hold and '8000' in hold
+    assert "json._typed === 'yes'" in hold and 'Send Bubble' in hold and '8000' in hold
     config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
     assert config['wasup_instance_id'] == INSTANCE
 
