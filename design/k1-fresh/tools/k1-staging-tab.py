@@ -309,6 +309,27 @@ if (wantsTime && msgs.length && !msgs.join('\n').includes('?')) {
 """
 
 
+def prefetch_staging(nodes, connections):
+    """Read the assigned version while the debounce waits, so the model and its typing start sooner.
+
+    Only the latest message may continue into the agent. The version fetch ends on its own.
+    """
+    named = {item['name']: item for item in nodes}
+    merge = named.get('Merge Staging')
+    incoming = connections.get('New Message?', {}).get('main') or []
+    if not merge or not incoming:
+        return
+    merge['parameters']['jsCode'] = MERGE_STAGING
+    first = incoming[0]
+    if not any(item.get('node') == 'Load Staging Session' for item in first):
+        first.append({'node': 'Load Staging Session', 'type': 'main', 'index': 0})
+    connections['Drain Queue'] = link('Merge Staging')
+    connections['Fetch staging version'] = {'main': [[]]}
+    assigned = connections.get('Staging assigned?', {}).get('main')
+    if assigned and len(assigned) > 1:
+        assigned[1] = []
+
+
 def offer_time(nodes):
     """A price clash or a customer about to leave always ends by offering a time."""
     named = {item['name']: item for item in nodes}
@@ -460,7 +481,17 @@ return [{ json: { staging } }]
 """
 
 MERGE_STAGING = r"""const drain = $('Drain Queue').first().json || {}
-const parsed = $('Parse Staging').first().json.staging || { found: false }
+const limit = Date.now() + 4000
+let parsed = { found: false }
+while (Date.now() < limit) {
+  try {
+    if ($('Parse Staging').isExecuted) {
+      parsed = $('Parse Staging').first().json.staging || { found: false }
+      if (parsed.found !== true || $('Fetch staging version').isExecuted) break
+    }
+  } catch (error) {}
+  await new Promise((resolve) => setTimeout(resolve, 50))
+}
 if (parsed.found !== true) return [{ json: { ...drain, staging: null } }]
 let version = $('Fetch staging version').isExecuted ? ($('Fetch staging version').first().json || {}) : {}
 if (Array.isArray(version)) version = version[0] || {}
@@ -910,6 +941,7 @@ def patch_agent(workflow, payment_id):
     only_customer_messages(nodes)
     read_agent_output(nodes)
     offer_time(nodes)
+    prefetch_staging(nodes, connections)
     hold_composing(nodes, connections)
     arm_typed_sends(nodes, connections)
     return nodes, connections
@@ -1152,6 +1184,9 @@ def check_agent(workflow, payment_id):
     assert 'k1_staging_sessions' in named['Load Staging Session']['parameters']['query']
     assert 'get_agent_builder_version' in named['Fetch staging version']['parameters']['url']
     assert 'Fetch staging version' in workflow['connections']['Staging assigned?']['main'][0][0]['node']
+    assert any(item.get('node') == 'Load Staging Session' for item in workflow['connections']['New Message?']['main'][0])
+    assert workflow['connections']['Drain Queue']['main'][0][0]['node'] == 'Merge Staging'
+    assert 'Date.now() + 4000' in named['Merge Staging']['parameters']['jsCode']
     assert named['Record staging turn']['parameters']['query'] == '={{ $json.query }}'
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
