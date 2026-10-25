@@ -93,11 +93,17 @@ async function postReservation(payload) {
 }
 """
 
+# n8n's Postgres node reads $ plus digits as a query parameter. A dollar quote
+# around a phone or a uuid starts with that pattern ($447835156367, $4111…),
+# and a real phone number is past the node's $100000 limit, so the insert
+# never runs. Quote with escaped single quotes, and spell a literal $ before
+# a digit as chr(36).
 DOLLAR_JS = r"""function dollar(value) {
-  const text = String(value ?? '')
-  let tag = 'stg'
-  while (text.includes('$' + tag + '$')) tag += 'x'
-  return '$' + tag + '$' + text + '$' + tag + '$'
+  const raw = String(value ?? '')
+  return raw.split(/(\$\d+)/).map((piece) => {
+    if (/^\$\d+$/.test(piece)) return "chr(36) || '" + piece.slice(1).replace(/'/g, "''") + "'"
+    return "'" + piece.replace(/'/g, "''") + "'"
+  }).join(' || ')
 }
 """
 
@@ -988,7 +994,9 @@ def dry():
     send = send_workflow(agent.get('settings'))
     assert any(item['name'].endswith(' · Check Access') for item in send['nodes'])
     assert any(item['parameters'].get('path') == SEND_PATH for item in send['nodes'])
-    assert any(item['name'] == 'Prepare claim' and 'k1_staging_sessions' in item['parameters']['jsCode'] and "$('Read version')" in item['parameters']['jsCode'] for item in send['nodes'])
+    claim = next(item for item in send['nodes'] if item['name'] == 'Prepare claim')
+    assert 'k1_staging_sessions' in claim['parameters']['jsCode'] and "$('Read version')" in claim['parameters']['jsCode']
+    assert 'chr(36)' in claim['parameters']['jsCode'] and '$stg$' not in claim['parameters']['jsCode']
     assert any(item['name'] == 'Read version' for item in send['nodes'])
     assert any(item['name'] == 'Explain failure' for item in send['nodes'])
     assert any(item['name'] == 'Prepare thread' for item in send['nodes'])
