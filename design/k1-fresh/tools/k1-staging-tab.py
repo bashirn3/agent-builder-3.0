@@ -107,6 +107,216 @@ DOLLAR_JS = r"""function dollar(value) {
 }
 """
 
+OLD_DOLLAR = (
+    "function dollar(value) {\n"
+    "  const text = String(value ?? '')\n"
+    "  let tag = 'stg'\n"
+    "  while (text.includes('$' + tag + '$')) tag += 'x'\n"
+    "  return '$' + tag + '$' + text + '$' + tag + '$'\n"
+    "}\n"
+)
+
+
+def quote_records(nodes):
+    """Replace dollar-quoting that n8n Postgres treats as a parameter index."""
+    for item in nodes:
+        if item['name'] not in ('Prepare staging record', 'Prepare staging follow-up'):
+            continue
+        code = item['parameters'].get('jsCode') or ''
+        if OLD_DOLLAR in code:
+            item['parameters']['jsCode'] = code.replace(OLD_DOLLAR, DOLLAR_JS, 1)
+
+
+# Wasup refuses sendText when the chat has no privacy token (via cold-blocked) and
+# never starts the typing indicator. The flag is not a sendText field on this node,
+# so the reply goes out through sendRaw, which accepts allowColdWithoutToken and
+# still asks for typingSimulation.
+SEND_RAW = {
+    'Send Bubble': "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Double-Text': "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Reset Notice': "={{ JSON.stringify({ to: $('Webhook').first().json.body.from_phone, message: 'Conversation RESET (' + DateTime.now().toFormat('HH:mm:ss') + ')', linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Bubble CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Double-Text CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+}
+
+
+REPLY_HEAD_OLD = """SELECT
+  COALESCE(
+    (SELECT last_inbound_message_id FROM conversation_state WHERE session_key = '{{ $json.session_key }}')
+    IS DISTINCT FROM '{{ $json.anchor_message_id }}', TRUE
+  ) AS user_replied,"""
+
+REPLY_HEAD_NEW = """SELECT
+  EXISTS (
+    SELECT 1 FROM inbound_message_queue q
+    WHERE regexp_replace(q.from_phone, '\\D', '', 'g') = regexp_replace('{{ $json.to_phone }}', '\\D', '', 'g')
+      AND q.message_id IS DISTINCT FROM '{{ $json.anchor_message_id }}'
+      AND length(trim(coalesce(q.message, ''))) > 0
+  ) AS user_replied,"""
+
+REPLY_CHECK_NODES = ('User Replied?', 'Did They Reply?', 'Last Check Before Chase')
+
+
+def keep_replies(nodes):
+    """A receipt must not cancel the answer.
+
+    The old check treated any new id on the chat as "the customer spoke again"
+    and then dropped the bubble. Delivery receipts do that during the model
+    call, so the reply was saved and never sent. Skip only when a newer
+    non-empty customer text is actually waiting in the queue. The same check
+    guards the live send and the follow-up chase.
+    """
+    named = {item['name']: item for item in nodes}
+    for name in REPLY_CHECK_NODES:
+        node = named.get(name)
+        if not node:
+            continue
+        query = node['parameters'].get('query') or ''
+        if REPLY_HEAD_OLD in query:
+            node['parameters']['query'] = query.replace(REPLY_HEAD_OLD, REPLY_HEAD_NEW, 1)
+
+
+QUEUE_OLD = """WITH ins AS (
+  INSERT INTO inbound_message_queue (message_id, from_phone, to_phone, message, created_at)
+  VALUES (
+    '{{ $('Webhook').first().json.body.message_id }}',
+    '{{ $('Webhook').first().json.body.from_phone }}',
+    '{{ $('Webhook').first().json.body.to_phone }}',
+    '{{ ($('Webhook').first().json.body.message || '').replace(/'/g, "''") }}',
+    COALESCE(NULLIF('{{ $('Webhook').first().json.body.created_at || '' }}', '')::timestamptz, NOW())
+  )
+  ON CONFLICT (message_id) DO NOTHING
+  RETURNING id
+),"""
+
+QUEUE_NEW = """WITH incoming AS (
+  SELECT
+    '{{ $('Webhook').first().json.body.message_id }}' AS message_id,
+    '{{ $('Webhook').first().json.body.from_phone }}' AS from_phone,
+    '{{ $('Webhook').first().json.body.to_phone }}' AS to_phone,
+    '{{ ($('Webhook').first().json.body.message || '').replace(/'/g, "''") }}' AS message,
+    COALESCE(NULLIF('{{ $('Webhook').first().json.body.created_at || '' }}', '')::timestamptz, NOW()) AS created_at,
+    lower('{{ String($('Webhook').first().json.body.event || 'message').replace(/'/g, '') }}') AS event,
+    lower('{{ String($('Webhook').first().json.body.status || 'received').replace(/'/g, '') }}') AS status
+),
+ins AS (
+  INSERT INTO inbound_message_queue (message_id, from_phone, to_phone, message, created_at)
+  SELECT message_id, from_phone, to_phone, message, created_at
+  FROM incoming
+  WHERE length(trim(coalesce(message, ''))) > 0
+    AND event = 'message'
+    AND status IN ('received', '')
+  ON CONFLICT (message_id) DO NOTHING
+  RETURNING id
+),"""
+
+LATEST_OLD = """SELECT COALESCE(
+  (SELECT last_inbound_message_id FROM conversation_state WHERE session_key = '{{ $('⚙️ CONFIG').first().json.tenant_key }}_{{ $('Webhook').first().json.body.from_phone }}')
+  = '{{ $('Webhook').first().json.body.message_id }}', FALSE) AS is_latest;"""
+
+LATEST_NEW = """SELECT NOT EXISTS (
+  SELECT 1 FROM inbound_message_queue q
+  WHERE regexp_replace(q.from_phone, '\\D', '', 'g') = regexp_replace('{{ $('Webhook').first().json.body.from_phone }}', '\\D', '', 'g')
+    AND q.message_id IS DISTINCT FROM '{{ $('Webhook').first().json.body.message_id }}'
+    AND length(trim(coalesce(q.message, ''))) > 0
+    AND q.created_at > COALESCE(
+      (SELECT created_at FROM inbound_message_queue WHERE message_id = '{{ $('Webhook').first().json.body.message_id }}'),
+      NOW()
+    )
+) AS is_latest;"""
+
+
+def only_customer_messages(nodes):
+    """A delivery receipt is not a new customer turn.
+
+    Wasup posts a fresh id when a tick arrives. The old queue treated that id
+    as the latest inbound, so the answer was saved and the send was skipped.
+    Only a non-empty message with status received is queued, and an execution
+    stays latest unless a newer customer text is actually waiting.
+    """
+    named = {item['name']: item for item in nodes}
+    queue = named.get('Queue Inbound')
+    if queue and QUEUE_OLD in (queue['parameters'].get('query') or ''):
+        queue['parameters']['query'] = queue['parameters']['query'].replace(QUEUE_OLD, QUEUE_NEW, 1)
+    latest = named.get('Am I The Latest?')
+    if latest and (latest['parameters'].get('query') or '').strip() == LATEST_OLD.strip():
+        latest['parameters']['query'] = LATEST_NEW
+
+
+HOLD_JS = """// Wasup closes this webhook after 10s. A customer message keeps it open until
+// the answer exists, or 8s, whichever comes first. sendRaw still delivers.
+// Anything else is acked at once so a receipt is not held open.
+const body = $('Webhook').first().json.body || {}
+const event = String(body.event || 'message').toLowerCase()
+const incoming = String(body.message || '').trim()
+if (event !== 'message' || !incoming) return [{ json: { skip: true } }]
+const limit = Date.now() + 8000
+while (Date.now() < limit - 300) {
+  try {
+    const out = $('AI Agent').first().json.output || {}
+    const msgs = Array.isArray(out.messages) ? out.messages : []
+    if (msgs.some((item) => String(item || '').trim())) break
+  } catch (error) {}
+  await new Promise((resolve) => setTimeout(resolve, 200))
+}
+const tail = Math.max(0, Math.min(300, limit - Date.now()))
+if (tail) await new Promise((resolve) => setTimeout(resolve, tail))
+return [{ json: { skip: true } }]
+"""
+
+
+def hold_composing(nodes, connections):
+    """Hold the Wasup webhook open, then tell it not to send its own reply."""
+    named = {item['name']: item for item in nodes}
+    ack = named.get('Ack Webhook (empty)')
+    webhook = connections.get('Webhook')
+    if not ack or not webhook:
+        return
+    ack['parameters']['responseBody'] = '={{ { skip: true } }}'
+    if 'Hold For Composing' not in named:
+        pos = ack.get('position') or [0, 0]
+        nodes.append(node('Hold For Composing', 'n8n-nodes-base.code', 2, [pos[0] - 220, pos[1]], {
+            'mode': 'runOnceForAllItems', 'jsCode': HOLD_JS,
+        }))
+    else:
+        named['Hold For Composing']['parameters']['jsCode'] = HOLD_JS
+    links = webhook.get('main', [[]])[0] or []
+    kept = [link for link in links if link.get('node') != 'Ack Webhook (empty)']
+    if not any(link.get('node') == 'Hold For Composing' for link in kept):
+        kept.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
+    webhook['main'][0] = kept
+    connections['Hold For Composing'] = link('Ack Webhook (empty)')
+
+
+def read_agent_output(nodes):
+    """The staging save sits in front of delivery, so the bubble must still come from the agent.
+
+    Plan Delivery used to read whatever node ran immediately before it. After the
+    staging row is written, that input is the database result and the reply is
+    saved with nothing to send. Read the agent output by name instead.
+    """
+    named = {item['name']: item for item in nodes}
+    node = named.get('Plan Delivery')
+    if not node:
+        return
+    code = node['parameters'].get('jsCode') or ''
+    old = 'const out = $input.first().json.output || {};'
+    new = "const out = $('AI Agent').first().json.output || {};"
+    if old in code:
+        node['parameters']['jsCode'] = code.replace(old, new, 1)
+
+
+def arm_sends(nodes):
+    for item in nodes:
+        raw = SEND_RAW.get(item['name'])
+        if not raw:
+            continue
+        params = item['parameters']
+        params['resource'] = 'message'
+        params['operation'] = 'sendRaw'
+        params['rawBody'] = raw
+
+
 PREPARE_RECORD = DOLLAR_JS + r"""const turn = $('Build Turn').first().json || {}
 const out = $('AI Agent').first().json.output || {}
 const msgs = Array.isArray(out.messages) ? out.messages : []
@@ -585,6 +795,12 @@ def patch_agent(workflow, payment_id):
         nodes.append(pg('Reset Staging Session', RESET_AGENT_SQL, [spot[0] + 220, spot[1]]))
         point(connections, 'Purge Session', 'Send Reset Notice', 'Reset Staging Session')
         connections['Reset Staging Session'] = link('Send Reset Notice')
+    quote_records(nodes)
+    arm_sends(nodes)
+    keep_replies(nodes)
+    only_customer_messages(nodes)
+    read_agent_output(nodes)
+    hold_composing(nodes, connections)
     return nodes, connections
 
 
@@ -816,7 +1032,9 @@ def check_agent(workflow, payment_id):
         assert named[tool_name]['parameters']['workflowId']['value'] == LIVE_BOOKING
     for send_name in ('Send Bubble CTA', 'Send Double-Text CTA'):
         params = named[send_name]['parameters']
-        assert params['operation'] == 'sendCta'
+        assert params['operation'] == 'sendRaw'
+        assert 'allowColdWithoutToken: true' in params['rawBody']
+        assert 'typingSimulation: true' in params['rawBody']
         assert params['ctaLabel'] == '={{ $json.cta_label }}'
         assert 'item.staging !== true' in named[f'{send_name[:-4]} CTA fields']['parameters']['jsCode']
     assert named['Load Staging Session']['type'] == 'n8n-nodes-base.postgres'
@@ -827,7 +1045,27 @@ def check_agent(workflow, payment_id):
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
     assert '_staging_%' in named['Purge Session']['parameters']['query']
+    for name in REPLY_CHECK_NODES:
+        replied = named[name]['parameters']['query']
+        assert 'inbound_message_queue q' in replied
+        assert 'last_inbound_message_id' not in replied
+    queued = named['Queue Inbound']['parameters']['query']
+    assert "event = 'message'" in queued
+    assert "status IN ('received', '')" in queued
+    latest = named['Am I The Latest?']['parameters']['query']
+    assert 'inbound_message_queue q' in latest
+    assert 'last_inbound_message_id' not in latest
+    plan = named['Plan Delivery']['parameters']['jsCode']
+    assert "$('AI Agent').first().json.output" in plan
+    assert '$input.first().json.output' not in plan
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
+    assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
+    assert "let tag = 'stg'" not in named['Prepare staging record']['parameters']['jsCode']
+    for send_name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+        params = named[send_name]['parameters']
+        assert params['operation'] == 'sendRaw'
+        assert 'allowColdWithoutToken: true' in params['rawBody']
+        assert 'typingSimulation: true' in params['rawBody']
     config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
     assert config['wasup_instance_id'] == INSTANCE
 

@@ -121,6 +121,27 @@ def build(Customer, Auto):
     tri('times_latest', 'Mikä on huomisen viimeinen aika?', 'Vilken är sista tiden imorgon?', 'What is the last time tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)])
     tri('times_weekend', 'Onko viikonlopulle aikoja?', 'Finns det tider på helgen?', 'Do you have weekend slots?', [NOBOOK])
     tri('times_specific', 'Onko klo 10 vapaana huomenna?', 'Är kl 10 ledigt imorgon?', 'Is 10:00 free tomorrow?', [('any_tool', ['get_slots', 'get_station_info'])])
+    # "Sunday free" is whether that day is open. It is not a claim that the inspection costs nothing.
+    SUNDAY_DAY = [('any_tool', ['get_station_info', 'get_slots']),
+                  ('reply', r'sunday|sunnuntai|söndag|closed|not open|kiinni|suljettu|stäng'),
+                  ('no_reply', r'€|\beur\b|\b99\b|\b39\b|isn.?t free|not free|ain.?t free|ilmainen|gratis')]
+    add('sunday_free.en', 'usual', 'en', ['Bro so if I book now Sunday free'],
+        [*SUNDAY_DAY, ('reply', r'\?|monday|weekday|book')], note='free beside a day is availability')
+    add('sunday_free.fi', 'usual', 'fi', ['Jos varaan nyt, onko sunnuntai vapaa?'], SUNDAY_DAY)
+    add('sunday_free.sv', 'usual', 'sv', ['Om jag bokar nu, är söndag ledig?'], SUNDAY_DAY)
+    add('sunday_free.suo', 'usual', 'en', ['Bro so if I book now Sunday free'],
+        [*SUNDAY_DAY, ('reply', r'ajanvaraus\\.k1katsastus|0306|k1katsastus')], station='oul',
+        lead_patch={'station': 'K1 Katsastus Espoo Suomenoja', 'sid': None},
+        note='Suomenoja: answer the day, then the booking link')
+    add('throw.sunday_and_docs.en', 'devil', 'en', ['Is Sunday free, and what papers do I bring?'],
+        [*SUNDAY_DAY, ('reply', r'paper|document|registration|licence|license|bring|rekister')])
+    add('recover.puncture.en', 'devil', 'en', ['My tyre has a puncture'],
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\?'), ('reply', r'book|time|inspection')])
+    add('recover.daddy.en', 'devil', 'en', ['daddy this is shit lol'],
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\?'), ('reply', r'book|time|inspection')])
+    add('throw.partial.en', 'devil', 'en', ['I want to book, and my tyre has a puncture'],
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\?'), ('reply', r'book|time|inspection'),
+         ('reply', r'puncture|tyre|tire|garage|rengas')])
     tri('times_friday_morning', 'Perjantaiaamu sopisi', 'Fredag morgon passar', 'Friday morning suits me', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', (TODAY + datetime.timedelta(days=(4 - TODAY.weekday()) % 7 or 7)).isoformat())])
     tri('times_two_weeks', 'Entä parin viikon päästä?', 'Och om två veckor då?', 'What about in two weeks?', [NOBOOK])
     tri('times_other_station', 'Onko Kuopion asemalla vapaita aikoja huomenna?', 'Finns det lediga tider på Kuopio-stationen imorgon?', 'Are there free times at the Kuopio station tomorrow?',

@@ -106,6 +106,17 @@ def create_copies(secret):
     reply = nodes['Playground reply']['parameters']
     assert '  toolCalls,\n} }]' in reply['jsCode']
     reply['jsCode'] = REPLY_STEPS_JS + reply['jsCode'].replace('  toolCalls,\n} }]', "  toolCalls,\n  steps: evalSteps,\n  fallback: Boolean($('Normalize playground reply').first().json.fallback),\n} }]")
+    if os.environ.get('K1_EVAL_INJECT_PLATFORM') == '1':
+        brief = PLATFORM['masterPrompt']
+        extra = str(PLATFORM.get('additionalInformation') or '').strip()
+        if extra:
+            brief = brief + '\n\n' + extra
+        for node in agent['nodes']:
+            if node['name'] != '⚙️ CONFIG':
+                continue
+            for item in node['parameters']['assignments']['assignments']:
+                if item['name'] == 'business_prompt':
+                    item['value'] = brief
     agent_body = {'name': 'K1 v2 evaluation agent ' + suffix[:6], 'nodes': agent['nodes'], 'connections': agent['connections'],
                   'settings': {**{k: v for k, v in agent['settings'].items() if k in ('executionOrder', 'timezone')}, 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'all'}}
     created_agent = gate.request('POST', '/workflows', agent_body)['id']
