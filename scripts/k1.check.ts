@@ -27,6 +27,7 @@ for (const route of [
   { page: 'compare' },
   { page: 'deploy', version: 'abc-123' },
   { page: 'deploy' },
+  { page: 'staging' },
   { page: 'chats', id: null },
   { page: 'chats', id: 'c-1042' },
   { page: 'leads', id: null },
