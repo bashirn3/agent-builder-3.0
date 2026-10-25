@@ -10,7 +10,7 @@ import {
 } from '../data/builderApi'
 import { shortStation } from '../data/fixtures'
 import { detectLanguage, leadContext } from '../data/language'
-import { composePhone, dialCode, DIAL_COUNTRIES, nationalExample, prefillPhone, type DialCountry } from '../data/phone'
+import { applyPhoneInput, composePhone, dialCode, DIAL_COUNTRIES, nationalExample, nationalLimit, prefillPhone, type DialCountry } from '../data/phone'
 import type { PlaygroundStore } from '../data/usePlayground'
 import { useCopy } from '../i18n'
 import { href } from '../routes'
@@ -34,7 +34,7 @@ export function StagingPage({ store, notify }: {
   const [resetting, setResetting] = useState<StagingSession | null>(null)
   const [country, setCountry] = useState<DialCountry>('fi')
   const [national, setNational] = useState('')
-  const ids = { version: useId(), lead: useId(), phone: useId() }
+  const ids = { version: useId(), lead: useId(), phone: useId(), country: useId() }
 
   useEffect(() => {
     if (versionId || !store.config) return
@@ -64,8 +64,9 @@ export function StagingPage({ store, notify }: {
   const lead = store.lead
   useEffect(() => {
     const next = prefillPhone(lead?.phoneNumber, lead ? detectLanguage(lead.language) : 'fi')
-    setCountry(next?.country ?? 'fi')
-    setNational(next?.national ?? '')
+    const applied = next ? applyPhoneInput(next.country, next.national) : null
+    setCountry(applied?.country ?? 'fi')
+    setNational(applied?.national ?? '')
   }, [lead?.id])
 
   const composed = composePhone(country, national)
@@ -113,15 +114,21 @@ export function StagingPage({ store, notify }: {
     }
   }
 
-  return (
-    <div className="k1-page k1-staging">
-      <header className="k1-page__head">
-        <h1 className="k1-page-title">{t.staging.title}</h1>
-      </header>
-      <p className="k1-staging__intro">{t.staging.intro}</p>
-      <p className="k1-hint k1-staging__note">{t.staging.stripeNote}</p>
+  const preview = loadingVersion
+    ? t.staging.loadingOpener
+    : !version
+      ? t.staging.chooseVersion
+      : opener || t.staging.openerEmpty
+  const leadLabel = lead
+    ? `${lead.plateNumber} · ${shortStation(lead.stationName) || t.tester.noStation}`
+    : t.tester.chooseLead
 
-      <div className="k1-staging__grid">
+  return (
+    <div className="k1-staging">
+      <div className="k1-staging__play">
+        <aside className="k1-staging__setup">
+          <h1 className="k1-page-title">{t.staging.title}</h1>
+          <p className="k1-staging__intro">{t.staging.intro}</p>
           <div className="k1-staging__form">
             <div className="k1-field">
               <label htmlFor={ids.version}>{t.staging.version}</label>
@@ -145,7 +152,6 @@ export function StagingPage({ store, notify }: {
               <Select
                 id={ids.lead}
                 label={t.staging.lead}
-                className="k1-tester__lead"
                 optionClassName="k1-listbox__option--lead"
                 value={lead?.id ?? null}
                 placeholder={t.tester.chooseLead}
@@ -164,24 +170,37 @@ export function StagingPage({ store, notify }: {
             <div className="k1-field">
               <label htmlFor={ids.phone}>{t.staging.number}</label>
               <div className="k1-phone">
-                <div className="k1-segmented k1-phone__countries" role="group" aria-label={t.staging.country}>
-                  {DIAL_COUNTRIES.map((code) => (
-                    <button key={code} type="button" className={country === code ? 'is-active' : undefined} aria-pressed={country === code} onClick={() => setCountry(code)}>
-                      {t.staging.countries[code]} +{dialCode(code)}
-                    </button>
-                  ))}
-                </div>
+                <Select
+                  id={ids.country}
+                  label={t.staging.country}
+                  value={country}
+                  placeholder={t.staging.country}
+                  options={DIAL_COUNTRIES.map((code) => ({
+                    value: code,
+                    label: `${t.staging.countries[code]} +${dialCode(code)}`,
+                  }))}
+                  onChange={(code) => {
+                    setCountry(code)
+                    setNational((current) => current.slice(0, nationalLimit(code)))
+                  }}
+                />
                 <div className="k1-phone__number" data-invalid={national.trim() && !composed.ok ? 'true' : undefined}>
                   <span className="k1-phone__dial" aria-hidden="true">+{dialCode(country)}</span>
                   <input
                     id={ids.phone}
                     value={national}
-                    inputMode="tel"
+                    inputMode="numeric"
                     autoComplete="tel-national"
-                    placeholder={nationalExample(country)}
-                    aria-label={t.staging.number}
+                    spellCheck={false}
+                    pattern="[0-9]*"
+                    placeholder={nationalExample(country).replace(/\s/g, '')}
                     aria-invalid={national.trim() && !composed.ok ? true : undefined}
-                    onChange={(event) => setNational(event.target.value)}
+                    onChange={(event) => {
+                      const next = applyPhoneInput(country, event.target.value)
+                      setCountry(next.country)
+                      setNational(next.national)
+                    }}
+                    onKeyDown={(event) => { if (event.key === 'Enter' && canSend) void send() }}
                   />
                 </div>
               </div>
@@ -193,52 +212,73 @@ export function StagingPage({ store, notify }: {
               </button>
             </div>
           </div>
-          <div className="k1-staging__preview">
-            <span className="k1-section-title">{t.staging.opener}</span>
-            {loadingVersion
-              ? <p className="k1-hint">{t.staging.loadingOpener}</p>
-              : !version
-                ? <p className="k1-hint">{t.staging.chooseVersion}</p>
-                : <p className="k1-staging__bubble">{opener || t.staging.openerEmpty}</p>}
+          <section className="k1-staging__card" aria-labelledby="k1-staging-card">
+            <h2 id="k1-staging-card" className="k1-section-title">{t.staging.stripeTitle}</h2>
+            <p className="k1-hint">{t.staging.stripeNote}</p>
+            <dl>
+              <div><dt>{t.staging.cardNumber}</dt><dd>{t.staging.cardNumberValue}</dd></div>
+              <div><dt>{t.staging.cardExpiry}</dt><dd>{t.staging.cardExpiryValue}</dd></div>
+              <div><dt>{t.staging.cardCvc}</dt><dd>{t.staging.cardCvcValue}</dd></div>
+              <div><dt>{t.staging.cardPromo}</dt><dd>{t.staging.cardPromoValue}</dd></div>
+            </dl>
+          </section>
+        </aside>
+        <div className="k1-canvas">
+          <div className="k1-tester" aria-label={t.staging.opener}>
+            <header className="k1-tester__head">
+              <span className="k1-tester__avatar"><img src="/brand/k1-katsastus.jpg" alt="" width={26} height={26} /></span>
+              <h2>K1 Katsastus</h2>
+            </header>
+            <div className="k1-tester__context">
+              <span className="k1-tester__context-label">{t.tester.testingAs}</span>
+              <span className="k1-staging__lead">{leadLabel}</span>
+            </div>
+            <div className="k1-tester__thread">
+              <div className="k1-msg">
+                <p className="k1-msg__bubble">{preview}</p>
+              </div>
+            </div>
+            <p className="k1-tester__powered">{t.staging.repliesOnWhatsApp}</p>
           </div>
         </div>
+      </div>
 
-        <section className="k1-staging__table" aria-labelledby="k1-staging-assigned">
-          <h2 id="k1-staging-assigned" className="k1-section-title">{t.staging.assigned}</h2>
-          {sessions === null ? <p className="k1-hint">{t.common.loading}</p> : sessions.length === 0 ? <p className="k1-hint">{t.staging.empty}</p> : (
-            <div className="k1-table-card">
-              <table className="k1-table">
-                <thead>
-                  <tr>
-                    <th>{t.staging.phone}</th>
-                    <th>{t.staging.plate}</th>
-                    <th>{t.staging.versionColumn}</th>
-                    <th>{t.staging.activity}</th>
-                    <th>{t.staging.actions}</th>
+      <section className="k1-staging__assigned" aria-labelledby="k1-staging-assigned">
+        <h2 id="k1-staging-assigned" className="k1-section-title">{t.staging.assigned}</h2>
+        {sessions === null ? <p className="k1-hint">{t.common.loading}</p> : sessions.length === 0 ? <p className="k1-hint">{t.staging.empty}</p> : (
+          <div className="k1-table-card">
+            <table className="k1-table">
+              <thead>
+                <tr>
+                  <th>{t.staging.phone}</th>
+                  <th>{t.staging.plate}</th>
+                  <th>{t.staging.versionColumn}</th>
+                  <th>{t.staging.activity}</th>
+                  <th>{t.staging.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((session) => (
+                  <tr key={session.phoneKey}>
+                    <th scope="row">{session.phone}</th>
+                    <td>{session.plate || '—'}</td>
+                    <td>{session.versionNumber ? `v${session.versionNumber}` : '—'}</td>
+                    <td>{formatStamp(session.updatedAt)}</td>
+                    <td>
+                      <div className="k1-staging__actions">
+                        <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'chats', id: session.conversationId })}>{t.staging.view}</a>
+                        <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setResetting(session)}>
+                          <RefreshCw size={14} strokeWidth={1.75} />{t.staging.reset}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {sessions.map((session) => (
-                    <tr key={session.phoneKey}>
-                      <th scope="row">{session.phone}</th>
-                      <td>{session.plate || '—'}</td>
-                      <td>{session.versionNumber ? `v${session.versionNumber}` : '—'}</td>
-                      <td>{formatStamp(session.updatedAt)}</td>
-                      <td>
-                        <div className="k1-staging__actions">
-                          <a className="k1-btn k1-btn--outline k1-btn--sm" href={href({ page: 'chats', id: session.conversationId })}>{t.staging.view}</a>
-                          <button type="button" className="k1-btn k1-btn--outline k1-btn--sm" onClick={() => setResetting(session)}>
-                            <RefreshCw size={14} strokeWidth={1.75} />{t.staging.reset}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
       <ResetDialog
         session={resetting}
         onClose={() => setResetting(null)}
