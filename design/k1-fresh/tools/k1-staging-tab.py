@@ -558,7 +558,7 @@ def install_prompt_hook(nodes, connections):
     """Point WhatsApp and the playground at the saved versions. v13 is the fallback brief."""
     named = {item['name']: item for item in nodes}
     prompt = prompt_v13()
-    if 'NOT ENABLED FOR K1 YET' not in prompt:
+    if 'documented but NOT ENABLED FOR K1' not in prompt:
         raise SystemExit('v13 prompt is missing the payment rule')
     for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']:
         if item['name'] == 'business_prompt':
@@ -1482,7 +1482,7 @@ def check_agent(workflow, payment_id):
     assert 'row.defaultPrompt' in named['Build Turn']['parameters']['jsCode']
     assert 'Playground Turn' in named['AI Agent']['parameters']['options']['systemMessage']
     config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
-    assert 'NOT ENABLED FOR K1 YET' in config['business_prompt']
+    assert 'documented but NOT ENABLED FOR K1' in config['business_prompt']
     assert 'never call it' in named['create_payment_link']['parameters']['description']
     assert named['Record staging turn']['parameters']['query'] == '={{ $json.query }}'
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']

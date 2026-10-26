@@ -50,7 +50,7 @@ NOTE_V12 = ('Agent v12: a day with free, vapaa or ledig is open or closed from g
             'A joke, an insult, a puncture, or someone about to leave gets one friendly line and then the booking again. '
             'The system date stays the day only, so the prompt cache still holds.')
 NOTE = NOTE_V8 if LEGACY else NOTE_V12
-NOTE_V13 = ('Agent v13: WhatsApp prompt v3.5. Finnish first. A joke, a puncture, or leaving gets one line, then the booking. '
+NOTE_V13 = ('Agent v13: WhatsApp prompt v4. Finnish first, station-desk voice. A joke, a puncture, or leaving gets one line, then the booking. '
             'free, vapaa, or ledig means the day is open. A green price is only what a tool returns. '
             'In-chat payment is off: never call create_payment_link or offer prepayment. '
             'Playground and Staging still choose any saved version. WhatsApp with no pinned version uses this active one.')
@@ -137,7 +137,7 @@ def render13():
 
 
 def save13():
-    """Saves the v3.5 WhatsApp prompt as the next version and leaves every older version in place."""
+    """Saves the v4 WhatsApp prompt as the next version and leaves every older version in place."""
     current = call('GET', 'agent_builder_versions?is_active=eq.true&select=version_number,opening_message,reminders,translations')
     if isinstance(current, list):
         current = current[0] if current else {}
