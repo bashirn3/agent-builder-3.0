@@ -4,9 +4,11 @@
 A version is the builder prompt, additional information, opener, reminders and translations that the playground sends with every turn.
 
   k1-platform-version.py render          write prompts/k1-platform-v9.json from the rule catalog (K1_PROMPT_SOURCE=legacy: v8.json from the old head + brief)
+  k1-platform-version.py render13        write prompts/k1-platform-v13.json from prompts/k1-whatsapp-prompt-v13.md
   k1-platform-version.py show            print the latest saved versions (numbers, notes, who saved them)
   k1-platform-version.py fold            write the rendered content into version 5, make it active, delete newer versions
   k1-platform-version.py save FILE       save FILE (as written by render) as the next version; keeps the current lock flag
+  k1-platform-version.py save13          save the v13 prompt as the next version, keeping the current opener and reminders
 
 Saving runs one throwaway n8n workflow (created, called, deleted) that calls the same save_agent_builder_version function as the platform's Save Config.
 """
@@ -48,6 +50,12 @@ NOTE_V12 = ('Agent v12: a day with free, vapaa or ledig is open or closed from g
             'A joke, an insult, a puncture, or someone about to leave gets one friendly line and then the booking again. '
             'The system date stays the day only, so the prompt cache still holds.')
 NOTE = NOTE_V8 if LEGACY else NOTE_V12
+NOTE_V13 = ('Agent v13: WhatsApp prompt v3.5. Finnish first. A joke, a puncture, or leaving gets one line, then the booking. '
+            'free, vapaa, or ledig means the day is open. A green price is only what a tool returns. '
+            'In-chat payment is off: never call create_payment_link or offer prepayment. '
+            'Playground and Staging still choose any saved version. WhatsApp with no pinned version uses this active one.')
+PROMPT_V13 = ROOT / 'prompts/k1-whatsapp-prompt-v13.md'
+OUT_V13 = ROOT / 'prompts/k1-platform-v13.json'
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
               'Book at the lead\'s station unless the customer asks for another one or it is closed; use the lead\'s product and vehicle category unless the customer talks about another vehicle. A booking can only be cancelled or moved from the phone that made it; find it with get_my_bookings instead of asking the customer for details. Never quote prices or confirm bookings without a tool result.')
@@ -87,18 +95,69 @@ def call(method, path, body=None):
                 time.sleep(2)
 
 
-def render():
+def openers():
     translations = {
         'fi': {'opener': 'Hei! Täällä {{station}}. Autosi {{registration_number}} katsastusaika lähestyy. Haluatko, että etsin sinulle sopivan ajan?', 'reminders': [{'days': None, 'text': ''}] * 3},
         'sv': {'opener': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {{registration_number}}. Vill du att jag hjälper dig hitta en tid?', 'reminders': [{'days': None, 'text': ''}] * 3},
     }
+    return {
+        'openingMessage': "Hi! It's K1 Katsastus. Your car {{registration_number}} is due for inspection soon. Want me to find a time that works for you?",
+        'reminders': [{'days': 3, 'text': ''}, {'days': None, 'text': ''}, {'days': None, 'text': ''}],
+        'translations': translations,
+    }
+
+
+def render():
     version = {
         'masterPrompt': k1_prompt.prompt(), 'additionalInformation': ADDITIONAL,
-        'openingMessage': "Hi! It's K1 Katsastus. Your car {{registration_number}} is due for inspection soon. Want me to find a time that works for you?",
-        'reminders': [{'days': 3, 'text': ''}, {'days': None, 'text': ''}, {'days': None, 'text': ''}], 'translations': translations, 'note': NOTE,
+        **openers(), 'note': NOTE,
     }
     OUT.write_text(json.dumps(version, ensure_ascii=False, indent=1))
     print('wrote', OUT.relative_to(ROOT.parent.parent), len(version['masterPrompt']), 'characters')
+
+
+def v13_document(kept=None):
+    if len(NOTE_V13) > 500:
+        raise SystemExit(f'v13 note is {len(NOTE_V13)} characters')
+    kept = kept or openers()
+    return {
+        'masterPrompt': PROMPT_V13.read_text().strip() + '\n',
+        'additionalInformation': '',
+        'openingMessage': kept['openingMessage'],
+        'reminders': kept['reminders'],
+        'translations': kept['translations'],
+        'note': NOTE_V13,
+    }
+
+
+def render13():
+    version = v13_document()
+    OUT_V13.write_text(json.dumps(version, ensure_ascii=False, indent=1))
+    print('wrote', OUT_V13.relative_to(ROOT.parent.parent), len(version['masterPrompt']), 'characters')
+
+
+def save13():
+    """Saves the v3.5 WhatsApp prompt as the next version and leaves every older version in place."""
+    current = call('GET', 'agent_builder_versions?is_active=eq.true&select=version_number,opening_message,reminders,translations')
+    if isinstance(current, list):
+        current = current[0] if current else {}
+    number = current.get('version_number')
+    if number != 12:
+        raise SystemExit(f'expected the active version to be 12 before saving 13, found {number}')
+    kept = openers()
+    if current.get('opening_message'):
+        kept = {
+            'openingMessage': current['opening_message'],
+            'reminders': current.get('reminders') or kept['reminders'],
+            'translations': current.get('translations') or kept['translations'],
+        }
+    version = v13_document(kept)
+    OUT_V13.write_text(json.dumps(version, ensure_ascii=False, indent=1))
+    result = save(OUT_V13)
+    row = result[0] if isinstance(result, list) else result
+    if not isinstance(row, dict) or row.get('version_number') != 13:
+        raise SystemExit(f'v13 was not created: {json.dumps(result, ensure_ascii=False)[:300]}')
+    print('active version', row.get('version_number'), row.get('version_id'))
 
 
 def latest(number):
@@ -119,9 +178,10 @@ def save(path):
     print('current', config)
     result = call('POST', 'rpc/save_agent_builder_version', {
         'p_tenant_key': TENANT, 'p_master_prompt': data['masterPrompt'], 'p_opening_message': data['openingMessage'], 'p_additional_information': data['additionalInformation'],
-        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': os.environ.get('K1_SAVED_BY', 'Wasup agent v8'), 'p_reminders': data['reminders'], 'p_translations': data['translations'],
+        'p_locked': bool(config.get('locked')), 'p_note': data['note'][:500], 'p_saved_by': os.environ.get('K1_SAVED_BY', 'Wasup agent v13' if 'v13' in data.get('note', '') else 'Wasup agent v8'), 'p_reminders': data['reminders'], 'p_translations': data['translations'],
     })
-    print('saved', json.dumps(result, ensure_ascii=False))
+    print('saved', json.dumps(result, ensure_ascii=False)[:500])
+    return result
 
 
 def fold(path=None, into=5):
@@ -149,6 +209,10 @@ if __name__ == '__main__':
     command = sys.argv[1] if len(sys.argv) > 1 else ''
     if command == 'render':
         render()
+    elif command == 'render13':
+        render13()
+    elif command == 'save13':
+        save13()
     elif command == 'show':
         show()
     elif command == 'fold':
