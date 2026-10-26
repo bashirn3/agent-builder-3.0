@@ -235,6 +235,19 @@ export function versionTarget(version: AgentVersion): TestTarget {
   }
 }
 
+// The playground version picker chooses which saved prompt a test chat sends.
+// A locked base prompt still allows that pick; the editor stays read-only.
+export function playgroundTarget(config: AgentConfig, draft: Draft, versionId: string | null): TestTarget {
+  const base = draftTarget(config, draft)
+  const selected = config.versions.find((item) => item.id === versionId)
+  if (!selected?.masterPrompt) return base
+  const same = selected.masterPrompt === draft.masterPrompt
+    && selected.additional === draft.additional
+    && selected.opener === draft.opener
+  if (!same) return { ...base, versionId: selected.id, versionNumber: selected.number }
+  return versionTarget(selected)
+}
+
 const DEMO_REPLIES = [
   'Thanks. Which K1 station would suit you, and do you prefer a morning or an afternoon?',
   'I can help with that. Could you confirm the registration number so I check the right vehicle?',

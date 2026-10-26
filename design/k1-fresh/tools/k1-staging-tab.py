@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Staging tab on the live K1 WhatsApp number.
 
-Patches the live listener so only phones sent from the Staging page use a saved
-version, Stripe test checkout, and CTA buttons. Every other customer stays on
-the current live path. The inactive workflow "K1 v10 staging" is not activated.
+Patches the live listener so a phone sent from Staging uses that saved version.
+WhatsApp with no pin uses the active playground version, and a playground chat
+uses the version selected for that turn. The inactive workflow "K1 v10 staging"
+is not activated.
 
   python3 k1-staging-tab.py dry     patch the newest backups in memory
   python3 k1-staging-tab.py apply   back up, migrate, and update the live workflows
@@ -43,7 +44,15 @@ RPC = 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/rpc/'
 AGENT_DIGITS = "{{ String($('Webhook').first().json.body.from_phone || '').replace(/\\D/g, '') }}"
 SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow')
 BRIEF = "{{ $('⚙️ CONFIG').first().json.business_prompt }}"
-BRIEF_STAGING = "{{ ($('Build Turn').isExecuted && $('Build Turn').first().json.staging_prompt) ? $('Build Turn').first().json.staging_prompt : $('⚙️ CONFIG').first().json.business_prompt }}"
+BRIEF_PINNED = "{{ ($('Build Turn').isExecuted && $('Build Turn').first().json.staging_prompt) ? $('Build Turn').first().json.staging_prompt : $('⚙️ CONFIG').first().json.business_prompt }}"
+BRIEF_STAGING = "{{ $('Playground Turn').isExecuted && $('Playground').first().json.body.masterPrompt ? ($('Playground').first().json.body.masterPrompt + ($('Playground').first().json.body.additionalInformation ? '\\n\\n' + $('Playground').first().json.body.additionalInformation : '')) : (($('Build Turn').isExecuted && $('Build Turn').first().json.staging_prompt) ? $('Build Turn').first().json.staging_prompt : $('⚙️ CONFIG').first().json.business_prompt) }}"
+PROMPT_V13 = ROOT / 'prompts/k1-whatsapp-prompt-v13.md'
+PAYMENT_DESCRIPTION = (
+    'Stripe test checkout url for a booking already made in this chat. '
+    'Call it only when the business brief for this turn says in-chat payment is enabled and the customer has chosen to pay now. '
+    'If the brief says create_payment_link is not enabled, never call it. '
+    'Pass the booking number, station name, and the confirmed weekday, date and time. Returns url.'
+)
 MEMORY = "={{ $('Playground Turn').isExecuted ? $('Playground Turn').first().json.session_key : (($('Build Turn').isExecuted && $('Build Turn').first().json.staging_session_key) || ($('⚙️ CONFIG').first().json.tenant_key + '_' + $('Webhook').first().json.body.from_phone)) }}"
 SOURCE = "={{ ($('Build Turn').isExecuted && $('Build Turn').first().json.staging) ? 'whatsapp' : '' }}"
 
@@ -517,6 +526,66 @@ if (wantsTime && msgs.length && !msgs.join('\n').includes('?')) {
 """
 
 
+def ensure_active_version(nodes, connections):
+    """WhatsApp with no pinned phone reads the active playground version."""
+    named = {item['name']: item for item in nodes}
+    if 'Fetch active version' not in named:
+        load = named.get('Load Staging Session')
+        spot = load['position'] if load else [0, 0]
+        nodes.append(node(
+            'Fetch active version', 'n8n-nodes-base.httpRequest', 4.2, [spot[0], spot[1] + 180],
+            {
+                'method': 'GET',
+                'url': 'https://wuejgskyjzuffqsgvunp.supabase.co/rest/v1/agent_builder_active_config?tenant_key=eq.k1_katsastus_demo&select=version_number,master_prompt,additional_information',
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'supabaseApi',
+                'options': {'timeout': 15000},
+            },
+            SUPABASE,
+            {'onError': 'continueRegularOutput'},
+        ))
+    incoming = connections.get('New Message?', {}).get('main') or []
+    if incoming and not any(item.get('node') == 'Fetch active version' for item in incoming[0]):
+        incoming[0].append({'node': 'Fetch active version', 'type': 'main', 'index': 0})
+    connections['Fetch active version'] = {'main': [[]]}
+
+
+def prompt_v13():
+    return PROMPT_V13.read_text().strip() + '\n'
+
+
+def install_prompt_hook(nodes, connections):
+    """Point WhatsApp and the playground at the saved versions. v13 is the fallback brief."""
+    named = {item['name']: item for item in nodes}
+    prompt = prompt_v13()
+    if 'NOT ENABLED FOR K1 YET' not in prompt:
+        raise SystemExit('v13 prompt is missing the payment rule')
+    for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']:
+        if item['name'] == 'business_prompt':
+            item['value'] = prompt
+    for agent_name in ('AI Agent', 'Follow-up Agent'):
+        message = named[agent_name]['parameters']['options']['systemMessage']
+        if BRIEF_STAGING not in message:
+            if BRIEF_PINNED in message:
+                message = must_replace(message, BRIEF_PINNED, BRIEF_STAGING, agent_name)
+            elif BRIEF in message:
+                message = must_replace(message, BRIEF, BRIEF_STAGING, agent_name)
+            else:
+                raise SystemExit(f'{agent_name} has no business brief expression')
+        named[agent_name]['parameters']['options']['systemMessage'] = message
+    turn = named['Build Turn']['parameters']['jsCode']
+    old_line = "staging_prompt: stagingSession ? String(stagingSession.prompt || '') : '',"
+    new_line = "staging_prompt: stagingSession ? String(stagingSession.prompt || '') : String(row.defaultPrompt || ''),"
+    if new_line not in turn:
+        turn = must_replace(turn, old_line, new_line, 'Build Turn default prompt')
+        named['Build Turn']['parameters']['jsCode'] = turn
+    if 'create_payment_link' in named:
+        named['create_payment_link']['parameters']['description'] = PAYMENT_DESCRIPTION
+    if 'Merge Staging' in named:
+        named['Merge Staging']['parameters']['jsCode'] = MERGE_STAGING
+    ensure_active_version(nodes, connections)
+
+
 def prefetch_staging(nodes, connections):
     """Read the assigned version while the debounce waits, so the model and its typing start sooner.
 
@@ -536,6 +605,7 @@ def prefetch_staging(nodes, connections):
     assigned = connections.get('Staging assigned?', {}).get('main')
     if assigned and len(assigned) > 1:
         assigned[1] = []
+    ensure_active_version(nodes, connections)
 
 
 def offer_time(nodes):
@@ -695,23 +765,37 @@ while (Date.now() < limit) {
   try {
     if ($('Parse Staging').isExecuted) {
       parsed = $('Parse Staging').first().json.staging || { found: false }
-      if (parsed.found !== true || $('Fetch staging version').isExecuted) break
+      const pinned = parsed.found === true
+      const pinReady = !pinned || $('Fetch staging version').isExecuted
+      let activeReady = false
+      try { activeReady = $('Fetch active version').isExecuted } catch (error) { activeReady = true }
+      if (pinReady && (pinned || activeReady)) break
     }
   } catch (error) {}
   await new Promise((resolve) => setTimeout(resolve, 50))
 }
-if (parsed.found !== true) return [{ json: { ...drain, staging: null } }]
-let version = $('Fetch staging version').isExecuted ? ($('Fetch staging version').first().json || {}) : {}
-if (Array.isArray(version)) version = version[0] || {}
-const prompt = [version.masterPrompt, version.additionalInformation, parsed.leadContext].filter((part) => String(part || '').trim()).join('\n\n')
-return [{ json: { ...drain, staging: {
-  found: true,
-  prompt,
-  versionNumber: parsed.versionNumber || version.versionNumber || null,
-  conversationId: String(parsed.conversationId || ''),
-  versionId: String(parsed.versionId || ''),
-  leadContext: String(parsed.leadContext || ''),
-} } }]
+function promptOf(version) {
+  if (Array.isArray(version)) version = version[0] || {}
+  if (!version || typeof version !== 'object') return ''
+  return [version.masterPrompt || version.master_prompt, version.additionalInformation || version.additional_information]
+    .filter((part) => String(part || '').trim()).join('\n\n')
+}
+if (parsed.found === true) {
+  let version = $('Fetch staging version').isExecuted ? ($('Fetch staging version').first().json || {}) : {}
+  if (Array.isArray(version)) version = version[0] || {}
+  const prompt = [version.masterPrompt, version.additionalInformation, parsed.leadContext].filter((part) => String(part || '').trim()).join('\n\n')
+  return [{ json: { ...drain, defaultPrompt: '', staging: {
+    found: true,
+    prompt,
+    versionNumber: parsed.versionNumber || version.versionNumber || null,
+    conversationId: String(parsed.conversationId || ''),
+    versionId: String(parsed.versionId || ''),
+    leadContext: String(parsed.leadContext || ''),
+  } } }]
+}
+let active = {}
+try { if ($('Fetch active version').isExecuted) active = $('Fetch active version').first().json || {} } catch (error) {}
+return [{ json: { ...drain, staging: null, defaultPrompt: promptOf(active) } }]
 """
 
 LOAD_SQL = (
@@ -898,7 +982,7 @@ RETURN_OLD = """return [{ json: {
 RETURN_NEW = """return [{ json: {
   agent_input, is_reset,
   staging: Boolean(stagingSession),
-  staging_prompt: stagingSession ? String(stagingSession.prompt || '') : '',
+  staging_prompt: stagingSession ? String(stagingSession.prompt || '') : String(row.defaultPrompt || ''),
   staging_session_key: stagingSession ? `${cfg.tenant_key}_${stagingDigits}_staging_${stagingSession.conversationId}` : '',
   staging_conversation_id: stagingSession ? String(stagingSession.conversationId || '') : '',
   staging_version_id: stagingSession ? String(stagingSession.versionId || '') : '',
@@ -1039,12 +1123,7 @@ def add_payment(nodes, connections, payment_id):
         'language': "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('language', `fi, sv or en, the language of this chat.`, 'string') }}",
     }
     tool['parameters']['name'] = name
-    tool['parameters']['description'] = (
-        'The 34 euro Stripe test checkout url for a booking already made in this chat. Call it only after the customer chooses to pay now. '
-        'Pass the booking number, station name and the confirmed weekday, date and time. Returns url. '
-        'Tell the customer it is 34 euros for the inspection base and that they can enter WASUP100 on that page. Measuring is still paid at the station. '
-        'Do not call this for a customer who is not on a staging assignment.'
-    )
+    tool['parameters']['description'] = PAYMENT_DESCRIPTION
     tool['parameters']['workflowId'] = {'__rl': True, 'value': payment_id, 'mode': 'id', 'cachedResultName': PAYMENT_NAME}
     tool['parameters']['workflowInputs'] = {
         'mappingMode': 'defineBelow', 'value': value, 'matchingColumns': [],
@@ -1076,7 +1155,7 @@ def patch_agent(workflow, payment_id):
         follow['jsCode'] = must_replace(follow['jsCode'], FOLLOW_OLD, FOLLOW_NEW, 'Plan Follow-up')
     for agent_name in ('AI Agent', 'Follow-up Agent'):
         message = named[agent_name]['parameters']['options']['systemMessage']
-        if 'staging_prompt' not in message:
+        if BRIEF_STAGING not in message and BRIEF_PINNED not in message and 'staging_prompt' not in message:
             named[agent_name]['parameters']['options']['systemMessage'] = must_replace(message, BRIEF, BRIEF_STAGING, agent_name)
     memory = named['Postgres Chat Memory']['parameters']
     if 'staging_session_key' not in memory['sessionKey']:
@@ -1150,6 +1229,7 @@ def patch_agent(workflow, payment_id):
     read_agent_output(nodes)
     offer_time(nodes)
     prefetch_staging(nodes, connections)
+    install_prompt_hook(nodes, connections)
     hold_composing(nodes, connections)
     arm_typed_sends(nodes, connections)
     hand_webhook_reply(nodes, connections)
@@ -1396,6 +1476,14 @@ def check_agent(workflow, payment_id):
     assert any(item.get('node') == 'Load Staging Session' for item in workflow['connections']['New Message?']['main'][0])
     assert workflow['connections']['Drain Queue']['main'][0][0]['node'] == 'Merge Staging'
     assert 'Date.now() + 4000' in named['Merge Staging']['parameters']['jsCode']
+    assert 'defaultPrompt' in named['Merge Staging']['parameters']['jsCode']
+    assert 'Fetch active version' in workflow['connections']['New Message?']['main'][0][-1]['node'] or any(item.get('node') == 'Fetch active version' for item in workflow['connections']['New Message?']['main'][0])
+    assert 'agent_builder_active_config' in named['Fetch active version']['parameters']['url']
+    assert 'row.defaultPrompt' in named['Build Turn']['parameters']['jsCode']
+    assert 'Playground Turn' in named['AI Agent']['parameters']['options']['systemMessage']
+    config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
+    assert 'NOT ENABLED FOR K1 YET' in config['business_prompt']
+    assert 'never call it' in named['create_payment_link']['parameters']['description']
     assert named['Record staging turn']['parameters']['query'] == '={{ $json.query }}'
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
@@ -1783,6 +1871,66 @@ def apply():
     print(f'live agent {LIVE_AGENT} active={live.get("active")}; booking noted; staging send {wid}')
 
 
+def pin_open_sessions():
+    """Move a staging phone that is still on v12 onto active v13. Does not send a message or rotate the chat.
+
+    Version rows live in Supabase. Staging sessions live in the listener database, so the id is looked up and passed in.
+    """
+    spec = importlib.util.spec_from_file_location('versions', HERE / 'k1-platform-version.py')
+    versions = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(versions)
+    row = versions.call('GET', 'agent_builder_versions?version_number=eq.13&is_active=eq.true&select=id,version_number')
+    if isinstance(row, list):
+        row = row[0] if row else {}
+    version_id = str((row or {}).get('id') or '')
+    if not re.fullmatch(r'[0-9a-f-]{36}', version_id):
+        raise SystemExit('active v13 was not found')
+    query = f"""
+with moved as (
+  update k1_staging_sessions
+  set version_id = '{version_id}', version_number = 13, updated_at = now()
+  where version_number = 12
+  returning 1
+)
+select 13 as active_version, (select count(*) from moved) as moved
+"""
+    path = f'k1-v13-pin-{uuid.uuid4().hex[:12]}'
+    respond = node('Respond', 'n8n-nodes-base.respondToWebhook', 1.5, [640, 300], {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}})
+    hook_node = node('Webhook', 'n8n-nodes-base.webhook', 2.1, [240, 300], {'httpMethod': 'POST', 'path': path, 'responseMode': 'responseNode', 'options': {}})
+    sql = node('Pin', 'n8n-nodes-base.postgres', 2.6, [440, 300], {'operation': 'executeQuery', 'query': query, 'options': {}}, POSTGRES)
+    created = gate.request('POST', '/workflows', {'name': 'K1 v13 pin once', 'nodes': [hook_node, sql, respond], 'connections': {'Webhook': link('Pin'), 'Pin': link('Respond')}, 'settings': {'executionOrder': 'v1'}})
+    wid = created['id']
+    try:
+        gate.request('POST', f'/workflows/{wid}/activate')
+        status, body = post_webhook(path)
+        compact = body.replace(' ', '')
+        if status != 200 or ('"active_version":13' not in compact and '"active_version":"13"' not in compact):
+            raise SystemExit(f'v13 pin did not confirm ({status})')
+        print('staging pin', body.replace('\n', ' ')[:240])
+    finally:
+        delete_workflow(wid)
+
+
+def hook():
+    """Publish the v13 brief on the live WhatsApp agent and pin the current staging phone to the active version."""
+    agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    if not agent.get('active'):
+        raise SystemExit('refusing to edit an inactive agent')
+    backup(agent, 'agent')
+    nodes = json.loads(json.dumps(agent['nodes']))
+    connections = json.loads(json.dumps(agent['connections']))
+    install_prompt_hook(nodes, connections)
+    payment_id = next(item['parameters']['workflowId']['value'] for item in nodes if item['name'] == 'create_payment_link')
+    check_agent({'nodes': nodes, 'connections': connections}, payment_id)
+    put(LIVE_AGENT, agent['name'], nodes, connections, settings_of(agent), True)
+    live = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    if live.get('active') is not True:
+        raise SystemExit('live agent did not reactivate')
+    check_agent(live, payment_id)
+    pin_open_sessions()
+    print(f'live agent {LIVE_AGENT} active={live.get("active")} brief=v13')
+
+
 if __name__ == '__main__':
     import sys
     command = sys.argv[1] if len(sys.argv) > 1 else 'dry'
@@ -1790,5 +1938,7 @@ if __name__ == '__main__':
         dry()
     elif command == 'apply':
         apply()
+    elif command == 'hook':
+        hook()
     else:
         raise SystemExit(__doc__)
