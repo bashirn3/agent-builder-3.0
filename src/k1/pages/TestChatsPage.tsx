@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
-import { deleteTestChats, getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
+import { deleteTestChats, getTestChat, listTestChats, loadEveryTestChat, setFeedback, testChatExportRows, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
 import { downloadCsv, toCsv } from '../data/fixtures'
 import type { TestMessage } from '../data/useTestChat'
 import { go, href } from '../routes'
@@ -294,7 +294,9 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const [detailLoading, setDetailLoading] = useState(false)
   const [messages, setMessages] = useState<TestMessage[]>([])
   const [query, setQuery] = useState(filters.query)
+  const [exporting, setExporting] = useState(false)
   const request = useRef(0)
+  const exportRun = useRef<AbortController | null>(null)
 
   const refresh = () => {
     const ticket = ++request.current
@@ -331,7 +333,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       })
   }
   useEffect(refresh, [filters])
-  useEffect(() => () => running.current?.abort(), [])
+  useEffect(() => () => { running.current?.abort(); exportRun.current?.abort() }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => { if (query !== filters.query) onFilters({ ...filters, query }) }, 300)
@@ -413,18 +415,28 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const tracking = config?.tracking !== false
 
   const exportCsv = () => {
-    downloadCsv('k1-test-chats.csv', toCsv(items.map((item) => ({
-      conversation: item.id,
-      version: versionTag(item),
-      source: sourceLabel(item.source),
-      first_message: item.title,
-      last_reply: item.lastReply,
-      messages: String(item.messageCount),
-      thumbs_up: String(item.thumbsUp),
-      thumbs_down: String(item.thumbsDown),
-      updated: item.updatedAt,
-    }))))
-    notify({ title: t.common.exportReady, body: t.chats.exportBody(items.length) })
+    if (exporting) return
+    exportRun.current?.abort()
+    const controller = new AbortController()
+    exportRun.current = controller
+    setExporting(true)
+    void loadEveryTestChat(controller.signal)
+      .then((chats) => {
+        if (controller.signal.aborted) return
+        const rows = testChatExportRows(chats)
+        const turns = rows.filter((row) => row.message_id).length
+        if (!chats.length) {
+          notify({ tone: 'error', title: t.chats.exportFailed, body: t.chats.exportEmpty })
+          return
+        }
+        downloadCsv('k1-test-chats.csv', toCsv(rows))
+        notify({ title: t.common.exportReady, body: t.chats.exportBody(chats.length, turns) })
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        notify({ tone: 'error', title: t.chats.exportFailed, body: t.chats.exportFailedBody })
+      })
+      .finally(() => { if (exportRun.current === controller) setExporting(false) })
   }
 
   const toggleDebug = (on: boolean) => {
@@ -452,8 +464,8 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
           <button type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg" aria-label={t.chats.deleteShown(realShown.length)} title={t.chats.deleteShown(realShown.length)} onClick={() => setDeleting(realShown.map((item) => item.id))} disabled={!realShown.length || pendingQuery || searching}>
             <Trash size={16} strokeWidth={1.75} />
           </button>
-          <button type="button" className="k1-icon-btn k1-icon-btn--solid k1-icon-btn--lg" aria-label={t.common.exportCsv} onClick={exportCsv} disabled={!items.length}>
-            <Download size={16} strokeWidth={1.75} />
+          <button type="button" className="k1-icon-btn k1-icon-btn--solid k1-icon-btn--lg" aria-label={t.common.exportCsv} onClick={exportCsv} disabled={exporting} aria-busy={exporting}>
+            {exporting ? <Spinner size={16} /> : <Download size={16} strokeWidth={1.75} />}
           </button>
         </>
       )}
