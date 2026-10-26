@@ -243,46 +243,188 @@ def only_customer_messages(nodes):
         latest['parameters']['query'] = LATEST_NEW
 
 
-HOLD_JS = """// Wasup closes this webhook after 10s. A customer message keeps it open until
-// the send has run, or 8s, whichever comes first. The ack stays {skip:true}
-// so Wasup does not send a second copy. Anything else is acked at once.
+HOLD_JS = """// Wasup closes this webhook after 10s. A real customer message stays open until
+// Plan Delivery has a first bubble, or 8s. That text goes back as {reply} so
+// Wasup can run its typing choreographer. Test events (10-digit from_phone)
+// and non-messages return {skip:true} immediately and never include reply.
+// Do not wait on the send nodes: the send waits on this hold.
 const body = $('Webhook').first().json.body || {}
 const event = String(body.event || 'message').toLowerCase()
 const incoming = String(body.message || '').trim()
-if (event !== 'message' || !incoming) return [{ json: { skip: true } }]
+const digits = String(body.from_phone || '').replace(/\\D/g, '')
+if (event !== 'message' || !incoming || digits.length === 10) return [{ json: { skip: true } }]
 const limit = Date.now() + 8000
-function sent() {
-  // A cold-blocked typing attempt is not delivery. Wait for the send that lands.
-  for (const name of ['Bubble Keep', 'Double-Text Keep']) {
-    try {
-      if ($(name).first().json._typed === 'yes') return true
-    } catch (error) {}
-  }
-  for (const name of ['Send Bubble', 'Send Bubble CTA', 'Send Double-Text', 'Send Double-Text CTA', 'Skip Bubble']) {
-    try {
-      if ($(name).isExecuted) return true
-    } catch (error) {}
-  }
-  return false
+function firstText() {
+  try {
+    if (!$('Plan Delivery').isExecuted) return ''
+    const items = $('Plan Delivery').all()
+    for (const item of items) {
+      const row = item.json || {}
+      const text = String(row.text || '').trim()
+      if (Number(row.seq) === 1 && text) return text
+    }
+  } catch (error) {}
+  return ''
 }
-while (Date.now() < limit - 300) {
-  if (sent()) break
+let text = ''
+while (Date.now() < limit) {
+  text = firstText()
+  if (text) break
   await new Promise((resolve) => setTimeout(resolve, 200))
 }
-const tail = Math.max(0, Math.min(300, limit - Date.now()))
-if (tail) await new Promise((resolve) => setTimeout(resolve, tail))
-return [{ json: { skip: true } }]
+if (!text) return [{ json: { skip: true } }]
+return [{ json: { reply: text } }]
 """
+
+ACK_BODY = '={{ $json.reply ? { reply: $json.reply } : { skip: true } }}'
+
+MERGE_CHECK_JS = """let bubble;
+try { bubble = $('Loop Bubbles').first().json; } catch (e) { bubble = null; }
+if (!bubble || bubble.text === undefined) bubble = $('Plan Delivery').first().json;
+const db = $input.first().json || {};
+const rem = Number(db.typing_remaining_seconds || 0);
+const slice = Math.min(Math.max(rem, 0), Number(($('⚙️ CONFIG').first().json.typing_recheck_seconds) || 3));
+const limit = Date.now() + 1000
+let hold = null
+while (Date.now() < limit) {
+  try {
+    if ($('Hold For Composing').isExecuted) {
+      hold = $('Hold For Composing').first().json || {}
+      break
+    }
+  } catch (error) {}
+  await new Promise((resolve) => setTimeout(resolve, 100))
+}
+const reply = hold && typeof hold.reply === 'string' ? hold.reply.trim() : ''
+const owned = Number(bubble.seq) === 1 && !!reply && reply === String(bubble.text || '').trim()
+return [{ json: {
+  ...bubble,
+  skip_send: owned ? true : bubble.skip_send === true,
+  webhook_owned: owned,
+  user_replied: db.user_replied === true,
+  user_typing: db.user_typing === true,
+  typing_remaining_seconds: rem,
+  typing_wait_seconds: slice > 0 ? slice : Number(($('⚙️ CONFIG').first().json.typing_recheck_seconds) || 3)
+} }];
+"""
+
+PAUSE_REPLY_JS = """// Plan Delivery has already unblocked the hold. Give Wasup a moment to accept
+// {reply} before the read-only check. This sleep does not send a message.
+await new Promise((resolve) => setTimeout(resolve, 2000))
+return [{ json: $input.first().json || {} }]
+"""
+
+REPLY_LANDED_JS = """const bubble = $('Pause For Reply').first().json || {}
+const reply = String(bubble.text || '').trim()
+const digits = String(bubble.to_phone || '').replace(/\\D/g, '')
+const body = $('Webhook').first().json.body || {}
+const since = Date.parse(body.created_at || '') || 0
+const floor = since || (Date.now() - 30000)
+function norm(value) {
+  return String(value || '').replace(/\\s+/g, ' ').trim()
+}
+const needle = norm(reply).slice(0, 24)
+function sameText(value) {
+  const hay = norm(value)
+  if (!needle) return false
+  if (needle.length < 8) return hay === norm(reply)
+  return hay.includes(needle) || norm(reply).startsWith(hay.slice(0, needle.length))
+}
+function read(name) {
+  try { return $(name).first().json || {} } catch (error) { return null }
+}
+const logsBody = read('Read Reply Logs')
+const messagesBody = read('Read Reply Messages')
+const logs = logsBody && Array.isArray(logsBody.logs) ? logsBody.logs : null
+const messages = messagesBody && Array.isArray(messagesBody.messages) ? messagesBody.messages : null
+const readable = logs !== null && messages !== null
+let landed = false
+if (messages) {
+  landed = messages.some((message) => {
+    if (String(message.direction || '') !== 'outbound') return false
+    if (!sameText(message.text)) return false
+    const toDigits = String(message.to || '').replace(/\\D/g, '')
+    if (digits && toDigits && toDigits !== digits) return false
+    const at = Date.parse(message.timestamp || '')
+    if (Number.isFinite(at) && at + 5000 < floor) return false
+    return true
+  })
+}
+let coldAfter = false
+if (logs && digits.length >= 11) {
+  for (const line of logs) {
+    const at = Date.parse(line.timestamp || '')
+    if (Number.isFinite(at) && at + 1000 < floor) continue
+    const msg = String(line.message || '')
+    if (!msg.replace(/\\D/g, '').includes(digits)) continue
+    if (/Sent to/.test(msg) && sameText(msg)) landed = true
+    if (/Cold send blocked|classified as COLD/.test(msg)) coldAfter = true
+  }
+}
+function plans(name) {
+  const payload = read(name)
+  if (!payload) return null
+  const root = payload.antibanV2 || payload
+  const stats = ((root.stats || {}).presence) || null
+  if (!stats) return null
+  const count = Number(stats.typingPlansExecuted)
+  return Number.isFinite(count) ? count : null
+}
+const before = plans('Typing Baseline')
+const after = plans('Read Reply Antiban')
+const typingStarted = before !== null && after !== null && after > before
+let send_fallback = false
+if (bubble.user_replied === true || landed || typingStarted) send_fallback = false
+else if (coldAfter || readable) send_fallback = true
+return [{ json: { ...bubble, send_fallback, webhook_landed: landed } }]
+"""
+
+WASUP_READS = {
+    'Typing Baseline': 'https://wasup.northeurope.cloudapp.azure.com/api/instances/wa_mt1j5bcl_sch23/antiban-v2',
+    'Read Reply Logs': 'https://wasup.northeurope.cloudapp.azure.com/api/instances/wa_mt1j5bcl_sch23/logs?limit=80',
+    'Read Reply Antiban': 'https://wasup.northeurope.cloudapp.azure.com/api/instances/wa_mt1j5bcl_sch23/antiban-v2',
+    'Read Reply Messages': 'https://wasup.northeurope.cloudapp.azure.com/api/instances/wa_mt1j5bcl_sch23/messages?direction=outbound&limit=15',
+}
+
+
+def wasup_get(nodes, named, name, url, position):
+    params = {
+        'method': 'GET',
+        'url': url,
+        'authentication': 'predefinedCredentialType',
+        'nodeCredentialType': 'wasupApi',
+        'options': {'timeout': 15000},
+    }
+    if name in named:
+        named[name]['parameters'] = params
+        named[name]['credentials'] = json.loads(json.dumps(WASUP))
+        named[name]['onError'] = 'continueRegularOutput'
+        return
+    item = node(name, 'n8n-nodes-base.httpRequest', 4.2, position, params, json.loads(json.dumps(WASUP)), {'onError': 'continueRegularOutput'})
+    nodes.append(item)
+    named[name] = item
+
+
+def true_if(left):
+    return {
+        'conditions': {
+            'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
+            'conditions': [{'id': str(uuid.uuid4()), 'leftValue': left, 'rightValue': '', 'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True}}],
+            'combinator': 'and',
+        },
+        'looseTypeValidation': True,
+        'options': {},
+    }
 
 
 def hold_composing(nodes, connections):
-    """Hold the Wasup webhook open, then tell it not to send its own reply."""
+    """Hold the Wasup webhook open, then pass {reply} through only for a real customer."""
     named = {item['name']: item for item in nodes}
     ack = named.get('Ack Webhook (empty)')
     webhook = connections.get('Webhook')
     if not ack or not webhook:
         return
-    ack['parameters']['responseBody'] = '={{ { skip: true } }}'
+    ack['parameters']['responseBody'] = ACK_BODY
     if 'Hold For Composing' not in named:
         pos = ack.get('position') or [0, 0]
         nodes.append(node('Hold For Composing', 'n8n-nodes-base.code', 2, [pos[0] - 220, pos[1]], {
@@ -296,6 +438,72 @@ def hold_composing(nodes, connections):
         kept.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
     webhook['main'][0] = kept
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
+
+
+def hand_webhook_reply(nodes, connections):
+    """Hand the first bubble to Wasup as {reply}, and sendRaw only if that reply did not land.
+
+    The confirmation reads are GET logs, message history, and antiban stats.
+    None of them include a recipient, so they cannot deliver a chat message.
+    """
+    named = {item['name']: item for item in nodes}
+    merge = named.get('Merge Check')
+    webhook = connections.get('Webhook')
+    if not merge or not webhook or 'Send Bubble' not in named or 'Skip Bubble' not in named:
+        return
+    merge['parameters']['mode'] = 'runOnceForAllItems'
+    merge['parameters']['jsCode'] = MERGE_CHECK_JS
+    spot = merge.get('position') or [0, 0]
+    wasup_get(nodes, named, 'Typing Baseline', WASUP_READS['Typing Baseline'], [spot[0] - 3400, spot[1] - 280])
+    links = webhook.get('main', [[]])[0] or []
+    if not any(item.get('node') == 'Typing Baseline' for item in links):
+        links.append({'node': 'Typing Baseline', 'type': 'main', 'index': 0})
+    webhook['main'][0] = links
+    if 'Pause For Reply' not in named:
+        nodes.append(node('Pause For Reply', 'n8n-nodes-base.code', 2, [spot[0] + 220, spot[1] + 220], {
+            'mode': 'runOnceForAllItems', 'jsCode': PAUSE_REPLY_JS,
+        }))
+    else:
+        named['Pause For Reply']['parameters']['jsCode'] = PAUSE_REPLY_JS
+    wasup_get(nodes, named, 'Read Reply Logs', WASUP_READS['Read Reply Logs'], [spot[0] + 440, spot[1] + 220])
+    wasup_get(nodes, named, 'Read Reply Antiban', WASUP_READS['Read Reply Antiban'], [spot[0] + 660, spot[1] + 220])
+    wasup_get(nodes, named, 'Read Reply Messages', WASUP_READS['Read Reply Messages'], [spot[0] + 880, spot[1] + 220])
+    if 'Reply Landed?' not in named:
+        nodes.append(node('Reply Landed?', 'n8n-nodes-base.code', 2, [spot[0] + 1100, spot[1] + 220], {
+            'mode': 'runOnceForAllItems', 'jsCode': REPLY_LANDED_JS,
+        }))
+    else:
+        named['Reply Landed?']['parameters']['jsCode'] = REPLY_LANDED_JS
+    if 'Webhook Reply?' not in named:
+        nodes.append(node('Webhook Reply?', 'n8n-nodes-base.if', 2.2, [spot[0] + 220, spot[1]], true_if('={{ $json.webhook_owned === true }}')))
+    else:
+        named['Webhook Reply?']['parameters'] = true_if('={{ $json.webhook_owned === true }}')
+    if 'Send Fallback?' not in named:
+        nodes.append(node('Send Fallback?', 'n8n-nodes-base.if', 2.2, [spot[0] + 1320, spot[1] + 220], true_if('={{ $json.send_fallback === true }}')))
+    else:
+        named['Send Fallback?']['parameters'] = true_if('={{ $json.send_fallback === true }}')
+    previous = connections.get('Merge Check', {}).get('main', [[]])[0] or []
+    false_target = 'Still Our Turn?'
+    if previous and previous[0].get('node') not in ('Webhook Reply?',):
+        false_target = previous[0]['node']
+    elif 'Webhook Reply?' in connections:
+        false_branch = connections['Webhook Reply?'].get('main', [[], []])
+        if len(false_branch) > 1 and false_branch[1]:
+            false_target = false_branch[1][0]['node']
+    connections['Merge Check'] = link('Webhook Reply?')
+    connections['Webhook Reply?'] = {'main': [
+        [{'node': 'Pause For Reply', 'type': 'main', 'index': 0}],
+        [{'node': false_target, 'type': 'main', 'index': 0}],
+    ]}
+    connections['Pause For Reply'] = link('Read Reply Logs')
+    connections['Read Reply Logs'] = link('Read Reply Antiban')
+    connections['Read Reply Antiban'] = link('Read Reply Messages')
+    connections['Read Reply Messages'] = link('Reply Landed?')
+    connections['Reply Landed?'] = link('Send Fallback?')
+    connections['Send Fallback?'] = {'main': [
+        [{'node': 'Send Bubble', 'type': 'main', 'index': 0}],
+        [{'node': 'Skip Bubble', 'type': 'main', 'index': 0}],
+    ]}
 
 
 OFFER_TIME_JS = r"""const wantsTime = /reconcil|täsm|tasma|stämmer inte|somewhere else|muualle|annanstan|somwehre/i.test(rawUser)
@@ -944,6 +1152,7 @@ def patch_agent(workflow, payment_id):
     prefetch_staging(nodes, connections)
     hold_composing(nodes, connections)
     arm_typed_sends(nodes, connections)
+    hand_webhook_reply(nodes, connections)
     return nodes, connections
 
 
@@ -1221,7 +1430,26 @@ def check_agent(workflow, payment_id):
         assert workflow['connections'][if_name]['main'][1][0]['node'] == raw_name
         assert "_typed: delivered ? 'yes' : 'no'" in named[keep_name]['parameters']['jsCode']
     hold = named['Hold For Composing']['parameters']['jsCode']
-    assert "json._typed === 'yes'" in hold and 'Send Bubble' in hold and '8000' in hold
+    assert 'digits.length === 10' in hold and '8000' in hold and 'reply: text' in hold
+    assert '_typed' not in hold and 'Send Bubble' not in hold
+    assert named['Ack Webhook (empty)']['parameters']['responseBody'] == ACK_BODY
+    merge = named['Merge Check']['parameters']['jsCode']
+    assert 'Date.now() + 1000' in merge and 'webhook_owned' in merge
+    assert workflow['connections']['Merge Check']['main'][0][0]['node'] == 'Webhook Reply?'
+    assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
+    assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
+    assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
+    assert workflow['connections']['Send Fallback?']['main'][0][0]['node'] == 'Send Bubble'
+    assert workflow['connections']['Send Fallback?']['main'][1][0]['node'] == 'Skip Bubble'
+    assert 'typingPlansExecuted' in named['Reply Landed?']['parameters']['jsCode']
+    assert 'Cold send blocked' in named['Reply Landed?']['parameters']['jsCode']
+    assert any(item.get('node') == 'Typing Baseline' for item in workflow['connections']['Webhook']['main'][0])
+    for read_name, url in WASUP_READS.items():
+        params = named[read_name]['parameters']
+        assert params['method'] == 'GET'
+        assert params['url'] == url
+        assert 'to=' not in params['url'] and '/send' not in params['url']
+        assert params['nodeCredentialType'] == 'wasupApi'
     config = {item['name']: item['value'] for item in named['⚙️ CONFIG']['parameters']['assignments']['assignments']}
     assert config['wasup_instance_id'] == INSTANCE
 
