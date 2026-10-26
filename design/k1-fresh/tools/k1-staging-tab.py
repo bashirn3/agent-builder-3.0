@@ -606,6 +606,14 @@ def prefetch_staging(nodes, connections):
     if assigned and len(assigned) > 1:
         assigned[1] = []
     ensure_active_version(nodes, connections)
+    # The debounce node is a Wait. n8n runs the first connection and suspends the
+    # whole execution there, so a lookup listed after it never starts. The lead
+    # (plate, station, power) and the sandbox save both depend on that lookup.
+    first = connections.get('New Message?', {}).get('main', [[]])[0]
+    lead = [item for item in first if item.get('node') in ('Load Staging Session', 'Fetch active version')]
+    rest = [item for item in first if item.get('node') not in ('Load Staging Session', 'Fetch active version', 'Debounce')]
+    wait = [item for item in first if item.get('node') == 'Debounce']
+    connections['New Message?']['main'][0] = lead + rest + wait
 
 
 def offer_time(nodes):
@@ -1473,7 +1481,10 @@ def check_agent(workflow, payment_id):
     assert 'k1_staging_sessions' in named['Load Staging Session']['parameters']['query']
     assert 'get_agent_builder_version' in named['Fetch staging version']['parameters']['url']
     assert 'Fetch staging version' in workflow['connections']['Staging assigned?']['main'][0][0]['node']
-    assert any(item.get('node') == 'Load Staging Session' for item in workflow['connections']['New Message?']['main'][0])
+    opened = [item.get('node') for item in workflow['connections']['New Message?']['main'][0]]
+    assert 'Load Staging Session' in opened
+    if 'Debounce' in opened:
+        assert opened.index('Load Staging Session') < opened.index('Debounce')
     assert workflow['connections']['Drain Queue']['main'][0][0]['node'] == 'Merge Staging'
     assert 'Date.now() + 4000' in named['Merge Staging']['parameters']['jsCode']
     assert 'defaultPrompt' in named['Merge Staging']['parameters']['jsCode']
