@@ -10,7 +10,7 @@ import {
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
-import { hasVisibleReply, matchesFilters, requireAgentReply, type TestChatSummary } from '../src/k1/data/builderApi.ts'
+import { hasVisibleReply, matchesFilters, requireAgentReply, testChatExportRows, type TestChat, type TestChatSummary } from '../src/k1/data/builderApi.ts'
 import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
@@ -67,6 +67,30 @@ assert(activeFilterCount({ ...EMPTY_FILTERS, from: '2026-09-01', to: '2026-09-02
 
 assert(toCsv([{ a: 'x,y', b: 'say "hi"' }]) === 'a,b\n"x,y","say ""hi"""', 'CSV must escape commas and quotes')
 assert(toCsv([]) === '', 'empty CSV is empty')
+
+const exportedChat: TestChat = {
+  conversation: {
+    id: 'chat-1', versionId: 'ver-1', versionNumber: 12, isDraft: false, source: 'playground',
+    title: 'Sunday free', startedBy: 'tester', createdAt: '2026-10-25T20:12:00.000Z', updatedAt: '2026-10-25T20:13:00.000Z',
+    messageCount: 2, thumbsUp: 1, thumbsDown: 0, lastReply: 'Sunday is open.',
+  },
+  messages: [
+    { id: 'm-user', role: 'user', text: 'Sunday free', isOpener: false, feedback: null, createdAt: '2026-10-25T20:12:00.000Z' },
+    { id: 'm-agent', role: 'agent', text: 'Sunday is open.', isOpener: false, kind: 'reply', feedback: 'up', createdAt: '2026-10-25T20:13:00.000Z' },
+  ],
+}
+const emptyChat: TestChat = {
+  conversation: { ...exportedChat.conversation, id: 'chat-empty', title: '', messageCount: 0, lastReply: '' },
+  messages: [],
+}
+const exported = testChatExportRows([exportedChat, emptyChat])
+assert(exported.length === 3, 'export keeps every turn and a row for a chat with none')
+assert(exported[0].conversation_id === 'chat-1' && exported[0].turn === '1' && exported[0].role === 'user' && exported[0].text === 'Sunday free', 'first row is the customer turn')
+assert(exported[1].turn === '2' && exported[1].feedback === 'up' && exported[1].kind === 'reply' && exported[1].version_number === '12', 'agent turn keeps feedback, kind, and version')
+assert(exported[2].conversation_id === 'chat-empty' && exported[2].message_id === '' && exported[2].source === 'playground', 'a chat with no turns is still in the file')
+assert(toCsv(exported).split('\n').length === 4, 'the download is one header plus one row per turn')
+assert(en.chats.exportBody(2, 3).includes('2 test chats') && en.chats.exportBody(2, 3).includes('3 turns'), 'export toast counts chats and turns')
+assert(fi.chats.exportBody(1, 1).includes('1 testikeskustelu') && fi.chats.exportBody(1, 1).includes('1 vuoro'), 'Finnish export toast counts chats and turns')
 
 assert(filterLeads(LEADS, { from: null, to: null }).length === LEADS.length, 'no date range keeps every lead')
 const dueSoon = filterLeads(LEADS, { from: '2026-10-01', to: '2026-10-20' })

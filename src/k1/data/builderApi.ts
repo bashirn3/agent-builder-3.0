@@ -710,7 +710,7 @@ export async function deleteTestChats(ids: string[]): Promise<number> {
   return result.deleted ?? 0
 }
 
-export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal): Promise<TestChatSummary[]> {
+export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal, page?: { limit?: number; offset?: number }): Promise<TestChatSummary[]> {
   if (!remote) {
     await pause(250)
     return readLocal().chats
@@ -726,18 +726,99 @@ export async function listTestChats(filters: TestChatFilters, signal?: AbortSign
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
   if (filters.query.trim()) params.set('q', filters.query.trim())
+  if (page?.limit) params.set('limit', String(page.limit))
+  if (page?.offset) params.set('offset', String(page.offset))
   const { items } = await call<{ items: TestChatSummary[] }>(`/test-chats?${params}`, { signal })
   return items.map((item) => ({ ...item, title: stripInstructions(item.title) }))
 }
 
-export async function getTestChat(id: string): Promise<TestChat | null> {
+export async function getTestChat(id: string, signal?: AbortSignal): Promise<TestChat | null> {
   if (!remote) {
     const chat = readLocal().chats.find((item) => item.conversation.id === id)
     return chat ? { conversation: summarise(chat), messages: chat.messages } : null
   }
-  const result = await call<TestChat | { error: string }>(`/test-chat?id=${encodeURIComponent(id)}`)
+  const result = await call<TestChat | { error: string }>(`/test-chat?id=${encodeURIComponent(id)}`, { signal })
   if ('error' in result) return null
   return { ...result, messages: result.messages.map((message) => (message.role === 'user' ? { ...message, text: stripInstructions(message.text) } : message)) }
+}
+
+const EXPORT_SOURCES: ChatSource[] = ['playground', 'compare', 'staging']
+const EXPORT_PAGE = 200
+
+const unfiltered = (source: ChatSource): TestChatFilters => ({
+  versions: [], includeDraft: true, feedback: null, source, from: null, to: null, query: '',
+})
+
+// The list on screen is filtered and capped. Download walks every source, page by page, then loads each thread.
+export async function loadEveryTestChat(signal?: AbortSignal): Promise<TestChat[]> {
+  if (!remote) {
+    return readLocal().chats
+      .map((chat) => ({ conversation: summarise(chat), messages: chat.messages }))
+      .sort((a, b) => b.conversation.updatedAt.localeCompare(a.conversation.updatedAt))
+  }
+  const seen = new Map<string, TestChatSummary>()
+  for (const source of EXPORT_SOURCES) {
+    for (let offset = 0; offset < 20000; offset += EXPORT_PAGE) {
+      const page = await listTestChats(unfiltered(source), signal, { limit: EXPORT_PAGE, offset })
+      let added = 0
+      for (const item of page) {
+        if (seen.has(item.id)) continue
+        seen.set(item.id, item)
+        added += 1
+      }
+      if (page.length < EXPORT_PAGE || added === 0) break
+    }
+  }
+  const summaries = [...seen.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const chats: TestChat[] = []
+  for (let index = 0; index < summaries.length; index += 6) {
+    if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+    const slice = summaries.slice(index, index + 6)
+    const loaded = await Promise.all(slice.map(async (item) => (await getTestChat(item.id, signal)) ?? { conversation: item, messages: [] }))
+    chats.push(...loaded)
+  }
+  return chats
+}
+
+// One row per turn, with the conversation it belongs to. A chat with no turns still keeps one row.
+export function testChatExportRows(chats: TestChat[]): Array<Record<string, string>> {
+  const rows: Array<Record<string, string>> = []
+  for (const chat of chats) {
+    const conversation = chat.conversation
+    const shared = {
+      conversation_id: conversation.id,
+      version_id: conversation.versionId ?? '',
+      version_number: conversation.versionNumber == null ? '' : String(conversation.versionNumber),
+      is_draft: conversation.isDraft ? 'yes' : 'no',
+      source: conversation.source,
+      title: conversation.title,
+      started_by: conversation.startedBy ?? '',
+      conversation_created: conversation.createdAt,
+      conversation_updated: conversation.updatedAt,
+      message_count: String(conversation.messageCount),
+      thumbs_up: String(conversation.thumbsUp),
+      thumbs_down: String(conversation.thumbsDown),
+      last_reply: conversation.lastReply,
+    }
+    if (!chat.messages.length) {
+      rows.push({ ...shared, turn: '', message_id: '', role: '', kind: '', is_opener: '', feedback: '', message_created: '', text: '' })
+      continue
+    }
+    chat.messages.forEach((message, index) => {
+      rows.push({
+        ...shared,
+        turn: String(index + 1),
+        message_id: message.id,
+        role: message.role,
+        kind: message.kind ?? '',
+        is_opener: message.isOpener ? 'yes' : 'no',
+        feedback: message.feedback ?? '',
+        message_created: message.createdAt,
+        text: message.text,
+      })
+    })
+  }
+  return rows
 }
 
 // Earlier turns stored the model-only "[REPLY LANGUAGE: ...]" order after the customer's words; it is never part of what they wrote.
