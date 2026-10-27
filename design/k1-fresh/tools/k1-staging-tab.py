@@ -138,16 +138,22 @@ def quote_records(nodes):
             item['parameters']['jsCode'] = code.replace(OLD_DOLLAR, DOLLAR_JS, 1)
 
 
-# Wasup refuses sendText when the chat has no privacy token (via cold-blocked) and
-# never starts the typing indicator. The flag is not a sendText field on this node,
-# so the reply goes out through sendRaw, which accepts allowColdWithoutToken and
-# still asks for typingSimulation.
+# Wasup refuses sendText when the chat has no privacy token. sendRaw accepts
+# allowColdWithoutToken. Typing and delay stay off on that fallback: with them
+# on, n8n hits its 300s timeout while Wasup still delivers afterwards, and a
+# second attempt of the same bubble arrives as a duplicate.
+COLD_SEND_RAW = "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 SEND_RAW = {
-    'Send Bubble': "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
-    'Send Double-Text': "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Bubble': COLD_SEND_RAW,
+    'Send Double-Text': COLD_SEND_RAW,
     'Send Reset Notice': "={{ JSON.stringify({ to: $('Webhook').first().json.body.from_phone, message: 'Conversation RESET (' + DateTime.now().toFormat('HH:mm:ss') + ')', linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
     'Send Bubble CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
     'Send Double-Text CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+}
+RECENT_SENDS_URL = f'https://wasup.northeurope.cloudapp.azure.com/api/instances/{INSTANCE}/messages?limit=30'
+ONCE_GUARDS = {
+    'Send Bubble': ('Hold Bubble Text', 'Recent Bubble Sends', 'Bubble Already Sent?', 'Send Bubble Again?'),
+    'Send Double-Text': ('Hold Double-Text', 'Recent Double-Text Sends', 'Double-Text Already Sent?', 'Send Double-Text Again?'),
 }
 
 
@@ -511,8 +517,9 @@ def hand_webhook_reply(nodes, connections):
     connections['Read Reply Antiban'] = link('Read Reply Messages')
     connections['Read Reply Messages'] = link('Reply Landed?')
     connections['Reply Landed?'] = link('Send Fallback?')
+    fallback_target = 'Hold Bubble Text' if any(item['name'] == 'Hold Bubble Text' for item in nodes) else 'Send Bubble'
     connections['Send Fallback?'] = {'main': [
-        [{'node': 'Send Bubble', 'type': 'main', 'index': 0}],
+        [{'node': fallback_target, 'type': 'main', 'index': 0}],
         [{'node': 'Skip Bubble', 'type': 'main', 'index': 0}],
     ]}
 
@@ -692,6 +699,42 @@ def _keep_js(source):
     )
 
 
+def _already_sent_js(hold_name):
+    return (
+        f"const bubble = $('{hold_name}').item.json || {{}}\n"
+        "const raw = $input.item.json || {}\n"
+        "const bag = Array.isArray(raw.messages) ? raw.messages : Array.isArray(raw.data) ? raw.data : []\n"
+        "const phone = String(bubble.to_phone || '').replace(/\\D/g, '')\n"
+        "const text = String(bubble.text || '').trim()\n"
+        "const cutoff = Date.now() - 20 * 60 * 1000\n"
+        "let already = false\n"
+        "if (phone && text && raw.error == null) {\n"
+        "  for (const item of bag) {\n"
+        "    if (!item || typeof item !== 'object') continue\n"
+        "    const to = String(item.to_phone || item.to || '').replace(/\\D/g, '')\n"
+        "    const body = String(item.message || item.text || item.body || '').trim()\n"
+        "    const when = Date.parse(item.created_at || item.timestamp || item.createdAt || '')\n"
+        "    const outbound = item.direction === 'outbound' || item.fromMe === true\n"
+        "    if (!outbound || body !== text) continue\n"
+        "    if (to && !to.endsWith(phone)) continue\n"
+        "    if (Number.isFinite(when) && when < cutoff) continue\n"
+        "    already = true\n"
+        "    break\n"
+        "  }\n"
+        "}\n"
+        "return { json: { ...bubble, _already: already ? 'yes' : 'no' } }\n"
+    )
+
+
+def _retarget(connections, source, output, old, new):
+    branch = (connections.get(source, {}).get('main') or [])
+    if len(branch) <= output:
+        return
+    for item in branch[output] or []:
+        if item.get('node') in (old, new):
+            item['node'] = new
+
+
 def arm_typed_sends(nodes, connections):
     named = {item['name']: item for item in nodes}
     for raw_name, source, nxt, type_name, keep_name, if_name in TYPED_SENDS:
@@ -725,13 +768,48 @@ def arm_typed_sends(nodes, connections):
         for link_item in source_links[1]:
             if link_item.get('node') == raw_name:
                 link_item['node'] = type_name
+        hold_name, history_name, already_name, again_name = ONCE_GUARDS[raw_name]
+        x, y = raw.get('position') or [0, 0]
+        creds = json.loads(json.dumps(raw.get('credentials') or {}))
+        if hold_name not in named:
+            hold = node(hold_name, 'n8n-nodes-base.code', 2, [x - 200, y + 80], {
+                'mode': 'runOnceForEachItem', 'jsCode': 'return { json: $input.item.json || {} }\n',
+            })
+            history = node(history_name, 'n8n-nodes-base.httpRequest', 4.2, [x, y + 80], {
+                'method': 'GET',
+                'url': RECENT_SENDS_URL,
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'options': {'timeout': 15000},
+            }, creds, {'onError': 'continueRegularOutput'})
+            already = node(already_name, 'n8n-nodes-base.code', 2, [x + 220, y + 80], {
+                'mode': 'runOnceForEachItem', 'jsCode': _already_sent_js(hold_name),
+            })
+            again = node(again_name, 'n8n-nodes-base.if', 2.2, [x + 440, y + 80], equals_if('={{ $json._already }}', 'yes'))
+            nodes.extend([hold, history, already, again])
+            named[hold_name] = hold
+            named[history_name] = history
+            named[already_name] = already
+            named[again_name] = again
+        else:
+            named[history_name]['parameters']['url'] = RECENT_SENDS_URL
+            named[already_name]['parameters']['jsCode'] = _already_sent_js(hold_name)
         connections[type_name] = link(keep_name)
         connections[keep_name] = link(if_name)
         connections[if_name] = {'main': [
             [{'node': nxt, 'type': 'main', 'index': 0}],
+            [{'node': hold_name, 'type': 'main', 'index': 0}],
+        ]}
+        connections[hold_name] = link(history_name)
+        connections[history_name] = link(already_name)
+        connections[already_name] = link(again_name)
+        connections[again_name] = {'main': [
+            [{'node': nxt, 'type': 'main', 'index': 0}],
             [{'node': raw_name, 'type': 'main', 'index': 0}],
         ]}
         connections[raw_name] = link(nxt)
+        if raw_name == 'Send Bubble':
+            _retarget(connections, 'Send Fallback?', 0, raw_name, hold_name)
 
 
 PREPARE_RECORD = DOLLAR_JS + r"""const turn = $('Build Turn').first().json || {}
@@ -1590,18 +1668,33 @@ def check_agent(workflow, payment_id):
     assert 'k1_staging_messages' in named['Prepare staging record']['parameters']['jsCode']
     assert 'chr(36)' in named['Prepare staging record']['parameters']['jsCode']
     assert "let tag = 'stg'" not in named['Prepare staging record']['parameters']['jsCode']
-    for send_name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+    for send_name in ('Send Bubble', 'Send Double-Text'):
         params = named[send_name]['parameters']
         assert params['operation'] == 'sendRaw'
         assert 'allowColdWithoutToken: true' in params['rawBody']
-        assert 'typingSimulation: true' in params['rawBody']
+        assert 'typingSimulation: false' in params['rawBody']
+        assert 'delayEnabled: false' in params['rawBody']
+    reset = named['Send Reset Notice']['parameters']
+    assert reset['operation'] == 'sendRaw' and 'typingSimulation: true' in reset['rawBody']
     for raw_name, source, nxt, type_name, keep_name, if_name in TYPED_SENDS:
+        hold_name, history_name, already_name, again_name = ONCE_GUARDS[raw_name]
         assert named[type_name]['parameters']['operation'] == 'sendText'
         assert named[type_name]['parameters']['advancedOptions']['typingSimulation'] is True
         assert workflow['connections'][source]['main'][1][0]['node'] == type_name
         assert workflow['connections'][if_name]['main'][0][0]['node'] == nxt
-        assert workflow['connections'][if_name]['main'][1][0]['node'] == raw_name
+        assert workflow['connections'][if_name]['main'][1][0]['node'] == hold_name
+        assert workflow['connections'][again_name]['main'][0][0]['node'] == nxt
+        assert workflow['connections'][again_name]['main'][1][0]['node'] == raw_name
+        assert named[history_name]['parameters']['url'] == RECENT_SENDS_URL
+        assert '_already' in named[already_name]['parameters']['jsCode']
         assert "_typed: delivered ? 'yes' : 'no'" in named[keep_name]['parameters']['jsCode']
+        callers = [
+            source_name for source_name, payload in workflow['connections'].items()
+            for output in (payload.get('main') or [])
+            for item in (output or [])
+            if item.get('node') == raw_name
+        ]
+        assert callers == [again_name]
     hold = named['Hold For Composing']['parameters']['jsCode']
     assert 'digits.length === 10' in hold and '8000' in hold and 'reply: text' in hold
     assert '_typed' not in hold and 'Send Bubble' not in hold
@@ -1612,7 +1705,7 @@ def check_agent(workflow, payment_id):
     assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
     assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
     assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
-    assert workflow['connections']['Send Fallback?']['main'][0][0]['node'] == 'Send Bubble'
+    assert workflow['connections']['Send Fallback?']['main'][0][0]['node'] == 'Hold Bubble Text'
     assert workflow['connections']['Send Fallback?']['main'][1][0]['node'] == 'Skip Bubble'
     assert 'typingPlansExecuted' in named['Reply Landed?']['parameters']['jsCode']
     assert 'Cold send blocked' in named['Reply Landed?']['parameters']['jsCode']
@@ -2140,6 +2233,27 @@ select 13 as active_version, (select count(*) from moved) as moved
         delete_workflow(wid)
 
 
+def send_once():
+    """Send a cold reply once. Does not rewrite the WhatsApp prompt."""
+    agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    if not agent.get('active'):
+        raise SystemExit('refusing to edit an inactive agent')
+    backup(agent, 'agent')
+    nodes = json.loads(json.dumps(agent['nodes']))
+    connections = json.loads(json.dumps(agent['connections']))
+    arm_sends(nodes)
+    arm_typed_sends(nodes, connections)
+    payment_id = next(item['parameters']['workflowId']['value'] for item in nodes if item['name'] == 'create_payment_link')
+    check_agent({'nodes': nodes, 'connections': connections}, payment_id)
+    put(LIVE_AGENT, agent['name'], nodes, connections, settings_of(agent), True)
+    live = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    if live.get('active') is not True:
+        raise SystemExit('live agent did not reactivate')
+    check_agent(live, payment_id)
+    prompt = next(item['value'] for item in next(node for node in live['nodes'] if node['name'] == '⚙️ CONFIG')['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
+    print(f'live agent {LIVE_AGENT} active={live.get("active")} cold-fallback=once prompt={len(prompt)}')
+
+
 def hook():
     """Publish the v13 brief on the live WhatsApp agent and pin the current staging phone to the active version."""
     agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
@@ -2169,6 +2283,8 @@ if __name__ == '__main__':
         apply()
     elif command == 'publish':
         publish()
+    elif command == 'send-once':
+        send_once()
     elif command == 'hook':
         hook()
     else:
