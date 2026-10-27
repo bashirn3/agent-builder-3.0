@@ -97,11 +97,11 @@ def call(method, path, body=None):
 
 def openers():
     translations = {
-        'fi': {'opener': 'Hei! Täällä {{station}}. Autosi {{registration_number}} katsastusaika lähestyy. Haluatko, että etsin sinulle sopivan ajan?', 'reminders': [{'days': None, 'text': ''}] * 3},
-        'sv': {'opener': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {{registration_number}}. Vill du att jag hjälper dig hitta en tid?', 'reminders': [{'days': None, 'text': ''}] * 3},
+        'fi': {'opener': 'Hei! Täällä {{station}}. Autosi {{registration_number}} katsastusaika lähestyy. Haluatko, että etsin sinulle sopivan ajan? 😊', 'reminders': [{'days': None, 'text': ''}] * 3},
+        'sv': {'opener': 'Hej! Det är K1 Katsastus. Det är snart dags att besikta bilen {{registration_number}}. Vill du att jag hjälper dig hitta en tid? 😊', 'reminders': [{'days': None, 'text': ''}] * 3},
     }
     return {
-        'openingMessage': "Hi! It's K1 Katsastus. Your car {{registration_number}} is due for inspection soon. Want me to find a time that works for you?",
+        'openingMessage': "Hi! It's K1 Katsastus. Your car {{registration_number}} is due for inspection soon. Want me to find a time that works for you? 😊",
         'reminders': [{'days': 3, 'text': ''}, {'days': None, 'text': ''}, {'days': None, 'text': ''}],
         'translations': translations,
     }
