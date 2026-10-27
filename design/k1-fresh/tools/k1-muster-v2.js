@@ -264,7 +264,7 @@ function normalizeCategory(value) {
 }
 const ASSISTANT_CATEGORIES = ['M1', 'N1']
 async function stationProducts(src, category) {
-  return cached(`products:${src.base}:${src.id}:${category}`, HOUR, async () => {
+  return cached(`products:${src.base}:${src.id}:${category}`, 10 * 60 * 1000, async () => {
     const response = await muster('GET', `/Products/${src.id}?vehicleCategory=${category}`, undefined, src.base)
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
   })
@@ -283,7 +283,7 @@ function planProducts(list, code, category, includeMeasuring = true) {
   if (wanted === '004') main = inspections.find(car)
   else if (wanted === '004e') {
     main = inspections.find(electric)
-    if (!main) { main = inspections.find(car); assumption = 'This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.' }
+    if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no separate electric-car inspection product, so the standard inspection price is not used. Say that plainly and do not quote a price.' }
   } else main = inspections.find(big)
   if (!main) return { ok: false, code: wanted, unsupported: true, reason: wanted === '0040' ? 'This station has no product for a camper or larger car (0040). It does not fit every station: use the official K1 booking or the national number.' : 'No matching inspection product at this station.' }
   const ids = [main.id]
@@ -298,7 +298,7 @@ function planProducts(list, code, category, includeMeasuring = true) {
   return { ok: true, code: wanted, product_ids: ids, names, needs_measuring: combustion, includes_measuring: withMeasuring, assumption }
 }
 async function musterPrices(src, ids, time) {
-  return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, HOUR, async () => {
+  return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, 10 * 60 * 1000, async () => {
     const query = ids.map((id) => `ProductIds=${id}`).join('&')
     const response = await muster('GET', `/Products/${src.id}/prices?${query}&ReservationTime=${encodeURIComponent(time)}`, undefined, src.base)
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
@@ -489,8 +489,10 @@ async function stationInfo() {
   }
   if (!page) result.hours.note = 'The live station page could not be read. Say the hours could not be verified right now and point to the official station page.'
   const code = normalizeProduct(body.product || body.lead_product)
+  let missingElectric = false
   if (src && !entry.closed) {
     const { category, plan } = await planFor(src, body)
+    missingElectric = plan.missing_electric === true
     if (plan.ok) {
       const candidates = []
       let probe = requested.status === 'closed' || day < today.date ? today.date : day
@@ -511,7 +513,7 @@ async function stationInfo() {
     else if (plan.load_failed) result.availability_error = 'Live availability could not be loaded right now.'
     else result.availability_note = plan.reason
   }
-  if (!result.price && page && page.prices.length && code) {
+  if (!result.price && !missingElectric && page && page.prices.length && code) {
     const estimate = pageEstimate(page.prices, code, wantsMeasuring(body))
     if (estimate) result.price_estimate_for_this_vehicle = estimate
   }

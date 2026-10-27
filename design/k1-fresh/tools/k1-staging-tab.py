@@ -6,8 +6,9 @@ WhatsApp with no pin uses the active playground version, and a playground chat
 uses the version selected for that turn. The inactive workflow "K1 v10 staging"
 is not activated.
 
-  python3 k1-staging-tab.py dry     patch the newest backups in memory
-  python3 k1-staging-tab.py apply   back up, migrate, and update the live workflows
+  python3 k1-staging-tab.py dry      patch the newest backups in memory
+  python3 k1-staging-tab.py apply    back up, migrate, and update the live workflows
+  python3 k1-staging-tab.py publish  staging thumbs, feedback webhook, and the 004e price rule
 
 Sessions live in the agent database (v2back-working). The builder project has no
 postgres credential this listener can use, so supabase/k1-agent-builder-007-staging.sql
@@ -32,6 +33,7 @@ LIVE_AGENT = 'w8a9S1uxB5U9qnNO'
 LIVE_BOOKING = 'wAE7EHLyJk6JsMue'
 INACTIVE_STAGING = 'q0Dykjr5jVmTFpEa'
 TEST_CHATS = 'Huk3NIxdfcjVvb7c'
+FEEDBACK = 'gRUR5dxaG4bvu8FN'
 PAYMENT_ID = '8vPSqe8SxZDRXJXb'
 PAYMENT_NAME = 'K1 v10 payment'
 SEND_NAME = 'K1 staging send'
@@ -858,8 +860,8 @@ LIST_CHATS_SQL = """select coalesce((
     'created_at', c.created_at,
     'updated_at', c.updated_at,
     'message_count', (select count(*) from k1_staging_messages m where m.conversation_id = c.id and not m.is_opener),
-    'thumbs_up', 0,
-    'thumbs_down', 0,
+    'thumbs_up', (select count(*) from k1_staging_messages m where m.conversation_id = c.id and m.feedback = 'up'),
+    'thumbs_down', (select count(*) from k1_staging_messages m where m.conversation_id = c.id and m.feedback = 'down'),
     'last_reply', coalesce((select m.text from k1_staging_messages m where m.conversation_id = c.id and m.role = 'agent' and not m.is_opener order by m.created_at desc limit 1), ''),
     'texts', coalesce((select json_agg(m.text) from k1_staging_messages m where m.conversation_id = c.id), '[]'::json)
   ) order by c.updated_at desc)
@@ -901,14 +903,16 @@ function shapeStaging(filters, raw) {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       messageCount: Number(row.message_count || 0),
-      thumbsUp: 0,
-      thumbsDown: 0,
+      thumbsUp: Number(row.thumbs_up || 0),
+      thumbsDown: Number(row.thumbs_down || 0),
       lastReply: row.last_reply || '',
       texts: Array.isArray(texts) ? texts : [],
     }
   }).filter((item) => {
     if (versions && versions.length && !versions.includes(Number(item.versionNumber))) return false
-    if (filters.p_feedback === 'up' || filters.p_feedback === 'down') return false
+    if (filters.p_feedback === 'up' && item.thumbsUp === 0) return false
+    if (filters.p_feedback === 'down' && item.thumbsDown === 0) return false
+    if (filters.p_feedback === 'none' && (item.thumbsUp > 0 || item.thumbsDown > 0)) return false
     if (filters.p_from && String(item.updatedAt) < String(filters.p_from)) return false
     if (filters.p_to && String(item.updatedAt) >= String(filters.p_to)) return false
     if (query && ![item.title, ...(item.texts || [])].join('\n').toLowerCase().includes(query)) return false
@@ -951,6 +955,16 @@ create table if not exists k1_staging_messages (
 );
 create index if not exists k1_staging_conversations_phone_idx on k1_staging_conversations (phone_key, updated_at desc);
 create index if not exists k1_staging_messages_conversation_idx on k1_staging_messages (conversation_id, created_at);
+alter table k1_staging_messages add column if not exists feedback text;
+alter table k1_staging_messages add column if not exists feedback_at timestamptz;
+alter table k1_staging_messages add column if not exists feedback_by text;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'k1_staging_messages_feedback_chk') then
+    alter table k1_staging_messages
+      add constraint k1_staging_messages_feedback_chk check (feedback is null or feedback in ('up', 'down'));
+  end if;
+end $$;
 do $$
 declare
   before_id uuid := gen_random_uuid();
@@ -970,6 +984,12 @@ begin
   select version_number into kept from k1_staging_sessions where phone_key = '000000000099';
   if kept <> 11 or after_id is null or after_id = before_id then
     raise exception 'staging session smoke failed';
+  end if;
+  if not exists (
+    select 1 from information_schema.columns
+    where table_name = 'k1_staging_messages' and column_name = 'feedback'
+  ) then
+    raise exception 'staging feedback column missing';
   end if;
   delete from k1_staging_messages where conversation_id in (select id from k1_staging_conversations where phone_key = '000000000099');
   delete from k1_staging_conversations where phone_key = '000000000099';
@@ -1257,6 +1277,43 @@ def patch_agent(workflow, payment_id):
     return nodes, connections
 
 
+PRODUCTS_CACHE_OLD = "return cached(`products:${src.base}:${src.id}:${category}`, HOUR, async () => {"
+PRODUCTS_CACHE_NEW = "return cached(`products:${src.base}:${src.id}:${category}`, 10 * 60 * 1000, async () => {"
+PRICES_CACHE_OLD = "return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, HOUR, async () => {"
+PRICES_CACHE_NEW = "return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, 10 * 60 * 1000, async () => {"
+ELECTRIC_FALLBACK_OLD = "if (!main) { main = inspections.find(car); assumption = 'This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.' }"
+ELECTRIC_FALLBACK_NEW = "if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no separate electric-car inspection product, so the standard inspection price is not used. Say that plainly and do not quote a price.' }"
+MISSING_ELECTRIC_FLAG_OLD = "  const code = normalizeProduct(body.product || body.lead_product)\n  if (src && !entry.closed) {\n    const { category, plan } = await planFor(src, body)\n"
+MISSING_ELECTRIC_FLAG_NEW = "  const code = normalizeProduct(body.product || body.lead_product)\n  let missingElectric = false\n  if (src && !entry.closed) {\n    const { category, plan } = await planFor(src, body)\n    missingElectric = plan.missing_electric === true\n"
+PAGE_ESTIMATE_OLD = "  if (!result.price && page && page.prices.length && code) {"
+PAGE_ESTIMATE_NEW = "  if (!result.price && !missingElectric && page && page.prices.length && code) {"
+
+
+def patch_muster_prices(code):
+    """Keep product and price lists for 10 minutes, and never price 004e from the combustion product."""
+    if PRODUCTS_CACHE_OLD in code:
+        code = must_replace(code, PRODUCTS_CACHE_OLD, PRODUCTS_CACHE_NEW, 'products cache')
+    elif PRODUCTS_CACHE_NEW not in code:
+        raise SystemExit('products cache: neither the hour cache nor the 10 minute cache')
+    if PRICES_CACHE_OLD in code:
+        code = must_replace(code, PRICES_CACHE_OLD, PRICES_CACHE_NEW, 'prices cache')
+    elif PRICES_CACHE_NEW not in code:
+        raise SystemExit('prices cache: neither the hour cache nor the 10 minute cache')
+    if ELECTRIC_FALLBACK_OLD in code:
+        code = must_replace(code, ELECTRIC_FALLBACK_OLD, ELECTRIC_FALLBACK_NEW, '004e fallback')
+    elif 'missing_electric' not in code:
+        raise SystemExit('004e fallback: the combustion substitute is gone and the missing-product result is missing')
+    if MISSING_ELECTRIC_FLAG_OLD in code:
+        code = must_replace(code, MISSING_ELECTRIC_FLAG_OLD, MISSING_ELECTRIC_FLAG_NEW, '004e page price')
+    elif 'missingElectric = plan.missing_electric === true' not in code:
+        raise SystemExit('004e page price: the missing-electric flag is not set')
+    if PAGE_ESTIMATE_OLD in code:
+        code = must_replace(code, PAGE_ESTIMATE_OLD, PAGE_ESTIMATE_NEW, '004e page estimate')
+    elif PAGE_ESTIMATE_NEW not in code:
+        raise SystemExit('004e page estimate: the page price is still attached for a missing electric product')
+    return code
+
+
 def patch_booking(workflow):
     nodes = json.loads(json.dumps(workflow['nodes']))
     named = {item['name']: item for item in nodes}
@@ -1265,7 +1322,7 @@ def patch_booking(workflow):
         anchor = "const action = String(body.action || '')\n"
         code = must_replace(code, anchor, anchor + NOTE_HELPERS, 'Muster action')
         code = must_replace(code, RESERVE_OLD, RESERVE_NEW, 'Muster reserve', 2)
-        named['Muster']['parameters']['jsCode'] = code
+    named['Muster']['parameters']['jsCode'] = patch_muster_prices(code)
     query = named['Clear chat memory']['parameters']['query']
     if '_staging_%' not in query:
         digits = "{{ 'k1_katsastus_demo_' + String($('Webhook').first().json.body.phone || '').replace(/\\D/g, '') }}"
@@ -1577,6 +1634,12 @@ def check_booking(workflow):
     assert code.count('postReservation') >= 3
     assert '_staging_%' in named['Clear chat memory']['parameters']['query']
     assert 'fromWhatsApp' in code
+    assert PRODUCTS_CACHE_NEW in code
+    assert PRICES_CACHE_NEW in code
+    assert 'missing_electric' in code
+    assert ELECTRIC_FALLBACK_OLD not in code
+    assert 'missingElectric = plan.missing_electric === true' in code
+    assert PAGE_ESTIMATE_NEW in code
 
 
 def scrub(text):
@@ -1599,12 +1662,13 @@ const query = `select coalesce((
       'id', c.id, 'version_id', c.version_id, 'version_number', c.version_number, 'is_draft', false,
       'source', 'staging', 'title', c.title, 'started_by', c.started_by, 'created_at', c.created_at, 'updated_at', c.updated_at,
       'message_count', (select count(*) from k1_staging_messages m where m.conversation_id = c.id and not m.is_opener),
-      'thumbs_up', 0, 'thumbs_down', 0,
+      'thumbs_up', (select count(*) from k1_staging_messages m where m.conversation_id = c.id and m.feedback = 'up'),
+      'thumbs_down', (select count(*) from k1_staging_messages m where m.conversation_id = c.id and m.feedback = 'down'),
       'last_reply', coalesce((select m.text from k1_staging_messages m where m.conversation_id = c.id and m.role = 'agent' and not m.is_opener order by m.created_at desc limit 1), '')
     ),
     'messages', coalesce((
       select json_agg(json_build_object(
-        'id', m.id, 'role', m.role, 'text', m.text, 'isOpener', m.is_opener, 'feedback', null, 'createdAt', m.created_at
+        'id', m.id, 'role', m.role, 'text', m.text, 'isOpener', m.is_opener, 'feedback', m.feedback, 'createdAt', m.created_at
       ) order by m.created_at)
       from k1_staging_messages m where m.conversation_id = c.id
     ), '[]'::json)
@@ -1683,6 +1747,12 @@ def patch_chats(workflow):
         connections['Read staging thread'] = link('Staging thread?')
         connections['Staging thread?'] = {'main': [[{'node': 'Use staging thread', 'type': 'main', 'index': 0}], [{'node': 'Get One RPC', 'type': 'main', 'index': 0}]]}
         connections['Use staging thread'] = link('Shape One')
+    named = {item['name']: item for item in nodes}
+    named['Staging chats']['parameters']['query'] = LIST_CHATS_SQL
+    named['All staging chats']['parameters']['query'] = LIST_CHATS_SQL
+    named['Shape staging list']['parameters']['jsCode'] = SHAPE_LIST_JS
+    named['Merge staging chats']['parameters']['jsCode'] = MERGE_LIST_JS
+    named['Prepare staging thread']['parameters']['jsCode'] = PREPARE_THREAD_JS
     return nodes, connections
 
 
@@ -1694,6 +1764,16 @@ def check_chats(workflow):
     assert workflow['connections']['Staging list?']['main'][1][0]['node'] == 'List RPC'
     assert workflow['connections']['Staging thread?']['main'][1][0]['node'] == 'Get One RPC'
     assert 'k1_staging_messages' in named['Prepare staging thread']['parameters']['jsCode']
+    assert "m.feedback = 'up'" in named['Staging chats']['parameters']['query']
+    assert "m.feedback = 'down'" in named['All staging chats']['parameters']['query']
+    shape = named['Shape staging list']['parameters']['jsCode']
+    assert "filters.p_feedback === 'up' && item.thumbsUp === 0" in shape
+    assert "filters.p_feedback === 'down' && item.thumbsDown === 0" in shape
+    assert "filters.p_feedback === 'none' && (item.thumbsUp > 0 || item.thumbsDown > 0)" in shape
+    assert "filters.p_feedback === 'up' || filters.p_feedback === 'down') return false" not in shape
+    thread = named['Prepare staging thread']['parameters']['jsCode']
+    assert "'feedback', m.feedback" in thread
+    assert "m.feedback = 'up'" in thread
 
 
 def chats_stub():
@@ -1715,6 +1795,88 @@ def chats_stub():
             'One Webhook · Pass Request': link('Get One RPC'),
             'Get One RPC': link('Shape One'),
             'Shape One': link('Respond One'),
+        },
+    }
+
+
+PREPARE_FEEDBACK_JS = r"""const body = $('Webhook').first().json.body || {}
+const id = String(body.messageId || '')
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+const safe = uuid ? id : '00000000-0000-0000-0000-000000000000'
+const kind = body.feedback === 'up' ? 'up' : body.feedback === 'down' ? 'down' : 'clear'
+const feedbackSql = kind === 'up' ? "'up'" : kind === 'down' ? "'down'" : 'null'
+const atSql = kind === 'clear' ? 'null' : 'now()'
+const query = `update k1_staging_messages
+set feedback = ${feedbackSql},
+    feedback_at = ${atSql},
+    feedback_by = null
+where id = '${safe}'::uuid and role = 'agent'
+returning id as message_id, feedback`
+return [{ json: { query } }]
+"""
+
+READ_FEEDBACK_JS = r"""const row = $input.all().map((item) => item.json).find((value) => value && value.message_id)
+if (!row) return [{ json: { ok: false, error: 'message_not_found' } }]
+return [{ json: { ok: true, messageId: row.message_id, feedback: row.feedback ?? null } }]
+"""
+
+
+def patch_feedback(workflow):
+    """When the playground message is missing, store the same thumb on the staging message."""
+    nodes = json.loads(json.dumps(workflow['nodes']))
+    connections = json.loads(json.dumps(workflow['connections']))
+    named = {item['name']: item for item in nodes}
+    if 'Prepare staging feedback' not in named:
+        spot = named['Normalize']['position']
+        nodes.extend([
+            node('Playground feedback?', 'n8n-nodes-base.if', 2.2, [spot[0] + 220, spot[1]],
+                 equals_if("={{ $json.ok === true ? 'yes' : 'no' }}", 'yes')),
+            node('Prepare staging feedback', 'n8n-nodes-base.code', 2, [spot[0] + 440, spot[1] + 160],
+                 {'mode': 'runOnceForAllItems', 'jsCode': PREPARE_FEEDBACK_JS}),
+            pg('Set staging feedback', '={{ $json.query }}', [spot[0] + 660, spot[1] + 160]),
+            node('Read staging feedback', 'n8n-nodes-base.code', 2, [spot[0] + 880, spot[1] + 160],
+                 {'mode': 'runOnceForAllItems', 'jsCode': READ_FEEDBACK_JS}),
+        ])
+        connections['Normalize'] = link('Playground feedback?')
+        connections['Playground feedback?'] = {'main': [
+            [{'node': 'Respond', 'type': 'main', 'index': 0}],
+            [{'node': 'Prepare staging feedback', 'type': 'main', 'index': 0}],
+        ]}
+        connections['Prepare staging feedback'] = link('Set staging feedback')
+        connections['Set staging feedback'] = link('Read staging feedback')
+        connections['Read staging feedback'] = link('Respond')
+    named = {item['name']: item for item in nodes}
+    named['Prepare staging feedback']['parameters']['jsCode'] = PREPARE_FEEDBACK_JS
+    named['Set staging feedback']['parameters']['query'] = '={{ $json.query }}'
+    named['Read staging feedback']['parameters']['jsCode'] = READ_FEEDBACK_JS
+    return nodes, connections
+
+
+def check_feedback(workflow):
+    named = {item['name']: item for item in workflow['nodes']}
+    code = named['Prepare staging feedback']['parameters']['jsCode']
+    assert 'k1_staging_messages' in code
+    assert "role = 'agent'" in code
+    assert 'feedback_by = null' in code
+    assert workflow['connections']['Playground feedback?']['main'][0][0]['node'] == 'Respond'
+    assert workflow['connections']['Playground feedback?']['main'][1][0]['node'] == 'Prepare staging feedback'
+    assert workflow['connections']['Read staging feedback']['main'][0][0]['node'] == 'Respond'
+    assert named['Set staging feedback']['parameters']['query'] == '={{ $json.query }}'
+
+
+def feedback_stub():
+    return {
+        'nodes': [
+            {'id': '1', 'name': 'Webhook', 'type': 'n8n-nodes-base.webhook', 'position': [0, 0], 'parameters': {'path': 'k1-agent-builder/feedback'}},
+            {'id': '2', 'name': 'Set Feedback RPC', 'type': 'n8n-nodes-base.httpRequest', 'position': [240, 0], 'parameters': {}},
+            {'id': '3', 'name': 'Normalize', 'type': 'n8n-nodes-base.code', 'position': [480, 0], 'parameters': {'jsCode': "const row = $input.all().map((item) => item.json).find((value) => value && value.message_id);\nif (!row) return [{ json: { ok: false, error: 'message_not_found' } }];\nreturn [{ json: { ok: true, messageId: row.message_id, feedback: row.feedback } }];"}},
+            {'id': '4', 'name': 'Respond', 'type': 'n8n-nodes-base.respondToWebhook', 'position': [720, 0], 'parameters': {}},
+            {'id': '5', 'name': 'Webhook · Pass Request', 'type': 'n8n-nodes-base.code', 'position': [0, 200], 'parameters': {'jsCode': ''}},
+        ],
+        'connections': {
+            'Webhook · Pass Request': link('Set Feedback RPC'),
+            'Set Feedback RPC': link('Normalize'),
+            'Normalize': link('Respond'),
         },
     }
 
@@ -1741,6 +1903,8 @@ def dry():
     assert 'allowColdWithoutToken: true' in opener['parameters']['rawBody']
     chat_nodes, chat_connections = patch_chats(chats_stub())
     check_chats({'nodes': chat_nodes, 'connections': chat_connections})
+    feedback_nodes, feedback_connections = patch_feedback(feedback_stub())
+    check_feedback({'nodes': feedback_nodes, 'connections': feedback_connections})
     print('dry ok')
 
 
@@ -1850,9 +2014,11 @@ def apply():
     agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     booking = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
     chats = gate.request('GET', f'/workflows/{TEST_CHATS}')
+    feedback = gate.request('GET', f'/workflows/{FEEDBACK}')
     backup(agent, 'agent')
     backup(booking, 'booking')
     backup(chats, 'test-chats')
+    backup(feedback, 'feedback')
     postgres = next(item['credentials']['postgres'] for item in agent['nodes'] if item['name'] == 'Purge Session')
     apply_sql(postgres)
     payment_id = PAYMENT_ID
@@ -1874,9 +2040,12 @@ def apply():
     check_booking({'nodes': booking_nodes})
     chat_nodes, chat_connections = patch_chats(chats)
     check_chats({'nodes': chat_nodes, 'connections': chat_connections})
+    feedback_nodes, feedback_connections = patch_feedback(feedback)
+    check_feedback({'nodes': feedback_nodes, 'connections': feedback_connections})
     put(LIVE_BOOKING, booking['name'], booking_nodes, booking_connections, settings_of(booking), booking.get('active'))
     put(LIVE_AGENT, agent['name'], agent_nodes, agent_connections, settings_of(agent), agent.get('active'))
     put(TEST_CHATS, chats['name'], chat_nodes, chat_connections, settings_of(chats), chats.get('active'))
+    put(FEEDBACK, feedback['name'], feedback_nodes, feedback_connections, settings_of(feedback), feedback.get('active'))
     send = send_workflow(agent.get('settings'))
     send.pop('payment_id', None)
     wid = save_send(send)
@@ -1897,6 +2066,38 @@ def apply():
     if status != 401 or 'signin_required' not in body:
         raise SystemExit(f'staging send gate did not refuse an unsigned call ({status})')
     print(f'live agent {LIVE_AGENT} active={live.get("active")}; booking noted; staging send {wid}')
+    rated = gate.request('GET', f'/workflows/{FEEDBACK}')
+    assert rated.get('active') is True
+    check_feedback(rated)
+
+
+def publish():
+    """Store staging thumbs and the 004e price rule. Does not rewrite the WhatsApp prompt."""
+    booking = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
+    chats = gate.request('GET', f'/workflows/{TEST_CHATS}')
+    feedback = gate.request('GET', f'/workflows/{FEEDBACK}')
+    backup(booking, 'booking')
+    backup(chats, 'test-chats')
+    backup(feedback, 'feedback')
+    postgres = POSTGRES['postgres']
+    apply_sql(postgres)
+    booking_nodes, booking_connections = patch_booking(booking)
+    check_booking({'nodes': booking_nodes})
+    chat_nodes, chat_connections = patch_chats(chats)
+    check_chats({'nodes': chat_nodes, 'connections': chat_connections})
+    feedback_nodes, feedback_connections = patch_feedback(feedback)
+    check_feedback({'nodes': feedback_nodes, 'connections': feedback_connections})
+    put(LIVE_BOOKING, booking['name'], booking_nodes, booking_connections, settings_of(booking), booking.get('active'))
+    put(TEST_CHATS, chats['name'], chat_nodes, chat_connections, settings_of(chats), chats.get('active'))
+    put(FEEDBACK, feedback['name'], feedback_nodes, feedback_connections, settings_of(feedback), feedback.get('active'))
+    booked = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
+    listed = gate.request('GET', f'/workflows/{TEST_CHATS}')
+    rated = gate.request('GET', f'/workflows/{FEEDBACK}')
+    check_booking(booked)
+    check_chats(listed)
+    check_feedback(rated)
+    assert booked.get('active') is True and listed.get('active') is True and rated.get('active') is True
+    print(f'booking {LIVE_BOOKING} prices=10m 004e=missing; chats {TEST_CHATS}; feedback {FEEDBACK}')
 
 
 def pin_open_sessions():
@@ -1966,6 +2167,8 @@ if __name__ == '__main__':
         dry()
     elif command == 'apply':
         apply()
+    elif command == 'publish':
+        publish()
     elif command == 'hook':
         hook()
     else:
