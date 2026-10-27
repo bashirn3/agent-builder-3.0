@@ -544,10 +544,7 @@ def ensure_active_version(nodes, connections):
             SUPABASE,
             {'onError': 'continueRegularOutput'},
         ))
-    incoming = connections.get('New Message?', {}).get('main') or []
-    if incoming and not any(item.get('node') == 'Fetch active version' for item in incoming[0]):
-        incoming[0].append({'node': 'Fetch active version', 'type': 'main', 'index': 0})
-    connections['Fetch active version'] = {'main': [[]]}
+    chain_staging_lookup(connections)
 
 
 def prompt_v13():
@@ -586,11 +583,34 @@ def install_prompt_hook(nodes, connections):
     ensure_active_version(nodes, connections)
 
 
-def prefetch_staging(nodes, connections):
-    """Read the assigned version while the debounce waits, so the model and its typing start sooner.
+def chain_staging_lookup(connections):
+    """Run the staging lookup to the end before the debounce Wait starts.
 
-    Only the latest message may continue into the agent. The version fetch ends on its own.
+    n8n runs one sibling to the end, and a Wait is the sibling it runs first even
+    when it is listed last. The plate, the station, the power type and the sandbox
+    save are read on the other siblings, so they have to finish before that Wait.
     """
+    incoming = connections.get('New Message?', {}).get('main') or []
+    if not incoming or 'Fetch staging version' not in connections or 'Debounce' not in connections:
+        return
+    first = incoming[0]
+    if not any(item.get('node') == 'Load Staging Session' for item in first):
+        return
+    rest = [item for item in first if item.get('node') not in ('Load Staging Session', 'Fetch active version', 'Debounce')]
+    incoming[0] = [{'node': 'Load Staging Session', 'type': 'main', 'index': 0}] + rest
+    assigned = connections.get('Staging assigned?', {}).get('main')
+    if not assigned:
+        return
+    while len(assigned) < 2:
+        assigned.append([])
+    assigned[0] = [{'node': 'Fetch staging version', 'type': 'main', 'index': 0}]
+    assigned[1] = [{'node': 'Fetch active version', 'type': 'main', 'index': 0}]
+    connections['Fetch staging version'] = link('Fetch active version')
+    connections['Fetch active version'] = link('Debounce')
+
+
+def prefetch_staging(nodes, connections):
+    """Read the assigned version before the debounce Wait, so the model sees the lead."""
     named = {item['name']: item for item in nodes}
     merge = named.get('Merge Staging')
     incoming = connections.get('New Message?', {}).get('main') or []
@@ -601,19 +621,8 @@ def prefetch_staging(nodes, connections):
     if not any(item.get('node') == 'Load Staging Session' for item in first):
         first.append({'node': 'Load Staging Session', 'type': 'main', 'index': 0})
     connections['Drain Queue'] = link('Merge Staging')
-    connections['Fetch staging version'] = {'main': [[]]}
-    assigned = connections.get('Staging assigned?', {}).get('main')
-    if assigned and len(assigned) > 1:
-        assigned[1] = []
     ensure_active_version(nodes, connections)
-    # The debounce node is a Wait. n8n runs the first connection and suspends the
-    # whole execution there, so a lookup listed after it never starts. The lead
-    # (plate, station, power) and the sandbox save both depend on that lookup.
-    first = connections.get('New Message?', {}).get('main', [[]])[0]
-    lead = [item for item in first if item.get('node') in ('Load Staging Session', 'Fetch active version')]
-    rest = [item for item in first if item.get('node') not in ('Load Staging Session', 'Fetch active version', 'Debounce')]
-    wait = [item for item in first if item.get('node') == 'Debounce']
-    connections['New Message?']['main'][0] = lead + rest + wait
+    chain_staging_lookup(connections)
 
 
 def offer_time(nodes):
@@ -1205,16 +1214,20 @@ def patch_agent(workflow, payment_id):
         connections['Prepare staging record'] = link('Record staging?')
         connections['Record staging?'] = {'main': [[{'node': 'Record staging turn', 'type': 'main', 'index': 0}], [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
         connections['Record staging turn'] = link('Plan Delivery')
-    # The WhatsApp send, and the typing that runs inside it, starts when the model
-    # reply exists. The staging insert runs beside it and does not hold the send.
+    # n8n finishes the first sibling before it starts the next. The send sits on
+    # Plan Delivery, and a Wasup call can hang until the execution dies, so the
+    # sandbox row has to be written before that send starts.
     if 'Staging turn?' in {item['name'] for item in nodes} and 'Plan Delivery' in {item['name'] for item in nodes}:
-        connections['Staging turn?'] = {'main': [[
-            {'node': 'Prepare staging record', 'type': 'main', 'index': 0},
-            {'node': 'Plan Delivery', 'type': 'main', 'index': 0},
-        ], [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
+        connections['Staging turn?'] = {'main': [
+            [{'node': 'Prepare staging record', 'type': 'main', 'index': 0}],
+            [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}],
+        ]}
         connections['Prepare staging record'] = link('Record staging?')
-        connections['Record staging?'] = {'main': [[{'node': 'Record staging turn', 'type': 'main', 'index': 0}], []]}
-        connections.pop('Record staging turn', None)
+        connections['Record staging?'] = {'main': [
+            [{'node': 'Record staging turn', 'type': 'main', 'index': 0}],
+            [{'node': 'Plan Delivery', 'type': 'main', 'index': 0}],
+        ]}
+        connections['Record staging turn'] = link('Plan Delivery')
     if 'Staging follow-up?' not in names:
         spot = named['Plan Follow-up Delivery']['position']
         nodes.append(node('Staging follow-up?', 'n8n-nodes-base.if', 2.2, [spot[0] + 220, spot[1]],
@@ -1482,13 +1495,14 @@ def check_agent(workflow, payment_id):
     assert 'get_agent_builder_version' in named['Fetch staging version']['parameters']['url']
     assert 'Fetch staging version' in workflow['connections']['Staging assigned?']['main'][0][0]['node']
     opened = [item.get('node') for item in workflow['connections']['New Message?']['main'][0]]
-    assert 'Load Staging Session' in opened
-    if 'Debounce' in opened:
-        assert opened.index('Load Staging Session') < opened.index('Debounce')
+    assert opened[0] == 'Load Staging Session'
+    assert 'Debounce' not in opened
+    assert workflow['connections']['Fetch staging version']['main'][0][0]['node'] == 'Fetch active version'
+    assert workflow['connections']['Fetch active version']['main'][0][0]['node'] == 'Debounce'
+    assert workflow['connections']['Staging assigned?']['main'][1][0]['node'] == 'Fetch active version'
     assert workflow['connections']['Drain Queue']['main'][0][0]['node'] == 'Merge Staging'
     assert 'Date.now() + 4000' in named['Merge Staging']['parameters']['jsCode']
     assert 'defaultPrompt' in named['Merge Staging']['parameters']['jsCode']
-    assert 'Fetch active version' in workflow['connections']['New Message?']['main'][0][-1]['node'] or any(item.get('node') == 'Fetch active version' for item in workflow['connections']['New Message?']['main'][0])
     assert 'agent_builder_active_config' in named['Fetch active version']['parameters']['url']
     assert 'row.defaultPrompt' in named['Build Turn']['parameters']['jsCode']
     assert 'Playground Turn' in named['AI Agent']['parameters']['options']['systemMessage']
@@ -1496,6 +1510,9 @@ def check_agent(workflow, payment_id):
     assert 'documented but NOT ENABLED FOR K1' in config['business_prompt']
     assert 'never call it' in named['create_payment_link']['parameters']['description']
     assert named['Record staging turn']['parameters']['query'] == '={{ $json.query }}'
+    assert workflow['connections']['Staging turn?']['main'][0][0]['node'] == 'Prepare staging record'
+    assert 'Plan Delivery' not in [item.get('node') for item in workflow['connections']['Staging turn?']['main'][0]]
+    assert workflow['connections']['Record staging turn']['main'][0][0]['node'] == 'Plan Delivery'
     assert 'gen_random_uuid' in named['Reset Staging Session']['parameters']['query']
     assert 'SELECT 1 AS purged' in named['Purge Session']['parameters']['query']
     assert '_staging_%' in named['Purge Session']['parameters']['query']
