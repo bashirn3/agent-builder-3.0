@@ -1283,6 +1283,10 @@ PRICES_CACHE_OLD = "return cached(`prices:${src.base}:${src.id}:${ids.join('+')}
 PRICES_CACHE_NEW = "return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, 10 * 60 * 1000, async () => {"
 ELECTRIC_FALLBACK_OLD = "if (!main) { main = inspections.find(car); assumption = 'This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.' }"
 ELECTRIC_FALLBACK_NEW = "if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no separate electric-car inspection product, so the standard inspection price is not used. Say that plainly and do not quote a price.' }"
+MISSING_ELECTRIC_FLAG_OLD = "  const code = normalizeProduct(body.product || body.lead_product)\n  if (src && !entry.closed) {\n    const { category, plan } = await planFor(src, body)\n"
+MISSING_ELECTRIC_FLAG_NEW = "  const code = normalizeProduct(body.product || body.lead_product)\n  let missingElectric = false\n  if (src && !entry.closed) {\n    const { category, plan } = await planFor(src, body)\n    missingElectric = plan.missing_electric === true\n"
+PAGE_ESTIMATE_OLD = "  if (!result.price && page && page.prices.length && code) {"
+PAGE_ESTIMATE_NEW = "  if (!result.price && !missingElectric && page && page.prices.length && code) {"
 
 
 def patch_muster_prices(code):
@@ -1299,6 +1303,14 @@ def patch_muster_prices(code):
         code = must_replace(code, ELECTRIC_FALLBACK_OLD, ELECTRIC_FALLBACK_NEW, '004e fallback')
     elif 'missing_electric' not in code:
         raise SystemExit('004e fallback: the combustion substitute is gone and the missing-product result is missing')
+    if MISSING_ELECTRIC_FLAG_OLD in code:
+        code = must_replace(code, MISSING_ELECTRIC_FLAG_OLD, MISSING_ELECTRIC_FLAG_NEW, '004e page price')
+    elif 'missingElectric = plan.missing_electric === true' not in code:
+        raise SystemExit('004e page price: the missing-electric flag is not set')
+    if PAGE_ESTIMATE_OLD in code:
+        code = must_replace(code, PAGE_ESTIMATE_OLD, PAGE_ESTIMATE_NEW, '004e page estimate')
+    elif PAGE_ESTIMATE_NEW not in code:
+        raise SystemExit('004e page estimate: the page price is still attached for a missing electric product')
     return code
 
 
@@ -1626,6 +1638,8 @@ def check_booking(workflow):
     assert PRICES_CACHE_NEW in code
     assert 'missing_electric' in code
     assert ELECTRIC_FALLBACK_OLD not in code
+    assert 'missingElectric = plan.missing_electric === true' in code
+    assert PAGE_ESTIMATE_NEW in code
 
 
 def scrub(text):

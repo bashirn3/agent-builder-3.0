@@ -489,8 +489,10 @@ async function stationInfo() {
   }
   if (!page) result.hours.note = 'The live station page could not be read. Say the hours could not be verified right now and point to the official station page.'
   const code = normalizeProduct(body.product || body.lead_product)
+  let missingElectric = false
   if (src && !entry.closed) {
     const { category, plan } = await planFor(src, body)
+    missingElectric = plan.missing_electric === true
     if (plan.ok) {
       const candidates = []
       let probe = requested.status === 'closed' || day < today.date ? today.date : day
@@ -511,7 +513,7 @@ async function stationInfo() {
     else if (plan.load_failed) result.availability_error = 'Live availability could not be loaded right now.'
     else result.availability_note = plan.reason
   }
-  if (!result.price && page && page.prices.length && code) {
+  if (!result.price && !missingElectric && page && page.prices.length && code) {
     const estimate = pageEstimate(page.prices, code, wantsMeasuring(body))
     if (estimate) result.price_estimate_for_this_vehicle = estimate
   }
