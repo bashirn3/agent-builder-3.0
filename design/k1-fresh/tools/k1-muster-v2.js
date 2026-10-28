@@ -283,7 +283,11 @@ function planProducts(list, code, category, includeMeasuring = true) {
   if (wanted === '004') main = inspections.find(car)
   else if (wanted === '004e') {
     main = inspections.find(electric)
-    if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no separate electric-car inspection product, so the standard inspection price is not used. Say that plainly and do not quote a price.' }
+    if (!main) {
+      main = inspections.find(car)
+      if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no car inspection product, so an electric car cannot be booked here. Say that plainly and do not quote a price.' }
+      assumption = 'No separate electric inspection product at this station. The standard car inspection is booked and measuring is not added. Quote only this tool total. Do not add a measuring amount and do not use a station-page from-price.'
+    }
   } else main = inspections.find(big)
   if (!main) return { ok: false, code: wanted, unsupported: true, reason: wanted === '0040' ? 'This station has no product for a camper or larger car (0040). It does not fit every station: use the official K1 booking or the national number.' : 'No matching inspection product at this station.' }
   const ids = [main.id]
