@@ -262,17 +262,18 @@ def only_customer_messages(nodes):
         latest['parameters']['query'] = LATEST_NEW
 
 
-HOLD_JS = """// Wasup closes this webhook after 10s. A real customer message stays open until
-// Plan Delivery has a first bubble, or 8s. That text goes back as {reply} so
-// Wasup can run its typing choreographer. Test events (10-digit from_phone)
-// and non-messages return {skip:true} immediately and never include reply.
+HOLD_JS = """// Hand the first bubble back as {reply} so Wasup sends it on this webhook.
+// Wait until Plan Delivery has that bubble, or 15s. Eight seconds gave up while
+// the model was still writing, Wasup left the composing hold running, and the
+// hold then hard-stopped every later send to that chat. Test events (10-digit
+// from_phone) and non-messages return {skip:true} immediately.
 // Do not wait on the send nodes: the send waits on this hold.
 const body = $('Webhook').first().json.body || {}
 const event = String(body.event || 'message').toLowerCase()
 const incoming = String(body.message || '').trim()
 const digits = String(body.from_phone || '').replace(/\\D/g, '')
 if (event !== 'message' || !incoming || digits.length === 10) return [{ json: { skip: true } }]
-const limit = Date.now() + 8000
+const limit = Date.now() + 15000
 function firstText() {
   try {
     if (!$('Plan Delivery').isExecuted) return ''
@@ -303,7 +304,7 @@ if (!bubble || bubble.text === undefined) bubble = $('Plan Delivery').first().js
 const db = $input.first().json || {};
 const rem = Number(db.typing_remaining_seconds || 0);
 const slice = Math.min(Math.max(rem, 0), Number(($('⚙️ CONFIG').first().json.typing_recheck_seconds) || 3));
-const limit = Date.now() + 1000
+const limit = Date.now() + 16000
 let hold = null
 while (Date.now() < limit) {
   try {
@@ -457,6 +458,48 @@ def hold_composing(nodes, connections):
         kept.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
     webhook['main'][0] = kept
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
+
+
+def release_stuck_hold(nodes, connections):
+    """Do not leave a composing hold running until Wasup hard-stops that chat.
+
+    Pause the hold this listener used to start, and release a live one before
+    the bubble send. A hold that reaches its max refuses later sends.
+    """
+    named = {item['name']: item for item in nodes}
+    hold = named.get('Hold Composing')
+    if hold:
+        hold['parameters']['jsonBody'] = (
+            "={{ JSON.stringify({ to: ($json.body || $json).from_phone, state: 'paused', hold: false }) }}"
+        )
+    still = connections.get('Still Our Turn?', {}).get('main', [[]])
+    if not still or not still[0]:
+        return
+    target = still[0][0].get('node')
+    if target == 'Release Composing':
+        return
+    if 'Release Composing' not in named:
+        spot = (named.get(target) or {}).get('position') or [0, 0]
+        nodes.append(node(
+            'Release Composing',
+            'n8n-nodes-base.httpRequest',
+            4.2,
+            [spot[0] - 180, spot[1]],
+            {
+                'method': 'POST',
+                'url': "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + (($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || 'wa_mt1j5bcl_sch23') + '/presence' }}",
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'specifyBody': 'json',
+                'jsonBody': "={{ JSON.stringify({ to: ($('Webhook').first().json.body || {}).from_phone || $json.to_phone, state: 'paused', hold: false }) }}",
+                'options': {'timeout': 3000},
+            },
+            json.loads(json.dumps(WASUP)),
+            {'onError': 'continueRegularOutput'},
+        ))
+    still[0] = [{'node': 'Release Composing', 'type': 'main', 'index': 0}]
+    connections['Release Composing'] = {'main': [[{'node': target, 'type': 'main', 'index': 0}]]}
 
 
 def hand_webhook_reply(nodes, connections):
@@ -1354,6 +1397,7 @@ def patch_agent(workflow, payment_id):
     hold_composing(nodes, connections)
     arm_typed_sends(nodes, connections)
     hand_webhook_reply(nodes, connections)
+    release_stuck_hold(nodes, connections)
     return nodes, connections
 
 
@@ -1705,11 +1749,11 @@ def check_agent(workflow, payment_id):
         ]
         assert callers == [again_name]
     hold = named['Hold For Composing']['parameters']['jsCode']
-    assert 'digits.length === 10' in hold and '8000' in hold and 'reply: text' in hold
+    assert 'digits.length === 10' in hold and '15000' in hold and 'reply: text' in hold
     assert '_typed' not in hold and 'Send Bubble' not in hold
     assert named['Ack Webhook (empty)']['parameters']['responseBody'] == ACK_BODY
     merge = named['Merge Check']['parameters']['jsCode']
-    assert 'Date.now() + 1000' in merge and 'webhook_owned' in merge
+    assert 'Date.now() + 16000' in merge and 'webhook_owned' in merge
     assert workflow['connections']['Merge Check']['main'][0][0]['node'] == 'Webhook Reply?'
     assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
     assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
