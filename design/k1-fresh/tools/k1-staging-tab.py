@@ -142,12 +142,13 @@ def quote_records(nodes):
 # Wasup refuses sendText when the chat has no privacy token. sendRaw accepts
 # allowColdWithoutToken. Typing and delay stay off on that fallback: with them
 # on, n8n hits its 300s timeout while Wasup still delivers afterwards, and a
-# second attempt of the same bubble arrives as a duplicate.
+# second attempt of the same bubble arrives as a duplicate. A typed reset is
+# also seen as a person sending from the phone, which pauses the bot on that chat.
 COLD_SEND_RAW = "={{ JSON.stringify({ to: $json.to_phone, message: $json.text, linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 SEND_RAW = {
     'Send Bubble': COLD_SEND_RAW,
     'Send Double-Text': COLD_SEND_RAW,
-    'Send Reset Notice': "={{ JSON.stringify({ to: $('Webhook').first().json.body.from_phone, message: 'Conversation RESET (' + DateTime.now().toFormat('HH:mm:ss') + ')', linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Reset Notice': "={{ JSON.stringify({ to: $('Webhook').first().json.body.from_phone, message: 'Conversation RESET (' + DateTime.now().toFormat('HH:mm:ss') + ')', linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}",
     'Send Bubble CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
     'Send Double-Text CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
 }
@@ -1683,7 +1684,7 @@ def check_agent(workflow, payment_id):
         assert 'typingSimulation: false' in params['rawBody']
         assert 'delayEnabled: false' in params['rawBody']
     reset = named['Send Reset Notice']['parameters']
-    assert reset['operation'] == 'sendRaw' and 'typingSimulation: true' in reset['rawBody']
+    assert reset['operation'] == 'sendRaw' and 'typingSimulation: false' in reset['rawBody'] and 'delayEnabled: false' in reset['rawBody']
     for raw_name, source, nxt, type_name, keep_name, if_name in TYPED_SENDS:
         hold_name, history_name, already_name, again_name = ONCE_GUARDS[raw_name]
         assert named[type_name]['parameters']['operation'] == 'sendText'
