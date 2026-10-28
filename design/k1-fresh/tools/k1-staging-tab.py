@@ -9,6 +9,7 @@ is not activated.
   python3 k1-staging-tab.py dry      patch the newest backups in memory
   python3 k1-staging-tab.py apply    back up, migrate, and update the live workflows
   python3 k1-staging-tab.py publish  staging thumbs, feedback webhook, and the 004e price rule
+  python3 k1-staging-tab.py electric book 004e on the standard inspection, without measuring
 
 Sessions live in the agent database (v2back-working). The builder project has no
 postgres credential this listener can use, so supabase/k1-agent-builder-007-staging.sql
@@ -1361,6 +1362,11 @@ PRICES_CACHE_OLD = "return cached(`prices:${src.base}:${src.id}:${ids.join('+')}
 PRICES_CACHE_NEW = "return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, 10 * 60 * 1000, async () => {"
 ELECTRIC_FALLBACK_OLD = "if (!main) { main = inspections.find(car); assumption = 'This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.' }"
 ELECTRIC_FALLBACK_NEW = "if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no separate electric-car inspection product, so the standard inspection price is not used. Say that plainly and do not quote a price.' }"
+ELECTRIC_BOOK_NEW = """if (!main) {
+    main = inspections.find(car)
+    if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no car inspection product, so an electric car cannot be booked here. Say that plainly and do not quote a price.' }
+    assumption = 'No separate electric inspection product at this station. The standard car inspection is booked and measuring is not added. Quote only this tool total. Do not add a measuring amount and do not use a station-page from-price.'
+  }"""
 MISSING_ELECTRIC_FLAG_OLD = "  const code = normalizeProduct(body.product || body.lead_product)\n  if (src && !entry.closed) {\n    const { category, plan } = await planFor(src, body)\n"
 MISSING_ELECTRIC_FLAG_NEW = "  const code = normalizeProduct(body.product || body.lead_product)\n  let missingElectric = false\n  if (src && !entry.closed) {\n    const { category, plan } = await planFor(src, body)\n    missingElectric = plan.missing_electric === true\n"
 PAGE_ESTIMATE_OLD = "  if (!result.price && page && page.prices.length && code) {"
@@ -1378,9 +1384,11 @@ def patch_muster_prices(code):
     elif PRICES_CACHE_NEW not in code:
         raise SystemExit('prices cache: neither the hour cache nor the 10 minute cache')
     if ELECTRIC_FALLBACK_OLD in code:
-        code = must_replace(code, ELECTRIC_FALLBACK_OLD, ELECTRIC_FALLBACK_NEW, '004e fallback')
-    elif 'missing_electric' not in code:
-        raise SystemExit('004e fallback: the combustion substitute is gone and the missing-product result is missing')
+        code = must_replace(code, ELECTRIC_FALLBACK_OLD, ELECTRIC_BOOK_NEW, '004e fallback')
+    elif ELECTRIC_FALLBACK_NEW in code:
+        code = must_replace(code, ELECTRIC_FALLBACK_NEW, ELECTRIC_BOOK_NEW, '004e book')
+    elif 'standard car inspection is booked and measuring is not added' not in code:
+        raise SystemExit('004e fallback: neither the refuse rule nor the bookable inspection rule')
     if MISSING_ELECTRIC_FLAG_OLD in code:
         code = must_replace(code, MISSING_ELECTRIC_FLAG_OLD, MISSING_ELECTRIC_FLAG_NEW, '004e page price')
     elif 'missingElectric = plan.missing_electric === true' not in code:
@@ -1731,6 +1739,8 @@ def check_booking(workflow):
     assert PRICES_CACHE_NEW in code
     assert 'missing_electric' in code
     assert ELECTRIC_FALLBACK_OLD not in code
+    assert ELECTRIC_FALLBACK_NEW not in code
+    assert 'standard car inspection is booked and measuring is not added' in code
     assert 'missingElectric = plan.missing_electric === true' in code
     assert PAGE_ESTIMATE_NEW in code
 
@@ -2164,6 +2174,22 @@ def apply():
     check_feedback(rated)
 
 
+def electric():
+    """Book an electric car on the standard inspection, without measuring. Does not rewrite the WhatsApp prompt."""
+    booking = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
+    if not booking.get('active'):
+        raise SystemExit('refusing to edit an inactive booking workflow')
+    backup(booking, 'booking')
+    booking_nodes, booking_connections = patch_booking(booking)
+    check_booking({'nodes': booking_nodes, 'connections': booking_connections})
+    put(LIVE_BOOKING, booking['name'], booking_nodes, booking_connections, settings_of(booking), True)
+    booked = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
+    check_booking(booked)
+    if booked.get('active') is not True:
+        raise SystemExit('booking workflow did not reactivate')
+    print(f'booking {LIVE_BOOKING} 004e=inspection-only')
+
+
 def publish():
     """Store staging thumbs and the 004e price rule. Does not rewrite the WhatsApp prompt."""
     booking = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
@@ -2190,7 +2216,7 @@ def publish():
     check_chats(listed)
     check_feedback(rated)
     assert booked.get('active') is True and listed.get('active') is True and rated.get('active') is True
-    print(f'booking {LIVE_BOOKING} prices=10m 004e=missing; chats {TEST_CHATS}; feedback {FEEDBACK}')
+    print(f'booking {LIVE_BOOKING} prices=10m 004e=inspection-only; chats {TEST_CHATS}; feedback {FEEDBACK}')
 
 
 def pin_open_sessions():
@@ -2283,6 +2309,8 @@ if __name__ == '__main__':
         apply()
     elif command == 'publish':
         publish()
+    elif command == 'electric':
+        electric()
     elif command == 'send-once':
         send_once()
     elif command == 'hook':
