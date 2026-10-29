@@ -40,6 +40,7 @@ PAYMENT_NAME = 'K1 v10 payment'
 SEND_NAME = 'K1 staging send'
 SEND_PATH = 'k1-agent-builder/staging-send'
 INSTANCE = 'wa_mt1j5bcl_sch23'
+WASUP_BASE = 'https://wasup.northeurope.cloudapp.azure.com'
 SUPABASE = {'supabaseApi': {'id': 'sKZQDTU3b68ZSLwX', 'name': 'K1 Agent builder DB'}}
 WASUP = {'wasupApi': {'id': 'SW7J0tWGyyYAPdkN', 'name': 'Wasup Account'}}
 POSTGRES = {'postgres': {'id': 'OFlPRP5F4peeJpaM', 'name': 'v2back-working'}}
@@ -262,12 +263,12 @@ def only_customer_messages(nodes):
         latest['parameters']['query'] = LATEST_NEW
 
 
-HOLD_JS = """// Ack the inbound webhook immediately with {skip:true}.
-// n8n runs Webhook siblings one after another. Waiting here for Plan Delivery
-// used to block CONFIG for 15s, so Hold Composing and the model started only
-// after WhatsApp typing had already died. A real reply also takes 20-45s, past
-// Wasup's ~10s webhook window, so {reply} almost never landed anyway.
-// Typing stays alive via Hold Composing; the bubble sends after Plan Delivery.
+HOLD_JS = """// Ack Wasup immediately with {skip:true}.
+// n8n runs Webhook siblings one after another under executionOrder v1.
+// This node MUST run before CONFIG: if CONFIG (RESET send / AI / bubbles)
+// runs while the inbound webhook is still open, Wasup locks the chat and
+// /api/send hard-times out after 25s with no typing and no reply.
+// Do not wait for Plan Delivery here — that used to delay CONFIG too.
 return [{ json: { skip: true } }];
 """
 
@@ -416,10 +417,11 @@ def hold_composing(nodes, connections):
     else:
         named['Hold For Composing']['parameters']['jsCode'] = HOLD_JS
     links = webhook.get('main', [[]])[0] or []
-    # Sibling order matters under n8n v1. CONFIG must run before the hold ack
-    # so the model and Hold Composing start immediately.
+    # Sibling order matters under n8n v1. Ack {skip:true} FIRST, then CONFIG.
+    # If CONFIG runs first, Wasup keeps the inbound webhook open and blocks
+    # Send Reset Notice / Type Bubble / Send Bubble with hard-timeout 25s.
     preferred = []
-    for name in ('⚙️ CONFIG', 'Typing Baseline', 'Hold For Composing'):
+    for name in ('Hold For Composing', '⚙️ CONFIG', 'Typing Baseline'):
         if any(link.get('node') == name for link in links) or name == 'Hold For Composing':
             preferred.append({'node': name, 'type': 'main', 'index': 0})
     seen = {link['node'] for link in preferred}
@@ -430,7 +432,7 @@ def hold_composing(nodes, connections):
         preferred.append(link_item)
         seen.add(name)
     if 'Hold For Composing' not in seen:
-        preferred.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
+        preferred.insert(0, {'node': 'Hold For Composing', 'type': 'main', 'index': 0})
     webhook['main'][0] = preferred
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
 
@@ -483,12 +485,37 @@ def skip_inbound_presence(nodes, connections):
 
 
 def release_before_reset(nodes, connections):
-    """Pause presence before Send Reset Notice so reset is not hard-timeout by a hold."""
+    """Clear handoff + pause presence before Send Reset Notice.
+
+    Failed hard-timeouts can activate Wasup human handoff and mute the bot.
+    Always clear that, then pause presence, then send the RESET notice.
+    """
     named = {item['name']: item for item in nodes}
     if 'Send Reset Notice' not in named:
         return
+    spot = named['Send Reset Notice'].get('position') or [0, 0]
+    instance_expr = "(($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || 'wa_mt1j5bcl_sch23')"
+    phone_expr = "($('Webhook').first().json.body || {}).from_phone"
+    if 'Clear Handoff Before Reset' not in named:
+        nodes.append(node(
+            'Clear Handoff Before Reset',
+            'n8n-nodes-base.httpRequest',
+            4.2,
+            [spot[0] - 400, spot[1]],
+            {
+                'method': 'POST',
+                'url': "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + " + instance_expr + " + '/handoff' }}",
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'specifyBody': 'json',
+                'jsonBody': "={{ JSON.stringify({ phone: " + phone_expr + ", active: false }) }}",
+                'options': {'timeout': 5000},
+            },
+            json.loads(json.dumps(WASUP)),
+            {'onError': 'continueRegularOutput'},
+        ))
     if 'Release Before Reset' not in named:
-        spot = named['Send Reset Notice'].get('position') or [0, 0]
         nodes.append(node(
             'Release Before Reset',
             'n8n-nodes-base.httpRequest',
@@ -496,23 +523,26 @@ def release_before_reset(nodes, connections):
             [spot[0] - 200, spot[1]],
             {
                 'method': 'POST',
-                'url': "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + (($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || 'wa_mt1j5bcl_sch23') + '/presence' }}",
+                'url': "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + " + instance_expr + " + '/presence' }}",
                 'authentication': 'predefinedCredentialType',
                 'nodeCredentialType': 'wasupApi',
                 'sendBody': True,
                 'specifyBody': 'json',
-                'jsonBody': "={{ JSON.stringify({ to: ($('Webhook').first().json.body || {}).from_phone, state: 'paused', hold: false }) }}",
+                'jsonBody': "={{ JSON.stringify({ to: " + phone_expr + ", state: 'paused', hold: false }) }}",
                 'options': {'timeout': 5000},
             },
             json.loads(json.dumps(WASUP)),
             {'onError': 'continueRegularOutput'},
         ))
-    # retarget anything that pointed at Send Reset Notice
+    # retarget anything that pointed at Send Reset Notice / Release Before Reset
     for source, payload in list(connections.items()):
         for branch in payload.get('main') or []:
             for item in branch or []:
-                if item.get('node') == 'Send Reset Notice' and source != 'Release Before Reset':
-                    item['node'] = 'Release Before Reset'
+                if source in ('Clear Handoff Before Reset', 'Release Before Reset'):
+                    continue
+                if item.get('node') in ('Send Reset Notice', 'Release Before Reset'):
+                    item['node'] = 'Clear Handoff Before Reset'
+    connections['Clear Handoff Before Reset'] = {'main': [[{'node': 'Release Before Reset', 'type': 'main', 'index': 0}]]}
     connections['Release Before Reset'] = {'main': [[{'node': 'Send Reset Notice', 'type': 'main', 'index': 0}]]}
 
 
@@ -1474,6 +1504,8 @@ def patch_agent(workflow, payment_id):
     prefetch_staging(nodes, connections)
     install_prompt_hook(nodes, connections)
     hold_composing(nodes, connections)
+    skip_inbound_presence(nodes, connections)
+    release_before_reset(nodes, connections)
     arm_typed_sends(nodes, connections)
     hand_webhook_reply(nodes, connections)
     release_stuck_hold(nodes, connections)
@@ -1834,8 +1866,9 @@ def check_agent(workflow, payment_id):
     merge = named['Merge Check']['parameters']['jsCode']
     assert 'webhook_owned: false' in merge and 'Date.now() + 16000' not in merge
     webhook_first = [item.get('node') for item in workflow['connections']['Webhook']['main'][0]]
-    assert webhook_first[0] == '⚙️ CONFIG'
-    assert 'Hold For Composing' in webhook_first
+    assert webhook_first[0] == 'Hold For Composing'
+    assert '⚙️ CONFIG' in webhook_first
+    assert webhook_first.index('Hold For Composing') < webhook_first.index('⚙️ CONFIG')
     assert workflow['connections']['Merge Check']['main'][0][0]['node'] == 'Webhook Reply?'
     assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
     assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
@@ -1846,6 +1879,9 @@ def check_agent(workflow, payment_id):
     assert 'Skip Presence' in inbound_true or 'Hold Composing' not in inbound_true
     if 'Skip Presence' in named:
         assert 'return $input.all()' in named['Skip Presence']['parameters']['jsCode']
+    assert 'Clear Handoff Before Reset' in named
+    assert workflow['connections']['Clear Handoff Before Reset']['main'][0][0]['node'] == 'Release Before Reset'
+    assert workflow['connections']['Release Before Reset']['main'][0][0]['node'] == 'Send Reset Notice'
     assert named['Type Bubble']['parameters']['advancedOptions']['typingSimulation'] is True
     assert named['Type Bubble']['parameters']['advancedOptions']['delayEnabled'] is True
     assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
@@ -2249,6 +2285,145 @@ def save_send(body):
     return wid
 
 
+def ensure_wasup_outbound():
+    """Keep K1 Wasup able to /api/send.
+
+    Wasup antiban presence/presenceCycling starts a composing hold on every
+    outbound. When that hold wedges, every send hard-times out after 25s with
+    'composing hard-stopped' — RESET and normal replies both go silent. Keep
+    antiban on, but force those two modules off, and skip outbound ACK wait.
+    """
+    suffix = uuid.uuid4().hex[:8]
+    hook = 'wasup-outbound-' + suffix
+    nodes = [
+        {
+            'id': str(uuid.uuid4()),
+            'name': 'Webhook',
+            'type': 'n8n-nodes-base.webhook',
+            'typeVersion': 2,
+            'position': [0, 0],
+            'webhookId': str(uuid.uuid4()),
+            'parameters': {'httpMethod': 'POST', 'path': hook, 'responseMode': 'lastNode', 'options': {}},
+        },
+        {
+            'id': str(uuid.uuid4()),
+            'name': 'Behavior',
+            'type': 'n8n-nodes-base.httpRequest',
+            'typeVersion': 4.2,
+            'position': [220, 0],
+            'credentials': json.loads(json.dumps(WASUP)),
+            'parameters': {
+                'method': 'PUT',
+                'url': f'{WASUP_BASE}/api/instances/{INSTANCE}/behavior',
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'specifyBody': 'json',
+                'jsonBody': json.dumps({
+                    'typingSimulation': False,
+                    'delayEnabled': False,
+                    'holdComposingOnInbound': False,
+                    'skipOutboundAckWait': True,
+                    'webhookTypingEvents': False,
+                    'composingDelayMinSec': 0,
+                    'composingDelayMaxSec': 0,
+                }),
+                'options': {'timeout': 15000, 'response': {'response': {'neverError': True}}},
+            },
+            'onError': 'continueRegularOutput',
+        },
+        {
+            'id': str(uuid.uuid4()),
+            'name': 'Antiban',
+            'type': 'n8n-nodes-base.httpRequest',
+            'typeVersion': 4.2,
+            'position': [440, 0],
+            'credentials': json.loads(json.dumps(WASUP)),
+            'parameters': {
+                'method': 'PUT',
+                'url': f'{WASUP_BASE}/api/instances/{INSTANCE}/antiban-v2/config',
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'specifyBody': 'json',
+                'jsonBody': json.dumps({
+                    'enabled': True,
+                    'enforcing': True,
+                    'modules': {
+                        'presence': {'enabled': False, 'enableTypingModel': False},
+                        'presenceCycling': {'enabled': False},
+                    },
+                }),
+                'options': {'timeout': 15000, 'response': {'response': {'neverError': True}}},
+            },
+            'onError': 'continueRegularOutput',
+        },
+        {
+            'id': str(uuid.uuid4()),
+            'name': 'Out',
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': [660, 0],
+            'parameters': {
+                'mode': 'runOnceForAllItems',
+                'jsCode': (
+                    "const ab = $('Antiban').first().json.antibanV2 || $('Antiban').first().json\n"
+                    "const beh = $('Behavior').first().json.behaviorSettings || $('Behavior').first().json\n"
+                    "return [{ json: { behavior: beh, modules: ab.modules || {}, enabled: ab.enabled } }]\n"
+                ),
+            },
+        },
+    ]
+    conns = {
+        'Webhook': {'main': [[{'node': 'Behavior', 'type': 'main', 'index': 0}]]},
+        'Behavior': {'main': [[{'node': 'Antiban', 'type': 'main', 'index': 0}]]},
+        'Antiban': {'main': [[{'node': 'Out', 'type': 'main', 'index': 0}]]},
+    }
+    wid = gate.request('POST', '/workflows', {
+        'name': 'tmp wasup-outbound ' + suffix,
+        'nodes': nodes,
+        'connections': conns,
+        'settings': {'executionOrder': 'v1'},
+    })['id']
+    n8n = (gate.local_env().get('N8N_RAPID_BASE_URL') or gate.DEFAULT_BASE).rstrip('/')
+    try:
+        gate.request('POST', f'/workflows/{wid}/activate')
+        data = None
+        for _ in range(20):
+            try:
+                req = urllib.request.Request(
+                    n8n + '/webhook/' + hook,
+                    data=b'{}',
+                    method='POST',
+                    headers={'Content-Type': 'application/json'},
+                )
+                with urllib.request.urlopen(req, timeout=60) as res:
+                    data = json.loads(res.read().decode())
+                break
+            except urllib.error.HTTPError as err:
+                if err.code != 404:
+                    raise
+                time.sleep(1.5)
+        if not data:
+            raise SystemExit('wasup outbound ensure did not respond')
+        modules = data.get('modules') or {}
+        if modules.get('presence') is not False or modules.get('presenceCycling') is not False:
+            raise SystemExit(f'wasup presence modules still on: {modules}')
+        beh = data.get('behavior') or {}
+        if beh.get('skipOutboundAckWait') is not True or beh.get('holdComposingOnInbound') is not False:
+            raise SystemExit(f'wasup behavior not locked: {beh}')
+        print(f'wasup outbound ok presence=off skipAck=on')
+    finally:
+        try:
+            gate.request('POST', f'/workflows/{wid}/deactivate')
+        except Exception:
+            pass
+        try:
+            gate.request('DELETE', f'/workflows/{wid}')
+        except Exception:
+            pass
+
+
 def apply():
     agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     booking = gate.request('GET', f'/workflows/{LIVE_BOOKING}')
@@ -2304,6 +2479,7 @@ def apply():
     status, body = post_webhook(SEND_PATH, b'{"action":"list"}')
     if status != 401 or 'signin_required' not in body:
         raise SystemExit(f'staging send gate did not refuse an unsigned call ({status})')
+    ensure_wasup_outbound()
     print(f'live agent {LIVE_AGENT} active={live.get("active")}; booking noted; staging send {wid}')
     rated = gate.request('GET', f'/workflows/{FEEDBACK}')
     assert rated.get('active') is True
