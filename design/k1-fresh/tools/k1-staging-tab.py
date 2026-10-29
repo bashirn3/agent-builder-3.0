@@ -460,26 +460,52 @@ def hold_composing(nodes, connections):
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
 
 
-def release_stuck_hold(nodes, connections):
-    """Do not leave a composing hold running until Wasup hard-stops that chat.
+KEEP_BUBBLE_JS = r"""let bubble = null
+try { bubble = $('Still Our Turn?').first().json } catch (error) {}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Loop Bubbles').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Plan Delivery').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
+return [{ json: { ...bubble } }]
+"""
 
-    Pause the hold this listener used to start, and release a live one before
-    the bubble send. A hold that reaches its max refuses later sends.
+
+def release_stuck_hold(nodes, connections):
+    """Release the composing hold before a fallback send, without wiping the bubble.
+
+    Hold Composing stays on so typing can refresh while the model works. Before
+    sendRaw, pause that hold. The presence response replaces $json, so Keep
+    Bubble restores text/to_phone from Still Our Turn? or the bubble would go
+    out empty and the chat would go silent.
     """
     named = {item['name']: item for item in nodes}
     hold = named.get('Hold Composing')
     if hold:
-        hold['parameters']['jsonBody'] = (
-            "={{ JSON.stringify({ to: ($json.body || $json).from_phone, state: 'paused', hold: false }) }}"
-        )
+        # Keep the live typing hold. Pausing here made the indicator die at ~10s
+        # while the model was still writing.
+        body = hold['parameters'].get('jsonBody') or ''
+        if "state: 'paused'" in body or 'state: "paused"' in body:
+            hold['parameters']['jsonBody'] = (
+                "={{ JSON.stringify({ to: ($json.body || $json).from_phone, state: 'composing', hold: true, "
+                "delayMin: Number(($json.composing_delay_min ?? $('⚙️ CONFIG').first().json.composing_delay_min ?? 1)), "
+                "delayMax: Number(($json.composing_delay_max ?? $('⚙️ CONFIG').first().json.composing_delay_max ?? 3)) }) }}"
+            )
     still = connections.get('Still Our Turn?', {}).get('main', [[]])
     if not still or not still[0]:
         return
-    target = still[0][0].get('node')
-    if target == 'Release Composing':
+    first = still[0][0].get('node')
+    if first == 'Release Composing':
+        keep_links = connections.get('Keep Bubble', {}).get('main', [[]])
+        target = keep_links[0][0].get('node') if keep_links and keep_links[0] else 'Send Bubble CTA fields'
+    elif first == 'Keep Bubble':
         return
+    else:
+        target = first
     if 'Release Composing' not in named:
-        spot = (named.get(target) or {}).get('position') or [0, 0]
+        spot = (named.get(target) or named.get(first) or {}).get('position') or [0, 0]
         nodes.append(node(
             'Release Composing',
             'n8n-nodes-base.httpRequest',
@@ -498,8 +524,20 @@ def release_stuck_hold(nodes, connections):
             json.loads(json.dumps(WASUP)),
             {'onError': 'continueRegularOutput'},
         ))
+    if 'Keep Bubble' not in named:
+        spot = (named.get('Release Composing') or {}).get('position') or [0, 0]
+        nodes.append(node(
+            'Keep Bubble',
+            'n8n-nodes-base.code',
+            2,
+            [spot[0] + 180, spot[1]],
+            {'mode': 'runOnceForAllItems', 'jsCode': KEEP_BUBBLE_JS},
+        ))
+    else:
+        named['Keep Bubble']['parameters']['jsCode'] = KEEP_BUBBLE_JS
     still[0] = [{'node': 'Release Composing', 'type': 'main', 'index': 0}]
-    connections['Release Composing'] = {'main': [[{'node': target, 'type': 'main', 'index': 0}]]}
+    connections['Release Composing'] = {'main': [[{'node': 'Keep Bubble', 'type': 'main', 'index': 0}]]}
+    connections['Keep Bubble'] = {'main': [[{'node': target, 'type': 'main', 'index': 0}]]}
 
 
 def hand_webhook_reply(nodes, connections):
@@ -1757,6 +1795,12 @@ def check_agent(workflow, payment_id):
     assert workflow['connections']['Merge Check']['main'][0][0]['node'] == 'Webhook Reply?'
     assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
     assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
+    assert workflow['connections']['Still Our Turn?']['main'][0][0]['node'] == 'Release Composing'
+    assert workflow['connections']['Release Composing']['main'][0][0]['node'] == 'Keep Bubble'
+    assert 'Still Our Turn?' in named['Keep Bubble']['parameters']['jsCode']
+    if 'Hold Composing' in named:
+        hold_body = named['Hold Composing']['parameters']['jsonBody']
+        assert "state: 'composing'" in hold_body and "hold: true" in hold_body
     assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
     assert workflow['connections']['Send Fallback?']['main'][0][0]['node'] == 'Hold Bubble Text'
     assert workflow['connections']['Send Fallback?']['main'][1][0]['node'] == 'Skip Bubble'
