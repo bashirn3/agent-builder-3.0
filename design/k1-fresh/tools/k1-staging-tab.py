@@ -150,8 +150,8 @@ SEND_RAW = {
     'Send Bubble': COLD_SEND_RAW,
     'Send Double-Text': COLD_SEND_RAW,
     'Send Reset Notice': "={{ JSON.stringify({ to: $('Webhook').first().json.body.from_phone, message: 'Conversation RESET (' + DateTime.now().toFormat('HH:mm:ss') + ')', linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}",
-    'Send Bubble CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
-    'Send Double-Text CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: true, delayEnabled: true }) }}",
+    'Send Bubble CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}",
+    'Send Double-Text CTA': "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, ctaUrl: $json.cta_url ? { url: $json.cta_url, label: $json.cta_label } : undefined, linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}",
 }
 RECENT_SENDS_URL = f'https://wasup.northeurope.cloudapp.azure.com/api/instances/{INSTANCE}/messages?limit=30'
 ONCE_GUARDS = {
@@ -452,36 +452,37 @@ return [{ json: { ...bubble } }]
 
 
 def skip_inbound_presence(nodes, connections):
-    """Do not start Wasup presence on inbound.
+    """Pulse composing on inbound without a sticky hold.
 
-    A sticky composing hold blocks sends until hard-timeout and can leave the
-    chat human-handoff locked. Type Bubble owns typing at send time instead.
+    hold:true wedges /api/send. A one-shot composing pulse shows typing when
+    the customer message lands; Typing Beat shows it again before the reply.
     """
     named = {item['name']: item for item in nodes}
     inbound = connections.get('Inbound DM?')
     if not inbound:
         return
     true_branch = (inbound.get('main') or [[]])[0] or []
-    if not any(link.get('node') == 'Hold Composing' for link in true_branch):
-        # already redirected or absent
-        if any(link.get('node') == 'Skip Presence' for link in true_branch):
-            if 'Skip Presence' in named:
-                named['Skip Presence']['parameters']['jsCode'] = 'return $input.all();'
-        return
-    if 'Skip Presence' not in named:
-        spot = (named.get('Hold Composing') or {}).get('position') or [0, 0]
-        nodes.append(node(
-            'Skip Presence',
-            'n8n-nodes-base.code',
-            2,
-            spot,
-            {'mode': 'runOnceForAllItems', 'jsCode': 'return $input.all();'},
-        ))
-    else:
-        named['Skip Presence']['parameters']['jsCode'] = 'return $input.all();'
+    hold = named.get('Hold Composing')
+    if hold:
+        hold['parameters']['jsonBody'] = (
+            "={{ JSON.stringify({ to: ($json.body || $json).from_phone || ($('Webhook').first().json.body || {}).from_phone, "
+            "state: 'composing', hold: false }) }}"
+        )
+        hold['parameters']['options'] = {'timeout': 3000}
+    # Prefer Hold Composing over Skip Presence when both exist.
     for link in true_branch:
-        if link.get('node') == 'Hold Composing':
-            link['node'] = 'Skip Presence'
+        if link.get('node') == 'Skip Presence' and hold:
+            link['node'] = 'Hold Composing'
+    if hold and not any(link.get('node') == 'Hold Composing' for link in true_branch):
+        if any(link.get('node') == 'Skip Presence' for link in true_branch):
+            for link in true_branch:
+                if link.get('node') == 'Skip Presence':
+                    link['node'] = 'Hold Composing'
+        elif true_branch:
+            # leave existing non-presence target alone
+            pass
+    if 'Skip Presence' in named:
+        named['Skip Presence']['parameters']['jsCode'] = 'return $input.all();'
 
 
 def release_before_reset(nodes, connections):
@@ -546,20 +547,25 @@ def release_before_reset(nodes, connections):
     connections['Release Before Reset'] = {'main': [[{'node': 'Send Reset Notice', 'type': 'main', 'index': 0}]]}
 
 
-def release_stuck_hold(nodes, connections):
-    """Release the composing hold before a fallback send, without wiping the bubble.
+TYPING_BEAT_JS = (
+    "// Show WhatsApp typing for ~2.8s, then send without typingSimulation.\n"
+    "// Wasup typingSimulation:true hard-timeouts on this instance; a manual\n"
+    "// composing pulse + wait is the path that actually shows the indicator.\n"
+    "await new Promise((resolve) => setTimeout(resolve, 2800))\n"
+    "return $input.all()\n"
+)
 
-    Hold Composing stays on so typing can refresh while the model works. Before
-    sendRaw, pause that hold. The presence response replaces $json, so Keep
-    Bubble restores text/to_phone from Still Our Turn? or the bubble would go
-    out empty and the chat would go silent.
+
+def release_stuck_hold(nodes, connections):
+    """Pulse composing, wait, then send — without Wasup typingSimulation.
+
+    Still Our Turn? → Pulse Typing (composing, hold:false) → Keep Bubble →
+    Typing Beat (~2.8s) → send path. Never hold:true. Never typingSimulation
+    on the send itself (that re-wedges composing hard-timeouts).
     """
     named = {item['name']: item for item in nodes}
     hold = named.get('Hold Composing')
     if hold:
-        # Never use hold:true. Wasup's sticky composing hold blocks /api/send until
-        # a ~25s hard-timeout, then hard-stops the chat so later replies vanish.
-        # Pulse composing without hold; Type Bubble owns the real typing-on-send.
         hold['parameters']['jsonBody'] = (
             "={{ JSON.stringify({ to: ($json.body || $json).from_phone || ($('Webhook').first().json.body || {}).from_phone, "
             "state: 'composing', hold: false }) }}"
@@ -568,20 +574,47 @@ def release_stuck_hold(nodes, connections):
     if not still or not still[0]:
         return
     first = still[0][0].get('node')
-    if first == 'Release Composing':
+    # Resolve the eventual send-path target beyond our typing nodes.
+    target = first
+    if first in ('Release Composing', 'Pulse Typing', 'Keep Bubble', 'Typing Beat'):
+        # Walk existing chain if present
+        cursor = first
+        seen = set()
+        while cursor in ('Release Composing', 'Pulse Typing', 'Keep Bubble', 'Typing Beat') and cursor not in seen:
+            seen.add(cursor)
+            nxt = (connections.get(cursor, {}).get('main') or [[]])
+            if nxt and nxt[0]:
+                cursor = nxt[0][0].get('node')
+            else:
+                break
+        target = cursor if cursor not in ('Release Composing', 'Pulse Typing', 'Keep Bubble', 'Typing Beat') else 'Send Bubble CTA fields'
+    elif first == 'Keep Bubble':
         keep_links = connections.get('Keep Bubble', {}).get('main', [[]])
         target = keep_links[0][0].get('node') if keep_links and keep_links[0] else 'Send Bubble CTA fields'
-    elif first == 'Keep Bubble':
-        return
-    else:
-        target = first
-    if 'Release Composing' not in named:
-        spot = (named.get(target) or named.get(first) or {}).get('position') or [0, 0]
+    spot = (named.get(target) or named.get(first) or {}).get('position') or [0, 0]
+    # Prefer renaming Release Composing → Pulse Typing in place when present.
+    pulse_name = 'Pulse Typing'
+    if 'Pulse Typing' not in named and 'Release Composing' in named:
+        named['Release Composing']['name'] = 'Pulse Typing'
+        # fix connections keys later
+        for item in nodes:
+            if item['name'] == 'Release Composing':
+                item['name'] = 'Pulse Typing'
+        # retarget connection sources/targets
+        if 'Release Composing' in connections:
+            connections['Pulse Typing'] = connections.pop('Release Composing')
+        for source, payload in connections.items():
+            for branch in payload.get('main') or []:
+                for link in branch or []:
+                    if link.get('node') == 'Release Composing':
+                        link['node'] = 'Pulse Typing'
+        named = {item['name']: item for item in nodes}
+    if pulse_name not in named:
         nodes.append(node(
-            'Release Composing',
+            pulse_name,
             'n8n-nodes-base.httpRequest',
             4.2,
-            [spot[0] - 180, spot[1]],
+            [spot[0] - 360, spot[1]],
             {
                 'method': 'POST',
                 'url': "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + (($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || 'wa_mt1j5bcl_sch23') + '/presence' }}",
@@ -589,26 +622,44 @@ def release_stuck_hold(nodes, connections):
                 'nodeCredentialType': 'wasupApi',
                 'sendBody': True,
                 'specifyBody': 'json',
-                'jsonBody': "={{ JSON.stringify({ to: ($('Webhook').first().json.body || {}).from_phone || $json.to_phone, state: 'paused', hold: false }) }}",
+                'jsonBody': "={{ JSON.stringify({ to: ($('Webhook').first().json.body || {}).from_phone || $json.to_phone, state: 'composing', hold: false }) }}",
                 'options': {'timeout': 3000},
             },
             json.loads(json.dumps(WASUP)),
             {'onError': 'continueRegularOutput'},
         ))
+        named = {item['name']: item for item in nodes}
+    else:
+        named[pulse_name]['parameters']['jsonBody'] = (
+            "={{ JSON.stringify({ to: ($('Webhook').first().json.body || {}).from_phone || $json.to_phone, "
+            "state: 'composing', hold: false }) }}"
+        )
+        named[pulse_name]['parameters']['options'] = {'timeout': 3000}
+        named[pulse_name]['onError'] = 'continueRegularOutput'
     if 'Keep Bubble' not in named:
-        spot = (named.get('Release Composing') or {}).get('position') or [0, 0]
         nodes.append(node(
             'Keep Bubble',
             'n8n-nodes-base.code',
             2,
-            [spot[0] + 180, spot[1]],
+            [spot[0] - 180, spot[1]],
             {'mode': 'runOnceForAllItems', 'jsCode': KEEP_BUBBLE_JS},
         ))
     else:
         named['Keep Bubble']['parameters']['jsCode'] = KEEP_BUBBLE_JS
-    still[0] = [{'node': 'Release Composing', 'type': 'main', 'index': 0}]
-    connections['Release Composing'] = {'main': [[{'node': 'Keep Bubble', 'type': 'main', 'index': 0}]]}
-    connections['Keep Bubble'] = {'main': [[{'node': target, 'type': 'main', 'index': 0}]]}
+    if 'Typing Beat' not in named:
+        nodes.append(node(
+            'Typing Beat',
+            'n8n-nodes-base.code',
+            2,
+            [spot[0] - 40, spot[1]],
+            {'mode': 'runOnceForAllItems', 'jsCode': TYPING_BEAT_JS},
+        ))
+    else:
+        named['Typing Beat']['parameters']['jsCode'] = TYPING_BEAT_JS
+    still[0] = [{'node': pulse_name, 'type': 'main', 'index': 0}]
+    connections[pulse_name] = {'main': [[{'node': 'Keep Bubble', 'type': 'main', 'index': 0}]]}
+    connections['Keep Bubble'] = {'main': [[{'node': 'Typing Beat', 'type': 'main', 'index': 0}]]}
+    connections['Typing Beat'] = {'main': [[{'node': target, 'type': 'main', 'index': 0}]]}
 
 
 def hand_webhook_reply(nodes, connections):
@@ -832,9 +883,9 @@ def arm_sends(nodes):
         params['rawBody'] = raw
 
 
-# Plain bubbles try Wasup's own typing send first. That path is the one that
-# shows the indicator. A chat with no privacy token comes back cold-blocked
-# and the existing sendRaw still delivers. CTA buttons stay on sendRaw.
+# Plain bubbles try a plain sendText first (no Wasup typingSimulation — that
+# hard-timeouts on this instance). Visible typing comes from Pulse Typing +
+# Typing Beat before the send. Cold-blocked chats still fall through to sendRaw.
 TYPED_SENDS = (
     ('Send Bubble', 'Send Bubble CTA?', 'Loop Bubbles', 'Type Bubble', 'Bubble Keep', 'Bubble Typed?'),
     ('Send Double-Text', 'Send Double-Text CTA?', 'Mark Follow-up Sent', 'Type Double-Text', 'Double-Text Keep', 'Double-Text Typed?'),
@@ -905,7 +956,7 @@ def arm_typed_sends(nodes, connections):
                 'to': '={{ $json.to_phone }}',
                 'message': '={{ $json.text }}',
                 'linkPreview': False,
-                'advancedOptions': {'typingSimulation': True, 'delayEnabled': True},
+                'advancedOptions': {'typingSimulation': False, 'delayEnabled': False, 'allowColdWithoutToken': True},
             }, json.loads(json.dumps(raw.get('credentials') or {})), {'onError': 'continueRegularOutput'})
             keep = node(keep_name, 'n8n-nodes-base.code', 2, [x + 200, y + 160], {
                 'mode': 'runOnceForEachItem', 'jsCode': _keep_js(source),
@@ -918,7 +969,9 @@ def arm_typed_sends(nodes, connections):
         else:
             named[keep_name]['parameters']['jsCode'] = _keep_js(source)
             named[type_name]['parameters']['operation'] = 'sendText'
-            named[type_name]['parameters']['advancedOptions'] = {'typingSimulation': True, 'delayEnabled': True}
+            named[type_name]['parameters']['advancedOptions'] = {
+                'typingSimulation': False, 'delayEnabled': False, 'allowColdWithoutToken': True,
+            }
         for link_item in source_links[1]:
             if link_item.get('node') == raw_name:
                 link_item['node'] = type_name
@@ -1786,7 +1839,8 @@ def check_agent(workflow, payment_id):
         params = named[send_name]['parameters']
         assert params['operation'] == 'sendRaw'
         assert 'allowColdWithoutToken: true' in params['rawBody']
-        assert 'typingSimulation: true' in params['rawBody']
+        assert 'typingSimulation: false' in params['rawBody']
+        assert 'delayEnabled: false' in params['rawBody']
         assert params['ctaLabel'] == '={{ $json.cta_label }}'
         assert 'item.staging !== true' in named[f'{send_name[:-4]} CTA fields']['parameters']['jsCode']
     assert named['Load Staging Session']['type'] == 'n8n-nodes-base.postgres'
@@ -1843,7 +1897,8 @@ def check_agent(workflow, payment_id):
     for raw_name, source, nxt, type_name, keep_name, if_name in TYPED_SENDS:
         hold_name, history_name, already_name, again_name = ONCE_GUARDS[raw_name]
         assert named[type_name]['parameters']['operation'] == 'sendText'
-        assert named[type_name]['parameters']['advancedOptions']['typingSimulation'] is True
+        assert named[type_name]['parameters']['advancedOptions']['typingSimulation'] is False
+        assert named[type_name]['parameters']['advancedOptions']['delayEnabled'] is False
         assert workflow['connections'][source]['main'][1][0]['node'] == type_name
         assert workflow['connections'][if_name]['main'][0][0]['node'] == nxt
         assert workflow['connections'][if_name]['main'][1][0]['node'] == hold_name
@@ -1859,6 +1914,10 @@ def check_agent(workflow, payment_id):
             if item.get('node') == raw_name
         ]
         assert callers == [again_name]
+    for cta_name in ('Send Bubble CTA', 'Send Double-Text CTA'):
+        if cta_name in named:
+            assert 'typingSimulation: false' in named[cta_name]['parameters']['rawBody']
+            assert 'delayEnabled: false' in named[cta_name]['parameters']['rawBody']
     hold = named['Hold For Composing']['parameters']['jsCode']
     assert 'skip: true' in hold and 'Date.now()' not in hold
     assert '_typed' not in hold and 'Send Bubble' not in hold
@@ -1872,18 +1931,21 @@ def check_agent(workflow, payment_id):
     assert workflow['connections']['Merge Check']['main'][0][0]['node'] == 'Webhook Reply?'
     assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
     assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
-    assert workflow['connections']['Still Our Turn?']['main'][0][0]['node'] == 'Release Composing'
-    assert workflow['connections']['Release Composing']['main'][0][0]['node'] == 'Keep Bubble'
+    assert workflow['connections']['Still Our Turn?']['main'][0][0]['node'] == 'Pulse Typing'
+    assert workflow['connections']['Pulse Typing']['main'][0][0]['node'] == 'Keep Bubble'
+    assert workflow['connections']['Keep Bubble']['main'][0][0]['node'] == 'Typing Beat'
+    assert 'setTimeout(resolve, 2800)' in named['Typing Beat']['parameters']['jsCode']
+    assert 'state: \'composing\'' in named['Pulse Typing']['parameters']['jsonBody'] or "state: 'composing'" in named['Pulse Typing']['parameters']['jsonBody']
+    assert 'hold: false' in named['Pulse Typing']['parameters']['jsonBody']
     assert 'Still Our Turn?' in named['Keep Bubble']['parameters']['jsCode']
     inbound_true = [item.get('node') for item in (workflow['connections'].get('Inbound DM?', {}).get('main') or [[]])[0] or []]
-    assert 'Skip Presence' in inbound_true or 'Hold Composing' not in inbound_true
-    if 'Skip Presence' in named:
-        assert 'return $input.all()' in named['Skip Presence']['parameters']['jsCode']
+    assert 'Hold Composing' in inbound_true
+    assert 'hold: false' in named['Hold Composing']['parameters']['jsonBody']
     assert 'Clear Handoff Before Reset' in named
     assert workflow['connections']['Clear Handoff Before Reset']['main'][0][0]['node'] == 'Release Before Reset'
     assert workflow['connections']['Release Before Reset']['main'][0][0]['node'] == 'Send Reset Notice'
-    assert named['Type Bubble']['parameters']['advancedOptions']['typingSimulation'] is True
-    assert named['Type Bubble']['parameters']['advancedOptions']['delayEnabled'] is True
+    assert named['Type Bubble']['parameters']['advancedOptions']['typingSimulation'] is False
+    assert named['Type Bubble']['parameters']['advancedOptions']['delayEnabled'] is False
     assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
     assert workflow['connections']['Send Fallback?']['main'][0][0]['node'] == 'Hold Bubble Text'
     assert workflow['connections']['Send Fallback?']['main'][1][0]['node'] == 'Skip Bubble'
