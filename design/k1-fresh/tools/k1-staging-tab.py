@@ -448,6 +448,74 @@ return [{ json: { ...bubble } }]
 """
 
 
+
+def skip_inbound_presence(nodes, connections):
+    """Do not start Wasup presence on inbound.
+
+    A sticky composing hold blocks sends until hard-timeout and can leave the
+    chat human-handoff locked. Type Bubble owns typing at send time instead.
+    """
+    named = {item['name']: item for item in nodes}
+    inbound = connections.get('Inbound DM?')
+    if not inbound:
+        return
+    true_branch = (inbound.get('main') or [[]])[0] or []
+    if not any(link.get('node') == 'Hold Composing' for link in true_branch):
+        # already redirected or absent
+        if any(link.get('node') == 'Skip Presence' for link in true_branch):
+            if 'Skip Presence' in named:
+                named['Skip Presence']['parameters']['jsCode'] = 'return $input.all();'
+        return
+    if 'Skip Presence' not in named:
+        spot = (named.get('Hold Composing') or {}).get('position') or [0, 0]
+        nodes.append(node(
+            'Skip Presence',
+            'n8n-nodes-base.code',
+            2,
+            spot,
+            {'mode': 'runOnceForAllItems', 'jsCode': 'return $input.all();'},
+        ))
+    else:
+        named['Skip Presence']['parameters']['jsCode'] = 'return $input.all();'
+    for link in true_branch:
+        if link.get('node') == 'Hold Composing':
+            link['node'] = 'Skip Presence'
+
+
+def release_before_reset(nodes, connections):
+    """Pause presence before Send Reset Notice so reset is not hard-timeout by a hold."""
+    named = {item['name']: item for item in nodes}
+    if 'Send Reset Notice' not in named:
+        return
+    if 'Release Before Reset' not in named:
+        spot = named['Send Reset Notice'].get('position') or [0, 0]
+        nodes.append(node(
+            'Release Before Reset',
+            'n8n-nodes-base.httpRequest',
+            4.2,
+            [spot[0] - 200, spot[1]],
+            {
+                'method': 'POST',
+                'url': "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + (($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || 'wa_mt1j5bcl_sch23') + '/presence' }}",
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'specifyBody': 'json',
+                'jsonBody': "={{ JSON.stringify({ to: ($('Webhook').first().json.body || {}).from_phone, state: 'paused', hold: false }) }}",
+                'options': {'timeout': 5000},
+            },
+            json.loads(json.dumps(WASUP)),
+            {'onError': 'continueRegularOutput'},
+        ))
+    # retarget anything that pointed at Send Reset Notice
+    for source, payload in list(connections.items()):
+        for branch in payload.get('main') or []:
+            for item in branch or []:
+                if item.get('node') == 'Send Reset Notice' and source != 'Release Before Reset':
+                    item['node'] = 'Release Before Reset'
+    connections['Release Before Reset'] = {'main': [[{'node': 'Send Reset Notice', 'type': 'main', 'index': 0}]]}
+
+
 def release_stuck_hold(nodes, connections):
     """Release the composing hold before a fallback send, without wiping the bubble.
 
@@ -459,15 +527,13 @@ def release_stuck_hold(nodes, connections):
     named = {item['name']: item for item in nodes}
     hold = named.get('Hold Composing')
     if hold:
-        # Keep the live typing hold. Pausing here made the indicator die at ~10s
-        # while the model was still writing.
-        body = hold['parameters'].get('jsonBody') or ''
-        if "state: 'paused'" in body or 'state: "paused"' in body:
-            hold['parameters']['jsonBody'] = (
-                "={{ JSON.stringify({ to: ($json.body || $json).from_phone, state: 'composing', hold: true, "
-                "delayMin: Number(($json.composing_delay_min ?? $('⚙️ CONFIG').first().json.composing_delay_min ?? 1)), "
-                "delayMax: Number(($json.composing_delay_max ?? $('⚙️ CONFIG').first().json.composing_delay_max ?? 3)) }) }}"
-            )
+        # Never use hold:true. Wasup's sticky composing hold blocks /api/send until
+        # a ~25s hard-timeout, then hard-stops the chat so later replies vanish.
+        # Pulse composing without hold; Type Bubble owns the real typing-on-send.
+        hold['parameters']['jsonBody'] = (
+            "={{ JSON.stringify({ to: ($json.body || $json).from_phone || ($('Webhook').first().json.body || {}).from_phone, "
+            "state: 'composing', hold: false }) }}"
+        )
     still = connections.get('Still Our Turn?', {}).get('main', [[]])
     if not still or not still[0]:
         return
@@ -1776,9 +1842,10 @@ def check_agent(workflow, payment_id):
     assert workflow['connections']['Still Our Turn?']['main'][0][0]['node'] == 'Release Composing'
     assert workflow['connections']['Release Composing']['main'][0][0]['node'] == 'Keep Bubble'
     assert 'Still Our Turn?' in named['Keep Bubble']['parameters']['jsCode']
-    if 'Hold Composing' in named:
-        hold_body = named['Hold Composing']['parameters']['jsonBody']
-        assert "state: 'composing'" in hold_body and "hold: true" in hold_body
+    inbound_true = [item.get('node') for item in (workflow['connections'].get('Inbound DM?', {}).get('main') or [[]])[0] or []]
+    assert 'Skip Presence' in inbound_true or 'Hold Composing' not in inbound_true
+    if 'Skip Presence' in named:
+        assert 'return $input.all()' in named['Skip Presence']['parameters']['jsCode']
     assert named['Type Bubble']['parameters']['advancedOptions']['typingSimulation'] is True
     assert named['Type Bubble']['parameters']['advancedOptions']['delayEnabled'] is True
     assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
