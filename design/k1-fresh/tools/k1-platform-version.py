@@ -45,12 +45,12 @@ NOTE_V11 = ('Agent v11: vihreä hinta is a 34 euro inspection base paid now in t
             'Every station takes cards and most take cash. A payment link is sent only after the appointment is booked and the customer chooses to pay now. '
             'Measuring stays the tool amount and is paid at the station.')
 NOTE = NOTE_V8 if LEGACY else NOTE_V11
-PROMPT_V5 = ROOT / 'prompts/k1-whatsapp-prompt-v5.1.md'
+PROMPT_V5 = ROOT / 'prompts/k1-whatsapp-prompt-v5.2.md'
 OUT_V15 = ROOT / 'prompts/k1-platform-v15.json'
 NOTE_V15 = (
-    'Agent v15 / WhatsApp prompt v5.1: keep the lead station on restart; never ask which '
-    'station when the lead has one; never ask fuel on a new plate (assume 004); non-pilot '
-    'stations use get_station_info + link only; booking words only after tool success. '
+    'Agent v15 / WhatsApp prompt v5.2: multi-topic answers as separate short bubbles '
+    '(max three); keep lead station on restart; never ask which station when the lead '
+    'has one; never ask fuel on a new plate (assume 004); non-pilot = get_station_info + link. '
     'Playground and Staging still choose any saved version. WhatsApp with no pinned version uses this active one.'
 )
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
