@@ -1,6 +1,6 @@
 import { copy } from '../i18n'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { describeError, draftTarget, loadConfig, sameDraft, saveConfig, withContent, type AgentConfig, type Draft, type TestLead } from './agentConfig'
+import { describeError, loadConfig, playgroundTarget, sameDraft, saveConfig, withContent, type AgentConfig, type Draft, type TestLead } from './agentConfig'
 import { getVersionContent, listLeads, type UploadedLead } from './builderApi'
 import { LEADS } from './fixtures'
 import { useTestChat } from './useTestChat'
@@ -125,7 +125,7 @@ export function usePlayground(notify: Notify) {
   const saved: Draft | null = config ? toDraft(config) : null
   const dirty = Boolean(draft && saved && !sameDraft(draft, saved))
 
-  const target = useMemo(() => (ready && config && draft ? draftTarget(config, draft) : null), [ready, config, draft])
+  const target = useMemo(() => (ready && config && draft ? playgroundTarget(config, draft, versionId) : null), [ready, config, draft, versionId])
   const chat = useTestChat(target, 'playground', lead)
 
   const edit = (patch: Partial<Draft>) => setDraft((current) => (current ? { ...current, ...patch } : current))
@@ -152,10 +152,6 @@ export function usePlayground(notify: Notify) {
     }
     const current = draftRef.current
     if (!version || !current) return
-    if (current.locked && version.masterPrompt !== current.masterPrompt) {
-      notify({ tone: 'error', title: copy().playground.lockedToast, body: copy().playground.lockedToastBody(version.number) })
-      return
-    }
     setVersionId(id)
     setDraft({ ...current, masterPrompt: version.masterPrompt, additional: version.additional, opener: version.opener, reminders: version.reminders, translations: version.translations })
   }

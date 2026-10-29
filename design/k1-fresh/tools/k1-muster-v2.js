@@ -230,7 +230,12 @@ function hoursFor(page, day) {
   const first = page.rows[0].date
   const last = page.rows[page.rows.length - 1].date
   if (day >= first && day <= last) return { status: 'closed', source: 'not listed on the station page (weekend or holiday)' }
-  if (day < first) return { status: 'unknown', reason: 'That date is in the past.' }
+  // The table starts at the next open day, so a closed Sunday that is still today sits before the first row.
+  if (day < first) {
+    const today = helsinki(nowDate()).date
+    if (day >= today) return { status: 'closed', source: 'not listed on the station page (weekend or holiday)' }
+    return { status: 'unknown', reason: 'That date is in the past.' }
+  }
   const same = page.rows.filter((r) => weekdayOf(r.date) === weekdayOf(day) && r.open)
   if (!same.length) return { status: 'closed', estimated: true, source: 'no opening hours on this weekday in the published table' }
   return { status: 'open', estimated: true, open: same[same.length - 1].open, close: same[same.length - 1].close, source: 'estimated from the same weekday in the published table; exact hours not published yet' }
@@ -259,7 +264,7 @@ function normalizeCategory(value) {
 }
 const ASSISTANT_CATEGORIES = ['M1', 'N1']
 async function stationProducts(src, category) {
-  return cached(`products:${src.base}:${src.id}:${category}`, HOUR, async () => {
+  return cached(`products:${src.base}:${src.id}:${category}`, 10 * 60 * 1000, async () => {
     const response = await muster('GET', `/Products/${src.id}?vehicleCategory=${category}`, undefined, src.base)
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
   })
@@ -278,7 +283,11 @@ function planProducts(list, code, category, includeMeasuring = true) {
   if (wanted === '004') main = inspections.find(car)
   else if (wanted === '004e') {
     main = inspections.find(electric)
-    if (!main) { main = inspections.find(car); assumption = 'This station has no separate electric-car inspection product; the standard inspection is used and no measuring product is added.' }
+    if (!main) {
+      main = inspections.find(car)
+      if (!main) return { ok: false, code: wanted, unsupported: true, missing_electric: true, reason: 'This station has no car inspection product, so an electric car cannot be booked here. Say that plainly and do not quote a price.' }
+      assumption = 'No separate electric inspection product at this station. The standard car inspection is booked and measuring is not added. Quote only this tool total. Do not add a measuring amount and do not use a station-page from-price.'
+    }
   } else main = inspections.find(big)
   if (!main) return { ok: false, code: wanted, unsupported: true, reason: wanted === '0040' ? 'This station has no product for a camper or larger car (0040). It does not fit every station: use the official K1 booking or the national number.' : 'No matching inspection product at this station.' }
   const ids = [main.id]
@@ -293,7 +302,7 @@ function planProducts(list, code, category, includeMeasuring = true) {
   return { ok: true, code: wanted, product_ids: ids, names, needs_measuring: combustion, includes_measuring: withMeasuring, assumption }
 }
 async function musterPrices(src, ids, time) {
-  return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, HOUR, async () => {
+  return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, 10 * 60 * 1000, async () => {
     const query = ids.map((id) => `ProductIds=${id}`).join('&')
     const response = await muster('GET', `/Products/${src.id}/prices?${query}&ReservationTime=${encodeURIComponent(time)}`, undefined, src.base)
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
@@ -484,8 +493,10 @@ async function stationInfo() {
   }
   if (!page) result.hours.note = 'The live station page could not be read. Say the hours could not be verified right now and point to the official station page.'
   const code = normalizeProduct(body.product || body.lead_product)
+  let missingElectric = false
   if (src && !entry.closed) {
     const { category, plan } = await planFor(src, body)
+    missingElectric = plan.missing_electric === true
     if (plan.ok) {
       const candidates = []
       let probe = requested.status === 'closed' || day < today.date ? today.date : day
@@ -506,7 +517,7 @@ async function stationInfo() {
     else if (plan.load_failed) result.availability_error = 'Live availability could not be loaded right now.'
     else result.availability_note = plan.reason
   }
-  if (!result.price && page && page.prices.length && code) {
+  if (!result.price && !missingElectric && page && page.prices.length && code) {
     const estimate = pageEstimate(page.prices, code, wantsMeasuring(body))
     if (estimate) result.price_estimate_for_this_vehicle = estimate
   }

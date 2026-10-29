@@ -106,6 +106,17 @@ def create_copies(secret):
     reply = nodes['Playground reply']['parameters']
     assert '  toolCalls,\n} }]' in reply['jsCode']
     reply['jsCode'] = REPLY_STEPS_JS + reply['jsCode'].replace('  toolCalls,\n} }]', "  toolCalls,\n  steps: evalSteps,\n  fallback: Boolean($('Normalize playground reply').first().json.fallback),\n} }]")
+    if os.environ.get('K1_EVAL_INJECT_PLATFORM') == '1':
+        brief = PLATFORM['masterPrompt']
+        extra = str(PLATFORM.get('additionalInformation') or '').strip()
+        if extra:
+            brief = brief + '\n\n' + extra
+        for node in agent['nodes']:
+            if node['name'] != '⚙️ CONFIG':
+                continue
+            for item in node['parameters']['assignments']['assignments']:
+                if item['name'] == 'business_prompt':
+                    item['value'] = brief
     agent_body = {'name': 'K1 v2 evaluation agent ' + suffix[:6], 'nodes': agent['nodes'], 'connections': agent['connections'],
                   'settings': {**{k: v for k, v in agent['settings'].items() if k in ('executionOrder', 'timezone')}, 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'all'}}
     created_agent = gate.request('POST', '/workflows', agent_body)['id']
@@ -279,7 +290,7 @@ def lead_context(lead):
     lang = lead['lang']
     lines = [
         "LEAD CONTEXT (from K1's lead data for this customer)",
-        f"- Customer's language: {LANG_NAMES[lang]}. Reply in {LANG_NAMES[lang]} unless the customer writes in another language; then follow the LANGUAGE rules.",
+        f"- Customer's language: {LANG_NAMES[lang]}. Reply in {LANG_NAMES[lang]} unless the customer writes a real sentence in another language; then follow the LANGUAGE rules. A greeting on its own (yo, hey, hi, hej, moi, ok) does not change the language.",
         f"- Station the customer last visited: {lead['station']}. Default to this station; use get_station_info for its live opening hours and for any other station they ask about.",
         *([] if lead.get('noproduct') else [f"- Product on the reminder: {lead['product']} ({PRODUCT_NOTES[lead['product']]}). This applies to the registration below only.", f"- Vehicle category: {lead['cat']}.", f"- Power type of the vehicle: {lead.get('power') or POWER_TYPES[lead['product']]}. Use it in your answers about this vehicle."]),
         f"- Customer phone: {lead['phone']}. It belongs to this customer only and must NEVER be given as a station contact number. Verified national K1 booking number: 0306 100 100.",

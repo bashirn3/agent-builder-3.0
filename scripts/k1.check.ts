@@ -10,15 +10,26 @@ import {
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
-import { hasVisibleReply, matchesFilters, requireAgentReply, type TestChatSummary } from '../src/k1/data/builderApi.ts'
+import { hasVisibleReply, matchesFilters, requireAgentReply, testChatExportRows, type TestChat, type TestChatSummary } from '../src/k1/data/builderApi.ts'
 import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
+import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
+import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message)
 }
+
+assert(TJ_SHOWCASE.length === 4, 'four editorial TJ journeys must stay available')
+assert(new Set(TJ_SHOWCASE.map((chat) => chat.conversation.id)).size === 4, 'showcase chat links must be stable and unique')
+assert(TJ_SHOWCASE.every((chat) => chat.messages.every((message, i) =>
+  (message.origin === 'supplied' || message.origin === 'illustrative') &&
+  (!i || new Date(message.createdAt) >= new Date(chat.messages[i - 1].createdAt)))), 'showcase turns must carry provenance and chronological display times')
+assert(TJ_SHOWCASE.every((chat) => chat.conversation.messageCount === chat.messages.length), 'showcase counts must match visible turns')
+assert(TJ_SHOWCASE.every((chat) => showcaseById(chat.conversation.id)?.conversation.id === chat.conversation.id), 'showcase detail links must resolve')
+assert(matchingShowcase('CGP-3').length === 1 && matchingShowcase('viikolla 41').length === 1, 'showcase search must include plates and customer messages')
 
 for (const route of [
   { page: 'signin' },
@@ -27,6 +38,7 @@ for (const route of [
   { page: 'compare' },
   { page: 'deploy', version: 'abc-123' },
   { page: 'deploy' },
+  { page: 'staging' },
   { page: 'chats', id: null },
   { page: 'chats', id: 'c-1042' },
   { page: 'leads', id: null },
@@ -55,6 +67,30 @@ assert(activeFilterCount({ ...EMPTY_FILTERS, from: '2026-09-01', to: '2026-09-02
 
 assert(toCsv([{ a: 'x,y', b: 'say "hi"' }]) === 'a,b\n"x,y","say ""hi"""', 'CSV must escape commas and quotes')
 assert(toCsv([]) === '', 'empty CSV is empty')
+
+const exportedChat: TestChat = {
+  conversation: {
+    id: 'chat-1', versionId: 'ver-1', versionNumber: 12, isDraft: false, source: 'playground',
+    title: 'Sunday free', startedBy: 'tester', createdAt: '2026-10-25T20:12:00.000Z', updatedAt: '2026-10-25T20:13:00.000Z',
+    messageCount: 2, thumbsUp: 1, thumbsDown: 0, lastReply: 'Sunday is open.',
+  },
+  messages: [
+    { id: 'm-user', role: 'user', text: 'Sunday free', isOpener: false, feedback: null, createdAt: '2026-10-25T20:12:00.000Z' },
+    { id: 'm-agent', role: 'agent', text: 'Sunday is open.', isOpener: false, kind: 'reply', feedback: 'up', createdAt: '2026-10-25T20:13:00.000Z' },
+  ],
+}
+const emptyChat: TestChat = {
+  conversation: { ...exportedChat.conversation, id: 'chat-empty', title: '', messageCount: 0, lastReply: '' },
+  messages: [],
+}
+const exported = testChatExportRows([exportedChat, emptyChat])
+assert(exported.length === 3, 'export keeps every turn and a row for a chat with none')
+assert(exported[0].conversation_id === 'chat-1' && exported[0].turn === '1' && exported[0].role === 'user' && exported[0].text === 'Sunday free', 'first row is the customer turn')
+assert(exported[1].turn === '2' && exported[1].feedback === 'up' && exported[1].kind === 'reply' && exported[1].version_number === '12', 'agent turn keeps feedback, kind, and version')
+assert(exported[2].conversation_id === 'chat-empty' && exported[2].message_id === '' && exported[2].source === 'playground', 'a chat with no turns is still in the file')
+assert(toCsv(exported).split('\n').length === 4, 'the download is one header plus one row per turn')
+assert(en.chats.exportBody(2, 3).includes('2 test chats') && en.chats.exportBody(2, 3).includes('3 turns'), 'export toast counts chats and turns')
+assert(fi.chats.exportBody(1, 1).includes('1 testikeskustelu') && fi.chats.exportBody(1, 1).includes('1 vuoro'), 'Finnish export toast counts chats and turns')
 
 assert(filterLeads(LEADS, { from: null, to: null }).length === LEADS.length, 'no date range keeps every lead')
 const dueSoon = filterLeads(LEADS, { from: '2026-10-01', to: '2026-10-20' })
@@ -126,6 +162,25 @@ const missing = (a: Record<string, unknown>, b: Record<string, unknown>, path = 
 })
 assert(!missing(en, fi).length, `Finnish copy is missing: ${missing(en, fi).join(', ')}`)
 assert(detectLanguage('Suomi') === 'fi' && detectLanguage('svenska') === 'sv' && detectLanguage('Deutsch') === 'en' && detectLanguage('') === 'fi', 'a missing language is Finnish and other languages get English')
+const fiMobile = composePhone('fi', '040 123 4567')
+assert(fiMobile.ok && fiMobile.display === '+358 40 123 4567' && fiMobile.digits === '358401234567', 'a Finnish number keeps +358 and drops the trunk zero')
+assert(composePhone('se', '70 123 45 67').display === '+46 70 123 45 67', 'Sweden is +46')
+assert(composePhone('gb', '07123 456789').display === '+44 7123 456789', 'the UK is +44')
+assert(!composePhone('fi', '40 123').ok, 'a short number is not sent')
+assert(composePhone('fi', '40 000 0101').placeholder, 'the sample block stays blocked')
+assert(composePhone('fi', '+46 70 123 45 67').ok === false, 'a pasted number from another country is not sent under Finland')
+assert(applyPhoneInput('fi', 'abc040 123 4567').national === '401234567', 'the number field keeps digits and drops a trunk zero')
+assert(applyPhoneInput('fi', '+46 70 123 45 67').country === 'se' && applyPhoneInput('fi', '+46 70 123 45 67').national === '701234567', 'a pasted Swedish number selects Sweden')
+assert(applyPhoneInput('se', '+44 7123 456789').country === 'gb' && applyPhoneInput('se', '+44 7123 456789').national === '7123456789', 'a pasted UK number selects the UK')
+assert(applyPhoneInput('fi', '401234567890123').national.length === 12, 'extra digits are not kept')
+assert(applyPhoneInput('fi', '447835156367').country === 'gb' && applyPhoneInput('fi', '447835156367').national === '7835156367', 'a full UK number typed under Finland selects the UK')
+assert(applyPhoneInput('gb', '447835156367').national === '7835156367', 'the UK field drops the 44 prefix')
+assert(applyPhoneInput('gb', '07835156367').national === '7835156367', 'a UK trunk zero is dropped')
+assert(applyPhoneInput('fi', '461234567').country === 'fi' && applyPhoneInput('fi', '461234567').national === '461234567', 'a short Finnish number starting with 46 stays Finnish')
+assert(composePhone('gb', '7835156367').ok && composePhone('gb', '7835156367').e164 === '+447835156367', 'the UK number that failed to arrive is a valid send')
+assert(prefillPhone('+358 40 000 0101', 'fi') === null, 'a sample lead does not fill the WhatsApp field')
+assert(prefillPhone('0701234567', 'sv')?.country === 'se', 'a Swedish local number prefills Sweden')
+assert(prefillPhone('07123456789', 'en')?.country === 'gb', 'a UK local number prefills the UK')
 assert(fillTemplate('Hi {{first_name}}, {{registration_number}} is due by {{due_date}} at {{station}} (last {{last_inspection}}).', lead) === 'Hi, JJ-190 is due by 23.9.2026 at K1 Katsastus Kouvola (last 23.9.2025).', 'placeholders fill from the lead; first name is dropped')
 assert(fillTemplate('{{due_date}}', { ...lead, language: 'English' }) === '23 Sep 2026', 'English dates are written out')
 assert(fillTemplate('Täällä K1 Katsastus {{station}}.', lead) === 'Täällä K1 Katsastus Kouvola.', 'the brand is not written twice when the station name already carries it')

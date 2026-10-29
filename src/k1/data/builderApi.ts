@@ -85,7 +85,7 @@ export type BuilderState = {
 }
 
 export type Feedback = 'up' | 'down' | null
-export type ChatSource = 'playground' | 'compare'
+export type ChatSource = 'playground' | 'compare' | 'staging'
 
 export type TestChatSummary = {
   id: string
@@ -253,8 +253,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     if (response.status === 401 && attempt === 0 && sessionToken) continue
     if (response.status === 401) throw new AccessError('signin_required')
     if (response.status === 403) throw new AccessError('team_required')
-    if (!response.ok) throw new Error(`request_failed:${response.status}`)
-    return await response.json() as T
+    const data = await response.json().catch(() => null) as ({ error?: unknown } & T) | null
+    if (!response.ok || !data) {
+      const reason = typeof data?.error === 'string' ? data.error.trim() : ''
+      if (/^[a-z0-9_.:-]{1,80}$/i.test(reason)) throw new Error(reason)
+      throw new Error(`request_failed:${response.status}`)
+    }
+    return data
   }
 }
 
@@ -528,6 +533,154 @@ export async function resetCustomer(phone: string) {
   })
 }
 
+export type StagingSession = {
+  phone: string
+  phoneKey: string
+  plate: string
+  stationName: string
+  versionId: string | null
+  versionNumber: number | null
+  conversationId: string
+  updatedAt: string
+}
+
+export type StagingMessage = {
+  id: string
+  role: 'user' | 'agent'
+  text: string
+  at: string
+}
+
+export type StagingThread = {
+  found: boolean
+  phone: string
+  plate: string
+  stationName: string
+  versionNumber: number | null
+  updatedAt: string | null
+  messages: StagingMessage[]
+}
+
+export type StagingLead = {
+  plateNumber: string
+  stationName: string
+  phoneNumber: string
+  product: string
+  language: string
+  nextInspection: string | null
+  lastInspection: string | null
+  vehicleCategory: string
+  powerType: string
+}
+
+const STAGING_KEY = 'k1-staging-sessions'
+
+type StoredStagingSession = StagingSession & { messages?: StagingMessage[] }
+
+function readStaging(): StoredStagingSession[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STAGING_KEY) || '[]') as StoredStagingSession[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeStaging(sessions: StoredStagingSession[]) {
+  try { localStorage.setItem(STAGING_KEY, JSON.stringify(sessions)) } catch { /* storage blocked */ }
+}
+
+export async function listStagingSessions(): Promise<StagingSession[]> {
+  if (!remote) return readStaging()
+  const result = await call<{ ok?: boolean; sessions?: StagingSession[]; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'list' }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'request_failed')
+  return result.sessions ?? []
+}
+
+export async function sendStaging(input: {
+  phone: string
+  versionId: string
+  opener: string
+  lead: StagingLead
+  leadContext: string
+  startedBy: string | null
+}): Promise<{ conversationId: string; versionNumber: number | null }> {
+  if (!remote) {
+    const now = new Date().toISOString()
+    const session: StoredStagingSession = {
+      phone: input.phone,
+      phoneKey: input.phone.replace(/\D/g, ''),
+      plate: input.lead.plateNumber,
+      stationName: input.lead.stationName,
+      versionId: input.versionId,
+      versionNumber: readLocal().versions.find((item) => item.id === input.versionId)?.versionNumber ?? null,
+      conversationId: newId(),
+      updatedAt: now,
+      messages: input.opener ? [{ id: newId(), role: 'agent', text: input.opener, at: now }] : [],
+    }
+    writeStaging([session, ...readStaging().filter((item) => item.phoneKey !== session.phoneKey)])
+    return { conversationId: session.conversationId, versionNumber: session.versionNumber }
+  }
+  const result = await call<{ ok?: boolean; conversationId?: string; versionNumber?: number; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'send', ...input }),
+  })
+  if (!result.ok || !result.conversationId) throw new Error(result.error ?? 'send_failed')
+  return { conversationId: result.conversationId, versionNumber: result.versionNumber ?? null }
+}
+
+// Clears the staging conversation only. The caller still cancels Muster bookings through resetCustomer.
+// This does not send a WhatsApp message, and it does not change the assigned version.
+export async function resetStagingSession(phone: string): Promise<{ found: boolean; conversationId: string | null }> {
+  if (!remote) {
+    const now = new Date().toISOString()
+    const next = readStaging().map((item) => item.phone === phone ? { ...item, conversationId: newId(), updatedAt: now, messages: [] } : item)
+    writeStaging(next)
+    return { found: next.some((item) => item.phone === phone), conversationId: next.find((item) => item.phone === phone)?.conversationId ?? null }
+  }
+  const result = await call<{ ok?: boolean; found?: boolean; conversationId?: string; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'reset', phone }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'reset_failed')
+  return { found: Boolean(result.found), conversationId: result.conversationId ?? null }
+}
+
+export async function getStagingThread(phone: string): Promise<StagingThread> {
+  const empty: StagingThread = { found: false, phone, plate: '', stationName: '', versionNumber: null, updatedAt: null, messages: [] }
+  if (!remote) {
+    const key = phone.replace(/\D/g, '')
+    const session = readStaging().find((item) => item.phone === phone || item.phoneKey === key)
+    if (!session) return empty
+    return {
+      found: true,
+      phone: session.phone,
+      plate: session.plate,
+      stationName: session.stationName,
+      versionNumber: session.versionNumber,
+      updatedAt: session.updatedAt,
+      messages: session.messages ?? [],
+    }
+  }
+  const result = await call<StagingThread & { ok?: boolean; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'thread', phone }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'request_failed')
+  return {
+    found: Boolean(result.found),
+    phone: result.phone || phone,
+    plate: result.plate || '',
+    stationName: result.stationName || '',
+    versionNumber: result.versionNumber ?? null,
+    updatedAt: result.updatedAt ?? null,
+    messages: Array.isArray(result.messages) ? result.messages : [],
+  }
+}
+
 export async function setFeedback(messageId: string, feedback: Feedback): Promise<void> {
   if (!remote) {
     const store = readLocal()
@@ -557,7 +710,7 @@ export async function deleteTestChats(ids: string[]): Promise<number> {
   return result.deleted ?? 0
 }
 
-export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal): Promise<TestChatSummary[]> {
+export async function listTestChats(filters: TestChatFilters, signal?: AbortSignal, page?: { limit?: number; offset?: number }): Promise<TestChatSummary[]> {
   if (!remote) {
     await pause(250)
     return readLocal().chats
@@ -573,18 +726,99 @@ export async function listTestChats(filters: TestChatFilters, signal?: AbortSign
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
   if (filters.query.trim()) params.set('q', filters.query.trim())
+  if (page?.limit) params.set('limit', String(page.limit))
+  if (page?.offset) params.set('offset', String(page.offset))
   const { items } = await call<{ items: TestChatSummary[] }>(`/test-chats?${params}`, { signal })
   return items.map((item) => ({ ...item, title: stripInstructions(item.title) }))
 }
 
-export async function getTestChat(id: string): Promise<TestChat | null> {
+export async function getTestChat(id: string, signal?: AbortSignal): Promise<TestChat | null> {
   if (!remote) {
     const chat = readLocal().chats.find((item) => item.conversation.id === id)
     return chat ? { conversation: summarise(chat), messages: chat.messages } : null
   }
-  const result = await call<TestChat | { error: string }>(`/test-chat?id=${encodeURIComponent(id)}`)
+  const result = await call<TestChat | { error: string }>(`/test-chat?id=${encodeURIComponent(id)}`, { signal })
   if ('error' in result) return null
   return { ...result, messages: result.messages.map((message) => (message.role === 'user' ? { ...message, text: stripInstructions(message.text) } : message)) }
+}
+
+const EXPORT_SOURCES: ChatSource[] = ['playground', 'compare', 'staging']
+const EXPORT_PAGE = 200
+
+const unfiltered = (source: ChatSource): TestChatFilters => ({
+  versions: [], includeDraft: true, feedback: null, source, from: null, to: null, query: '',
+})
+
+// The list on screen is filtered and capped. Download walks every source, page by page, then loads each thread.
+export async function loadEveryTestChat(signal?: AbortSignal): Promise<TestChat[]> {
+  if (!remote) {
+    return readLocal().chats
+      .map((chat) => ({ conversation: summarise(chat), messages: chat.messages }))
+      .sort((a, b) => b.conversation.updatedAt.localeCompare(a.conversation.updatedAt))
+  }
+  const seen = new Map<string, TestChatSummary>()
+  for (const source of EXPORT_SOURCES) {
+    for (let offset = 0; offset < 20000; offset += EXPORT_PAGE) {
+      const page = await listTestChats(unfiltered(source), signal, { limit: EXPORT_PAGE, offset })
+      let added = 0
+      for (const item of page) {
+        if (seen.has(item.id)) continue
+        seen.set(item.id, item)
+        added += 1
+      }
+      if (page.length < EXPORT_PAGE || added === 0) break
+    }
+  }
+  const summaries = [...seen.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const chats: TestChat[] = []
+  for (let index = 0; index < summaries.length; index += 6) {
+    if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+    const slice = summaries.slice(index, index + 6)
+    const loaded = await Promise.all(slice.map(async (item) => (await getTestChat(item.id, signal)) ?? { conversation: item, messages: [] }))
+    chats.push(...loaded)
+  }
+  return chats
+}
+
+// One row per turn, with the conversation it belongs to. A chat with no turns still keeps one row.
+export function testChatExportRows(chats: TestChat[]): Array<Record<string, string>> {
+  const rows: Array<Record<string, string>> = []
+  for (const chat of chats) {
+    const conversation = chat.conversation
+    const shared = {
+      conversation_id: conversation.id,
+      version_id: conversation.versionId ?? '',
+      version_number: conversation.versionNumber == null ? '' : String(conversation.versionNumber),
+      is_draft: conversation.isDraft ? 'yes' : 'no',
+      source: conversation.source,
+      title: conversation.title,
+      started_by: conversation.startedBy ?? '',
+      conversation_created: conversation.createdAt,
+      conversation_updated: conversation.updatedAt,
+      message_count: String(conversation.messageCount),
+      thumbs_up: String(conversation.thumbsUp),
+      thumbs_down: String(conversation.thumbsDown),
+      last_reply: conversation.lastReply,
+    }
+    if (!chat.messages.length) {
+      rows.push({ ...shared, turn: '', message_id: '', role: '', kind: '', is_opener: '', feedback: '', message_created: '', text: '' })
+      continue
+    }
+    chat.messages.forEach((message, index) => {
+      rows.push({
+        ...shared,
+        turn: String(index + 1),
+        message_id: message.id,
+        role: message.role,
+        kind: message.kind ?? '',
+        is_opener: message.isOpener ? 'yes' : 'no',
+        feedback: message.feedback ?? '',
+        message_created: message.createdAt,
+        text: message.text,
+      })
+    })
+  }
+  return rows
 }
 
 // Earlier turns stored the model-only "[REPLY LANGUAGE: ...]" order after the customer's words; it is never part of what they wrote.

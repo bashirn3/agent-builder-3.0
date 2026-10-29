@@ -175,6 +175,32 @@ test('get_slots: readable-only stations return times without slot ids and the bo
   assert.match(result.booking_url, /stationId=1452/)
 })
 
+test('station_info: 004e with no electric product does not attach the page price', async () => {
+  const run = makeRun({
+    handler: async (options) => {
+      if (options.url.includes('/Products/') && !options.url.includes('/prices')) return STAGING_PRODUCTS.filter((item) => item.id !== 2247)
+    },
+  })
+  const result = (await run({ action: 'station_info', station: PALOKKA, product: '004e' })).result
+  assert.match(result.availability_note, /no separate electric-car inspection product/)
+  assert.equal(result.price, undefined)
+  assert.equal(result.price_estimate_for_this_vehicle, undefined)
+})
+
+test('products: 004e does not borrow the combustion price when the station has no electric product', async () => {
+  const run = makeRun({
+    handler: async (options) => {
+      if (options.url.includes('/Products/') && !options.url.includes('/prices')) return STAGING_PRODUCTS.filter((item) => item.id !== 2247)
+    },
+  })
+  const result = (await run({ action: 'get_slots', station: PALOKKA, product: '004e', date_from: '2026-09-30' })).result
+  assert.equal(result.ok, false)
+  assert.equal(result.missing_electric, true)
+  assert.equal(result.price, undefined)
+  assert.match(result.reason, /no separate electric-car inspection product/)
+  assert.doesNotMatch(JSON.stringify(result), /2246/)
+})
+
 test('products: 004 adds statutory measuring, 004e does not', async () => {
   const run = makeRun()
   const combustion = (await run({ action: 'get_slots', station: PALOKKA, product: '004', date_from: '2026-09-30' })).result

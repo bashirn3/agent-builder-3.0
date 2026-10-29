@@ -86,6 +86,10 @@ def build(Customer, Auto):
     tri('need_emission', 'Tarvitaanko päästömittaus?', 'Behövs avgasmätning?', 'Do I need the emissions test?', [('reply', MEASURING)])
     tri('emission_ev', 'Tarvitaanko sähköautolle päästömittaus?', 'Behövs avgasmätning för en elbil?', 'Does an electric car need the emissions test?', [('reply', r'ei |inte|no |not|ingen|sähkö|electric|el')], product='004e')
     tri('price_van', 'Paljonko tämä maksaa pakettiautolle?', 'Vad kostar det för en skåpbil?', 'How much for a van?', [('any_tool', ['get_station_info', 'get_slots'])], cat='N1')
+    tri('price_reconcile', 'Miksi 34 euroa ja 99 euroa eivät täsmää?', 'Varför stämmer inte 34 euro och 99 euro?', 'Why can you not reconcile the 34 and the 99?',
+        [NOBOOK, ('reply', r'\b34\b'), ('reply', r'\?'), ('no_reply', r"can.?t verify|cannot reconcile|en voi varmistaa|kan inte verifiera|don't know why|en tiedä miksi")])
+    tri('price_leaving', 'Lähden muualle nyt', 'Jag går någon annanstans nu', "I'm gonna go somewhere else now",
+        [NOBOOK, ('reply', r'\?'), ('no_reply', r"won.t push|en tuputa|jag tänker inte")])
     tri('price_payment', 'Voinko maksaa kortilla ja pitääkö maksaa etukäteen?', 'Kan jag betala med kort och måste jag betala i förväg?', 'Can I pay by card and do I pay in advance?',
         [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\b34\b'), ('reply', r'\b38\b'), ('reply', r'kort|card'), ('no_reply', r'Etuaika|0306|https?://'), ('no_reply', r'en tiedä|vet inte|don.?t know|do not know')])
     tri('price_discount', 'Onko teillä alennuksia?', 'Har ni några rabatter?', 'Do you have any discounts?',
@@ -121,6 +125,27 @@ def build(Customer, Auto):
     tri('times_latest', 'Mikä on huomisen viimeinen aika?', 'Vilken är sista tiden imorgon?', 'What is the last time tomorrow?', [('any_tool', ['get_slots', 'get_station_info']), ('reply', HOURS)])
     tri('times_weekend', 'Onko viikonlopulle aikoja?', 'Finns det tider på helgen?', 'Do you have weekend slots?', [NOBOOK])
     tri('times_specific', 'Onko klo 10 vapaana huomenna?', 'Är kl 10 ledigt imorgon?', 'Is 10:00 free tomorrow?', [('any_tool', ['get_slots', 'get_station_info'])])
+    # "Sunday free" is whether that day is open. It is not a claim that the inspection costs nothing.
+    SUNDAY_DAY = [('any_tool', ['get_station_info', 'get_slots']),
+                  ('reply', r'sunday|sunnuntai|söndag|closed|not open|kiinni|suljettu|stäng'),
+                  ('no_reply', r"€|\beur\b|\b99\b|\b39\b|isn.?t free|not free|ain.?t free|ilmainen|gratis|availability|can.?t confirm|cannot confirm|can.?t check|cannot check|has passed")]
+    add('sunday_free.en', 'usual', 'en', ['Bro so if I book now Sunday free'],
+        [*SUNDAY_DAY, ('reply', r'\?|monday|weekday|book')], note='free beside a day is availability')
+    add('sunday_free.fi', 'usual', 'fi', ['Jos varaan nyt, onko sunnuntai vapaa?'], SUNDAY_DAY)
+    add('sunday_free.sv', 'usual', 'sv', ['Om jag bokar nu, är söndag ledig?'], SUNDAY_DAY)
+    add('sunday_free.suo', 'usual', 'en', ['Bro so if I book now Sunday free'],
+        [*SUNDAY_DAY, ('reply', r'ajanvaraus\\.k1katsastus|0306|k1katsastus')], station='oul',
+        lead_patch={'station': 'K1 Katsastus Espoo Suomenoja', 'sid': None},
+        note='Suomenoja: answer the day, then the booking link')
+    add('throw.sunday_and_docs.en', 'devil', 'en', ['Is Sunday free, and what papers do I bring?'],
+        [*SUNDAY_DAY, ('reply', r'paper|document|registration|licence|license|bring|rekister')])
+    add('recover.puncture.en', 'devil', 'en', ['My tyre has a puncture'],
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\?'), ('reply', r'book|time|inspection')])
+    add('recover.daddy.en', 'devil', 'en', ['daddy this is shit lol'],
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\?'), ('reply', r'book|time|inspection')])
+    add('throw.partial.en', 'devil', 'en', ['I want to book, and my tyre has a puncture'],
+        [NOBOOK, ('no_tool', 'escalate_to_human'), ('reply', r'\?'), ('reply', r'book|time|inspection'),
+         ('reply', r'puncture|tyre|tire|garage|rengas')])
     tri('times_friday_morning', 'Perjantaiaamu sopisi', 'Fredag morgon passar', 'Friday morning suits me', [('any_tool', ['get_slots', 'get_station_info']), ('param', 'get_slots', 'date_from', (TODAY + datetime.timedelta(days=(4 - TODAY.weekday()) % 7 or 7)).isoformat())])
     tri('times_two_weeks', 'Entä parin viikon päästä?', 'Och om två veckor då?', 'What about in two weeks?', [NOBOOK])
     tri('times_other_station', 'Onko Kuopion asemalla vapaita aikoja huomenna?', 'Finns det lediga tider på Kuopio-stationen imorgon?', 'Are there free times at the Kuopio station tomorrow?',
@@ -160,6 +185,7 @@ def build(Customer, Auto):
     add('switch.sv_to_fi_cold', 'usual', 'sv', ['Voidaanko jatkaa suomeksi? Haluaisin varata ajan huomenna'], [('any_tool', ['get_slots', 'get_station_info'])], lang_turns=['fi'])
     add('switch.sv_to_fi_polite', 'usual', 'sv', ['Hej', 'Kan vi fortsätta på finska? Minulle sopii suomi paremmin.', 'Paljonko katsastus maksaa?'], [('reply', r'€|eur')], lang_turns=['sv', 'fi', 'fi'])
     add('switch.sv_to_en', 'usual', 'sv', ['Can you speak English please? What are the opening hours tomorrow?'], [('tool', 'get_station_info')], lang_turns=['en'])
+    add('switch.yo_stays', 'usual', 'sv', ['yo'], [NOBOOK], lang_turns=['sv'])
     add('switch.en_to_fi', 'usual', 'en', ['hi', 'Mitä aikoja huomenna on?'], [('any_tool', ['get_slots', 'get_station_info'])], lang_turns=['en', 'fi'])
     add('switch.en_to_sv', 'usual', 'en', ['Vad kostar besiktningen?'], [('reply', r'€|eur|kr')], lang_turns=['sv'])
     add('switch.mid_flow', 'usual', 'fi', ['Onko huomenna aikoja?', 'What about the day after tomorrow?', 'Och på fredag då?'], [('any_tool', ['get_slots', 'get_station_info'])], lang_turns=['fi', 'en', 'sv'])
