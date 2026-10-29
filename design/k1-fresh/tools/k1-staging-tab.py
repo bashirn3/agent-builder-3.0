@@ -262,38 +262,13 @@ def only_customer_messages(nodes):
         latest['parameters']['query'] = LATEST_NEW
 
 
-HOLD_JS = """// Hand the first bubble back as {reply} so Wasup sends it on this webhook.
-// Wait until Plan Delivery has that bubble, or 15s. Eight seconds gave up while
-// the model was still writing, Wasup left the composing hold running, and the
-// hold then hard-stopped every later send to that chat. Test events (10-digit
-// from_phone) and non-messages return {skip:true} immediately.
-// Do not wait on the send nodes: the send waits on this hold.
-const body = $('Webhook').first().json.body || {}
-const event = String(body.event || 'message').toLowerCase()
-const incoming = String(body.message || '').trim()
-const digits = String(body.from_phone || '').replace(/\\D/g, '')
-if (event !== 'message' || !incoming || digits.length === 10) return [{ json: { skip: true } }]
-const limit = Date.now() + 15000
-function firstText() {
-  try {
-    if (!$('Plan Delivery').isExecuted) return ''
-    const items = $('Plan Delivery').all()
-    for (const item of items) {
-      const row = item.json || {}
-      const text = String(row.text || '').trim()
-      if (Number(row.seq) === 1 && text) return text
-    }
-  } catch (error) {}
-  return ''
-}
-let text = ''
-while (Date.now() < limit) {
-  text = firstText()
-  if (text) break
-  await new Promise((resolve) => setTimeout(resolve, 200))
-}
-if (!text) return [{ json: { skip: true } }]
-return [{ json: { reply: text } }]
+HOLD_JS = """// Ack the inbound webhook immediately with {skip:true}.
+// n8n runs Webhook siblings one after another. Waiting here for Plan Delivery
+// used to block CONFIG for 15s, so Hold Composing and the model started only
+// after WhatsApp typing had already died. A real reply also takes 20-45s, past
+// Wasup's ~10s webhook window, so {reply} almost never landed anyway.
+// Typing stays alive via Hold Composing; the bubble sends after Plan Delivery.
+return [{ json: { skip: true } }];
 """
 
 ACK_BODY = '={{ $json.reply ? { reply: $json.reply } : { skip: true } }}'
@@ -304,23 +279,11 @@ if (!bubble || bubble.text === undefined) bubble = $('Plan Delivery').first().js
 const db = $input.first().json || {};
 const rem = Number(db.typing_remaining_seconds || 0);
 const slice = Math.min(Math.max(rem, 0), Number(($('⚙️ CONFIG').first().json.typing_recheck_seconds) || 3));
-const limit = Date.now() + 16000
-let hold = null
-while (Date.now() < limit) {
-  try {
-    if ($('Hold For Composing').isExecuted) {
-      hold = $('Hold For Composing').first().json || {}
-      break
-    }
-  } catch (error) {}
-  await new Promise((resolve) => setTimeout(resolve, 100))
-}
-const reply = hold && typeof hold.reply === 'string' ? hold.reply.trim() : ''
-const owned = Number(bubble.seq) === 1 && !!reply && reply === String(bubble.text || '').trim()
+// Hold For Composing acks immediately with skip, so the webhook never owns the bubble.
 return [{ json: {
   ...bubble,
-  skip_send: owned ? true : bubble.skip_send === true,
-  webhook_owned: owned,
+  skip_send: bubble.skip_send === true,
+  webhook_owned: false,
   user_replied: db.user_replied === true,
   user_typing: db.user_typing === true,
   typing_remaining_seconds: rem,
@@ -438,7 +401,7 @@ def true_if(left):
 
 
 def hold_composing(nodes, connections):
-    """Hold the Wasup webhook open, then pass {reply} through only for a real customer."""
+    """Ack Wasup immediately with skip so CONFIG is not blocked behind a wait."""
     named = {item['name']: item for item in nodes}
     ack = named.get('Ack Webhook (empty)')
     webhook = connections.get('Webhook')
@@ -453,10 +416,22 @@ def hold_composing(nodes, connections):
     else:
         named['Hold For Composing']['parameters']['jsCode'] = HOLD_JS
     links = webhook.get('main', [[]])[0] or []
-    kept = [link for link in links if link.get('node') != 'Ack Webhook (empty)']
-    if not any(link.get('node') == 'Hold For Composing' for link in kept):
-        kept.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
-    webhook['main'][0] = kept
+    # Sibling order matters under n8n v1. CONFIG must run before the hold ack
+    # so the model and Hold Composing start immediately.
+    preferred = []
+    for name in ('⚙️ CONFIG', 'Typing Baseline', 'Hold For Composing'):
+        if any(link.get('node') == name for link in links) or name == 'Hold For Composing':
+            preferred.append({'node': name, 'type': 'main', 'index': 0})
+    seen = {link['node'] for link in preferred}
+    for link_item in links:
+        name = link_item.get('node')
+        if name in (None, 'Ack Webhook (empty)') or name in seen:
+            continue
+        preferred.append(link_item)
+        seen.add(name)
+    if 'Hold For Composing' not in seen:
+        preferred.append({'node': 'Hold For Composing', 'type': 'main', 'index': 0})
+    webhook['main'][0] = preferred
     connections['Hold For Composing'] = link('Ack Webhook (empty)')
 
 
@@ -1787,11 +1762,14 @@ def check_agent(workflow, payment_id):
         ]
         assert callers == [again_name]
     hold = named['Hold For Composing']['parameters']['jsCode']
-    assert 'digits.length === 10' in hold and '15000' in hold and 'reply: text' in hold
+    assert 'skip: true' in hold and 'Date.now()' not in hold
     assert '_typed' not in hold and 'Send Bubble' not in hold
     assert named['Ack Webhook (empty)']['parameters']['responseBody'] == ACK_BODY
     merge = named['Merge Check']['parameters']['jsCode']
-    assert 'Date.now() + 16000' in merge and 'webhook_owned' in merge
+    assert 'webhook_owned: false' in merge and 'Date.now() + 16000' not in merge
+    webhook_first = [item.get('node') for item in workflow['connections']['Webhook']['main'][0]]
+    assert webhook_first[0] == '⚙️ CONFIG'
+    assert 'Hold For Composing' in webhook_first
     assert workflow['connections']['Merge Check']['main'][0][0]['node'] == 'Webhook Reply?'
     assert workflow['connections']['Webhook Reply?']['main'][0][0]['node'] == 'Pause For Reply'
     assert workflow['connections']['Webhook Reply?']['main'][1][0]['node'] == 'Still Our Turn?'
@@ -1801,6 +1779,8 @@ def check_agent(workflow, payment_id):
     if 'Hold Composing' in named:
         hold_body = named['Hold Composing']['parameters']['jsonBody']
         assert "state: 'composing'" in hold_body and "hold: true" in hold_body
+    assert named['Type Bubble']['parameters']['advancedOptions']['typingSimulation'] is True
+    assert named['Type Bubble']['parameters']['advancedOptions']['delayEnabled'] is True
     assert 'setTimeout(resolve, 2000)' in named['Pause For Reply']['parameters']['jsCode']
     assert workflow['connections']['Send Fallback?']['main'][0][0]['node'] == 'Hold Bubble Text'
     assert workflow['connections']['Send Fallback?']['main'][1][0]['node'] == 'Skip Bubble'
