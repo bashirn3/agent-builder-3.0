@@ -19,7 +19,8 @@ const pickProxy = () => {
 }
 const request = (options, attempt = 0) => this.helpers.httpRequest.call(this, STAGING_PROXIES.length && String(options.url).startsWith(STAGING) && (STAGING_PROXY_MODE === 'always' || attempt > 0) ? { ...options, proxy: pickProxy() } : options)
 const PROD = 'https://a-katsastus-booking-api.muster.fi/v3/5'
-const BOOKING_SITE = 'https://ajanvaraus.k1katsastus.fi'
+const BOOKING_SITE_PROD = 'https://ajanvaraus.k1katsastus.fi'
+const BOOKING_SITE_STAGING = 'https://k1-katsastus-ajanvaraus.stage.geniem.io'
 const NATIONAL_PHONE = '0306 100 100'
 const DIRECTORY = __DIRECTORY__
 const FAQ = __FAQ__
@@ -123,7 +124,17 @@ function sourceOf(entry) {
   if (entry.k1_id && !entry.closed) return { base: PROD, id: entry.k1_id, bookable: false }
   return null
 }
-const bookingLink = (entry) => (entry.k1_id ? `${BOOKING_SITE}/?stationId=${entry.k1_id}&serviceId=1` : null)
+// Staging chats must get the staging ajanvaraus host (Tomi 2026-10-30).
+// Prod Finnish path is /varaus (Tomi 2026-10-30 correction), not the site root.
+// stationId on both UIs is the production K1 station id when we have it; otherwise the Muster staging id.
+const bookingLink = (entry, lang = 'fi') => {
+  const stationId = entry.k1_id || entry.muster_id
+  if (!stationId) return null
+  const staging = Boolean(entry.muster_id)
+  const path = { fi: '/varaus', en: '/en/reservation', sv: '/sv/bokning' }[String(lang || 'fi').slice(0, 2)] || '/varaus'
+  const host = staging ? BOOKING_SITE_STAGING : BOOKING_SITE_PROD
+  return `${host}${path}?stationId=${stationId}&serviceId=1`
+}
 
 const EXONYMS = {
   uleaborg: 'oulu', abo: 'turku', tammerfors: 'tampere', helsingfors: 'helsinki', bjorneborg: 'pori', vasa: 'vaasa', villmanstrand: 'lappeenranta', kajana: 'kajaani',
@@ -293,7 +304,8 @@ function planProducts(list, code, category, includeMeasuring = true) {
   return { ok: true, code: wanted, product_ids: ids, names, needs_measuring: combustion, includes_measuring: withMeasuring, assumption }
 }
 async function musterPrices(src, ids, time) {
-  return cached(`prices:${src.base}:${src.id}:${ids.join('+')}`, HOUR, async () => {
+  // Key includes ReservationTime: green (onlinePaymentPrice) differs by slot; a shared hour cache hid green after Tomi added it mid-chat.
+  return cached(`prices:${src.base}:${src.id}:${ids.join('+')}:${time}`, 5 * 60 * 1000, async () => {
     const query = ids.map((id) => `ProductIds=${id}`).join('&')
     const response = await muster('GET', `/Products/${src.id}/prices?${query}&ReservationTime=${encodeURIComponent(time)}`, undefined, src.base)
     return response.status === 200 && Array.isArray(response.data) ? response.data : null
@@ -369,6 +381,7 @@ async function freeSlots(entry, src, days, plan, category, hoursByDay) {
   if (response.status !== 200 || !Array.isArray(response.data)) return { ok: false, step: 'calendar', status: response.status, error: response.data }
   const byDay = {}
   let sample = null
+  let greenCount = 0
   for (const day of response.data) {
     for (const hour of Object.values(day.hours || {})) {
       for (const slot of hour) {
@@ -380,25 +393,61 @@ async function freeSlots(entry, src, days, plan, category, hoursByDay) {
           const endLocal = slot.bookingEndTime ? helsinki(new Date(slot.bookingEndTime)).hm : local.hm
           if (minutes(local.hm) < minutes(hours.open) || minutes(endLocal) > minutes(hours.close)) continue
         }
-        if (!sample && slot.onlineReservationPrice != null) sample = { eur: Number(slot.onlineReservationPrice), time: slot.time }
+        const stationEur = slot.onlineReservationPrice != null ? Number(slot.onlineReservationPrice) : null
+        const onlineEur = slot.onlinePaymentPrice != null ? Number(slot.onlinePaymentPrice) : null
+        const isGreen = stationEur != null && onlineEur != null && onlineEur < stationEur
+        if (isGreen) greenCount++
+        // Prefer a green sample so "halvempi / vihreä" questions see the prepaid total, not the first normal slot.
+        if (stationEur != null && (!sample || (isGreen && !sample.is_green))) {
+          sample = { eur: stationEur, online_payment_eur: onlineEur, time: slot.time, is_green: isGreen }
+        }
         const item = { time: local.hm, iso: slot.time }
+        if (stationEur != null) item.station_eur = stationEur
+        if (onlineEur != null) item.online_payment_eur = onlineEur
+        if (isGreen) item.is_green = true
         if (src.bookable) item.slot_id = slotId(slot.time, src.id, plan.product_ids, category)
         ;(byDay[local.date] = byDay[local.date] || []).push(item)
       }
     }
   }
   for (const list of Object.values(byDay)) list.sort((a, b) => a.iso.localeCompare(b.iso))
-  return { ok: true, byDay, sample }
+  return { ok: true, byDay, sample, green_count: greenCount }
 }
-const view = (item) => (item.slot_id ? { slot_id: item.slot_id, time: item.time } : { time: item.time })
-async function priceBlock(src, plan, sample) {
+const view = (item) => {
+  const out = item.slot_id ? { slot_id: item.slot_id, time: item.time } : { time: item.time }
+  if (item.station_eur != null) out.station_eur = item.station_eur
+  if (item.online_payment_eur != null) out.online_payment_eur = item.online_payment_eur
+  if (item.is_green) out.is_green = true
+  return out
+}
+async function priceBlock(src, plan, sample, greenCount = 0) {
   if (!sample) return null
   const breakdown = await musterPrices(src, plan.product_ids, sample.time)
+  const parts = (breakdown || []).map((p, i) => ({
+    item: plan.names[plan.product_ids.indexOf(p.productId)] || plan.names[i] || String(p.productId),
+    station_eur: Number(p.onlineReservationPrice),
+    online_payment_eur: p.onlinePaymentPrice != null ? Number(p.onlinePaymentPrice) : null,
+  }))
+  const onlineTotal = sample.online_payment_eur != null
+    ? sample.online_payment_eur
+    : (parts.every((p) => p.online_payment_eur != null) ? parts.reduce((sum, p) => sum + p.online_payment_eur, 0) : null)
+  const isGreen = onlineTotal != null && onlineTotal < sample.eur
   return {
     total_eur: sample.eur,
-    breakdown: (breakdown || []).map((p, i) => ({ item: plan.names[plan.product_ids.indexOf(p.productId)] || plan.names[i] || String(p.productId), eur: Number(p.onlineReservationPrice) })),
+    station_eur: sample.eur,
+    online_payment_eur: onlineTotal,
+    is_green: Boolean(isGreen),
+    green_slot_count: greenCount,
+    breakdown: parts.map((p) => ({
+      item: p.item,
+      eur: p.station_eur,
+      station_eur: p.station_eur,
+      online_payment_eur: p.online_payment_eur,
+    })),
     source: src.bookable ? 'booking price for this visit' : 'live K1 online booking price for this visit',
-    note: 'This total is the station price for the visit. Do not replace it with 34 euros. The inspection base can be paid now in the chat at 34 EUR (vihreä hinta) or at the station at 38 EUR. Measuring in the breakdown is paid at the station either way.',
+    note: isGreen || greenCount > 0
+      ? 'station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.'
+      : 'station_eur / total_eur is paid at the station for these times. No lower online_payment_eur on the sampled slots. Customer can still open official_booking_link to pay or book online. Never say online prepayment is impossible.',
   }
 }
 const wantsMeasuring = (body_) => !(body_.include_measuring === false || /^(false|no|0)$/i.test(String(body_.include_measuring ?? '')))
@@ -435,22 +484,34 @@ async function slots() {
   const summary = days.map((day) => {
     const list = found.byDay[day] || []
     const hours = hoursByDay[day]
+    const green = list.filter((item) => item.is_green)
+    // When green times exist that day, bias suggestions toward them so "vihreä / halvempi" is answerable without another call.
+    const greenPicks = spread(green, Math.min(3, green.length))
+    const need = 3 - greenPicks.length
+    const pool = green.length
+      ? greenPicks.concat(need ? spread(list.filter((item) => !item.is_green), need) : [])
+      : spread(list, 3)
     return {
       date: day, weekday: weekdayName(day), station_hours: showHours(hours), hours_note: hours.estimated ? 'estimated, verify with the station' : undefined,
-      free_count: list.length, first: list[0] && list[0].time, last: list[list.length - 1] && list[list.length - 1].time,
-      suggestions: spread(list, 3).map(view),
+      free_count: list.length, green_count: green.length,
+      first: list[0] && list[0].time, last: list[list.length - 1] && list[list.length - 1].time,
+      suggestions: pool.map(view),
       ...(single ? { all_times: list.map(view) } : {}),
     }
   })
+  const link = bookingLink(entry)
   return {
     ok: true, station: { id: src.id, name: entry.name }, bookable_by_assistant: src.bookable,
     vehicle: { product: plan.code, category, includes: plan.names, measuring_included: plan.includes_measuring, assumption: plan.assumption || undefined },
-    total_free: summary.reduce((sum, d) => sum + d.free_count, 0), days: summary, price: await priceBlock(src, plan, found.sample),
+    total_free: summary.reduce((sum, d) => sum + d.free_count, 0),
+    green_slot_count: found.green_count || 0,
+    days: summary, price: await priceBlock(src, plan, found.sample, found.green_count || 0),
     hours_verified: days.every((day) => hoursByDay[day].status !== 'unknown'),
     rule: src.bookable
-      ? 'Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id.'
+      ? 'Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.'
       : 'Read-only live availability. This assistant cannot book at this station: describe the times, then give booking_url or the national number. Never claim a booking.',
-    booking_url: src.bookable ? undefined : bookingLink(entry),
+    booking_url: link,
+    official_booking_link: link,
   }
 }
 
@@ -499,7 +560,8 @@ async function stationInfo() {
           const list = found.byDay[d]
           return { date: d, label: dayLabel(d), station_hours: showHours(hoursByDay[d]), free_count: list.length, first: list[0].time, last: list[list.length - 1].time, suggestions: spread(list, 3).map(view) }
         })
-        result.price = await priceBlock(src, plan, found.sample)
+        result.price = await priceBlock(src, plan, found.sample, found.green_count || 0)
+        result.green_slot_count = found.green_count || 0
         result.vehicle = { product: plan.code, category, includes: plan.names, measuring_included: plan.includes_measuring }
       } else result.availability_error = 'Live availability could not be loaded right now.'
     } else if (plan.needs_product) result.availability_note = VEHICLE_QUESTION
@@ -522,12 +584,22 @@ const looksLikeName = (value) => {
   const words = cleanName(value).toLowerCase().split(' ').filter((word) => word.replace(/[^\p{L}]/gu, '').length >= 2)
   return words.length > 0 && words.some((word) => !NOT_NAME_WORDS.has(word.replace(/[^\p{L}]/gu, '')))
 }
+const normalizePhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (!digits) return null
+  if (digits.startsWith('358')) return `+${digits}`
+  if (digits.startsWith('0')) return `+358${digits.slice(1)}`
+  if (digits.length >= 8) return `+${digits}`
+  return null
+}
 function customerBody(fields, stationId) {
   const name = cleanName(fields.name) || 'Wasup Testi'
   const bits = name.split(/\s+/)
+  const wantsSms = /^(1|true|yes|joo|kyllä)$/i.test(String(fields.send_confirmation ?? fields.receive_sms ?? ''))
   return {
-    firstName: bits[0] || 'Wasup', lastName: bits.slice(1).join(' ') || 'Testi', email: fields.email || null, phoneNumber: null,
-    receiveSms: false, receiveEmail: false, language: languageName(fields.language), plateNumber: cleanPlate(fields.rek || fields.plate), stationId,
+    firstName: bits[0] || 'Wasup', lastName: bits.slice(1).join(' ') || 'Testi', email: fields.email || null,
+    phoneNumber: normalizePhone(fields.phone),
+    receiveSms: wantsSms, receiveEmail: false, language: languageName(fields.language), plateNumber: cleanPlate(fields.rek || fields.plate), stationId,
   }
 }
 const stationNameById = async (id) => {
@@ -601,17 +673,41 @@ async function book() {
   const info = reserved.data.reservations[0]
   const stationName = await stationNameById(slot.stationId)
   const local = helsinki(new Date(slot.time))
+  const entry = (await directory()).find((e) => e.muster_id === slot.stationId)
   return {
     ok: true, success: true, booking_number: info.bookingNumber, event_id: `${held.data.groupId}|${info.uid}|${customer.data.uid}`,
     group_id: held.data.groupId, reservation_uid: info.uid, customer_uid: customer.data.uid, slot_id: body.start_time,
     display_fi: `${weekdayName(local.date)} ${fiDate(local.date)} ${local.hm}`, station_id: slot.stationId, station_name: stationName, plate,
     vehicle_category: slot.category, product_ids: slot.productIds,
+    official_booking_link: entry ? bookingLink(entry, body.language) : undefined,
+    payment_note: 'Chat booking can be paid at the station. For online prepayment / Vihreä hinta, give official_booking_link. Never say online pay is impossible.',
+    ask_sms_confirmation: true,
+    sms_confirmation_hint: 'After confirming the booking, ask once whether they want a reservation confirmation SMS. On yes call send_booking_confirmation with this event_id and station_id.',
     record: {
       p_tenant_key: 'k1_katsastus_demo', p_phone: String(body.phone), p_plate: plate, p_station_id: slot.stationId, p_station_name: stationName,
       p_product_ids: slot.productIds, p_group_id: held.data.groupId, p_reservation_uid: info.uid, p_booking_number: info.bookingNumber,
       p_customer_uid: customer.data.uid, p_starts_at: slot.time, p_ends_at: held.data.reservationEndDateTime, p_status: 'confirmed', p_language: languageName(body.language),
     },
   }
+}
+async function sendBookingConfirmation() {
+  const [groupId, reservationUid, customerUid] = repairedEventId(body.event_id || '').split('|')
+  if (!reservationUid) return { ok: false, error: 'event_id from the booking is required' }
+  const stationId = Number(body.station_id)
+  if (!stationId) return { ok: false, error: 'station_id from the booking is required' }
+  const notOwner = ownershipError(groupId)
+  if (notOwner) return notOwner
+  if (customerUid) {
+    const updated = await muster('PUT', `/B2CCustomer/${customerUid}`, customerBody({ ...body, send_confirmation: true }, stationId))
+    if (updated.status !== 200) {
+      // Still try sendConfirmation; Muster may already have a phone on the reservation.
+    }
+  }
+  const response = await muster('POST', `/Reservations/${stationId}/${reservationUid}/sendConfirmation`)
+  if (response.status !== 200 && response.status !== 204) {
+    return { ok: false, step: 'send_confirmation', status: response.status, error: response.data }
+  }
+  return { ok: true, success: true, event_id: String(body.event_id), station_id: stationId, note: 'Muster confirmation SMS requested.' }
 }
 // The model sometimes miscopies the long event_id (a few characters off). The caller's own bookings are known, so a unique near match is mapped back to the real id.
 function editDistance(a, b, cap) {
@@ -722,6 +818,7 @@ else if (action === 'stations') {
   const response = await muster('GET', `/Products/${stationId}?vehicleCategory=${normalizeCategory(body.vehicle_category)}`)
   result = response.status === 200 ? { ok: true, products: response.data.map((product) => ({ id: product.id, type: product.productType, name: product.name })) } : { ok: false, error: response.data }
 } else if (action === 'book') result = await book()
+else if (action === 'send_booking_confirmation' || action === 'send_confirmation') result = await sendBookingConfirmation()
 else if (action === 'my_bookings') result = myBookings()
 else if (action === 'faq') result = faqLookup()
 else if (action === 'reschedule') result = await moveBooking()
