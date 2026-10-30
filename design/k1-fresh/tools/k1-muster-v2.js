@@ -124,20 +124,16 @@ function sourceOf(entry) {
   if (entry.k1_id && !entry.closed) return { base: PROD, id: entry.k1_id, bookable: false }
   return null
 }
-// Staging chats must get the staging ajanvaraus host (Tomi 2026-10-30). Prod stays on ajanvaraus.k1katsastus.fi.
+// Staging chats must get the staging ajanvaraus host (Tomi 2026-10-30).
+// Prod Finnish path is /varaus (Tomi 2026-10-30 correction), not the site root.
 // stationId on both UIs is the production K1 station id when we have it; otherwise the Muster staging id.
 const bookingLink = (entry, lang = 'fi') => {
   const stationId = entry.k1_id || entry.muster_id
   if (!stationId) return null
   const staging = Boolean(entry.muster_id)
-  if (staging) {
-    const path = { fi: '/varaus', en: '/en/reservation', sv: '/sv/bokning' }[String(lang || 'fi').slice(0, 2)] || '/varaus'
-    return `${BOOKING_SITE_STAGING}${path}?stationId=${stationId}&serviceId=1`
-  }
-  const path = { fi: '/', en: '/en/reservation', sv: '/sv/bokning' }[String(lang || 'fi').slice(0, 2)] || '/'
-  return path === '/'
-    ? `${BOOKING_SITE_PROD}/?stationId=${stationId}&serviceId=1`
-    : `${BOOKING_SITE_PROD}${path}?stationId=${stationId}&serviceId=1`
+  const path = { fi: '/varaus', en: '/en/reservation', sv: '/sv/bokning' }[String(lang || 'fi').slice(0, 2)] || '/varaus'
+  const host = staging ? BOOKING_SITE_STAGING : BOOKING_SITE_PROD
+  return `${host}${path}?stationId=${stationId}&serviceId=1`
 }
 
 const EXONYMS = {
