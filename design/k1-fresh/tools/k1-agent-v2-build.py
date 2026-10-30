@@ -230,7 +230,7 @@ CATEGORY_HINT = 'Vehicle category: M1 (car or camper) or N1 (van). Leave empty t
 
 TOOLS = {
     'get_slots': {
-        'description': 'Live free appointment times for one station, already limited to that station\'s opening hours, with a price for the vehicle. The ONLY source of appointment times and slot_id values. Pass date_from and date_to as YYYY-MM-DD (Europe/Helsinki, at most 14 days apart). Leave station empty for the customer\'s own station. Returns a per-day summary (station_hours, free_count, first, last, up to three suggestions, and all_times for a single day). If it returns needs_product, ask the vehicle question it gives. If bookable_by_assistant is false, times are informational only and there are no slot_ids.',
+        'description': 'Live free appointment times for one station, already limited to that station\'s opening hours, with station and online-payment prices for the vehicle. The ONLY source of appointment times and slot_id values. Pass date_from and date_to as YYYY-MM-DD (Europe/Helsinki, at most 14 days apart). Leave station empty for the customer\'s own station. Returns per-day station_hours, free_count, green_count, suggestions (time may include is_green, station_eur, online_payment_eur), all_times for a single day, price (station_eur + online_payment_eur when Vihreä hinta exists), and official_booking_link for online pay. If needs_product, ask the vehicle question it gives. If bookable_by_assistant is false, times are informational only and there are no slot_ids.',
         'ai': {
             'station': STATION_HINT, 'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
             'date_from': 'YYYY-MM-DD, Europe/Helsinki. Default: tomorrow.', 'date_to': 'YYYY-MM-DD, Europe/Helsinki. Same as date_from for a single day.',
@@ -238,12 +238,20 @@ TOOLS = {
         'fixed': {'action': 'get_slots', 'phone': PHONE, **LEAD_FIELDS},
     },
     'get_station_info': {
-        'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices for the vehicle, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
+        'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices (station_eur and online_payment_eur when green), official_booking_link, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
         'ai': {
             'station': STATION_HINT, 'date': 'YYYY-MM-DD, Europe/Helsinki. Default today.',
             'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
         },
         'fixed': {'action': 'station_info', 'phone': PHONE, **LEAD_FIELDS},
+    },
+    'send_booking_confirmation': {
+        'description': 'Send a Muster reservation confirmation SMS for an existing chat booking. Call only after the customer clearly asks for an SMS confirmation. Pass event_id and station_id from the booking result or get_my_bookings.',
+        'ai': {
+            'event_id': 'Exact event_id from book_inspection_invite or get_my_bookings.',
+            'station_id': 'station_id from the booking result (Muster station id).',
+        },
+        'fixed': {'action': 'send_booking_confirmation', 'phone': PHONE},
     },
 }
 TOOLS['get_my_bookings'] = {
@@ -258,7 +266,7 @@ TOOLS['faq_lookup'] = {
 }
 SCHEMA_ENTRY = lambda key: {'id': key, 'displayName': key, 'type': 'string', 'display': True, 'required': False, 'defaultMatch': False, 'canBeUsedToMatch': True}
 SLOT_TOOLS = {
-    'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category); copy the slot_id of the entry whose time is the chosen one, and also pass that chosen clock time in time. Reuse plate, name and phone. success true includes booking_number and event_id. If success is false, it is not booked.',
+    'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category); copy the slot_id of the entry whose time is the chosen one, and also pass that chosen clock time in time. Reuse plate, name and phone. success true includes booking_number, event_id, station_id, official_booking_link and ask_sms_confirmation. If success is false, it is not booked.',
     'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots (the entry whose time is the chosen one); also pass that chosen clock time in time. event_id comes from get_my_bookings (or from the booking made in this conversation). The booking number stays the same.',
     'cancel_booking': 'Cancel an existing booking. event_id is required and comes from get_my_bookings (or from the booking made in this conversation). sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
@@ -406,6 +414,11 @@ def cache_layout(named):
 
 
 def business_prompt(current):
+    # Live WhatsApp uses the hand-written WhatsApp prompt (v5.x), not the guidelines YAML catalog.
+    path = ROOT / 'prompts/k1-whatsapp-prompt-v5.3.md'
+    if path.exists():
+        text = path.read_text()
+        return text if text.endswith('\n') else text + '\n'
     return k1_prompt.prompt()
 
 
@@ -460,9 +473,18 @@ def build_agent(booking_id):
             code = replace_once(code, ("new Set(['get_slots',", "new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
             code = replace_once(code, ("new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',",
-                                        "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'payment tool')
+                                        "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots', 'send_booking_confirmation',"), 'payment tool')
+            # Idempotent if payment tool already present from an earlier build.
+            if 'send_booking_confirmation' not in code:
+                code = code.replace(
+                    "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',",
+                    "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots', 'send_booking_confirmation',",
+                    1,
+                )
             code = replace_once(code, ("new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',",
-                                        "new Set(['booking_number', 'station_name', 'when_text', 'query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'payment inputs')
+                                        "new Set(['booking_number', 'station_name', 'when_text', 'query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id', 'event_id',"), 'payment inputs')
+            if "'event_id'" not in code.split('allowInputs')[1][:400] if 'allowInputs' in code else True:
+                pass
             node['parameters']['jsCode'] = code
 
     if os.environ.get('K1_CACHE_LAYOUT', '1') != '0':
