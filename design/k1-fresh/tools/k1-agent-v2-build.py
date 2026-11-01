@@ -13,6 +13,7 @@ Usage:
                                          k1-gate.py check passed for the prompt being shipped (--without-gate only for an emergency fix)
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
   python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
+  python3 k1-agent-v2-build.py finish    patch the live reply nodes (green-price link, semicolon) and the business brief in place
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -428,6 +429,100 @@ def replace_once(text, pair, label):
     return text.replace(old, new)
 
 
+# After the model reply: turn "; " into ". ", and if a green price is quoted with no link,
+# append official_booking_link from this turn's get_slots / get_station_info. Never on a
+# turn that already booked (a link there invites a second booking).
+FINISH_FN = r"""function finishReply(messages, agent) {
+  const cleaned = (Array.isArray(messages) ? messages : []).map((line) => String(line).replace(/; /g, '. '))
+  const reply = cleaned.join('\n\n')
+  if (!cleaned.length || /https:\/\//.test(reply)) return cleaned
+  if (!/vihre|green price|prepaid|ennakkoon|verkossa makset|online/i.test(reply)) return cleaned
+  const steps = Array.isArray(agent && agent.intermediateSteps) ? agent.intermediateSteps : []
+  const dataOf = (step) => {
+    let data = step && step.observation
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data) } catch (e) { data = null }
+    }
+    if (Array.isArray(data)) data = data[0]
+    if (data && data.json && typeof data.json === 'object') data = data.json
+    return data && typeof data === 'object' ? data : null
+  }
+  const booked = steps.some((step) => {
+    if (String(step.action?.tool || step.tool || '') !== 'book_inspection_invite') return false
+    const data = dataOf(step)
+    return Boolean(data && data.booking_number && (data.success || data.ok))
+  })
+  if (booked) return cleaned
+  let link = ''
+  for (const step of steps) {
+    const tool = String(step.action?.tool || step.tool || '')
+    if (tool !== 'get_slots' && tool !== 'get_station_info') continue
+    const data = dataOf(step)
+    const direct = data && (data.official_booking_link || data.booking_url || (data.booking && data.booking.official_booking_link))
+    if (typeof direct === 'string' && direct.startsWith('https://')) link = direct
+    else {
+      const text = String(step.observation ?? '').replace(/\\\//g, '/')
+      const found = text.match(/https:\/\/(?:ajanvaraus\.k1katsastus\.fi|k1-katsastus-ajanvaraus\.stage\.geniem\.io)[^"\s\\]*/)
+      if (found) link = found[0].replace(/[),.;]+$/, '')
+    }
+  }
+  if (!link) return cleaned
+  cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
+  return cleaned
+}
+"""
+PLAN_FINISH_CALL = "msgs = finishReply(msgs, $input.first().json);"
+
+
+def ensure_finish(code, kind):
+    if kind == 'plan' and PLAN_FINISH_CALL not in code:
+        anchor = '.filter(Boolean).slice(0, maxBubbles);'
+        if code.count(anchor) != 1:
+            raise SystemExit(f'cannot patch Plan Delivery finish: anchor count {code.count(anchor)}')
+        code = code.replace(anchor, anchor + '\n' + PLAN_FINISH_CALL, 1)
+    if kind == 'normalize' and 'finishReply(messages, agent)' not in code:
+        code = replace_once(code, (
+            "return [{ json: { reply: messages.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
+            "const finished = finishReply(messages, agent)\nreturn [{ json: { reply: finished.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
+        ), 'Normalize finish')
+    if 'function finishReply(' not in code:
+        code = FINISH_FN.rstrip() + '\n' + code
+    return code
+
+
+def patch_agent_finish(agent):
+    for node in agent['nodes']:
+        if node['name'] == 'Plan Delivery':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'plan')
+        elif node['name'] == 'Normalize playground reply':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'normalize')
+        elif node['name'] == '⚙️ CONFIG':
+            for item in node['parameters']['assignments']['assignments']:
+                if item['name'] == 'business_prompt':
+                    item['value'] = business_prompt(item['value'])
+    return agent
+
+
+def finish_live():
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    patch_agent_finish(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
+    norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
+    brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
+    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan:
+        raise SystemExit('Plan Delivery finish missing after put')
+    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm:
+        raise SystemExit('Normalize finish missing after put')
+    if "Oulu Alppila bookings go through K1's booking page" not in brief:
+        raise SystemExit('business brief line missing after put')
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    print(f'finish live agent {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
 def cache_layout(named):
     agent = named['AI Agent']['parameters']
     agent['options']['systemMessage'] = replace_once(agent['options']['systemMessage'], SYSTEM_DATE, 'system message date')
@@ -472,14 +567,14 @@ def build_agent(booking_id):
             for pair, label in SYSTEM_STYLE_PATCHES:
                 options['systemMessage'] = replace_once(options['systemMessage'], pair, f'system message {label}')
         if node['name'] == 'Plan Delivery':
-            node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_DELIVERY_CLEAN, 'Plan Delivery dashes')
+            node['parameters']['jsCode'] = ensure_finish(replace_once(node['parameters']['jsCode'], PLAN_DELIVERY_CLEAN, 'Plan Delivery dashes'), 'plan')
         if node['name'] == 'Plan Follow-up Delivery':
             node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_FOLLOWUP_CLEAN, 'Plan Follow-up Delivery dashes')
         if node['name'] == 'Normalize playground reply':
             code = node['parameters']['jsCode']
             for label, pair in enumerate(NORMALIZE_PATCHES):
                 code = replace_once(code, pair, f'Normalize playground reply {label}')
-            node['parameters']['jsCode'] = code
+            node['parameters']['jsCode'] = ensure_finish(code, 'normalize')
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
             for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_LEADLANG, 'lead language'), (PLAYGROUND_TAIL, 'language order'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
@@ -893,6 +988,7 @@ def wire_live():
     add_booking_site_lookup(agent['nodes'], agent['connections'])
     ensure_booking_site(agent['nodes'])
     add_whatsapp_log(agent['nodes'], agent['connections'])
+    patch_agent_finish(agent)
     put_live(LIVE_AGENT, agent, agent['active'])
     print(f'wired live booking {LIVE_BOOKING} and agent {LIVE_AGENT}')
 
@@ -1049,6 +1145,8 @@ def main():
         rollback()
     elif command == 'wire':
         wire_live()
+    elif command == 'finish':
+        finish_live()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
