@@ -372,7 +372,7 @@ export const en = {
     deletedBody: (count: number) => `${count === 1 ? '1 test chat was' : `${count} test chats were`} deleted.`,
     deleteFailed: 'Not deleted',
     deleteFailedBody: 'Check your connection and try again.',
-    sources: { playground: 'Playground', compare: 'Compare' },
+    sources: { playground: 'Playground', compare: 'Compare', staging: 'WhatsApp' },
   },
   compare: {
     title: 'Compare',
@@ -1011,7 +1011,7 @@ export const fi: Copy = {
     deletedBody: (count: number) => `${count === 1 ? '1 testikeskustelu poistettiin' : `${count} testikeskustelua poistettiin`}.`,
     deleteFailed: 'Ei poistettu',
     deleteFailedBody: 'Tarkista yhteys ja yritä uudelleen.',
-    sources: { playground: 'Testaus', compare: 'Vertailu' },
+    sources: { playground: 'Testaus', compare: 'Vertailu', staging: 'WhatsApp' },
   },
   compare: {
     title: 'Vertailu',

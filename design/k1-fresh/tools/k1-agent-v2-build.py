@@ -12,6 +12,7 @@ Usage:
                                          the previous live workflows are saved to design/k1-fresh/backups/ first; refused unless
                                          k1-gate.py check passed for the prompt being shipped (--without-gate only for an emergency fix)
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
+  python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -235,6 +236,16 @@ LINK_LANG = (
     "if (code.startsWith('sv') || code.startsWith('swe')) return 'sv'; "
     "return 'fi'; })() }}"
 )
+# Live leads get the production booking site. A phone with a staging test conversation (link_host
+# staging) gets the staging site, and the booking tool still falls back to production for stations
+# the staging site cannot open. Playground turns are staging tests.
+BOOKING_SITE = (
+    "={{ (() => { "
+    "try { const site = String($('Attach booking site').first().json.booking_site || '').toLowerCase(); "
+    "if (site === 'staging' || site === 'live') return site; } catch (e) {} "
+    "try { if ($('Playground Turn').isExecuted) return 'staging'; } catch (e) {} "
+    "return 'live'; })() }}"
+)
 
 STATION_HINT = 'Station name or city ONLY when the customer asks about a different station than their own. Leave EMPTY for the customer\'s own station (the lead\'s station).'
 PRODUCT_HINT = 'Vehicle product: 004 (petrol/diesel/hybrid car or van), 004e (fully electric), 0040 (camper or larger car). Leave empty to use the lead\'s product for the lead\'s own plate. Pass unknown if the customer gave another plate or vehicle and you have not yet asked what it is.'
@@ -248,7 +259,7 @@ TOOLS = {
             'station': STATION_HINT, 'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
             'date_from': 'YYYY-MM-DD, Europe/Helsinki. Default: tomorrow.', 'date_to': 'YYYY-MM-DD, Europe/Helsinki. Same as date_from for a single day.',
         },
-        'fixed': {'action': 'get_slots', 'phone': PHONE, 'language': LINK_LANG, **LEAD_FIELDS},
+        'fixed': {'action': 'get_slots', 'phone': PHONE, 'language': LINK_LANG, 'booking_site': BOOKING_SITE, **LEAD_FIELDS},
     },
     'get_station_info': {
         'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices (station_eur and online_payment_eur when green), official_booking_link, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
@@ -256,7 +267,7 @@ TOOLS = {
             'station': STATION_HINT, 'date': 'YYYY-MM-DD, Europe/Helsinki. Default today.',
             'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
         },
-        'fixed': {'action': 'station_info', 'phone': PHONE, 'language': LINK_LANG, **LEAD_FIELDS},
+        'fixed': {'action': 'station_info', 'phone': PHONE, 'language': LINK_LANG, 'booking_site': BOOKING_SITE, **LEAD_FIELDS},
     },
     'send_booking_confirmation': {
         'description': 'Send a Muster reservation confirmation SMS for an existing chat booking. Call only after the customer clearly asks for an SMS confirmation. Pass event_id and station_id from the booking result or get_my_bookings.',
@@ -535,6 +546,7 @@ def build_agent(booking_id):
         if name in ('book_inspection_invite', 'reschedule_booking'):
             value['time'] = from_ai('time', 'The clock time the customer chose, written HH:MM in Finnish local time exactly as the get_slots time field shows it (for example 16:30). Always fill it in.')
             value['language'] = LINK_LANG
+            value['booking_site'] = BOOKING_SITE
         for key in ('lead_station', 'lead_station_id', 'lead_product', 'lead_vehicle_category'):
             value.pop(key, None)
         node['parameters']['workflowInputs']['schema'] = [entry for entry in node['parameters']['workflowInputs'].get('schema', []) if entry['id'] in value]
@@ -544,6 +556,9 @@ def build_agent(booking_id):
 
     add_payment_tool(nodes, connections, named, define)
     add_agent_error_branch(nodes, connections)
+    add_booking_site_lookup(nodes, connections)
+    ensure_booking_site(nodes)
+    add_whatsapp_log(nodes, connections)
     return save(AGENT_NAME, nodes, connections, live, activate=True)
 
 
@@ -629,6 +644,257 @@ def add_agent_error_branch(nodes, connections):
     connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}, {'node': 'Agent error WhatsApp', 'type': 'main', 'index': 0}]]
     connections['Agent error reply'] = {'main': [[{'node': 'Respond to playground', 'type': 'main', 'index': 0}]]}
     connections['Agent error WhatsApp'] = {'main': [[{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
+
+
+ATTACH_BOOKING_SITE_JS = r"""const turn = $('Build Turn').first().json || {}
+let booking_site = 'live'
+try {
+  const site = String($input.first().json.booking_site || '').toLowerCase()
+  if (site === 'staging' || site === 'live') booking_site = site
+} catch (error) {}
+return [{ json: { ...turn, booking_site } }]"""
+
+BOOKING_SITE_QUERY = (
+    "={{ (() => { const digits = String(($('Build Turn').first().json.from_phone) || '').replace(/\\D/g, '').slice(0, 15); "
+    "return \"select coalesce((select link_host from k1_staging_conversations where phone_key = '\" + digits + \"' order by updated_at desc limit 1), 'live') as booking_site\"; })() }}"
+)
+
+# After the WhatsApp reply has already been sent. Same conversation for a phone, and the inbound
+# message id is unique, so a retry does not write the turn twice. Errors are caught by the caller.
+WHATSAPP_LOG_JS = r"""const sqlLiteral = (value) => "'" + String(value ?? '').replace(/'/g, "''").replace(/\u0000/g, '').slice(0, 8000) + "'"
+const maskMatch = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits.length >= 8 ? '···' + digits.slice(-4) : 'WhatsApp'
+}
+const hidePhones = (value) => String(value || '').replace(/(?:\+|00)?\d[\d\s\-()]{6,}\d/g, (match) => {
+  const digits = match.replace(/\D/g, '')
+  return digits.length >= 8 ? '···' + digits.slice(-4) : match
+})
+try {
+  const turn = $('Build Turn').first().json || {}
+  const digits = String(turn.from_phone || '').replace(/\D/g, '').slice(0, 15)
+  const user = String(turn.raw_text || '').trim()
+  const agent = $('Plan Delivery').all().map((item) => String(item.json.text || '').trim()).filter(Boolean).join('\n\n').trim()
+  const messageId = String(turn.anchor_message_id || '').replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 120)
+  if (!digits || !user || !agent || !messageId) return [{ json: { skip: true, query: 'select 0 as saved' } }]
+  const mask = maskMatch(digits)
+  const title = hidePhones(user).replace(/\s+/g, ' ').trim().slice(0, 140) || mask
+  let hex = ''
+  let x = 2166136261
+  const seed = 'k1-whatsapp:' + digits
+  for (let i = 0; i < 8; i++) {
+    x = Math.imul(x ^ seed.charCodeAt(i % seed.length), 16777619) >>> 0
+    hex += x.toString(16).padStart(8, '0')
+  }
+  hex = hex.slice(0, 32)
+  const conversationId = hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-4' + hex.slice(13, 16) + '-a' + hex.slice(17, 20) + '-' + hex.slice(20, 32)
+  const query = [
+    'with existing as (',
+    '  select id from k1_staging_conversations where phone_key = ' + sqlLiteral(digits) + ' order by updated_at desc limit 1',
+    '), inserted as (',
+    '  insert into k1_staging_conversations (id, phone_key, phone, version_id, version_number, title, started_by, link_host)',
+    '  select ' + sqlLiteral(conversationId) + '::uuid, ' + sqlLiteral(digits) + ', ' + sqlLiteral(mask) + ',',
+    "  'fb38cc92-e22b-4ff3-8599-c5672f108902', 16, " + sqlLiteral(title) + ', ' + sqlLiteral('WhatsApp ' + mask) + ", 'live'",
+    '  where not exists (select 1 from existing)',
+    '  on conflict (id) do nothing',
+    '  returning id',
+    '), conv as (',
+    '  select id from existing union all select id from inserted limit 1',
+    '), fresh as (',
+    '  insert into k1_staging_messages (conversation_id, role, text, is_opener, inbound_message_id)',
+    '  select id, \'user\', ' + sqlLiteral(user) + ', false, ' + sqlLiteral(messageId),
+    '  from conv',
+    '  where not exists (select 1 from k1_staging_messages where conversation_id = (select id from conv) and role = \'user\' and inbound_message_id = ' + sqlLiteral(messageId) + ')',
+    '  returning conversation_id',
+    '), agent_row as (',
+    '  insert into k1_staging_messages (conversation_id, role, text, is_opener)',
+    '  select conversation_id, \'agent\', ' + sqlLiteral(agent) + ', false from fresh',
+    '  returning conversation_id',
+    '), touched as (',
+    '  update k1_staging_conversations set updated_at = now() where id in (select conversation_id from agent_row) returning id',
+    ')',
+    'select (select id::text from conv) as conversation_id, (select count(*) from touched) as saved',
+  ].join('\n')
+  return [{ json: { skip: false, query } }]
+} catch (error) {
+  return [{ json: { skip: true, query: 'select 0 as saved', error: String(error).slice(0, 200) } }]
+}"""
+
+
+def ensure_booking_site(nodes):
+    for node in nodes:
+        if node['name'] not in ('get_slots', 'get_station_info', 'book_inspection_invite', 'reschedule_booking'):
+            continue
+        inputs = node['parameters'].setdefault('workflowInputs', {})
+        value = inputs.setdefault('value', {})
+        value['booking_site'] = BOOKING_SITE
+        schema = inputs.setdefault('schema', [])
+        if not any(entry.get('id') == 'booking_site' for entry in schema):
+            schema.append(SCHEMA_ENTRY('booking_site'))
+
+
+def add_booking_site_lookup(nodes, connections):
+    """One indexed read before the model. A failure still continues, and defaults the link to production."""
+    named = {node['name']: node for node in nodes}
+    if 'Is Reset?' not in named or 'Build Turn' not in named or 'Queue Inbound' not in named:
+        return
+    reset = named['Is Reset?']
+    if 'Booking site' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-booking-site')),
+            'name': 'Booking site',
+            'type': 'n8n-nodes-base.postgres',
+            'typeVersion': named['Queue Inbound']['typeVersion'],
+            'position': [reset['position'][0] + 40, reset['position'][1] + 220],
+            'onError': 'continueRegularOutput',
+            'alwaysOutputData': True,
+            'credentials': named['Queue Inbound']['credentials'],
+            'parameters': {'operation': 'executeQuery', 'query': BOOKING_SITE_QUERY},
+        })
+    else:
+        named['Booking site']['parameters']['query'] = BOOKING_SITE_QUERY
+        named['Booking site']['onError'] = 'continueRegularOutput'
+        named['Booking site']['alwaysOutputData'] = True
+    if 'Attach booking site' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-attach-booking-site')),
+            'name': 'Attach booking site',
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': [reset['position'][0] + 260, reset['position'][1] + 220],
+            'onError': 'continueRegularOutput',
+            'parameters': {'mode': 'runOnceForAllItems', 'jsCode': ATTACH_BOOKING_SITE_JS},
+        })
+    else:
+        named['Attach booking site']['parameters']['jsCode'] = ATTACH_BOOKING_SITE_JS
+        named['Attach booking site']['onError'] = 'continueRegularOutput'
+    false_branch = connections['Is Reset?']['main'][1]
+    if not any(item['node'] == 'Booking site' for item in false_branch):
+        connections['Is Reset?']['main'][1] = [{'node': 'Booking site', 'type': 'main', 'index': 0}]
+    connections['Booking site'] = {'main': [[{'node': 'Attach booking site', 'type': 'main', 'index': 0}]]}
+    connections['Attach booking site'] = {'main': [[{'node': 'AI Agent', 'type': 'main', 'index': 0}]]}
+
+
+def add_whatsapp_log(nodes, connections):
+    """Side branch after every bubble has been sent. Loop Bubbles does not wait on it."""
+    named = {node['name']: node for node in nodes}
+    if 'Loop Bubbles' not in named or 'Queue Inbound' not in named:
+        return
+    loop = named['Loop Bubbles']
+    if 'Log WhatsApp turn' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-log-whatsapp')),
+            'name': 'Log WhatsApp turn',
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': [loop['position'][0] + 220, loop['position'][1] + 260],
+            'onError': 'continueRegularOutput',
+            'parameters': {'mode': 'runOnceForAllItems', 'jsCode': WHATSAPP_LOG_JS},
+        })
+    else:
+        named['Log WhatsApp turn']['parameters']['jsCode'] = WHATSAPP_LOG_JS
+        named['Log WhatsApp turn']['onError'] = 'continueRegularOutput'
+    if 'Write WhatsApp turn' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-write-whatsapp')),
+            'name': 'Write WhatsApp turn',
+            'type': 'n8n-nodes-base.postgres',
+            'typeVersion': named['Queue Inbound']['typeVersion'],
+            'position': [loop['position'][0] + 460, loop['position'][1] + 260],
+            'onError': 'continueRegularOutput',
+            'alwaysOutputData': True,
+            'credentials': named['Queue Inbound']['credentials'],
+            'parameters': {'operation': 'executeQuery', 'query': '={{ $json.query }}'},
+        })
+    else:
+        named['Write WhatsApp turn']['onError'] = 'continueRegularOutput'
+        named['Write WhatsApp turn']['alwaysOutputData'] = True
+    done = connections['Loop Bubbles']['main'][0]
+    if not any(item['node'] == 'Log WhatsApp turn' for item in done):
+        done.append({'node': 'Log WhatsApp turn', 'type': 'main', 'index': 0})
+    connections['Log WhatsApp turn'] = {'main': [[{'node': 'Write WhatsApp turn', 'type': 'main', 'index': 0}]]}
+
+
+def patch_live_booking_link(code):
+    start, end = code.find('const linkLang'), code.find('const EXONYMS')
+    source = (HERE / 'k1-muster-v2.js').read_text()
+    src_start, src_end = source.find('const linkLang'), source.find('const EXONYMS')
+    if min(start, end, src_start, src_end) < 0:
+        raise SystemExit('bookingLink markers missing')
+    return code[:start] + source[src_start:src_end] + code[end:]
+
+
+def apply_log_schema():
+    """Adds the two columns the WhatsApp log writes. Idempotent."""
+    agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    queue = next(node for node in agent['nodes'] if node['name'] == 'Queue Inbound')
+    sql = (ROOT.parent.parent / 'supabase' / 'k1-agent-builder-007-whatsapp-chats.sql').read_text()
+    kept = '\n'.join(line for line in sql.splitlines() if not line.strip().startswith('--'))
+    statements = [part.strip() for part in kept.split(';') if part.strip()]
+    nonce = uuid.uuid4().hex[:10]
+    nodes = [{
+        'id': 'hook', 'name': 'Hook', 'type': 'n8n-nodes-base.webhook', 'typeVersion': 2.1, 'position': [0, 0],
+        'parameters': {'httpMethod': 'POST', 'path': f'k1-whatsapp-schema-{nonce}', 'responseMode': 'responseNode', 'options': {}},
+    }]
+    connections = {}
+    previous = 'Hook'
+    for index, statement in enumerate(statements):
+        name = f'Sql {index}'
+        nodes.append({
+            'id': f'sql{index}', 'name': name, 'type': queue['type'], 'typeVersion': queue['typeVersion'],
+            'position': [240 * (index + 1), 0], 'credentials': queue['credentials'],
+            'parameters': {'operation': 'executeQuery', 'query': statement},
+        })
+        connections[previous] = {'main': [[{'node': name, 'type': 'main', 'index': 0}]]}
+        previous = name
+    nodes.append({
+        'id': 'out', 'name': 'Out', 'type': 'n8n-nodes-base.respondToWebhook', 'typeVersion': 1.5, 'position': [240 * (len(statements) + 1), 0],
+        'parameters': {'respondWith': 'json', 'responseBody': '={{ { ok: true } }}', 'options': {}},
+    })
+    connections[previous] = {'main': [[{'node': 'Out', 'type': 'main', 'index': 0}]]}
+    body = {'name': f'k1 whatsapp schema {nonce}', 'nodes': nodes, 'connections': connections, 'settings': {'executionOrder': 'v1'}}
+    wid = gate.request('POST', '/workflows', body)['id']
+    try:
+        gate.request('POST', f'/workflows/{wid}/activate')
+        base = (os.environ.get('N8N_RAPID_BASE_URL') or gate.local_env().get('N8N_RAPID_BASE_URL') or gate.DEFAULT_BASE).rstrip('/')
+        url = f'{base}/webhook/k1-whatsapp-schema-{nonce}'
+        for attempt in range(8):
+            request = urllib.request.Request(url, data=b'{}', headers={'Content-Type': 'application/json'}, method='POST')
+            try:
+                with urllib.request.urlopen(request, timeout=40) as response:
+                    print('schema', response.status)
+                    return
+            except urllib.error.HTTPError as error:
+                if error.code == 404 and attempt < 7:
+                    time.sleep(1)
+                    continue
+                raise
+    finally:
+        for attempt in range(5):
+            try:
+                gate.request('POST', f'/workflows/{wid}/deactivate')
+            except urllib.error.HTTPError:
+                pass
+            try:
+                gate.request('DELETE', f'/workflows/{wid}')
+                break
+            except urllib.error.HTTPError:
+                time.sleep(1 + attempt)
+
+
+def wire_live():
+    apply_log_schema()
+    booking = snapshot(LIVE_BOOKING)
+    for node in booking['nodes']:
+        if node['name'] == 'Muster':
+            node['parameters']['jsCode'] = patch_live_booking_link(node['parameters']['jsCode'])
+    put_live(LIVE_BOOKING, booking, booking['active'])
+    agent = snapshot(LIVE_AGENT)
+    add_booking_site_lookup(agent['nodes'], agent['connections'])
+    ensure_booking_site(agent['nodes'])
+    add_whatsapp_log(agent['nodes'], agent['connections'])
+    put_live(LIVE_AGENT, agent, agent['active'])
+    print(f'wired live booking {LIVE_BOOKING} and agent {LIVE_AGENT}')
 
 
 SMOKE_CASES = [
@@ -781,6 +1047,8 @@ def main():
         promote(without_gate='--without-gate' in sys.argv)
     elif command == 'rollback':
         rollback()
+    elif command == 'wire':
+        wire_live()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
