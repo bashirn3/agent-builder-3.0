@@ -433,8 +433,35 @@ def replace_once(text, pair, label):
 # station total, append it ("At the station: 76 €."). If that reply also has no link,
 # append official_booking_link from this turn's get_slots / get_station_info. Never add
 # the link on a turn that already booked.
-FINISH_FN = r"""function finishReply(messages, agent) {
-  const cleaned = (Array.isArray(messages) ? messages : []).map((line) => String(line).replace(/; /g, '. '))
+FINISH_FN = r"""function separateFuelLink(line) {
+  const fuel = /bensiini|bensa|diesel|sähkö|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima/i
+  if (!fuel.test(line) || !line.includes('?')) return line
+  const parts = line.split(/(?<=[.!?])\s+|\n+/)
+  let changed = false
+  const next = parts.map((part) => {
+    if (!fuel.test(part) || !part.includes('?')) return part
+    const urls = part.match(/https:\/\/\S+/g)
+    if (!urls) return part
+    let rest = part
+    for (const url of urls) rest = rest.replace(url, ' ')
+    rest = rest.replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.:;])/g, '$1').trim()
+    changed = true
+    return [rest, ...urls].filter(Boolean).join('\n')
+  })
+  return changed ? next.join('\n') : line
+}
+function dedupeLinks(line) {
+  const seen = new Set()
+  const next = String(line).replace(/https:\/\/\S+/g, (url) => {
+    const key = url.replace(/[),.;]+$/, '')
+    if (seen.has(key)) return ''
+    seen.add(key)
+    return url
+  })
+  return next.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').trim()
+}
+function finishReply(messages, agent) {
+  const cleaned = (Array.isArray(messages) ? messages : []).map((line) => String(line).replace(/; /g, '. ').replace(/\bhttps?:\/\//gi, (found) => found.toLowerCase()))
   if (!cleaned.length) return cleaned
   const steps = Array.isArray(agent && agent.intermediateSteps) ? agent.intermediateSteps : []
   const dataOf = (step) => {
@@ -479,9 +506,10 @@ FINISH_FN = r"""function finishReply(messages, agent) {
     cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + sentence
     reply = cleaned.join('\n\n')
   }
-  if (booked || /https:\/\//.test(reply) || !quotesGreen || !link) return cleaned
-  cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
-  return cleaned
+  if (!(booked || /https:\/\//i.test(reply) || !quotesGreen || !link)) {
+    cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
+  }
+  return cleaned.map(separateFuelLink).map(dedupeLinks).filter(Boolean)
 }
 """
 PLAN_FINISH_CALL = "msgs = finishReply(msgs, $input.first().json);"
@@ -504,11 +532,11 @@ def ensure_finish(code, kind):
 def upsert_finish_fn(code):
     """Insert finishReply, or replace an older copy. The call sites stay where they are."""
     fresh = FINISH_FN.rstrip() + '\n'
+    if 'function separateFuelLink(' in code and 'function dedupeLinks(' in code and 'function finishReply(' in code:
+        return code
     start = code.find('function finishReply(')
     if start < 0:
         return fresh + code
-    if 'At the station:' in code[start:start + 4000]:
-        return code
     brace = code.find('{', start)
     depth = 0
     end = None
@@ -549,9 +577,9 @@ def finish_live():
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
     norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
     brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
-    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'At the station:' not in plan:
+    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'function dedupeLinks(' not in plan:
         raise SystemExit('Plan Delivery finish missing after put')
-    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'At the station:' not in norm:
+    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'function dedupeLinks(' not in norm:
         raise SystemExit('Normalize finish missing after put')
     if "Oulu Alppila bookings go through K1's booking page" not in brief:
         raise SystemExit('business brief line missing after put')
