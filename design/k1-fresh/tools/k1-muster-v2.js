@@ -124,16 +124,21 @@ function sourceOf(entry) {
   if (entry.k1_id && !entry.closed) return { base: PROD, id: entry.k1_id, bookable: false }
   return null
 }
-// Staging chats must get the staging ajanvaraus host (Tomi 2026-10-30).
-// Prod Finnish path is /varaus (Tomi 2026-10-30 correction), not the site root.
-// stationId on both UIs is the production K1 station id when we have it; otherwise the Muster staging id.
-const bookingLink = (entry, lang = 'fi') => {
+// This workflow is the staging agent. Every station link uses the staging site, including stations
+// that are only read from production Muster (Tomi 2026-10-30 and 2026-11-01).
+// Paths: Finnish /varaus, English /en/reservation, Swedish /sv/bokning.
+// stationId is the production K1 station id when we have it; otherwise the Muster staging id.
+const linkLang = (value) => {
+  const code = String(value || 'fi').toLowerCase()
+  if (code.startsWith('en') || code.startsWith('eng')) return 'en'
+  if (code.startsWith('sv') || code.startsWith('swe') || code.startsWith('ruo')) return 'sv'
+  return 'fi'
+}
+const bookingLink = (entry, lang) => {
   const stationId = entry.k1_id || entry.muster_id
   if (!stationId) return null
-  const staging = Boolean(entry.muster_id)
-  const path = { fi: '/varaus', en: '/en/reservation', sv: '/sv/bokning' }[String(lang || 'fi').slice(0, 2)] || '/varaus'
-  const host = staging ? BOOKING_SITE_STAGING : BOOKING_SITE_PROD
-  return `${host}${path}?stationId=${stationId}&serviceId=1`
+  const path = { fi: '/varaus', en: '/en/reservation', sv: '/sv/bokning' }[linkLang(lang || body.language)]
+  return `${BOOKING_SITE_STAGING}${path}?stationId=${stationId}&serviceId=1`
 }
 
 const EXONYMS = {

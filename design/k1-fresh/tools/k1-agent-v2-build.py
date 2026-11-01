@@ -222,6 +222,19 @@ LEAD_FIELDS = {
     'lead_vehicle_category': LEAD('lead_vehicle_category'),
 }
 PHONE = "={{ %s.isExecuted ? %s.first().json.from_phone : $('Webhook').first().json.body.from_phone }}" % (PT, PT)
+# Reply language for booking links. Read from the turn the model already sees, so English and Swedish
+# chats get /en/reservation and /sv/bokning without the model having to pass a field.
+LINK_LANG = (
+    "={{ (() => { let raw = ''; "
+    "try { if ($('Playground Turn').isExecuted) raw = String($('Playground Turn').first().json.agent_input || ''); } catch (e) {} "
+    "if (!raw) { try { if ($('Build Turn').isExecuted) raw = String($('Build Turn').first().json.agent_input || ''); } catch (e) {} } "
+    "const hint = (raw.match(/customer_latest_message_language:\\s*([A-Za-z]+)/) || [])[1] "
+    "|| (raw.match(/Customer's language:\\s*([A-Za-z]+)/i) || [])[1] || 'Finnish'; "
+    "const code = String(hint).toLowerCase(); "
+    "if (code.startsWith('en')) return 'en'; "
+    "if (code.startsWith('sv') || code.startsWith('swe')) return 'sv'; "
+    "return 'fi'; })() }}"
+)
 
 STATION_HINT = 'Station name or city ONLY when the customer asks about a different station than their own. Leave EMPTY for the customer\'s own station (the lead\'s station).'
 PRODUCT_HINT = 'Vehicle product: 004 (petrol/diesel/hybrid car or van), 004e (fully electric), 0040 (camper or larger car). Leave empty to use the lead\'s product for the lead\'s own plate. Pass unknown if the customer gave another plate or vehicle and you have not yet asked what it is.'
@@ -235,7 +248,7 @@ TOOLS = {
             'station': STATION_HINT, 'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
             'date_from': 'YYYY-MM-DD, Europe/Helsinki. Default: tomorrow.', 'date_to': 'YYYY-MM-DD, Europe/Helsinki. Same as date_from for a single day.',
         },
-        'fixed': {'action': 'get_slots', 'phone': PHONE, **LEAD_FIELDS},
+        'fixed': {'action': 'get_slots', 'phone': PHONE, 'language': LINK_LANG, **LEAD_FIELDS},
     },
     'get_station_info': {
         'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices (station_eur and online_payment_eur when green), official_booking_link, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
@@ -243,7 +256,7 @@ TOOLS = {
             'station': STATION_HINT, 'date': 'YYYY-MM-DD, Europe/Helsinki. Default today.',
             'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
         },
-        'fixed': {'action': 'station_info', 'phone': PHONE, **LEAD_FIELDS},
+        'fixed': {'action': 'station_info', 'phone': PHONE, 'language': LINK_LANG, **LEAD_FIELDS},
     },
     'send_booking_confirmation': {
         'description': 'Send a Muster reservation confirmation SMS for an existing chat booking. Call only after the customer clearly asks for an SMS confirmation. Pass event_id and station_id from the booking result or get_my_bookings.',
@@ -438,7 +451,7 @@ def build_agent(booking_id):
         if node['name'] == 'opt_out':
             node['parameters']['description'] = 'Stop reminders for this number. Call when the customer asks to stop messages or not be contacted, refuses reminders, or says the car is already inspected. Never for a sold car, a new plate or another vehicle. Pass puhelin.'
         if node['name'] == 'escalate_to_human':
-            node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, demands compensation, refuses to continue, or reports a legal, safety or accident matter. Never for swearing or rudeness alone, payment methods, phone hours, off-topic chat, or a question you can answer or point to 0306 100 100 for. Pass syy.'
+            node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, makes a complaint, or reports a legal, safety or accident matter. Never for a booking question (why don\'t you book it, can you book this, book it for me), payment, hours, prices, links, swearing, or anything you can answer. Pass syy.'
         if node['name'] == 'AI Agent':
             options = node['parameters']['options']
             options['systemMessage'] = replace_once(
@@ -521,6 +534,7 @@ def build_agent(booking_id):
         value['phone'] = PHONE
         if name in ('book_inspection_invite', 'reschedule_booking'):
             value['time'] = from_ai('time', 'The clock time the customer chose, written HH:MM in Finnish local time exactly as the get_slots time field shows it (for example 16:30). Always fill it in.')
+            value['language'] = LINK_LANG
         for key in ('lead_station', 'lead_station_id', 'lead_product', 'lead_vehicle_category'):
             value.pop(key, None)
         node['parameters']['workflowInputs']['schema'] = [entry for entry in node['parameters']['workflowInputs'].get('schema', []) if entry['id'] in value]
