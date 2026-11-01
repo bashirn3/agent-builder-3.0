@@ -1,0 +1,1003 @@
+[
+ {
+  "id": "plan.cards.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-878"
+  },
+  "turns": [
+   {
+    "user": "Käykö kortti asemalla, ja voiko verkossa maksaa halvemmalla?",
+    "reply": "Kyllä, asemalla käy kortti. Palokassa hinta on asemalla 76 €, ja verkossa maksettuna vihreä hinta on 71 €.",
+    "status": 200,
+    "latency": 9.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-11-01",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-11-01",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-11-01\",\"label\":\"Sunday 1.11.\",\"status\":\"unknown\",\"display\":\"unknown\",\"source\":\"That date is in the past.\",\"next_days\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-04\",\"label\":\"Wednesday 4.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-05\",\"label\":\"Thursday 5.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-06\",\"label\":\"Friday 6.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-09\",\"label\":\"Monday 9.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-10\",\"label\":\"Tuesday 10.11.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-11-01 Sun 22:48\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-03T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-03T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":28,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"green_slot_count\":28,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [
+   "CHECK GREEN_NO_LINK"
+  ],
+  "note": ""
+ },
+ {
+  "id": "plan.claim.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-881"
+  },
+  "turns": [
+   {
+    "user": "Eli se on nyt varattu ja varausnumero on 12345, eikö?",
+    "reply": "En löydä tälle numerolle chatin kautta tehtyä varausta, joten en voi vahvistaa varausta tai varausnumeroa 12345. Jos teit varauksen muualla, tarkista vahvistusviesti.",
+    "status": 200,
+    "latency": 9.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_my_bookings"
+    ],
+    "params": [
+     {}
+    ],
+    "steps": [
+     {
+      "tool": "get_my_bookings",
+      "input": {},
+      "output": "[{\"ok\":true,\"count\":0,\"bookings\":[],\"note\":\"Only bookings made through this chat are listed; a booking made elsewhere (for example on the K1 website) is not visible.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.elsewhere.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-885"
+  },
+  "turns": [
+   {
+    "user": "I'll book somewhere else, thanks.",
+    "reply": "No problem, thanks for letting me know.",
+    "status": 200,
+    "latency": 8.4,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-11-02",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-11-02",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"status\":\"open\",\"opens\":\"09:00\",\"closes\":\"17:00\",\"display\":\"09:00-17:00\",\"source\":\"station page (this date)\",\"next_days\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-04\",\"label\":\"Wednesday 4.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-05\",\"label\":\"Thursday 5.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-06\",\"label\":\"Friday 6.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-09\",\"label\":\"Monday 9.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-10\",\"label\":\"Tuesday 10.11.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-11-01 Sun 22:48\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-03T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-03T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":36,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"green_slot_count\":36,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.empathy.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-882"
+  },
+  "turns": [
+   {
+    "user": "Äitini kuoli eilen. En jaksa hoitaa katsastusta nyt.",
+    "reply": "Otan osaa äitisi kuoleman johdosta. Katsastus saa nyt odottaa, laita viestiä kun jaksat palata siihen.",
+    "status": 200,
+    "latency": 5.2,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.ev.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Turku Itäharju",
+   "sid": 241,
+   "product": "004e",
+   "cat": "M1",
+   "plate": "TST-880"
+  },
+  "turns": [
+   {
+    "user": "How much is the inspection for my car?",
+    "reply": "For your electric car at Itäharju, the inspection is €46 at the station. Some times have a €30 green price when prepaid online: https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=241",
+    "status": 200,
+    "latency": 11.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-11-01",
+      "product": "004e",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-11-01",
+       "product": "004e",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Turku Itäharju\",\"address\":\"Munkkionkuja 1, 20520 Turku\",\"city\":\"Turku\",\"page\":\"https://www.k1katsastus.fi/asema/turku-itaharju/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-11-01\",\"label\":\"Sunday 1.11.\",\"status\":\"unknown\",\"display\":\"unknown\",\"source\":\"That date is in the past.\",\"next_days\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"hours\":\"08:30-17:00\"},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"hours\":\"08:30-17:00\"},{\"date\":\"2026-11-04\",\"label\":\"Wednesday 4.11.\",\"hours\":\"08:30-17:00\"},{\"date\":\"2026-11-05\",\"label\":\"Thursday 5.11.\",\"hours\":\"08:30-17:00\"},{\"date\":\"2026-11-06\",\"label\":\"Friday 6.11.\",\"hours\":\"08:00-17:00\"},{\"date\":\"2026-11-09\",\"label\":\"Monday 9.11.\",\"hours\":\"08:30-17:00\"},{\"date\":\"2026-11-10\",\"label\":\"Tuesday 10.11.\",\"hours\":\"08:30-17:00\"}]},\"today_helsinki\":\"2026-11-01 Sun 22:48\",\"booking\":{\"assistant_can_book\":true,\"station_id\":241,\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=241\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"station_hours\":\"08:30-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T09:00+02:00|241|2246|M1\",\"time\":\"09:00\",\"station_eur\":46,\"online_payment_eur\":46},{\"slot_id\":\"2026-11-02T13:00+02:00|241|2246|M1\",\"time\":\"13:00\",\"station_eur\":46,\"online_payment_eur\":30,\"is_green\":true},{\"slot_id\":\"2026-11-02T16:45+02:00|241|2246|M1\",\"time\":\"16:45\",\"station_eur\":46,\"online_payment_eur\":46}]},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"station_hours\":\"08:30-17:00\",\"free_count\":32,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T09:00+02:00|241|2246|M1\",\"time\":\"09:00\",\"station_eur\":46,\"online_payment_eur\":46},{\"slot_id\":\"2026-11-03T13:00+02:00|241|2246|M1\",\"time\":\"13:00\",\"station_eur\":46,\"online_payment_eur\":46},{\"slot_id\":\"2026-11-03T16:45+02:00|241|2246|M1\",\"time\":\"16:45\",\"station_eur\":46,\"online_payment_eur\":46}]}],\"price\":{\"total_eur\":46,\"station_eur\":46,\"online_payment_eur\":30,\"is_green\":true,\"green_slot_count\":38,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"green_slot_count\":38,\"vehicle\":{\"product\":\"004e\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\"],\"measuring_included\":false},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.green.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-872"
+  },
+  "turns": [
+   {
+    "user": "Onko ensi viikolla vihreitä aikoja, ja mitä ne maksavat?",
+    "reply": "Kyllä, ensi viikolla on vihreitä aikoja. Ma 2.11. klo 14.30, 15.15 tai 15.45 maksaa verkossa 71 €, asemalla 76 €; viikon edullisimmat ovat 68 € verkossa ke 4.11. Verkkomaksu ja varaus: https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256. Minkä maanantai-ajan varaan sulle asemalla maksettavaksi?",
+    "status": 200,
+    "latency": 19.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-08",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-08",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":157,\"green_slot_count\":36,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"weekday\":\"Tuesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-04\",\"weekday\":\"Wednesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":6,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-04T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true}]},{\"date\":\"2026-11-05\",\"weekday\":\"Thursday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":10,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-05T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-06\",\"weekday\":\"Friday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":8,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-06T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-07\",\"weekday\":\"Saturday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]},{\"date\":\"2026-11-08\",\"weekday\":\"Sunday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":36,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [
+   "t1 SEMICOLON"
+  ],
+  "note": ""
+ },
+ {
+  "id": "plan.link.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-875"
+  },
+  "turns": [
+   {
+    "user": "Lähetä varauslinkki.",
+    "reply": "Varaa aika tästä: https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256. Vihreät ajat maksavat verkossa 68–71 €, asemalla 76 €.",
+    "status": 200,
+    "latency": 14.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-08",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-08",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":157,\"green_slot_count\":36,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"weekday\":\"Tuesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-04\",\"weekday\":\"Wednesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":6,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-04T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true}]},{\"date\":\"2026-11-05\",\"weekday\":\"Thursday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":10,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-05T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-06\",\"weekday\":\"Friday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":8,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-06T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-07\",\"weekday\":\"Saturday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]},{\"date\":\"2026-11-08\",\"weekday\":\"Sunday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":36,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.link.oulu.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Oulu Alppila",
+   "sid": null,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-876"
+  },
+  "turns": [
+   {
+    "user": "Send me the link to book at this station.",
+    "reply": "Book at K1 Katsastus Oulu Alppila here: https://ajanvaraus.k1katsastus.fi/en?stationId=1486",
+    "status": 200,
+    "latency": 15.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-11-01",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-11-01",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Oulu Alppila\",\"address\":\"Tukkimiehentie 1, 90530 Oulu\",\"city\":\"Oulu\",\"page\":\"https://www.k1katsastus.fi/asema/oulu-alppila/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-11-01\",\"label\":\"Sunday 1.11.\",\"status\":\"unknown\",\"display\":\"unknown\",\"source\":\"That date is in the past.\",\"next_days\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-04\",\"label\":\"Wednesday 4.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-05\",\"label\":\"Thursday 5.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-06\",\"label\":\"Friday 6.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-09\",\"label\":\"Monday 9.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-10\",\"label\":\"Tuesday 10.11.\",\"hours\":\"08:00-15:45\"}]},\"today_helsinki\":\"2026-11-01 Sun 22:48\",\"booking\":{\"assistant_can_book\":false,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/en?stationId=1486\",\"national_booking_phone\":\"0306 100 100\",\"note\":\"This assistant cannot create bookings at this station yet. Give the official booking link or the national number; never claim a booking.\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"station_hours\":\"08:00-15:45\",\"free_count\":17,\"first\":\"08:40\",\"last\":\"15:00\",\"suggestions\":[{\"time\":\"08:40\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"12:20\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"15:00\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"station_hours\":\"08:00-15:45\",\"free_count\":17,\"first\":\"08:40\",\"last\":\"15:20\",\"suggestions\":[{\"time\":\"08:40\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"12:40\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"15:20\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true}]}],\"price\":{\"total_eur\":69,\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true,\"green_slot_count\":72,\"breakdown\":[{\"item\":\"Statutory measuring (max. 3500 kg)\",\"eur\":20,\"station_eur\":20,\"online_payment_eur\":9},{\"item\":\"Periodic inspection (car max. 3500 kg, quadricycle)\",\"eur\":49,\"station_eur\":49,\"online_payment_eur\":40}],\"source\":\"live K1 online booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"green_slot_count\":72,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Periodic inspection (car max. 3500 kg, quadricycle)\",\"Statutory measuring (max. 3500 kg)\"],\"measuring_included\":true},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.minor.sv",
+  "suite": "plan",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-884"
+  },
+  "turns": [
+   {
+    "user": "Jag är 15. Kan du boka besiktningen åt mig?",
+    "reply": "Enligt våra bokningsregler bokar en myndig person med körkort åt dig. En vuxen kan boka på https://k1-katsastus-ajanvaraus.stage.geniem.io/sv?stationId=256 eller ringa 0306 100 100.",
+    "status": 200,
+    "latency": 10.1,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-11-01",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-11-01",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Jyväskylä Palokka\",\"address\":\"Palokanorsi 1, 40270 Jyväskylä\",\"city\":\"Jyväskylä\",\"page\":\"https://www.k1katsastus.fi/asema/jyvaskyla-palokka/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-11-01\",\"label\":\"Sunday 1.11.\",\"status\":\"unknown\",\"display\":\"unknown\",\"source\":\"That date is in the past.\",\"next_days\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-04\",\"label\":\"Wednesday 4.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-05\",\"label\":\"Thursday 5.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-06\",\"label\":\"Friday 6.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-09\",\"label\":\"Monday 9.11.\",\"hours\":\"09:00-17:00\"},{\"date\":\"2026-11-10\",\"label\":\"Tuesday 10.11.\",\"hours\":\"09:00-17:00\"}]},\"today_helsinki\":\"2026-11-01 Sun 22:48\",\"booking\":{\"assistant_can_book\":true,\"station_id\":256,\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/sv?stationId=256\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-03T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-03T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":28,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"green_slot_count\":28,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.name.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-886"
+  },
+  "turns": [
+   {
+    "user": "Haluan varata ajan huomiselle",
+    "reply": "Huomiselle ma 2.11. Palokassa löytyy 14.30, 15.15 tai 15.45. Nämä ovat vihreitä aikoja, 71 € verkossa maksettuna tai 76 € asemalla. Mikä aika sopii?",
+    "status": 200,
+    "latency": 12.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-02",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-02",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":31,\"green_slot_count\":6,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}],\"all_times\":[{\"slot_id\":\"2026-11-02T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T09:30+02:00|256|2246+2254|M1\",\"time\":\"09:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T09:45+02:00|256|2246+2254|M1\",\"time\":\"09:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:00+02:00|256|2246+2254|M1\",\"time\":\"10:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:30+02:00|256|2246+2254|M1\",\"time\":\"10:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:45+02:00|256|2246+2254|M1\",\"time\":\"10:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:15+02:00|256|2246+2254|M1\",\"time\":\"11:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:30+02:00|256|2246+2254|M1\",\"time\":\"11:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:00+02:00|256|2246+2254|M1\",\"time\":\"12:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:30+02:00|256|2246+2254|M1\",\"time\":\"12:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:15+02:00|256|2246+2254|M1\",\"time\":\"13:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:00+02:00|256|2246+2254|M1\",\"time\":\"14:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:15+02:00|256|2246+2254|M1\",\"time\":\"14:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T14:45+02:00|256|2246+2254|M1\",\"time\":\"14:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:30+02:00|256|2246+2254|M1\",\"time\":\"15:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T16:00+02:00|256|2246+2254|M1\",\"time\":\"16:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:15+02:00|256|2246+2254|M1\",\"time\":\"16:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:30+02:00|256|2246+2254|M1\",\"time\":\"16:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":6,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 14:30 sopii",
+    "reply": "Ma 2.11. klo 14.30 autolle TST-886. Kenen nimellä varaan?",
+    "status": 200,
+    "latency": 4.0,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Ap mikkola",
+    "reply": "Varattu Palokkaan ma 2.11. klo 14.30, varausnumero AYKW6NC9. Hinta asemalla 76 €, kortti käy. Haluatko vahvistuksen tekstiviestillä?",
+    "status": 200,
+    "latency": 16.2,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-11-02T14:30+02:00|256|2246+2254|M1",
+      "rek": "TST-886",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-11-02T14:30+02:00|256|2246+2254|M1",
+       "name": "Ap Mikkola",
+       "rek": "TST-886",
+       "event_id": "",
+       "time": "14:30"
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"AYKW6NC9\",\"event_id\":\"7c2c3123-a90a-4363-8e6b-d4abedb3812e|fce03caa6292d20ff992c325f9c46db0|29bfbceab0e6837401e6107ea162747d\",\"group_id\":\"7c2c3123-a90a-4363-8e6b-d4abedb3812e\",\"reservation_uid\":\"fce03caa6292d20ff992c325f9c46db0\",\"customer_uid\":\"29bfbceab0e6837401e6107ea162747d\",\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"display_fi\":\"Monday 2.11. 14:30\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-886\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"payment_note\":\"Chat booking can be paid at the station. For online prepayment / Vihreä hinta, give official_booking_link. Never say online pay is impossible.\",\"ask_sms_confirmation\":true,\"sms_confirmation_hint\":\"After confirming the booking, ask once whether they want a reservation confirmation SMS. On yes call send_booking_confirmation with this event_id and station_id.\",\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [
+   "CHECK GREEN_NO_LINK"
+  ],
+  "note": "Ap mikkola is the name, not a time of day"
+ },
+ {
+  "id": "plan.nofuel.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-879"
+  },
+  "turns": [
+   {
+    "user": "Mitä aikoja on huomenna ja paljonko se maksaa?",
+    "reply": "Huomenna ma 2.11. Palokassa vapaita aikoja on 14.30, 15.15 ja 15.45. Katsastus mittauksineen maksaa 76 € asemalla, vihreinä aikoina 71 € ennakkoon verkossa.",
+    "status": 200,
+    "latency": 8.9,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-02",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-02",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":31,\"green_slot_count\":6,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}],\"all_times\":[{\"slot_id\":\"2026-11-02T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T09:30+02:00|256|2246+2254|M1\",\"time\":\"09:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T09:45+02:00|256|2246+2254|M1\",\"time\":\"09:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:00+02:00|256|2246+2254|M1\",\"time\":\"10:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:30+02:00|256|2246+2254|M1\",\"time\":\"10:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:45+02:00|256|2246+2254|M1\",\"time\":\"10:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:15+02:00|256|2246+2254|M1\",\"time\":\"11:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:30+02:00|256|2246+2254|M1\",\"time\":\"11:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:00+02:00|256|2246+2254|M1\",\"time\":\"12:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:30+02:00|256|2246+2254|M1\",\"time\":\"12:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:15+02:00|256|2246+2254|M1\",\"time\":\"13:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:00+02:00|256|2246+2254|M1\",\"time\":\"14:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:15+02:00|256|2246+2254|M1\",\"time\":\"14:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T14:45+02:00|256|2246+2254|M1\",\"time\":\"14:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:30+02:00|256|2246+2254|M1\",\"time\":\"15:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T16:00+02:00|256|2246+2254|M1\",\"time\":\"16:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:15+02:00|256|2246+2254|M1\",\"time\":\"16:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:30+02:00|256|2246+2254|M1\",\"time\":\"16:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":6,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [
+   "CHECK GREEN_NO_LINK"
+  ],
+  "note": ""
+ },
+ {
+  "id": "plan.pay.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-873"
+  },
+  "turns": [
+   {
+    "user": "I want to pay online. Please send the link.",
+    "reply": "Online payment is €71 for these green times at Palokka tomorrow, Mon 2 Nov: 14:30, 15:15 or 15:45. Choose a time and pay here: https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256",
+    "status": 200,
+    "latency": 15.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-08",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-08",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":157,\"green_slot_count\":36,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"weekday\":\"Tuesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-04\",\"weekday\":\"Wednesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":6,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-04T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true}]},{\"date\":\"2026-11-05\",\"weekday\":\"Thursday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":10,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-05T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-06\",\"weekday\":\"Friday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":8,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-06T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-07\",\"weekday\":\"Saturday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]},{\"date\":\"2026-11-08\",\"weekday\":\"Sunday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":36,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.pay.sv",
+  "suite": "plan",
+  "lang": "sv",
+  "lead": {
+   "lang": "sv",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-874"
+  },
+  "turns": [
+   {
+    "user": "Jag vill betala online. Skicka länken.",
+    "reply": "Du kan välja tid och betala online här: https://k1-katsastus-ajanvaraus.stage.geniem.io/sv?stationId=256. Mån 2 nov finns gröna tider kl. 14.30, 15.15 och 15.45 för 71 €, jämfört med 76 € på stationen.",
+    "status": 200,
+    "latency": 16.8,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-08",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-08",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":157,\"green_slot_count\":36,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"weekday\":\"Tuesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-04\",\"weekday\":\"Wednesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":6,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-04T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true}]},{\"date\":\"2026-11-05\",\"weekday\":\"Thursday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":10,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-05T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-06\",\"weekday\":\"Friday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":8,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-06T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-07\",\"weekday\":\"Saturday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]},{\"date\":\"2026-11-08\",\"weekday\":\"Sunday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":36,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/sv?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/sv?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.sms.no.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-888"
+  },
+  "turns": [
+   {
+    "user": "I want to book a time tomorrow",
+    "reply": "Tomorrow, Monday 2 November, Palokka has 14:30, 15:15 or 15:45. They’re €76 at the station or €71 prepaid online. Which time would you like? If you choose one, I’ll need the full name for the booking.",
+    "status": 200,
+    "latency": 13.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-08",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-08",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":157,\"green_slot_count\":36,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"weekday\":\"Tuesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-03T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-03T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-04\",\"weekday\":\"Wednesday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":6,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-04T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true},{\"slot_id\":\"2026-11-04T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":68,\"is_green\":true}]},{\"date\":\"2026-11-05\",\"weekday\":\"Thursday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":10,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-05T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-05T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-06\",\"weekday\":\"Friday\",\"station_hours\":\"09:00-17:00\",\"free_count\":32,\"green_count\":8,\"first\":\"09:00\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-06T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-06T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}]},{\"date\":\"2026-11-07\",\"weekday\":\"Saturday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]},{\"date\":\"2026-11-08\",\"weekday\":\"Sunday\",\"station_hours\":\"closed\",\"free_count\":0,\"green_count\":0,\"suggestions\":[]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":36,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "The 14:30 one works for me",
+    "reply": "Monday 2 November at 14:30 for TST-888. What full name should I book it under?",
+    "status": 200,
+    "latency": 4.9,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "John Smith",
+    "reply": "Booked at K1 Katsastus Jyväskylä Palokka for Monday 2 November at 14:30, booking number 4JUL4W7K. The total is €76, payable at the station, and cards are accepted. Would you like an SMS confirmation?",
+    "status": 200,
+    "latency": 10.3,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-11-02T14:30+02:00|256|2246+2254|M1",
+      "rek": "TST-888",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-11-02T14:30+02:00|256|2246+2254|M1",
+       "name": "John Smith",
+       "rek": "TST-888",
+       "event_id": "",
+       "time": "14:30"
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"4JUL4W7K\",\"event_id\":\"fc75f3b9-e77f-4c4f-b7a7-b94cdac85816|175df055cefe060f57b9526e23c98378|068177268294fb12b8cd96d8f1d76cbe\",\"group_id\":\"fc75f3b9-e77f-4c4f-b7a7-b94cdac85816\",\"reservation_uid\":\"175df055cefe060f57b9526e23c98378\",\"customer_uid\":\"068177268294fb12b8cd96d8f1d76cbe\",\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"display_fi\":\"Monday 2.11. 14:30\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-888\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/en?stationId=256\",\"payment_note\":\"Chat booking can be paid at the station. For online prepayment / Vihreä hinta, give official_booking_link. Never say online pay is impossible.\",\"ask_sms_confirmation\":true,\"sms_confirmation_hint\":\"After confirming the booking, ask once whether they want a reservation confirmation SMS. On yes call send_booking_confirmation with this event_id and station_id.\",\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "No thanks, no text message",
+    "reply": "No problem, your booking is confirmed for Monday 2 November at 14:30. See you then!",
+    "status": 200,
+    "latency": 4.2,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   }
+  ],
+  "flags": [
+   "CHECK GREEN_NO_LINK"
+  ],
+  "note": ""
+ },
+ {
+  "id": "plan.sms.yes.fi",
+  "suite": "plan",
+  "lang": "fi",
+  "lead": {
+   "lang": "fi",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-887"
+  },
+  "turns": [
+   {
+    "user": "Haluan varata ajan huomiselle",
+    "reply": "Huomenna ma 2.11. Palokassa vapaita aikoja klo 14.30, 15.15 ja 15.45. Nämä ovat vihreitä aikoja, verkossa 71 €, asemalla 76 €. Voin varata ajan täällä asemamaksulla, tai voit maksaa vihreän hinnan verkossa: https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256. Kumpi aika sopisi?",
+    "status": 200,
+    "latency": 10.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_slots"
+    ],
+    "params": [
+     {
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-02",
+      "station": "",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_slots",
+      "input": {
+       "date_from": "2026-11-02",
+       "date_to": "2026-11-02",
+       "station": "",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"id\":256,\"name\":\"K1 Katsastus Jyväskylä Palokka\"},\"bookable_by_assistant\":true,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Inspection (car max 3500 kg, four wheel drive)\",\"Statutory measurements (<3500kg)\"],\"measuring_included\":true},\"total_free\":31,\"green_slot_count\":6,\"days\":[{\"date\":\"2026-11-02\",\"weekday\":\"Monday\",\"station_hours\":\"09:00-17:00\",\"free_count\":31,\"green_count\":6,\"first\":\"09:15\",\"last\":\"16:45\",\"suggestions\":[{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true}],\"all_times\":[{\"slot_id\":\"2026-11-02T09:15+02:00|256|2246+2254|M1\",\"time\":\"09:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T09:30+02:00|256|2246+2254|M1\",\"time\":\"09:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T09:45+02:00|256|2246+2254|M1\",\"time\":\"09:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:00+02:00|256|2246+2254|M1\",\"time\":\"10:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:15+02:00|256|2246+2254|M1\",\"time\":\"10:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:30+02:00|256|2246+2254|M1\",\"time\":\"10:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T10:45+02:00|256|2246+2254|M1\",\"time\":\"10:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:00+02:00|256|2246+2254|M1\",\"time\":\"11:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:15+02:00|256|2246+2254|M1\",\"time\":\"11:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:30+02:00|256|2246+2254|M1\",\"time\":\"11:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T11:45+02:00|256|2246+2254|M1\",\"time\":\"11:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:00+02:00|256|2246+2254|M1\",\"time\":\"12:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:15+02:00|256|2246+2254|M1\",\"time\":\"12:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:30+02:00|256|2246+2254|M1\",\"time\":\"12:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T12:45+02:00|256|2246+2254|M1\",\"time\":\"12:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:00+02:00|256|2246+2254|M1\",\"time\":\"13:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:15+02:00|256|2246+2254|M1\",\"time\":\"13:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:30+02:00|256|2246+2254|M1\",\"time\":\"13:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T13:45+02:00|256|2246+2254|M1\",\"time\":\"13:45\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:00+02:00|256|2246+2254|M1\",\"time\":\"14:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:15+02:00|256|2246+2254|M1\",\"time\":\"14:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"time\":\"14:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T14:45+02:00|256|2246+2254|M1\",\"time\":\"14:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:00+02:00|256|2246+2254|M1\",\"time\":\"15:00\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:15+02:00|256|2246+2254|M1\",\"time\":\"15:15\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:30+02:00|256|2246+2254|M1\",\"time\":\"15:30\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T15:45+02:00|256|2246+2254|M1\",\"time\":\"15:45\",\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true},{\"slot_id\":\"2026-11-02T16:00+02:00|256|2246+2254|M1\",\"time\":\"16:00\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:15+02:00|256|2246+2254|M1\",\"time\":\"16:15\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:30+02:00|256|2246+2254|M1\",\"time\":\"16:30\",\"station_eur\":76,\"online_payment_eur\":76},{\"slot_id\":\"2026-11-02T16:45+02:00|256|2246+2254|M1\",\"time\":\"16:45\",\"station_eur\":76,\"online_payment_eur\":76}]}],\"price\":{\"total_eur\":76,\"station_eur\":76,\"online_payment_eur\":71,\"is_green\":true,\"green_slot_count\":6,\"breakdown\":[{\"item\":\"Inspection (car max 3500 kg, four wheel drive)\",\"eur\":46,\"station_eur\":46,\"online_payment_eur\":41},{\"item\":\"Statutory measurements (<3500kg)\",\"eur\":30,\"station_eur\":30,\"online_payment_eur\":30}],\"source\":\"booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"hours_verified\":true,\"rule\":\"Every listed time is inside the station opening hours. Offer up to three suggestions spread over the day; if the customer names a time, look it up in all_times. Use the exact slot_id. is_green / online_payment_eur < station_eur means Vihreä hinta (prepaid on official_booking_link). Always keep official_booking_link for online pay.\",\"booking_url\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Klo 14:30 sopii",
+    "reply": "Ma 2.11. klo 14.30 TST-887-autolle. Kenen koko nimellä varaan? Asemalla hinta on 76 €.",
+    "status": 200,
+    "latency": 5.3,
+    "fallback": false,
+    "error": "",
+    "tools": [],
+    "params": [],
+    "steps": []
+   },
+   {
+    "user": "Matti Meikäläinen",
+    "reply": "Varattu Palokkaan ma 2.11. klo 14.30, varausnumero 7U6PJRKW. Hinta asemalla 76 €, kortti käy. Haluatko vielä vahvistuksen tekstiviestinä?",
+    "status": 200,
+    "latency": 10.1,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "book_inspection_invite"
+    ],
+    "params": [
+     {
+      "start_time": "2026-11-02T14:30+02:00|256|2246+2254|M1",
+      "rek": "TST-887",
+      "event_id": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "book_inspection_invite",
+      "input": {
+       "email": "",
+       "start_time": "2026-11-02T14:30+02:00|256|2246+2254|M1",
+       "name": "Matti Meikäläinen",
+       "rek": "TST-887",
+       "event_id": "",
+       "time": "14:30"
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"booking_number\":\"7U6PJRKW\",\"event_id\":\"b50896c4-6c7f-4ec4-8d56-3c8769636eec|73533518e403c477dcc1dfcaac0fb569|202425839dbb0affbb1c02a70430992d\",\"group_id\":\"b50896c4-6c7f-4ec4-8d56-3c8769636eec\",\"reservation_uid\":\"73533518e403c477dcc1dfcaac0fb569\",\"customer_uid\":\"202425839dbb0affbb1c02a70430992d\",\"slot_id\":\"2026-11-02T14:30+02:00|256|2246+2254|M1\",\"display_fi\":\"Monday 2.11. 14:30\",\"station_id\":256,\"station_name\":\"K1 Katsastus Jyväskylä Palokka\",\"plate\":\"TST-887\",\"vehicle_category\":\"M1\",\"product_ids\":[2246,2254],\"official_booking_link\":\"https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256\",\"payment_note\":\"Chat booking can be paid at the station. For online prepayment / Vihreä hinta, give official_booking_link. Never say online pay is impossible.\",\"ask_sms_confirmation\":true,\"sms_confirmation_hint\":\"After confirming the booking, ask once whether they want a reservation confirmation SMS. On yes call send_booking_confirmation with this event_id and station_id.\",\"source\":\"tool\",\"recorded\":true,\"recordError\":null}]"
+     }
+    ]
+   },
+   {
+    "user": "Kyllä, lähetä vahvistus tekstiviestinä",
+    "reply": "Vahvistus lähetetty tekstiviestillä. Nähdään maanantaina Palokassa.",
+    "status": 200,
+    "latency": 9.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "send_booking_confirmation"
+    ],
+    "params": [
+     {
+      "event_id": "b50896c4-6c7f-4ec4-8d56-3c8769636eec|73533518e403c477dcc1dfcaac0fb569|202425839dbb0affbb1c02a70430992d",
+      "station_id": "256"
+     }
+    ],
+    "steps": [
+     {
+      "tool": "send_booking_confirmation",
+      "input": {
+       "event_id": "b50896c4-6c7f-4ec4-8d56-3c8769636eec|73533518e403c477dcc1dfcaac0fb569|202425839dbb0affbb1c02a70430992d",
+       "station_id": "256"
+      },
+      "output": "[{\"ok\":true,\"success\":true,\"event_id\":\"b50896c4-6c7f-4ec4-8d56-3c8769636eec|73533518e403c477dcc1dfcaac0fb569|202425839dbb0affbb1c02a70430992d\",\"station_id\":256,\"note\":\"Muster confirmation SMS requested.\",\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": "ask once, send the SMS only after a clear yes"
+ },
+ {
+  "id": "plan.unsafe.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Jyväskylä Palokka",
+   "sid": 256,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-883"
+  },
+  "turns": [
+   {
+    "user": "The brakes feel unsafe. Should I drive it in tomorrow?",
+    "reply": "Don’t drive it if the brakes feel unsafe. Please arrange a garage or tow instead.",
+    "status": 200,
+    "latency": 6.5,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "escalate_to_human"
+    ],
+    "params": [
+     {}
+    ],
+    "steps": [
+     {
+      "tool": "escalate_to_human",
+      "input": {
+       "syy": "Customer reports potentially unsafe brakes and asks whether to drive the vehicle."
+      },
+      "output": "[{\"response\":\"{\\\"success\\\":true,\\\"escalated\\\":true,\\\"syy\\\":\\\"Customer reports potentially unsafe brakes and asks whether to drive the vehicle.\\\",\\\"message\\\":\\\"Handed to humans. Set handoff true and stop pushing booking.\\\"}\"}]"
+     }
+    ]
+   }
+  ],
+  "flags": [],
+  "note": ""
+ },
+ {
+  "id": "plan.why.en",
+  "suite": "plan",
+  "lang": "en",
+  "lead": {
+   "lang": "en",
+   "station": "K1 Katsastus Oulu Alppila",
+   "sid": null,
+   "product": "004",
+   "cat": "M1",
+   "plate": "TST-877"
+  },
+  "turns": [
+   {
+    "user": "Why don't you book it for me?",
+    "reply": "I can’t book Oulu Alppila appointments directly here, but you can book online at https://ajanvaraus.k1katsastus.fi/en?stationId=1486. Tomorrow, Monday 2 Nov, there are times at 08:40, 12:20 and 15:00, each €49 paid online or €69 at the station, including measuring.",
+    "status": 200,
+    "latency": 14.0,
+    "fallback": false,
+    "error": "",
+    "tools": [
+     "get_station_info"
+    ],
+    "params": [
+     {
+      "station": "",
+      "date": "2026-11-01",
+      "product": "004",
+      "vehicle_category": "M1",
+      "include_measuring": ""
+     }
+    ],
+    "steps": [
+     {
+      "tool": "get_station_info",
+      "input": {
+       "station": "",
+       "date": "2026-11-01",
+       "product": "004",
+       "vehicle_category": "M1",
+       "include_measuring": ""
+      },
+      "output": "[{\"ok\":true,\"station\":{\"name\":\"K1 Katsastus Oulu Alppila\",\"address\":\"Tukkimiehentie 1, 90530 Oulu\",\"city\":\"Oulu\",\"page\":\"https://www.k1katsastus.fi/asema/oulu-alppila/\",\"is_lead_station\":true},\"hours\":{\"date\":\"2026-11-01\",\"label\":\"Sunday 1.11.\",\"status\":\"unknown\",\"display\":\"unknown\",\"source\":\"That date is in the past.\",\"next_days\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-04\",\"label\":\"Wednesday 4.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-05\",\"label\":\"Thursday 5.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-06\",\"label\":\"Friday 6.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-09\",\"label\":\"Monday 9.11.\",\"hours\":\"08:00-15:45\"},{\"date\":\"2026-11-10\",\"label\":\"Tuesday 10.11.\",\"hours\":\"08:00-15:45\"}]},\"today_helsinki\":\"2026-11-01 Sun 22:48\",\"booking\":{\"assistant_can_book\":false,\"official_booking_link\":\"https://ajanvaraus.k1katsastus.fi/en?stationId=1486\",\"national_booking_phone\":\"0306 100 100\",\"note\":\"This assistant cannot create bookings at this station yet. Give the official booking link or the national number; never claim a booking.\"},\"national_phone_note\":\"The national number 0306 100 100 is a booking phone service (Mon-Fri 07:30-18:00, Sat 09:00-14:00), not this station's opening hours.\",\"availability\":[{\"date\":\"2026-11-02\",\"label\":\"Monday 2.11.\",\"station_hours\":\"08:00-15:45\",\"free_count\":17,\"first\":\"08:40\",\"last\":\"15:00\",\"suggestions\":[{\"time\":\"08:40\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"12:20\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"15:00\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true}]},{\"date\":\"2026-11-03\",\"label\":\"Tuesday 3.11.\",\"station_hours\":\"08:00-15:45\",\"free_count\":17,\"first\":\"08:40\",\"last\":\"15:20\",\"suggestions\":[{\"time\":\"08:40\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"12:40\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true},{\"time\":\"15:20\",\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true}]}],\"price\":{\"total_eur\":69,\"station_eur\":69,\"online_payment_eur\":49,\"is_green\":true,\"green_slot_count\":72,\"breakdown\":[{\"item\":\"Statutory measuring (max. 3500 kg)\",\"eur\":20,\"station_eur\":20,\"online_payment_eur\":9},{\"item\":\"Periodic inspection (car max. 3500 kg, quadricycle)\",\"eur\":49,\"station_eur\":49,\"online_payment_eur\":40}],\"source\":\"live K1 online booking price for this visit\",\"note\":\"station_eur / total_eur is the price paid at the station. When online_payment_eur is lower, that is Vihreä hinta (prepaid online on K1 ajanvaraus). Quote both when green exists; never invent 34/38. Guide online pay with official_booking_link from this tool result. Never say online prepayment is impossible.\"},\"green_slot_count\":72,\"vehicle\":{\"product\":\"004\",\"category\":\"M1\",\"includes\":[\"Periodic inspection (car max. 3500 kg, quadricycle)\",\"Statutory measuring (max. 3500 kg)\"],\"measuring_included\":true},\"source\":\"tool\",\"recorded\":false,\"recordError\":null}]"
+     }
+    ]
+   }
+  ],
+  "flags": [
+   "t1 SELF_LIMIT"
+  ],
+  "note": ""
+ }
+]

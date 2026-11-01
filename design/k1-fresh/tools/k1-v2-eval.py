@@ -272,7 +272,18 @@ Use connected workflow results for available appointments and booking outcomes. 
 If a required detail is missing, ask one clear follow-up question. If workflow data is unavailable, say so and hand off to staff."""
 
 
-PLATFORM = json.loads(PLATFORM_FILE.read_text()) if os.environ.get('K1_EVAL_MASTER') != 'generic' else {'masterPrompt': MASTER, 'additionalInformation': ''}
+def load_platform():
+    mode = os.environ.get('K1_EVAL_MASTER', '')
+    if mode == 'generic':
+        return {'masterPrompt': MASTER, 'additionalInformation': ''}
+    # v16 repeats the live prompt in the user turn. The provider rejects that block, so the WhatsApp
+    # path is the one to test: the business brief is already the system message, and this stays empty.
+    if mode in ('v16', 'brief'):
+        return {'masterPrompt': '', 'additionalInformation': ''}
+    return json.loads(PLATFORM_FILE.read_text())
+
+
+PLATFORM = load_platform()
 
 
 def lead_context(lead):
@@ -554,8 +565,9 @@ def main():
                 turns = [{'user': '', 'reply': '', 'status': 0, 'latency': 0, 'fallback': False, 'error': f'harness: {error}', 'tools': [], 'params': [], 'steps': []}]
             flags = checks_module.evaluate(scenario, turns)
             results.append({'id': scenario['id'], 'suite': scenario['suite'], 'lang': scenario['lead']['lang'], 'lead': scenario['lead'], 'turns': turns, 'flags': flags, 'note': scenario.get('note', '')})
-            if len(results) % 20 == 0:
-                print(f'progress {len(results)}/{len(scenarios)} flagged {sum(bool(r["flags"]) for r in results)} elapsed {round(time.monotonic() - started)}s', flush=True)
+            if len(scenarios) <= 30 or len(results) % 20 == 0:
+                mark = 'FLAG ' + '; '.join(flags) if flags else 'clean'
+                print(f'progress {len(results)}/{len(scenarios)} {scenario["id"]} {mark} elapsed {round(time.monotonic() - started)}s', flush=True)
 
         def booking_lane(items):
             for scenario in items:
