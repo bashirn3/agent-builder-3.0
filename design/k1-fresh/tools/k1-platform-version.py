@@ -6,6 +6,7 @@ A version is the builder prompt, additional information, opener, reminders and t
   k1-platform-version.py render          write prompts/k1-platform-v9.json from the rule catalog (K1_PROMPT_SOURCE=legacy: v8.json from the old head + brief)
   k1-platform-version.py render15        write prompts/k1-platform-v15.json from prompts/k1-whatsapp-prompt-v5.md
   k1-platform-version.py save15          save the v5 WhatsApp prompt as the next version (keeps openers/reminders)
+  k1-platform-version.py update16        overwrite version 16 in place from prompts/k1-platform-v15.json (final WhatsApp prompt)
   k1-platform-version.py show            print the latest saved versions (numbers, notes, who saved them)
   k1-platform-version.py fold            write the rendered content into version 5, make it active, delete newer versions
   k1-platform-version.py save FILE       save FILE (as written by render) as the next version; keeps the current lock flag
@@ -162,6 +163,29 @@ def save15():
     print('active version', row.get('version_number'), row.get('version_id') or row.get('active_version_id'))
 
 
+def update16():
+    """Overwrites builder version 16 in place with the final WhatsApp prompt (no new version number)."""
+    render15()
+    data = json.loads(OUT_V15.read_text())
+    rows = call('GET', 'agent_builder_versions?version_number=eq.16&select=id,agent_id,version_number,is_active')
+    row = rows[0] if isinstance(rows, list) else rows
+    if not row or not row.get('id'):
+        raise SystemExit('version 16 does not exist')
+    content = {
+        'master_prompt': data['masterPrompt'],
+        'additional_information': data.get('additionalInformation') or '',
+        'opening_message': data['openingMessage'],
+        'reminders': data['reminders'],
+        'translations': data['translations'],
+        'note': data['note'][:500],
+        'saved_by': os.environ.get('K1_SAVED_BY', 'Wasup agent v16 final'),
+        'is_active': True,
+    }
+    print('update16', call('PATCH', f'agent_builder_versions?id=eq.{row["id"]}', content))
+    print('agent', call('PATCH', f'agent_builder_agents?id=eq.{row["agent_id"]}', {'active_version_id': row['id']}))
+    print('active version 16', row['id'])
+
+
 def latest(number):
     return call('GET', f'agent_builder_versions?version_number=eq.{number}&select=version_number,is_active,note,saved_by,created_at')
 
@@ -217,6 +241,8 @@ if __name__ == '__main__':
         render15()
     elif command == 'save15':
         save15()
+    elif command == 'update16':
+        update16()
     elif command == 'show':
         show()
     elif command == 'fold':
