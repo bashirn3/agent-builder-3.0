@@ -460,6 +460,26 @@ function dedupeLinks(line) {
   })
   return next.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').trim()
 }
+function dropExtraNameAsk(line, offeringTimes) {
+  if (!offeringTimes || !/nimesi|nimellä|mikä nimi|kenen nimi/i.test(line)) return line
+  return line
+    .replace(/,?\s+ja\s+(?:kenen\s+nimellä|nimesi|mikä nimi|kenen nimi)\??/giu, '?')
+    .replace(/\?\s*\?/g, '?')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+function unclaimBooking(line, booked) {
+  if (booked) return line
+  return line.replace(/\b(varausnumero|booking number|bokningsnummer)\s+(?!0306\b)[A-Z0-9-]*\d+\b/gi, 'ehdottamasi numero')
+}
+function emailIsNotFuel(line) {
+  const otherFuel = /bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)/i
+  if (!/sähköposti/i.test(line)) return line
+  return line.split(/(?<=[.!?])\s+|\n+/).map((part) => {
+    if (!part.includes('?') || !/sähköposti/i.test(part) || otherFuel.test(part)) return part
+    return part.replace(/sähköposti/gi, 'meili')
+  }).join(' ')
+}
 function finishReply(messages, agent) {
   const cleaned = (Array.isArray(messages) ? messages : []).map((line) => String(line).replace(/; /g, '. ').replace(/\bhttps?:\/\//gi, (found) => found.toLowerCase()))
   if (!cleaned.length) return cleaned
@@ -480,8 +500,10 @@ function finishReply(messages, agent) {
   })
   let link = ''
   let station = ''
+  let offeredSlots = false
   for (const step of steps) {
     const tool = String(step.action?.tool || step.tool || '')
+    if (tool === 'get_slots') offeredSlots = true
     if (tool !== 'get_slots' && tool !== 'get_station_info') continue
     const data = dataOf(step)
     const direct = data && (data.official_booking_link || data.booking_url || (data.booking && data.booking.official_booking_link))
@@ -509,7 +531,13 @@ function finishReply(messages, agent) {
   if (!(booked || /https:\/\//i.test(reply) || !quotesGreen || !link)) {
     cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
   }
-  return cleaned.map(separateFuelLink).map(dedupeLinks).filter(Boolean)
+  return cleaned
+    .map(separateFuelLink)
+    .map(dedupeLinks)
+    .map((line) => dropExtraNameAsk(line, offeredSlots && !booked))
+    .map((line) => unclaimBooking(line, booked))
+    .map(emailIsNotFuel)
+    .filter(Boolean)
 }
 """
 PLAN_FINISH_CALL = "msgs = finishReply(msgs, $input.first().json);"
@@ -532,12 +560,17 @@ def ensure_finish(code, kind):
 def upsert_finish_fn(code):
     """Insert finishReply, or replace an older copy. The call sites stay where they are."""
     fresh = FINISH_FN.rstrip() + '\n'
-    if 'function separateFuelLink(' in code and 'function dedupeLinks(' in code and 'function finishReply(' in code:
+    if 'function emailIsNotFuel(' in code and code.count('function finishReply(') == 1:
         return code
-    start = code.find('function finishReply(')
-    if start < 0:
+    names = ('function separateFuelLink(', 'function dedupeLinks(', 'function dropExtraNameAsk(', 'function unclaimBooking(', 'function emailIsNotFuel(', 'function finishReply(')
+    positions = [code.find(name) for name in names if code.find(name) >= 0]
+    if not positions:
         return fresh + code
-    brace = code.find('{', start)
+    start = min(positions)
+    reply_at = code.find('function finishReply(')
+    if reply_at < 0:
+        return code[:start] + fresh + code[start:]
+    brace = code.find('{', reply_at)
     depth = 0
     end = None
     for index in range(brace, len(code)):
@@ -577,9 +610,9 @@ def finish_live():
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
     norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
     brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
-    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'function dedupeLinks(' not in plan:
+    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'function emailIsNotFuel(' not in plan:
         raise SystemExit('Plan Delivery finish missing after put')
-    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'function dedupeLinks(' not in norm:
+    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'function emailIsNotFuel(' not in norm:
         raise SystemExit('Normalize finish missing after put')
     if "Oulu Alppila bookings go through K1's booking page" not in brief:
         raise SystemExit('business brief line missing after put')
