@@ -460,6 +460,28 @@ function dedupeLinks(line) {
   })
   return next.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').trim()
 }
+function bookingLinkFor(stationId, languageName) {
+  const id = String(stationId || '')
+  if (id !== '256' && id !== '241') return ''
+  const named = String(languageName || '').toLowerCase()
+  const lang = named.startsWith('en') ? 'en' : (named.startsWith('sv') || named.startsWith('sw')) ? 'sv' : 'fi'
+  const path = lang === 'en' ? '/en?' : lang === 'sv' ? '/sv?' : '/?'
+  return 'https://k1-katsastus-ajanvaraus.stage.geniem.io' + path + 'stationId=' + id
+}
+function leadBookingLink() {
+  let body = {}
+  try { body = $('Playground').first().json.body || {} } catch (e) { body = {} }
+  const language = ((String(body.leadContext || '').match(/Customer's language:\s*([A-Za-z]+)/i) || [])[1] || '')
+  return bookingLinkFor(body.stationId, language)
+}
+function replaceInventedLink(line) {
+  const urls = String(line).match(/https:\/\/\S+/g) || []
+  const official = (url) => /^https:\/\/(?:ajanvaraus\.k1katsastus\.fi|k1-katsastus-ajanvaraus\.stage\.geniem\.io)\//i.test(url)
+  if (!urls.length || urls.every(official)) return line
+  const right = leadBookingLink()
+  if (!right) return line
+  return line.replace(/https:\/\/\S+/g, (url) => official(url) ? url : right)
+}
 function dropExtraNameAsk(line, offeringTimes) {
   if (!offeringTimes || !/nimesi|nimellä|mikä nimi|kenen nimi/i.test(line)) return line
   return line
@@ -533,6 +555,7 @@ function finishReply(messages, agent) {
   }
   return cleaned
     .map(separateFuelLink)
+    .map(replaceInventedLink)
     .map(dedupeLinks)
     .map((line) => dropExtraNameAsk(line, offeredSlots && !booked))
     .map((line) => unclaimBooking(line, booked))
@@ -560,9 +583,9 @@ def ensure_finish(code, kind):
 def upsert_finish_fn(code):
     """Insert finishReply, or replace an older copy. The call sites stay where they are."""
     fresh = FINISH_FN.rstrip() + '\n'
-    if 'function emailIsNotFuel(' in code and code.count('function finishReply(') == 1:
+    if 'function replaceInventedLink(' in code and code.count('function finishReply(') == 1:
         return code
-    names = ('function separateFuelLink(', 'function dedupeLinks(', 'function dropExtraNameAsk(', 'function unclaimBooking(', 'function emailIsNotFuel(', 'function finishReply(')
+    names = ('function separateFuelLink(', 'function dedupeLinks(', 'function bookingLinkFor(', 'function leadBookingLink(', 'function replaceInventedLink(', 'function dropExtraNameAsk(', 'function unclaimBooking(', 'function emailIsNotFuel(', 'function finishReply(')
     positions = [code.find(name) for name in names if code.find(name) >= 0]
     if not positions:
         return fresh + code
@@ -610,9 +633,9 @@ def finish_live():
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
     norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
     brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
-    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'function emailIsNotFuel(' not in plan:
+    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'function replaceInventedLink(' not in plan:
         raise SystemExit('Plan Delivery finish missing after put')
-    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'function emailIsNotFuel(' not in norm:
+    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'function replaceInventedLink(' not in norm:
         raise SystemExit('Normalize finish missing after put')
     if "Oulu Alppila bookings go through K1's booking page" not in brief:
         raise SystemExit('business brief line missing after put')
