@@ -85,7 +85,15 @@ export type BuilderState = {
 }
 
 export type Feedback = 'up' | 'down' | null
-export type ChatSource = 'playground' | 'compare'
+export type ChatSource = 'playground' | 'compare' | 'staging'
+
+// Test chats are shared with K1. Phone numbers are shown as the last four digits.
+export function maskPhones(value: string) {
+  return value.replace(/(?:\+|00)?\d[\d\s\-()]{6,}\d/g, (match) => {
+    const digits = match.replace(/\D/g, '')
+    return digits.length >= 8 ? `···${digits.slice(-4)}` : match
+  })
+}
 
 export type TestChatSummary = {
   id: string

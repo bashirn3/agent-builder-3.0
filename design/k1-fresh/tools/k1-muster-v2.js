@@ -124,10 +124,11 @@ function sourceOf(entry) {
   if (entry.k1_id && !entry.closed) return { base: PROD, id: entry.k1_id, bookable: false }
   return null
 }
-// This workflow is the staging agent. Every station link uses the staging site, including stations
-// that are only read from production Muster (Tomi 2026-10-30 and 2026-11-01).
-// Paths: Finnish /varaus, English /en/reservation, Swedish /sv/bokning.
-// stationId is the production K1 station id when we have it; otherwise the Muster staging id.
+// Live chats use the production booking site. A staging test (booking_site=staging) uses the staging
+// site only for a station that exists there (Muster id, today Palokka 256 and Itäharju 241).
+// Any other station stays on the production site: an empty staging page is worse than a live link.
+// The form itself is /  /en  /sv. /varaus, /en/reservation and /sv/bokning look up an existing
+// booking and ignore stationId, so they are not used here. serviceId=1 is not a service on this site.
 const linkLang = (value) => {
   const code = String(value || 'fi').toLowerCase()
   if (code.startsWith('en') || code.startsWith('eng')) return 'en'
@@ -135,10 +136,14 @@ const linkLang = (value) => {
   return 'fi'
 }
 const bookingLink = (entry, lang) => {
-  const stationId = entry.k1_id || entry.muster_id
+  if (!entry) return null
+  const asked = String(body.booking_site || body.site || '').toLowerCase()
+  const useStaging = (asked === 'staging' || asked === 'stage') && entry.muster_id
+  const stationId = useStaging ? entry.muster_id : entry.k1_id
   if (!stationId) return null
-  const path = { fi: '/varaus', en: '/en/reservation', sv: '/sv/bokning' }[linkLang(lang || body.language)]
-  return `${BOOKING_SITE_STAGING}${path}?stationId=${stationId}&serviceId=1`
+  const host = useStaging ? BOOKING_SITE_STAGING : BOOKING_SITE_PROD
+  const query = { fi: '/?', en: '/en?', sv: '/sv?' }[linkLang(lang || body.language)]
+  return `${host}${query}stationId=${stationId}`
 }
 
 const EXONYMS = {

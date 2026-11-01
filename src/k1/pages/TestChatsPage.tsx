@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
-import { deleteTestChats, getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
+import { deleteTestChats, getTestChat, listTestChats, maskPhones, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
 import { downloadCsv, toCsv } from '../data/fixtures'
 import type { TestMessage } from '../data/useTestChat'
 import { go, href } from '../routes'
@@ -59,7 +59,7 @@ export function versionTag(chat: Pick<TestChatSummary, 'isDraft' | 'versionNumbe
   return chat.versionNumber ? `v${chat.versionNumber}` : t.chats.unsavedVersion
 }
 
-const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source === 'compare' ? 'compare' : 'playground']
+const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source] ?? copy().chats.sources.playground
 
 function FilterDialog({ open, filters, config, onChange, onClose }: {
   open: boolean
@@ -114,12 +114,16 @@ function FilterDialog({ open, filters, config, onChange, onClose }: {
         </div>
         <div className="k1-field">
           <label htmlFor={ids.source}>{t.chats.source}</label>
-          <Select<'playground' | 'compare'>
+          <Select<'playground' | 'compare' | 'staging'>
             id={ids.source}
             label={t.chats.source}
             value={filters.source}
             placeholder={t.chats.selectSource}
-            options={[{ value: 'playground', label: t.chats.sources.playground }, { value: 'compare', label: t.chats.sources.compare }]}
+            options={[
+              { value: 'playground', label: t.chats.sources.playground },
+              { value: 'compare', label: t.chats.sources.compare },
+              { value: 'staging', label: t.chats.sources.staging },
+            ]}
             onChange={(source) => onChange({ ...filters, source })}
           />
         </div>
@@ -362,8 +366,8 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       conversation: item.id,
       version: versionTag(item),
       source: sourceLabel(item.source),
-      first_message: item.title,
-      last_reply: item.lastReply,
+      first_message: maskPhones(item.title),
+      last_reply: maskPhones(item.lastReply),
       messages: String(item.messageCount),
       thumbs_up: String(item.thumbsUp),
       thumbs_down: String(item.thumbsDown),
@@ -408,14 +412,14 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       )}
       items={shown.map((item) => ({
         id: item.id,
-        title: item.title || t.chats.openerOnly,
-        subtitle: item.lastReply || t.chats.noReply,
+        title: maskPhones(item.title) || t.chats.openerOnly,
+        subtitle: maskPhones(item.lastReply) || t.chats.noReply,
         meta: relativeTime(item.updatedAt),
         href: href({ page: 'chats', id: item.id }),
         tags: (
           <>
             <span className={`k1-vtag${item.isDraft ? ' is-draft' : ''}`}>{versionTag(item)}</span>
-            {item.source === 'compare' && <span className="k1-vtag is-muted">{t.chats.sources.compare}</span>}
+            {item.source !== 'playground' && <span className="k1-vtag is-muted">{sourceLabel(item.source)}</span>}
             {item.thumbsUp > 0 && <span className="k1-vcount"><ThumbsUp size={12} strokeWidth={1.75} />{item.thumbsUp}</span>}
             {item.thumbsDown > 0 && <span className="k1-vcount is-down"><ThumbsDown size={12} strokeWidth={1.75} />{item.thumbsDown}</span>}
           </>
@@ -443,7 +447,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   ) : conversation ? (
     <DetailPane
       paneKey={conversation.id}
-      title={conversation.title || t.chats.testChat}
+      title={maskPhones(conversation.title) || t.chats.testChat}
       tabs={[{ value: 'chat', label: t.chats.chat }, { value: 'details', label: t.chats.details }]}
       tab={tab}
       onTab={setTab}
@@ -468,7 +472,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         <div className="k1-thread">
           <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>
           {messages.map((message) => (
-            <Bubble key={message.id} message={message} onRate={(value) => rate(message.id, value)} />
+            <Bubble key={message.id} message={{ ...message, text: maskPhones(message.text) }} onRate={(value) => rate(message.id, value)} />
           ))}
         </div>
       ) : (
