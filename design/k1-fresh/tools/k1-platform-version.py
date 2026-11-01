@@ -45,13 +45,13 @@ NOTE_V11 = ('Agent v11: vihreä hinta is a 34 euro inspection base paid now in t
             'Every station takes cards and most take cash. A payment link is sent only after the appointment is booked and the customer chooses to pay now. '
             'Measuring stays the tool amount and is paid at the station.')
 NOTE = NOTE_V8 if LEGACY else NOTE_V11
-PROMPT_V5 = ROOT / 'prompts/k1-whatsapp-prompt-v5.3.md'
+PROMPT_V5 = ROOT / 'prompts/k1-whatsapp-prompt-final.md'
 OUT_V15 = ROOT / 'prompts/k1-platform-v15.json'
 NOTE_V15 = (
-    'Agent v15 / WhatsApp prompt v5.3: surface Muster Vihreä hinta (online_payment_eur vs '
-    'station_eur); guide online pay via official_booking_link (staging host on staging); '
-    'never say online prepayment is impossible; ask once for confirmation SMS after booking. '
-    'Playground and Staging still choose any saved version. WhatsApp with no pinned version uses this active one.'
+    'Agent v16 / WhatsApp prompt final: green before booking with online vs station choice; '
+    'no link after chat booking; SMS ask once; always pass product/vehicle_category; '
+    'closest-time name question. Playground and Staging still choose any saved version. '
+    'WhatsApp with no pinned version uses this active one.'
 )
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '

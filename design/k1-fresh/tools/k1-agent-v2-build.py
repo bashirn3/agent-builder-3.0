@@ -415,7 +415,7 @@ def cache_layout(named):
 
 def business_prompt(current):
     # Live WhatsApp uses the hand-written WhatsApp prompt (v5.x), not the guidelines YAML catalog.
-    path = ROOT / 'prompts/k1-whatsapp-prompt-v5.3.md'
+    path = ROOT / 'prompts/k1-whatsapp-prompt-final.md'
     if path.exists():
         text = path.read_text()
         return text if text.endswith('\n') else text + '\n'
