@@ -429,14 +429,13 @@ def replace_once(text, pair, label):
     return text.replace(old, new)
 
 
-# After the model reply: turn "; " into ". ", and if a green price is quoted with no link,
-# append official_booking_link from this turn's get_slots / get_station_info. Never on a
-# turn that already booked (a link there invites a second booking).
+# After the model reply: turn "; " into ". ". If a green price is quoted without the
+# station total, append it ("At the station: 76 €."). If that reply also has no link,
+# append official_booking_link from this turn's get_slots / get_station_info. Never add
+# the link on a turn that already booked.
 FINISH_FN = r"""function finishReply(messages, agent) {
   const cleaned = (Array.isArray(messages) ? messages : []).map((line) => String(line).replace(/; /g, '. '))
-  const reply = cleaned.join('\n\n')
-  if (!cleaned.length || /https:\/\//.test(reply)) return cleaned
-  if (!/vihre|green price|prepaid|ennakkoon|verkossa makset|online/i.test(reply)) return cleaned
+  if (!cleaned.length) return cleaned
   const steps = Array.isArray(agent && agent.intermediateSteps) ? agent.intermediateSteps : []
   const dataOf = (step) => {
     let data = step && step.observation
@@ -452,8 +451,8 @@ FINISH_FN = r"""function finishReply(messages, agent) {
     const data = dataOf(step)
     return Boolean(data && data.booking_number && (data.success || data.ok))
   })
-  if (booked) return cleaned
   let link = ''
+  let station = ''
   for (const step of steps) {
     const tool = String(step.action?.tool || step.tool || '')
     if (tool !== 'get_slots' && tool !== 'get_station_info') continue
@@ -465,8 +464,22 @@ FINISH_FN = r"""function finishReply(messages, agent) {
       const found = text.match(/https:\/\/(?:ajanvaraus\.k1katsastus\.fi|k1-katsastus-ajanvaraus\.stage\.geniem\.io)[^"\s\\]*/)
       if (found) link = found[0].replace(/[),.;]+$/, '')
     }
+    const price = data && data.price
+    const raw = price && (price.station_eur != null ? price.station_eur : price.total_eur)
+    if (raw != null && Number.isFinite(Number(raw))) station = String(Math.round(Number(raw)))
   }
-  if (!link) return cleaned
+  let reply = cleaned.join('\n\n')
+  const quotesGreen = /vihre|green price|prepaid|ennakkoon|verkossa makset|online/i.test(reply)
+  if (quotesGreen && station && !new RegExp('(^|[^0-9])' + station + '([^0-9]|$)').test(reply)) {
+    const sentence = /asemalla|verkossa|vihre|huomenna|ennakkoon|varaa|maks/i.test(reply)
+      ? 'Asemalla: ' + station + ' €.'
+      : /stationen|imorgon|grön|priset|jämfört|boka/i.test(reply)
+        ? 'På stationen: ' + station + ' €.'
+        : 'At the station: ' + station + ' €.'
+    cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + sentence
+    reply = cleaned.join('\n\n')
+  }
+  if (booked || /https:\/\//.test(reply) || !quotesGreen || !link) return cleaned
   cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
   return cleaned
 }
@@ -485,9 +498,33 @@ def ensure_finish(code, kind):
             "return [{ json: { reply: messages.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
             "const finished = finishReply(messages, agent)\nreturn [{ json: { reply: finished.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
         ), 'Normalize finish')
-    if 'function finishReply(' not in code:
-        code = FINISH_FN.rstrip() + '\n' + code
-    return code
+    return upsert_finish_fn(code)
+
+
+def upsert_finish_fn(code):
+    """Insert finishReply, or replace an older copy. The call sites stay where they are."""
+    fresh = FINISH_FN.rstrip() + '\n'
+    start = code.find('function finishReply(')
+    if start < 0:
+        return fresh + code
+    if 'At the station:' in code[start:start + 4000]:
+        return code
+    brace = code.find('{', start)
+    depth = 0
+    end = None
+    for index in range(brace, len(code)):
+        if code[index] == '{':
+            depth += 1
+        elif code[index] == '}':
+            depth -= 1
+            if depth == 0:
+                end = index + 1
+                break
+    if end is None:
+        raise SystemExit('finishReply brace mismatch')
+    if code[end:end + 1] == '\n':
+        end += 1
+    return code[:start] + fresh + code[end:]
 
 
 def patch_agent_finish(agent):
@@ -512,9 +549,9 @@ def finish_live():
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
     norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
     brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
-    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan:
+    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'At the station:' not in plan:
         raise SystemExit('Plan Delivery finish missing after put')
-    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm:
+    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'At the station:' not in norm:
         raise SystemExit('Normalize finish missing after put')
     if "Oulu Alppila bookings go through K1's booking page" not in brief:
         raise SystemExit('business brief line missing after put')
