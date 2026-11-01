@@ -300,7 +300,8 @@ def evaluate(scenario, turns):
 SELF_LIMIT = re.compile(r"en pysty varaamaan|en voi varata|en pysty tekemään varaus|I can(?:not|['\u2019]t) book|can(?:not|['\u2019]t) book|kan inte boka|jag kan inte boka", re.I)
 ONLINE_IMPOSSIBLE = re.compile(r"online (?:payment|paying|pay).{0,50}(?:impossible|not possible|can(?:not|'t))|(?:can(?:not|'t)|cannot|unable to) pay online|ei (?:voi|pysty) maksaa (?:verkossa|netissä)|verkossa maksaminen ei|maksu (?:on )?mahdollinen vain asemalla|only (?:possible|pay)(?: \w+){0,4} at the station|inte möjligt att betala|kan inte betala (?:online|på nätet)", re.I)
 LOOKUP_LINK = re.compile(r'/en/reservation|/sv/bokning|(?:^|[\s"\'(])/varaus\b', re.I)
-FUEL_WORD = re.compile(r'bensiini|bensa|diesel|sähkö|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima', re.I)
+# sähköposti is email, not a question about electric fuel. sähköauto and a bare sähkö still count.
+FUEL_WORD = re.compile(r'bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)', re.I)
 
 
 def fuel_question(reply):

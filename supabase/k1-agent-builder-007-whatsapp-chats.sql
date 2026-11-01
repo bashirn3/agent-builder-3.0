@@ -9,6 +9,9 @@ alter table public.k1_staging_conversations
 alter table public.k1_staging_messages
   add column if not exists inbound_message_id text;
 
+alter table public.k1_staging_messages
+  add column if not exists rewrites text;
+
 create unique index if not exists k1_staging_messages_inbound_user
   on public.k1_staging_messages (conversation_id, inbound_message_id)
   where inbound_message_id is not null and role = 'user';

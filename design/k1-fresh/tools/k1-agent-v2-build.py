@@ -13,7 +13,7 @@ Usage:
                                          k1-gate.py check passed for the prompt being shipped (--without-gate only for an emergency fix)
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
   python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
-  python3 k1-agent-v2-build.py finish    patch the live reply nodes (green-price link, semicolon) and the business brief in place
+  python3 k1-agent-v2-build.py finish    patch the live reply nodes and the WhatsApp rewrite log in place
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -431,10 +431,11 @@ def replace_once(text, pair, label):
 
 # After the model reply: turn "; " into ". ". If a green price is quoted without the
 # station total, append it ("At the station: 76 €."). If that reply also has no link,
-# append official_booking_link from this turn's get_slots / get_station_info. Never add
-# the link on a turn that already booked.
+# append official_booking_link from this turn's tool result. A URL the tools did not
+# return is replaced with that link, or removed when the turn has none. Never add the
+# link on a turn that already booked. rewrites names what changed, for the WhatsApp log.
 FINISH_FN = r"""function separateFuelLink(line) {
-  const fuel = /bensiini|bensa|diesel|sähkö|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima/i
+  const fuel = /bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)/i
   if (!fuel.test(line) || !line.includes('?')) return line
   const parts = line.split(/(?<=[.!?])\s+|\n+/)
   let changed = false
@@ -460,27 +461,34 @@ function dedupeLinks(line) {
   })
   return next.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').trim()
 }
-function bookingLinkFor(stationId, languageName) {
-  const id = String(stationId || '')
-  if (id !== '256' && id !== '241') return ''
-  const named = String(languageName || '').toLowerCase()
-  const lang = named.startsWith('en') ? 'en' : (named.startsWith('sv') || named.startsWith('sw')) ? 'sv' : 'fi'
-  const path = lang === 'en' ? '/en?' : lang === 'sv' ? '/sv?' : '/?'
-  return 'https://k1-katsastus-ajanvaraus.stage.geniem.io' + path + 'stationId=' + id
+function addToolUrls(value, allowed) {
+  if (value == null) return
+  if (typeof value === 'string') {
+    const text = value.replace(/\\\//g, '/')
+    for (const raw of text.match(/https:\/\/[^"\s\\<>]+/g) || []) allowed.add(raw.replace(/[),.;]+$/, ''))
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) addToolUrls(item, allowed)
+    return
+  }
+  if (typeof value === 'object') {
+    for (const item of Object.values(value)) addToolUrls(item, allowed)
+  }
 }
-function leadBookingLink() {
-  let body = {}
-  try { body = $('Playground').first().json.body || {} } catch (e) { body = {} }
-  const language = ((String(body.leadContext || '').match(/Customer's language:\s*([A-Za-z]+)/i) || [])[1] || '')
-  return bookingLinkFor(body.stationId, language)
-}
-function replaceInventedLink(line) {
+function groundLinks(line, allowed, fallback) {
   const urls = String(line).match(/https:\/\/\S+/g) || []
-  const official = (url) => /^https:\/\/(?:ajanvaraus\.k1katsastus\.fi|k1-katsastus-ajanvaraus\.stage\.geniem\.io)\//i.test(url)
-  if (!urls.length || urls.every(official)) return line
-  const right = leadBookingLink()
-  if (!right) return line
-  return line.replace(/https:\/\/\S+/g, (url) => official(url) ? url : right)
+  if (!urls.length) return line
+  const keyOf = (url) => url.replace(/[),.;]+$/, '')
+  const known = (url) => {
+    const key = keyOf(url)
+    for (const item of allowed) {
+      if (key === item || key.startsWith(item) || item.startsWith(key)) return true
+    }
+    return false
+  }
+  if (urls.every(known)) return line
+  return line.replace(/https:\/\/\S+/g, (url) => known(url) ? url : (fallback || '')).replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.:])/g, '$1').trim()
 }
 function dropExtraNameAsk(line, offeringTimes) {
   if (!offeringTimes || !/nimesi|nimellä|mikä nimi|kenen nimi/i.test(line)) return line
@@ -491,20 +499,20 @@ function dropExtraNameAsk(line, offeringTimes) {
     .trim()
 }
 function unclaimBooking(line, booked) {
-  if (booked) return line
+  if (booked || !/ei ole|en näe|ei vahvist|not confirmed|is not confirmed|inte bekräft/i.test(line)) return line
   return line.replace(/\b(varausnumero|booking number|bokningsnummer)\s+(?!0306\b)[A-Z0-9-]*\d+\b/gi, 'ehdottamasi numero')
 }
-function emailIsNotFuel(line) {
-  const otherFuel = /bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)/i
-  if (!/sähköposti/i.test(line)) return line
-  return line.split(/(?<=[.!?])\s+|\n+/).map((part) => {
-    if (!part.includes('?') || !/sähköposti/i.test(part) || otherFuel.test(part)) return part
-    return part.replace(/sähköposti/gi, 'meili')
-  }).join(' ')
-}
 function finishReply(messages, agent) {
-  const cleaned = (Array.isArray(messages) ? messages : []).map((line) => String(line).replace(/; /g, '. ').replace(/\bhttps?:\/\//gi, (found) => found.toLowerCase()))
-  if (!cleaned.length) return cleaned
+  const notes = []
+  const cleaned = (Array.isArray(messages) ? messages : []).map((line) => {
+    const text = String(line)
+    const punctuated = text.replace(/; /g, '. ')
+    if (punctuated !== text) notes.push('semicolon')
+    const cased = punctuated.replace(/\bhttps?:\/\//gi, (found) => found.toLowerCase())
+    if (cased !== punctuated) notes.push('link_scheme')
+    return cased
+  })
+  if (!cleaned.length) return { messages: [], rewrites: [] }
   const steps = Array.isArray(agent && agent.intermediateSteps) ? agent.intermediateSteps : []
   const dataOf = (step) => {
     let data = step && step.observation
@@ -523,7 +531,9 @@ function finishReply(messages, agent) {
   let link = ''
   let station = ''
   let offeredSlots = false
+  const allowedUrls = new Set()
   for (const step of steps) {
+    addToolUrls(step && step.observation, allowedUrls)
     const tool = String(step.action?.tool || step.tool || '')
     if (tool === 'get_slots') offeredSlots = true
     if (tool !== 'get_slots' && tool !== 'get_station_info') continue
@@ -548,44 +558,79 @@ function finishReply(messages, agent) {
         ? 'På stationen: ' + station + ' €.'
         : 'At the station: ' + station + ' €.'
     cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + sentence
+    notes.push('station_price')
     reply = cleaned.join('\n\n')
   }
   if (!(booked || /https:\/\//i.test(reply) || !quotesGreen || !link)) {
     cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
+    notes.push('booking_link')
+    reply = cleaned.join('\n\n')
   }
-  return cleaned
-    .map(separateFuelLink)
-    .map(replaceInventedLink)
-    .map(dedupeLinks)
-    .map((line) => dropExtraNameAsk(line, offeredSlots && !booked))
-    .map((line) => unclaimBooking(line, booked))
-    .map(emailIsNotFuel)
-    .filter(Boolean)
+  if (link) allowedUrls.add(link)
+  const mapNote = (name, fn) => {
+    let changed = false
+    const next = cleaned.map((row) => {
+      const out = fn(row)
+      if (out !== row) changed = true
+      return out
+    })
+    if (changed) notes.push(name)
+    cleaned.splice(0, cleaned.length, ...next)
+  }
+  mapNote('fuel_link', separateFuelLink)
+  mapNote('ground_link', (row) => groundLinks(row, allowedUrls, booked ? '' : link))
+  mapNote('dedupe_link', dedupeLinks)
+  mapNote('name_ask', (row) => dropExtraNameAsk(row, offeredSlots && !booked))
+  mapNote('unclaim', (row) => unclaimBooking(row, booked))
+  return { messages: cleaned.filter(Boolean), rewrites: [...new Set(notes)] }
 }
 """
-PLAN_FINISH_CALL = "msgs = finishReply(msgs, $input.first().json);"
+PLAN_FINISH_OLD = "msgs = finishReply(msgs, $input.first().json);"
+PLAN_FINISH_CALL = """const finished = finishReply(msgs, $input.first().json);
+msgs = finished.messages;
+const replyRewrites = finished.rewrites || [];"""
+PLAN_REWRITES_FIELD = (
+    "delay_seconds: d, skip_send: false",
+    "delay_seconds: d, skip_send: false, rewrites: replyRewrites",
+)
+NORMALIZE_JOIN_OLD = "reply: finished.join('\\n\\n'), fallback:"
+NORMALIZE_JOIN_NEW = "reply: finished.messages.join('\\n\\n'), rewrites: finished.rewrites || [], fallback:"
+NORMALIZE_INSERT = (
+    "return [{ json: { reply: messages.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
+    "const finished = finishReply(messages, agent)\nreturn [{ json: { reply: finished.messages.join('\\n\\n'), rewrites: finished.rewrites || [], fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
+)
 
 
 def ensure_finish(code, kind):
-    if kind == 'plan' and PLAN_FINISH_CALL not in code:
-        anchor = '.filter(Boolean).slice(0, maxBubbles);'
-        if code.count(anchor) != 1:
-            raise SystemExit(f'cannot patch Plan Delivery finish: anchor count {code.count(anchor)}')
-        code = code.replace(anchor, anchor + '\n' + PLAN_FINISH_CALL, 1)
-    if kind == 'normalize' and 'finishReply(messages, agent)' not in code:
-        code = replace_once(code, (
-            "return [{ json: { reply: messages.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
-            "const finished = finishReply(messages, agent)\nreturn [{ json: { reply: finished.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
-        ), 'Normalize finish')
+    if kind == 'plan':
+        if PLAN_FINISH_CALL not in code:
+            if PLAN_FINISH_OLD in code:
+                code = replace_once(code, (PLAN_FINISH_OLD, PLAN_FINISH_CALL), 'Plan Delivery finish call')
+            else:
+                anchor = '.filter(Boolean).slice(0, maxBubbles);'
+                if code.count(anchor) != 1:
+                    raise SystemExit(f'cannot patch Plan Delivery finish: anchor count {code.count(anchor)}')
+                code = code.replace(anchor, anchor + '\n' + PLAN_FINISH_CALL, 1)
+        if 'rewrites: replyRewrites' not in code:
+            code = replace_once(code, PLAN_REWRITES_FIELD, 'Plan Delivery rewrites')
+    if kind == 'normalize' and 'finished.messages.join' not in code:
+        if NORMALIZE_JOIN_OLD in code:
+            code = replace_once(code, (NORMALIZE_JOIN_OLD, NORMALIZE_JOIN_NEW), 'Normalize finish join')
+        else:
+            code = replace_once(code, NORMALIZE_INSERT, 'Normalize finish')
     return upsert_finish_fn(code)
 
 
 def upsert_finish_fn(code):
     """Insert finishReply, or replace an older copy. The call sites stay where they are."""
     fresh = FINISH_FN.rstrip() + '\n'
-    if 'function replaceInventedLink(' in code and code.count('function finishReply(') == 1:
+    if fresh.strip() in code:
         return code
-    names = ('function separateFuelLink(', 'function dedupeLinks(', 'function bookingLinkFor(', 'function leadBookingLink(', 'function replaceInventedLink(', 'function dropExtraNameAsk(', 'function unclaimBooking(', 'function emailIsNotFuel(', 'function finishReply(')
+    names = (
+        'function separateFuelLink(', 'function dedupeLinks(', 'function addToolUrls(', 'function groundLinks(',
+        'function bookingLinkFor(', 'function leadBookingLink(', 'function replaceInventedLink(',
+        'function dropExtraNameAsk(', 'function unclaimBooking(', 'function emailIsNotFuel(', 'function finishReply(',
+    )
     positions = [code.find(name) for name in names if code.find(name) >= 0]
     if not positions:
         return fresh + code
@@ -617,6 +662,9 @@ def patch_agent_finish(agent):
             node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'plan')
         elif node['name'] == 'Normalize playground reply':
             node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'normalize')
+        elif node['name'] == 'Log WhatsApp turn':
+            node['parameters']['jsCode'] = WHATSAPP_LOG_JS
+            node['onError'] = 'continueRegularOutput'
         elif node['name'] == '⚙️ CONFIG':
             for item in node['parameters']['assignments']['assignments']:
                 if item['name'] == 'business_prompt':
@@ -624,7 +672,17 @@ def patch_agent_finish(agent):
     return agent
 
 
+def assert_reply_node(code, label):
+    if 'function groundLinks(' not in code or 'function emailIsNotFuel(' in code or 'meili' in code:
+        raise SystemExit(f'{label} still has the old reply rewrite')
+    if 'function replaceInventedLink(' in code or 'function bookingLinkFor(' in code:
+        raise SystemExit(f'{label} still invents a station link')
+    if 'rewrites:' not in code:
+        raise SystemExit(f'{label} does not record rewrites')
+
+
 def finish_live():
+    apply_log_schema()
     agent = snapshot(LIVE_AGENT)
     was_active = bool(agent['active'])
     patch_agent_finish(agent)
@@ -632,11 +690,16 @@ def finish_live():
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
     norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
+    log = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Log WhatsApp turn')
     brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
-    if 'function finishReply(' not in plan or PLAN_FINISH_CALL not in plan or 'function replaceInventedLink(' not in plan:
-        raise SystemExit('Plan Delivery finish missing after put')
-    if 'function finishReply(' not in norm or 'finishReply(messages, agent)' not in norm or 'function replaceInventedLink(' not in norm:
-        raise SystemExit('Normalize finish missing after put')
+    assert_reply_node(plan, 'Plan Delivery')
+    assert_reply_node(norm, 'Normalize playground reply')
+    if PLAN_FINISH_CALL not in plan or 'rewrites: replyRewrites' not in plan:
+        raise SystemExit('Plan Delivery finish call missing after put')
+    if 'finished.messages.join' not in norm:
+        raise SystemExit('Normalize finish call missing after put')
+    if 'rewrites' not in log or "role, text, is_opener, rewrites" not in log:
+        raise SystemExit('WhatsApp log does not store rewrites')
     if "Oulu Alppila bookings go through K1's booking page" not in brief:
         raise SystemExit('business brief line missing after put')
     if not check.get('active'):
@@ -890,7 +953,12 @@ try {
   const turn = $('Build Turn').first().json || {}
   const digits = String(turn.from_phone || '').replace(/\D/g, '').slice(0, 15)
   const user = String(turn.raw_text || '').trim()
-  const agent = $('Plan Delivery').all().map((item) => String(item.json.text || '').trim()).filter(Boolean).join('\n\n').trim()
+  const bubbles = $('Plan Delivery').all()
+  const agent = bubbles.map((item) => String(item.json.text || '').trim()).filter(Boolean).join('\n\n').trim()
+  const rewrites = [...new Set(bubbles.flatMap((item) => {
+    const value = item.json && item.json.rewrites
+    return Array.isArray(value) ? value : String(value || '').split(',')
+  }).map((name) => String(name || '').trim()).filter((name) => /^[a-z_]+$/.test(name)))].join(',')
   const messageId = String(turn.anchor_message_id || '').replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 120)
   if (!digits || !user || !agent || !messageId) return [{ json: { skip: true, query: 'select 0 as saved' } }]
   const mask = maskMatch(digits)
@@ -923,8 +991,8 @@ try {
     '  where not exists (select 1 from k1_staging_messages where conversation_id = (select id from conv) and role = \'user\' and inbound_message_id = ' + sqlLiteral(messageId) + ')',
     '  returning conversation_id',
     '), agent_row as (',
-    '  insert into k1_staging_messages (conversation_id, role, text, is_opener)',
-    '  select conversation_id, \'agent\', ' + sqlLiteral(agent) + ', false from fresh',
+    '  insert into k1_staging_messages (conversation_id, role, text, is_opener, rewrites)',
+    '  select conversation_id, \'agent\', ' + sqlLiteral(agent) + ', false, ' + sqlLiteral(rewrites) + ' from fresh',
     '  returning conversation_id',
     '), touched as (',
     '  update k1_staging_conversations set updated_at = now() where id in (select conversation_id from agent_row) returning id',
