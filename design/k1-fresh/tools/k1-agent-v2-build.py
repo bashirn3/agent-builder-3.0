@@ -869,6 +869,111 @@ def ensure_composing(agent):
     return agent
 
 
+LOAD_STAGING_SQL = (
+    "select coalesce(( select json_build_object( 'found', true, 'phone', s.phone, 'phoneKey', s.phone_key, "
+    "'versionId', s.version_id, 'versionNumber', s.version_number, 'conversationId', s.conversation_id::text, "
+    "'leadContext', s.lead_context, 'opener', s.opener, 'plate', coalesce(s.lead->>'plateNumber', ''), "
+    "'stationName', coalesce(s.lead->>'stationName', ''), 'product', coalesce(s.lead->>'product', '')) "
+    "from k1_staging_sessions s where s.phone_key = '{{ String($('Webhook').first().json.body.from_phone || '').replace(/\\D/g, '') }}'), "
+    "'{\"found\":false}'::json) as staging"
+)
+PARSE_STAGING_JS = """const row = $input.first().json || {}
+let staging = row.staging
+if (typeof staging === 'string') {
+  try { staging = JSON.parse(staging) } catch (error) { staging = null }
+}
+if (!staging || staging.found !== true) staging = { found: false }
+return [{ json: { staging } }]
+"""
+LEAD_PREAMBLE = """let leadBlock = ''
+let openerBlock = ''
+try {
+  if ($('Parse Staging').isExecuted) {
+    const staging = $('Parse Staging').first().json.staging || {}
+    if (staging.found === true) {
+      leadBlock = String(staging.leadContext || '').trim()
+      if (!leadBlock) {
+        const bits = [
+          staging.plate ? 'Registration: ' + staging.plate : '',
+          staging.stationName ? 'Station the customer last visited: ' + staging.stationName : '',
+          staging.product ? 'Product on the reminder: ' + staging.product : '',
+        ].filter(Boolean)
+        if (bits.length) leadBlock = "LEAD CONTEXT (from K1's lead data for this customer)\\n- " + bits.join('\\n- ')
+      }
+      const opener = String(staging.opener || '').trim()
+      if (opener) openerBlock = '[OPENER ALREADY SENT]\\n' + opener + '\\nThe customer is replying to this message. Do not send the opener again.'
+    }
+  }
+} catch (error) {}
+"""
+
+
+def _inject_lead(code):
+    if 'let leadBlock' in code and 'openerBlock || null' in code:
+        return code
+    needle = 'const agent_input = ['
+    if needle not in code:
+        raise SystemExit('turn builder has no agent_input')
+    code = code.replace(needle, LEAD_PREAMBLE + needle, 1)
+    old = "  'turn_type: user_message',\n"
+    new = "  'turn_type: user_message',\n  leadBlock || null,\n  openerBlock || null,\n"
+    if old not in code:
+        old = "  'turn_type: your_own_followup',\n"
+        new = "  'turn_type: your_own_followup',\n  leadBlock || null,\n  openerBlock || null,\n"
+    if old not in code:
+        raise SystemExit('turn builder has no turn_type line')
+    return code.replace(old, new, 1)
+
+
+def ensure_lead(agent):
+    """A WhatsApp reply does not carry the car. The staging session for that phone does."""
+    named = {item['name']: item for item in agent['nodes']}
+    for required in ('Queue Inbound', 'New Message?', 'Debounce', 'Build Turn'):
+        if required not in named:
+            raise SystemExit(f'lead restore cannot find {required}')
+    queue = named['Queue Inbound']
+    origin = named['New Message?']['position']
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-lead/Load Staging Session')),
+        'name': 'Load Staging Session',
+        'type': 'n8n-nodes-base.postgres',
+        'typeVersion': 2.6,
+        'position': [origin[0] + 220, origin[1]],
+        'onError': 'continueRegularOutput',
+        'credentials': json.loads(json.dumps(queue['credentials'])),
+        'parameters': {'resource': 'database', 'operation': 'executeQuery', 'query': LOAD_STAGING_SQL, 'options': {}},
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-lead/Parse Staging')),
+        'name': 'Parse Staging',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [origin[0] + 440, origin[1]],
+        'parameters': {'mode': 'runOnceForAllItems', 'jsCode': PARSE_STAGING_JS},
+    })
+    _retarget(agent, 'New Message?', 0, 'Debounce', 'Load Staging Session')
+    agent['connections']['Load Staging Session'] = {'main': [[_link('Parse Staging')]]}
+    agent['connections']['Parse Staging'] = {'main': [[_link('Debounce')]]}
+    named['Build Turn']['parameters']['jsCode'] = _inject_lead(named['Build Turn']['parameters']['jsCode'])
+    if 'Build Follow-up Turn' in named:
+        named['Build Follow-up Turn']['parameters']['jsCode'] = _inject_lead(named['Build Follow-up Turn']['parameters']['jsCode'])
+    return agent
+
+
+def assert_lead(agent):
+    first = [item.get('node') for item in agent['connections']['New Message?']['main'][0]]
+    if first != ['Load Staging Session']:
+        raise SystemExit(f'a new message skips the lead lookup: {first}')
+    if [item.get('node') for item in agent['connections']['Parse Staging']['main'][0]] != ['Debounce']:
+        raise SystemExit('staging parse does not continue into the debounce')
+    code = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Build Turn')
+    if 'let leadBlock' not in code or 'leadBlock || null' not in code:
+        raise SystemExit('Build Turn does not pass the lead to the model')
+    query = next(node['parameters']['query'] for node in agent['nodes'] if node['name'] == 'Load Staging Session')
+    if 'k1_staging_sessions' not in query or 'lead_context' not in query:
+        raise SystemExit('lead lookup query is wrong')
+
+
 def assert_composing(agent):
     play = [item.get('node') for item in agent['connections']['From playground?']['main'][1]]
     if play != ['Inbound DM?']:
@@ -897,6 +1002,7 @@ def finish_live():
     patch_agent_finish(agent)
     ensure_wasup_inbound(agent)
     ensure_composing(agent)
+    ensure_lead(agent)
     put_live(LIVE_AGENT, agent, was_active)
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
@@ -918,9 +1024,28 @@ def finish_live():
     if inbound_to != ['Webhook · Pass Request']:
         raise SystemExit(f'Wasup inbound is not reaching the agent: {inbound_to}')
     assert_composing(check)
+    assert_lead(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     print(f'finish live agent {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
+def restore_lead():
+    """Attach the staging car and station to live WhatsApp turns. Keeps the current prompt."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    ensure_wasup_inbound(agent)
+    ensure_composing(agent)
+    ensure_lead(agent)
+    assert_composing(agent)
+    assert_lead(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_composing(check)
+    assert_lead(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    print(f'lead restored on {LIVE_AGENT} active={check["active"]}')
 
 
 def restore_typing():
@@ -1572,6 +1697,8 @@ def main():
         finish_live()
     elif command == 'typing':
         restore_typing()
+    elif command == 'lead':
+        restore_lead()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
