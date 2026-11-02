@@ -1316,7 +1316,7 @@ def finish_live():
         raise SystemExit('Normalize finish call missing after put')
     if 'rewrites' not in log or "role, text, is_opener, rewrites" not in log:
         raise SystemExit('WhatsApp log does not store rewrites')
-    if "Oulu Alppila bookings go through K1's booking page" not in brief:
+    if "I see you came into" not in brief:
         raise SystemExit('business brief line missing after put')
     inbound = (check['connections'].get('Webhook') or {}).get('main') or []
     inbound_to = [link.get('node') for branch in inbound for link in (branch or [])]
