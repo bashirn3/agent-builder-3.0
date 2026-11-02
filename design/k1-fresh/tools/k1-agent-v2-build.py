@@ -1105,7 +1105,6 @@ CTA_RAW = (
 )
 OPENER_RAW = (
     "={{ JSON.stringify({ to: $('Normalize').first().json.to, text: $('Normalize').first().json.opener, "
-    "messageType: 'buttons', buttons: [{ id: 'ok', text: 'OK' }], "
     "footer: 'K1 Agent', "
     "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 )
@@ -1212,11 +1211,12 @@ def assert_cta(agent):
 
 
 def stamp_opener_footer():
-    """The first bubble is the staging opener. 'K1 Agent' is the small footer, with no link.
+    """The first bubble is the staging opener. The footer field is 'K1 Agent', with no button.
 
-    WhatsApp drops `footer` on a plain text send. A quick reply is the interactive
-    shape that paints the footer and does not open a URL. A later typing, cta, or
-    reply deploy must not put `ctaUrl` back or ship a footer-only text body.
+    WhatsApp does not draw that grey line unless the bubble also has a button.
+    Do not add a link, a quick reply, or an OK button to make the footer render.
+    A later typing, cta, or reply deploy must not put `ctaUrl`, `messageType: 'buttons'`,
+    or an OK button back.
     """
     body = snapshot(STAGING_SEND)
     was_active = bool(body['active'])
@@ -1232,10 +1232,8 @@ def stamp_opener_footer():
     saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
     if "footer: 'K1 Agent'" not in saved or "$('Normalize').first().json.opener" not in saved:
         raise SystemExit('opener footer was not saved')
-    if 'ctaUrl' in saved or 'k1katsastus.fi' in saved:
-        raise SystemExit('opener link button came back')
-    if "messageType: 'buttons'" not in saved or "buttons: [{ id: 'ok', text: 'OK' }]" not in saved:
-        raise SystemExit('opener footer is not on a quick reply')
+    if 'ctaUrl' in saved or 'buttons' in saved:
+        raise SystemExit('opener button came back')
     if not check.get('active'):
         raise SystemExit('staging send left inactive')
     print(f'opener footer on {STAGING_SEND} active={check["active"]}')
