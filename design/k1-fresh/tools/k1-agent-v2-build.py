@@ -44,7 +44,7 @@ BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
 AGENT_NAME = 'K1 Muster agent v2 (candidate)'
 PAYMENT_NAME = 'K1 v10 payment'
 SUFFIX = '-v2'
-SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow')
+SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow', 'executionTimeout')
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
 
 
@@ -687,12 +687,216 @@ def ensure_wasup_inbound(agent):
     return agent
 
 
+WASUP_CRED = {'wasupApi': {'id': 'SW7J0tWGyyYAPdkN', 'name': 'Wasup Account'}}
+PRESENCE_URL = (
+    "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + "
+    "(($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || "
+    "$('⚙️ CONFIG').first().json.wasup_instance_id || 'wa_mt1j5bcl_sch23') + '/presence' }}"
+)
+INBOUND_DM_EXPR = (
+    "={{ (() => { const b = $('Webhook').first().json.body || {}; "
+    "return !b.is_group && !String(b.from_jid || '').includes('@g.us') && "
+    "String(b.event || 'message').toLowerCase() === 'message'; })() }}"
+)
+KEEP_BUBBLE_JS = """let bubble = null
+try { bubble = $('Still Our Turn?').first().json } catch (error) {}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Loop Bubbles').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Plan Delivery').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
+return [{ json: { ...bubble } }]
+"""
+KEEP_FOLLOWUP_JS = """let bubble = null
+try { bubble = $('Clear To Chase?').first().json } catch (error) {}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Plan Follow-up Delivery').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
+return [{ json: { ...bubble } }]
+"""
+RESTORE_INBOUND_JS = """let item = {}
+try { item = $('From playground?').item.json } catch (error) {}
+if (!item || !Object.keys(item).length) {
+  try { item = $('From playground?').first().json } catch (error) { item = {} }
+}
+if (!item || !Object.keys(item).length) item = $input.first().json || {}
+return { json: item }
+"""
+
+
+def _link(name):
+    return {'node': name, 'type': 'main', 'index': 0}
+
+
+def _presence_body(state, hold, prefer_jid=False):
+    if prefer_jid:
+        target = (
+            "($('Webhook').first().json.body || {}).from_jid || "
+            "($('Webhook').first().json.body || {}).sender_jid || "
+            "($('Webhook').first().json.body || {}).from_phone || $json.to_phone"
+        )
+    else:
+        target = "($('Webhook').first().json.body || {}).from_phone || $json.to_phone"
+    return "={{ JSON.stringify({ to: " + target + ", state: '" + state + "', hold: " + ('true' if hold else 'false') + " }) }}"
+
+
+def _upsert_node(agent, node):
+    named = {item['name']: item for item in agent['nodes']}
+    current = named.get(node['name'])
+    if current:
+        keep = ('id', 'position')
+        for key, value in node.items():
+            if key not in keep:
+                current[key] = value
+        if 'credentials' not in node:
+            current.pop('credentials', None)
+        return current
+    agent['nodes'].append(node)
+    return node
+
+
+def _retarget(agent, source, branch, old, new):
+    links = agent['connections'][source]['main'][branch]
+    nodes = [item.get('node') for item in links]
+    if new in nodes:
+        agent['connections'][source]['main'][branch] = [item for item in links if item.get('node') != old]
+        return
+    if old not in nodes:
+        raise SystemExit(f'{source} output {branch} is {nodes}, expected {old}')
+    for item in links:
+        if item.get('node') == old:
+            item['node'] = new
+
+
+def ensure_composing(agent):
+    """Show WhatsApp typing while a real inbound is answered, then clear it after the send.
+
+    The 30 Oct presence calls (Hold Composing, Pulse Typing, Pause Composing) are what put the
+    dots on screen. Send Bubble's own typing switch stays off; Wasup kept the chat locked when
+    typing lived inside the send. A failed presence call must not block the reply.
+    """
+    named = {item['name']: item for item in agent['nodes']}
+    for required in ('From playground?', 'Still Our Turn?', 'Send Bubble', 'Clear To Chase?', 'Send Double-Text', 'Purge Session', 'Loop Bubbles'):
+        if required not in named:
+            raise SystemExit(f'composing restore cannot find {required}')
+
+    def code(name, position, js, each=False):
+        return {
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-composing/{name}')),
+            'name': name,
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': position,
+            'parameters': {'mode': 'runOnceForEachItem' if each else 'runOnceForAllItems', 'jsCode': js},
+        }
+
+    def presence(name, position, state, hold, prefer_jid=False):
+        return {
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-composing/{name}')),
+            'name': name,
+            'type': 'n8n-nodes-base.httpRequest',
+            'typeVersion': 4.2,
+            'position': position,
+            'onError': 'continueRegularOutput',
+            'credentials': json.loads(json.dumps(WASUP_CRED)),
+            'parameters': {
+                'method': 'POST',
+                'url': PRESENCE_URL,
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'contentType': 'json',
+                'specifyBody': 'json',
+                'jsonBody': _presence_body(state, hold, prefer_jid),
+                'options': {'timeout': 3000},
+            },
+        }
+
+    playground = named['From playground?']['position']
+    send = named['Send Bubble']['position']
+    chase = named['Clear To Chase?']['position']
+    reset = named['Purge Session']['position']
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Inbound DM?')),
+        'name': 'Inbound DM?',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 2.2,
+        'position': [playground[0] + 220, playground[1] + 180],
+        'parameters': {
+            'conditions': {
+                'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
+                'conditions': [{
+                    'id': 'inbound-dm',
+                    'leftValue': INBOUND_DM_EXPR,
+                    'rightValue': '',
+                    'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True},
+                }],
+                'combinator': 'and',
+            },
+            'looseTypeValidation': True,
+            'options': {},
+        },
+    })
+    _upsert_node(agent, presence('Hold Composing', [playground[0] + 440, playground[1] + 80], 'composing', True, True))
+    _upsert_node(agent, code('Restore Inbound', [playground[0] + 660, playground[1] + 80], RESTORE_INBOUND_JS, each=True))
+    _upsert_node(agent, presence('Pulse Typing', [send[0] - 420, send[1]], 'composing', False))
+    _upsert_node(agent, code('Keep Bubble', [send[0] - 200, send[1]], KEEP_BUBBLE_JS))
+    _upsert_node(agent, presence('Pause Composing', [send[0] + 220, send[1]], 'paused', False))
+    _upsert_node(agent, presence('Pulse Follow-up', [chase[0] + 220, chase[1] - 80], 'composing', False))
+    _upsert_node(agent, code('Keep Follow-up', [chase[0] + 440, chase[1] - 80], KEEP_FOLLOWUP_JS))
+    _upsert_node(agent, presence('Pause Composing Follow-up', [chase[0] + 880, chase[1]], 'paused', False))
+    _upsert_node(agent, presence('Release Before Reset', [reset[0] + 220, reset[1] - 120], 'paused', False))
+
+    agent['connections']['From playground?']['main'][1] = [_link('Inbound DM?')]
+    agent['connections']['Inbound DM?'] = {'main': [[_link('Hold Composing')], [_link('Presence Event?')]]}
+    agent['connections']['Hold Composing'] = {'main': [[_link('Restore Inbound')]]}
+    agent['connections']['Restore Inbound'] = {'main': [[_link('Presence Event?')]]}
+    _retarget(agent, 'Still Our Turn?', 0, 'Send Bubble', 'Pulse Typing')
+    agent['connections']['Pulse Typing'] = {'main': [[_link('Keep Bubble')]]}
+    agent['connections']['Keep Bubble'] = {'main': [[_link('Send Bubble')]]}
+    _retarget(agent, 'Send Bubble', 0, 'Loop Bubbles', 'Pause Composing')
+    agent['connections']['Pause Composing'] = {'main': [[_link('Loop Bubbles')]]}
+    _retarget(agent, 'Clear To Chase?', 0, 'Send Double-Text', 'Pulse Follow-up')
+    agent['connections']['Pulse Follow-up'] = {'main': [[_link('Keep Follow-up')]]}
+    agent['connections']['Keep Follow-up'] = {'main': [[_link('Send Double-Text')]]}
+    _retarget(agent, 'Send Double-Text', 0, 'Mark Follow-up Sent', 'Pause Composing Follow-up')
+    agent['connections']['Pause Composing Follow-up'] = {'main': [[_link('Mark Follow-up Sent')]]}
+    _retarget(agent, 'Purge Session', 0, 'Send Reset Notice', 'Release Before Reset')
+    agent['connections']['Release Before Reset'] = {'main': [[_link('Send Reset Notice')]]}
+    return agent
+
+
+def assert_composing(agent):
+    play = [item.get('node') for item in agent['connections']['From playground?']['main'][1]]
+    if play != ['Inbound DM?']:
+        raise SystemExit(f'inbound no longer reaches composing: {play}')
+    inbound = [[item.get('node') for item in branch] for branch in agent['connections']['Inbound DM?']['main']]
+    if inbound != [['Hold Composing'], ['Presence Event?']]:
+        raise SystemExit(f'Inbound DM? wiring changed: {inbound}')
+    send = [item.get('node') for item in agent['connections']['Still Our Turn?']['main'][0]]
+    if send != ['Pulse Typing']:
+        raise SystemExit(f'send path skipped the typing pulse: {send}')
+    if [item.get('node') for item in agent['connections']['Pause Composing']['main'][0]] != ['Loop Bubbles']:
+        raise SystemExit('pause composing does not return to the bubble loop')
+    webhook = [item.get('node') for branch in agent['connections']['Webhook']['main'] for item in branch]
+    if webhook != ['Webhook · Pass Request']:
+        raise SystemExit(f'Wasup inbound is not reaching the agent: {webhook}')
+    names = {item['name'] for item in agent['nodes']}
+    for name in ('Hold Composing', 'Pulse Typing', 'Pause Composing', 'Pause Composing Follow-up', 'Release Before Reset'):
+        if name not in names:
+            raise SystemExit(f'{name} missing')
+
+
 def finish_live():
     apply_log_schema()
     agent = snapshot(LIVE_AGENT)
     was_active = bool(agent['active'])
     patch_agent_finish(agent)
     ensure_wasup_inbound(agent)
+    ensure_composing(agent)
     put_live(LIVE_AGENT, agent, was_active)
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
@@ -713,9 +917,28 @@ def finish_live():
     inbound_to = [link.get('node') for branch in inbound for link in (branch or [])]
     if inbound_to != ['Webhook · Pass Request']:
         raise SystemExit(f'Wasup inbound is not reaching the agent: {inbound_to}')
+    assert_composing(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     print(f'finish live agent {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
+def restore_typing():
+    """Put the composing calls back on the live agent without rewriting the prompt."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    ensure_wasup_inbound(agent)
+    ensure_composing(agent)
+    assert_composing(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_composing(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    hold = next(node for node in check['nodes'] if node['name'] == 'Hold Composing')
+    if hold['parameters'].get('jsonBody', '').find("state: 'composing'") < 0 or hold['credentials']['wasupApi']['id'] != WASUP_CRED['wasupApi']['id']:
+        raise SystemExit('Hold Composing was not saved')
+    print(f'typing restored on {LIVE_AGENT} active={check["active"]}')
 
 
 def cache_layout(named):
@@ -1347,6 +1570,8 @@ def main():
         wire_live()
     elif command == 'finish':
         finish_live()
+    elif command == 'typing':
+        restore_typing()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
