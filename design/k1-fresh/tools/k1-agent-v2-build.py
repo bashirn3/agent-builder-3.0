@@ -1090,9 +1090,65 @@ function firstMark() {
     return ''
   }
 }
+function lastTool(name) {
+  try {
+    if (!$(name).isExecuted) return null
+    const rows = $(name).all()
+    return rows.length ? rows[rows.length - 1].json : null
+  } catch (error) {
+    return null
+  }
+}
+function findLink(value, depth) {
+  if (value == null || depth > 8) return ''
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed || (trimmed[0] !== '{' && trimmed[0] !== '[')) return ''
+    try { return findLink(JSON.parse(trimmed), depth + 1) } catch (error) { return '' }
+  }
+  if (Array.isArray(value)) {
+    for (let i = value.length - 1; i >= 0; i--) {
+      const found = findLink(value[i], depth + 1)
+      if (found) return found
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    const direct = value.official_booking_link || value.booking_url
+    if (typeof direct === 'string' && /^https?:\/\//i.test(direct)) return direct.replace(/[.,;:!?)]+$/g, '')
+    const booking = value.booking
+    if (booking && typeof booking === 'object') {
+      const nested = booking.official_booking_link || booking.booking_url
+      if (typeof nested === 'string' && /^https?:\/\//i.test(nested)) return nested.replace(/[.,;:!?)]+$/g, '')
+    }
+    for (const key of Object.keys(value)) {
+      if (key === 'agent_input' || key === 'binary' || key === 'pairedItem') continue
+      const found = findLink(value[key], depth + 1)
+      if (found) return found
+    }
+  }
+  return ''
+}
+function bookedThisTurn() {
+  const blob = JSON.stringify(lastTool('book_inspection_invite') || lastTool('reschedule_booking') || null)
+  return /"success"\s*:\s*true/.test(blob) && /booking_number/.test(blob)
+}
+function toolBookingLink() {
+  if (bookedThisTurn()) return ''
+  if (/booking number|varausnumero|bokningsnummer/i.test(arguments[0] || '')) return ''
+  return findLink(lastTool('get_slots')) || findLink(lastTool('get_station_info')) || ''
+}
 function decorate(item) {
   const text = String(item.text || '')
-  const urls = text.match(/https?:\/\/[^\s<>)]+/gi) || []
+  let urls = text.match(/https?:\/\/[^\s<>)]+/gi) || []
+  let fromTool = false
+  if (urls.length === 0 && /\b\d{1,2}[:.]\d{2}\b/.test(text)) {
+    const link = toolBookingLink(text)
+    if (link) {
+      urls = [link]
+      fromTool = true
+    }
+  }
   if (urls.length !== 1) return { ...item, cta_url: '', cta_label: '', cta_body: text, cta_footer: '' }
   const raw = urls[0]
   const only = raw.replace(/[.,;:!?)]+$/g, '')
@@ -1101,13 +1157,16 @@ function decorate(item) {
   const booking = host === 'ajanvaraus.k1katsastus.fi' || host === 'www.ajanvaraus.k1katsastus.fi' || host === 'k1-katsastus-ajanvaraus.stage.geniem.io' || /[?&]stationId=/i.test(only)
   const kind = payment ? 'pay' : booking ? 'book' : 'open'
   const lang = language(text)
-  const marker = '@@LINK@@'
-  let body = text.replace(raw, marker)
-  body = body.replace(/(^|\s)(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)\s*[:,]?\s*(?=@@LINK@@)/iu, '$1')
-  body = body.replace(/\s*:\s*(?=@@LINK@@)/g, '')
-  body = body.replace(/@@LINK@@\s*[:,]?\s*(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)(?=$|\s|[.,!?;:])/iu, marker)
-  body = body.replace(/@@LINK@@\s*:/g, marker)
-  body = body.split(marker).join(' ').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim()
+  let body = text
+  if (!fromTool) {
+    const marker = '@@LINK@@'
+    body = text.replace(raw, marker)
+    body = body.replace(/(^|\s)(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)\s*[:,]?\s*(?=@@LINK@@)/iu, '$1')
+    body = body.replace(/\s*:\s*(?=@@LINK@@)/g, '')
+    body = body.replace(/@@LINK@@\s*[:,]?\s*(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)(?=$|\s|[.,!?;:])/iu, marker)
+    body = body.replace(/@@LINK@@\s*:/g, marker)
+    body = body.split(marker).join(' ').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim()
+  }
   if (!body) {
     body = kind === 'pay'
       ? (lang === 'en' ? 'Pay here.' : lang === 'sv' ? 'Betala här.' : 'Maksa tästä.')
@@ -1209,7 +1268,9 @@ def ensure_cta(agent):
     Friday's button required staging === true and a k1katsastus.fi host, so a staging-host
     link and any other link never became a button, and the current turn does not set that flag.
     A booking host (including the staging booking site) is labelled as a booking. Stripe is a
-    payment. Every other single link still gets a button.
+    payment. Every other single link still gets a button. A times reply with no URL takes the
+    station's official_booking_link from get_station_info or get_slots, so the button opens that
+    station. A booked confirmation does not get a second link.
     """
     names = {item['name'] for item in agent['nodes']}
     for required in ('Keep Bubble', 'Send Bubble', 'Pause Composing', 'Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up'):
@@ -1243,6 +1304,8 @@ def assert_cta(agent):
             raise SystemExit(f'{fields} does not cover booking and payment links')
         if '@@LINK@@' not in code or 'tästä' not in code or 'linkin' not in code or 'länken' not in code:
             raise SystemExit(f'{fields} leaves the link introduction in the bubble')
+        if 'official_booking_link' not in code or 'get_station_info' not in code or 'bookedThisTurn' not in code:
+            raise SystemExit(f'{fields} does not put the station booking link on the button')
         params = names[button]['parameters']
         if params.get('operation') != 'sendRaw' or 'ctaUrl' not in (params.get('rawBody') or ''):
             raise SystemExit(f'{button} is not the native link button')
