@@ -16,6 +16,7 @@ Usage:
   python3 k1-agent-v2-build.py finish    patch the live reply nodes and the WhatsApp rewrite log in place
   python3 k1-agent-v2-build.py cta       put link buttons back on live sends, and the first-bubble footer
   python3 k1-agent-v2-build.py typing    ack Wasup with skip:true before the agent, and clear typing once the reply is delivered
+  python3 k1-agent-v2-build.py reaction  keep going when Wasup rejects an emoji, so the text reply still sends
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -1437,6 +1438,34 @@ def ensure_reply_discipline(agent):
     return agent
 
 
+def ensure_reaction_survives(agent):
+    """A Wasup 400 on the emoji must not cancel the text that was planned with it.
+
+    Plan Delivery starts Has Reaction? and Loop Bubbles together. v1 runs Has Reaction?
+    first, and React To Message has nowhere to go, so a thrown react stops the sibling
+    that sends the reply. Wasup's antiban answer (rate limit or identical-message spam)
+    stays a 400; this only stops that 400 from eating the message. Do not retry the emoji.
+    """
+    node = next((item for item in agent['nodes'] if item['name'] == 'React To Message'), None)
+    if node is None:
+        raise SystemExit('React To Message is missing')
+    node['onError'] = 'continueRegularOutput'
+    node.pop('retryOnFail', None)
+    return agent
+
+
+def assert_reaction_survives(agent):
+    node = next((item for item in agent['nodes'] if item['name'] == 'React To Message'), None)
+    if node is None or node.get('onError') != 'continueRegularOutput' or node.get('retryOnFail'):
+        raise SystemExit('React To Message still aborts the reply when Wasup rejects the emoji')
+    if agent['connections'].get('React To Message'):
+        raise SystemExit('React To Message grew an output; a continued error would run it')
+    branch = ((agent['connections'].get('Plan Delivery') or {}).get('main') or [[]])[0]
+    targets = [link.get('node') for link in branch]
+    if targets[:1] != ['Has Reaction?'] or 'Loop Bubbles' not in targets:
+        raise SystemExit(f'reaction is no longer beside the send: {targets}')
+
+
 def lock_live_path(agent):
     """Put back the WhatsApp path that Friday proved and no backup ever stored.
 
@@ -1448,9 +1477,11 @@ def lock_live_path(agent):
     ensure_lead(agent)
     ensure_cta(agent)
     ensure_reply_discipline(agent)
+    ensure_reaction_survives(agent)
     assert_composing(agent)
     assert_lead(agent)
     assert_cta(agent)
+    assert_reaction_survives(agent)
     return agent
 
 
@@ -1483,6 +1514,7 @@ def finish_live():
     assert_composing(check)
     assert_lead(check)
     assert_cta(check)
+    assert_reaction_survives(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     stamp_opener_footer()
@@ -1499,6 +1531,7 @@ def restore_lead():
     assert_composing(check)
     assert_lead(check)
     assert_cta(check)
+    assert_reaction_survives(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     print(f'lead restored on {LIVE_AGENT} active={check["active"]}')
@@ -1514,6 +1547,7 @@ def restore_typing():
     assert_composing(check)
     assert_lead(check)
     assert_cta(check)
+    assert_reaction_survives(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     hold = next(node for node in check['nodes'] if node['name'] == 'Hold Composing')
@@ -1544,6 +1578,7 @@ def apply_reply_rule():
     assert_composing(check)
     assert_lead(check)
     assert_cta(check)
+    assert_reaction_survives(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     stamp_opener_footer()
@@ -1560,10 +1595,25 @@ def restore_cta():
     assert_composing(check)
     assert_lead(check)
     assert_cta(check)
+    assert_reaction_survives(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     stamp_opener_footer()
     print(f'link buttons restored on {LIVE_AGENT} active={check["active"]}')
+
+
+def restore_reaction():
+    """Let a rejected emoji finish the turn. The reply is the sibling after Has Reaction?."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    ensure_reaction_survives(agent)
+    assert_reaction_survives(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    print(f'reaction continues on {LIVE_AGENT} active={check["active"]}')
 
 
 def cache_layout(named):
@@ -2206,6 +2256,8 @@ def main():
         restore_cta()
     elif command == 'reply':
         apply_reply_rule()
+    elif command == 'reaction':
+        restore_reaction()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
