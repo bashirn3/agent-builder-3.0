@@ -681,11 +681,18 @@ def assert_reply_node(code, label):
         raise SystemExit(f'{label} does not record rewrites')
 
 
+def ensure_wasup_inbound(agent):
+    """Wasup calls the inbound webhook with no Clerk session. The builder sign-in stays on Playground only."""
+    agent['connections']['Webhook'] = {'main': [[{'node': 'Webhook · Pass Request', 'type': 'main', 'index': 0}]]}
+    return agent
+
+
 def finish_live():
     apply_log_schema()
     agent = snapshot(LIVE_AGENT)
     was_active = bool(agent['active'])
     patch_agent_finish(agent)
+    ensure_wasup_inbound(agent)
     put_live(LIVE_AGENT, agent, was_active)
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
@@ -702,6 +709,10 @@ def finish_live():
         raise SystemExit('WhatsApp log does not store rewrites')
     if "Oulu Alppila bookings go through K1's booking page" not in brief:
         raise SystemExit('business brief line missing after put')
+    inbound = (check['connections'].get('Webhook') or {}).get('main') or []
+    inbound_to = [link.get('node') for branch in inbound for link in (branch or [])]
+    if inbound_to != ['Webhook · Pass Request']:
+        raise SystemExit(f'Wasup inbound is not reaching the agent: {inbound_to}')
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     print(f'finish live agent {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
