@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ease } from '../../lib/motion'
 import type { AgentConfig } from '../data/agentConfig'
-import { deleteTestChats, getTestChat, listTestChats, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
+import { deleteTestChats, getTestChat, listTestChats, maskPhones, setFeedback, type TestChat, type TestChatFilters, type TestChatSummary } from '../data/builderApi'
 import { downloadCsv, toCsv } from '../data/fixtures'
 import type { TestMessage } from '../data/useTestChat'
 import { go, href } from '../routes'
@@ -61,7 +61,7 @@ export function versionTag(chat: Pick<TestChatSummary, 'isDraft' | 'versionNumbe
   return chat.versionNumber ? `v${chat.versionNumber}` : t.chats.unsavedVersion
 }
 
-const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source]
+const sourceLabel = (source: TestChatSummary['source']) => copy().chats.sources[source] ?? copy().chats.sources.playground
 const showcaseStamp = (iso: string) => new Intl.DateTimeFormat(locale(), {
   timeZone: 'Europe/Helsinki', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 }).format(new Date(iso))
@@ -417,8 +417,8 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       conversation: item.id,
       version: versionTag(item),
       source: sourceLabel(item.source),
-      first_message: item.title,
-      last_reply: item.lastReply,
+      first_message: maskPhones(item.title),
+      last_reply: maskPhones(item.lastReply),
       messages: String(item.messageCount),
       thumbs_up: String(item.thumbsUp),
       thumbs_down: String(item.thumbsDown),
@@ -471,8 +471,8 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
         const illustrative = Boolean(showcaseFor(item.id))
         return {
           id: item.id,
-          title: item.title || t.chats.openerOnly,
-          subtitle: item.lastReply || t.chats.noReply,
+          title: maskPhones(item.title) || t.chats.openerOnly,
+          subtitle: maskPhones(item.lastReply) || t.chats.noReply,
           meta: illustrative ? showcaseStamp(item.updatedAt) : relativeTime(item.updatedAt),
           href: href({ page: 'chats', id: item.id }),
           tags: (
@@ -508,7 +508,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   ) : conversation ? (
     <DetailPane
       paneKey={conversation.id}
-      title={conversation.title || t.chats.testChat}
+      title={maskPhones(conversation.title) || t.chats.testChat}
       tabs={[{ value: 'chat', label: t.chats.chat }, { value: 'details', label: t.chats.details }]}
       tab={tab}
       onTab={setTab}
@@ -540,7 +540,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
               </div>
             </div>
           ) : (
-            <Bubble key={message.id} message={message} onRate={(value) => rate(message.id, value)} />
+            <Bubble key={message.id} message={{ ...message, text: maskPhones(message.text) }} onRate={(value) => rate(message.id, value)} />
           ))}
         </div>
       ) : (

@@ -12,6 +12,12 @@ Usage:
                                          the previous live workflows are saved to design/k1-fresh/backups/ first; refused unless
                                          k1-gate.py check passed for the prompt being shipped (--without-gate only for an emergency fix)
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
+  python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
+  python3 k1-agent-v2-build.py finish    patch the live reply nodes and the WhatsApp rewrite log in place
+  python3 k1-agent-v2-build.py cta       put link buttons back on live sends, and the first-bubble footer
+  python3 k1-agent-v2-build.py typing    ack Wasup with skip:true before the agent, and clear typing once the reply is delivered
+  python3 k1-agent-v2-build.py reaction  keep going when Wasup rejects an emoji, so the text reply still sends
+  python3 k1-agent-v2-build.py account-pay  login link when a booked customer asks to prepay or change the booking
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -38,11 +44,12 @@ spec.loader.exec_module(gate)
 BACKUPS = ROOT / 'backups'
 LIVE_BOOKING = 'wAE7EHLyJk6JsMue'
 LIVE_AGENT = 'w8a9S1uxB5U9qnNO'
+STAGING_SEND = 'p6V9Jtytz4eN4MYw'
 BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
 AGENT_NAME = 'K1 Muster agent v2 (candidate)'
 PAYMENT_NAME = 'K1 v10 payment'
 SUFFIX = '-v2'
-SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow')
+SETTINGS_KEEP = ('executionOrder', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'saveManualExecutions', 'timezone', 'errorWorkflow', 'executionTimeout')
 PROMPT_MARKERS = ('# K1 Muster staging assistant', '# K1 Katsastus assistant — authoritative business rules')
 
 
@@ -222,6 +229,29 @@ LEAD_FIELDS = {
     'lead_vehicle_category': LEAD('lead_vehicle_category'),
 }
 PHONE = "={{ %s.isExecuted ? %s.first().json.from_phone : $('Webhook').first().json.body.from_phone }}" % (PT, PT)
+# Reply language for booking links. Read from the turn the model already sees, so English and Swedish
+# chats get /en/reservation and /sv/bokning without the model having to pass a field.
+LINK_LANG = (
+    "={{ (() => { let raw = ''; "
+    "try { if ($('Playground Turn').isExecuted) raw = String($('Playground Turn').first().json.agent_input || ''); } catch (e) {} "
+    "if (!raw) { try { if ($('Build Turn').isExecuted) raw = String($('Build Turn').first().json.agent_input || ''); } catch (e) {} } "
+    "const hint = (raw.match(/customer_latest_message_language:\\s*([A-Za-z]+)/) || [])[1] "
+    "|| (raw.match(/Customer's language:\\s*([A-Za-z]+)/i) || [])[1] || 'Finnish'; "
+    "const code = String(hint).toLowerCase(); "
+    "if (code.startsWith('en')) return 'en'; "
+    "if (code.startsWith('sv') || code.startsWith('swe')) return 'sv'; "
+    "return 'fi'; })() }}"
+)
+# Live leads get the production booking site. A phone with a staging test conversation (link_host
+# staging) gets the staging site, and the booking tool still falls back to production for stations
+# the staging site cannot open. Playground turns are staging tests.
+BOOKING_SITE = (
+    "={{ (() => { "
+    "try { const site = String($('Attach booking site').first().json.booking_site || '').toLowerCase(); "
+    "if (site === 'staging' || site === 'live') return site; } catch (e) {} "
+    "try { if ($('Playground Turn').isExecuted) return 'staging'; } catch (e) {} "
+    "return 'live'; })() }}"
+)
 
 STATION_HINT = 'Station name or city ONLY when the customer asks about a different station than their own. Leave EMPTY for the customer\'s own station (the lead\'s station).'
 PRODUCT_HINT = 'Vehicle product: 004 (petrol/diesel/hybrid car or van), 004e (fully electric), 0040 (camper or larger car). Leave empty to use the lead\'s product for the lead\'s own plate. Pass unknown if the customer gave another plate or vehicle and you have not yet asked what it is.'
@@ -230,20 +260,28 @@ CATEGORY_HINT = 'Vehicle category: M1 (car or camper) or N1 (van). Leave empty t
 
 TOOLS = {
     'get_slots': {
-        'description': 'Live free appointment times for one station, already limited to that station\'s opening hours, with a price for the vehicle. The ONLY source of appointment times and slot_id values. Pass date_from and date_to as YYYY-MM-DD (Europe/Helsinki, at most 14 days apart). Leave station empty for the customer\'s own station. Returns a per-day summary (station_hours, free_count, first, last, up to three suggestions, and all_times for a single day). If it returns needs_product, ask the vehicle question it gives. If bookable_by_assistant is false, times are informational only and there are no slot_ids.',
+        'description': 'Live free appointment times for one station, already limited to that station\'s opening hours, with station and online-payment prices for the vehicle. The ONLY source of appointment times and slot_id values. Pass date_from and date_to as YYYY-MM-DD (Europe/Helsinki, at most 14 days apart). Leave station empty for the customer\'s own station. Returns per-day station_hours, free_count, green_count, suggestions (time may include is_green, station_eur, online_payment_eur), all_times for a single day, price (station_eur + online_payment_eur when Vihreä hinta exists), and official_booking_link for online pay. If needs_product, ask the vehicle question it gives. If bookable_by_assistant is false, times are informational only and there are no slot_ids.',
         'ai': {
             'station': STATION_HINT, 'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
             'date_from': 'YYYY-MM-DD, Europe/Helsinki. Default: tomorrow.', 'date_to': 'YYYY-MM-DD, Europe/Helsinki. Same as date_from for a single day.',
         },
-        'fixed': {'action': 'get_slots', 'phone': PHONE, **LEAD_FIELDS},
+        'fixed': {'action': 'get_slots', 'phone': PHONE, 'language': LINK_LANG, 'booking_site': BOOKING_SITE, **LEAD_FIELDS},
     },
     'get_station_info': {
-        'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices for the vehicle, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
+        'description': 'Live facts for ONE K1 station: opening hours for a date (default today) and the next days, address, whether the assistant can book there, prices (station_eur and online_payment_eur when green), official_booking_link, and a short preview of free times inside the opening hours. Use it first for any question about hours, prices, another station, or whether you can book somewhere. Leave station empty for the customer\'s own station; name another station or city only when the customer asks about it. Returns ambiguous candidates when a city has several stations: ask which one.',
         'ai': {
             'station': STATION_HINT, 'date': 'YYYY-MM-DD, Europe/Helsinki. Default today.',
             'product': PRODUCT_HINT, 'vehicle_category': CATEGORY_HINT, 'include_measuring': MEASURING_HINT,
         },
-        'fixed': {'action': 'station_info', 'phone': PHONE, **LEAD_FIELDS},
+        'fixed': {'action': 'station_info', 'phone': PHONE, 'language': LINK_LANG, 'booking_site': BOOKING_SITE, **LEAD_FIELDS},
+    },
+    'send_booking_confirmation': {
+        'description': 'Send a Muster reservation confirmation SMS for an existing chat booking. Call only after the customer clearly asks for an SMS confirmation. Pass event_id and station_id from the booking result or get_my_bookings.',
+        'ai': {
+            'event_id': 'Exact event_id from book_inspection_invite or get_my_bookings.',
+            'station_id': 'station_id from the booking result (Muster station id).',
+        },
+        'fixed': {'action': 'send_booking_confirmation', 'phone': PHONE},
     },
 }
 TOOLS['get_my_bookings'] = {
@@ -258,7 +296,7 @@ TOOLS['faq_lookup'] = {
 }
 SCHEMA_ENTRY = lambda key: {'id': key, 'displayName': key, 'type': 'string', 'display': True, 'required': False, 'defaultMatch': False, 'canBeUsedToMatch': True}
 SLOT_TOOLS = {
-    'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category); copy the slot_id of the entry whose time is the chosen one, and also pass that chosen clock time in time. Reuse plate, name and phone. success true includes booking_number and event_id. If success is false, it is not booked.',
+    'book_inspection_invite': 'Book a NEW inspection. FORBIDDEN unless the customer named a clock time. start_time MUST be the exact slot_id from get_slots (it already contains the station, the products and the vehicle category); copy the slot_id of the entry whose time is the chosen one, and also pass that chosen clock time in time. Reuse plate, name and phone. success true includes booking_number, event_id, station_id, official_booking_link and ask_sms_confirmation. If success is false, it is not booked.',
     'reschedule_booking': 'Move an existing booking. start_time is the new slot_id from get_slots (the entry whose time is the chosen one); also pass that chosen clock time in time. event_id comes from get_my_bookings (or from the booking made in this conversation). The booking number stays the same.',
     'cancel_booking': 'Cancel an existing booking. event_id is required and comes from get_my_bookings (or from the booking made in this conversation). sendConfirmation is never used. If already_cancelled is true, it was already gone.',
 }
@@ -385,7 +423,7 @@ SYSTEM_STYLE_PATCHES = (
     (("Split like a person does: acknowledgement, then substance, then the question.", "Default to ONE bubble. Give the substance and the single question together; never add an acknowledgement bubble."), 'shape'),
     (("Say something warm and ask for a day.", "Do not ask which day. Call get_slots from tomorrow and offer the first day's times. Do not echo their word and do not open with an acknowledgement."), 'ack'),
     (("(\"no rush — want me to leave this with you?\")", "(\"no rush, want me to leave this with you?\")"), 'dash example'),
-    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\" to your offer to find a time, the reply is the times themselves from get_slots.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
+    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\", or they switch language, call the tool and the reply is the times. Palokka and Itäharju: get_slots. Every other station: get_station_info, then the free times and the official booking link. Never say you will check, look, or come back.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
 )
 
 
@@ -394,6 +432,1338 @@ def replace_once(text, pair, label):
     if text.count(old) != 1:
         raise SystemExit(f'cannot patch {label}: expected one match, found {text.count(old)}')
     return text.replace(old, new)
+
+
+# After the model reply: turn "; " into ". ". If a green price is quoted without the
+# station total, append it ("At the station: 76 €."). If that reply also has no link,
+# append official_booking_link from this turn's tool result. A URL the tools did not
+# return is replaced with that link, or removed when the turn has none. Never add the
+# link on a turn that already booked. rewrites names what changed, for the WhatsApp log.
+# A customer who already has a booking and asks to prepay or to change it gets one
+# login sentence and https://ajanvaraus.k1katsastus.fi/varaus after grounding. That URL
+# is allowed. A booking made on this turn, a time offer, and a clock-time move stay.
+FINISH_FN = r"""function separateFuelLink(line) {
+  const fuel = /bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)/i
+  if (!fuel.test(line) || !line.includes('?')) return line
+  const parts = line.split(/(?<=[.!?])\s+|\n+/)
+  let changed = false
+  const next = parts.map((part) => {
+    if (!fuel.test(part) || !part.includes('?')) return part
+    const urls = part.match(/https:\/\/\S+/g)
+    if (!urls) return part
+    let rest = part
+    for (const url of urls) rest = rest.replace(url, ' ')
+    rest = rest.replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.:;])/g, '$1').trim()
+    changed = true
+    return [rest, ...urls].filter(Boolean).join('\n')
+  })
+  return changed ? next.join('\n') : line
+}
+function dedupeLinks(line) {
+  const seen = new Set()
+  const next = String(line).replace(/https:\/\/\S+/g, (url) => {
+    const key = url.replace(/[),.;]+$/, '')
+    if (seen.has(key)) return ''
+    seen.add(key)
+    return url
+  })
+  return next.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').trim()
+}
+function addToolUrls(value, allowed) {
+  if (value == null) return
+  if (typeof value === 'string') {
+    const text = value.replace(/\\\//g, '/')
+    for (const raw of text.match(/https:\/\/[^"\s\\<>]+/g) || []) allowed.add(raw.replace(/[),.;]+$/, ''))
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) addToolUrls(item, allowed)
+    return
+  }
+  if (typeof value === 'object') {
+    for (const item of Object.values(value)) addToolUrls(item, allowed)
+  }
+}
+function groundLinks(line, allowed, fallback) {
+  const urls = String(line).match(/https:\/\/\S+/g) || []
+  if (!urls.length) return line
+  const keyOf = (url) => url.replace(/[),.;]+$/, '')
+  const known = (url) => {
+    const key = keyOf(url)
+    for (const item of allowed) {
+      if (key === item || key.startsWith(item) || item.startsWith(key)) return true
+    }
+    return false
+  }
+  if (urls.every(known)) return line
+  return line.replace(/https:\/\/\S+/g, (url) => known(url) ? url : (fallback || '')).replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.:])/g, '$1').trim()
+}
+function dropExtraNameAsk(line, offeringTimes) {
+  if (!offeringTimes || !/nimesi|nimellä|mikä nimi|kenen nimi/i.test(line)) return line
+  return line
+    .replace(/,?\s+ja\s+(?:kenen\s+nimellä|nimesi|mikä nimi|kenen nimi)\??/giu, '?')
+    .replace(/\?\s*\?/g, '?')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+function unclaimBooking(line, booked) {
+  if (booked || !/ei ole|en näe|ei vahvist|not confirmed|is not confirmed|inte bekräft/i.test(line)) return line
+  return line.replace(/\b(varausnumero|booking number|bokningsnummer)\s+(?!0306\b)[A-Z0-9-]*\d+\b/gi, 'ehdottamasi numero')
+}
+const ACCOUNT_PAY_URL = 'https://ajanvaraus.k1katsastus.fi/varaus'
+function accountCustomerText() {
+  try {
+    if (typeof $ !== 'function') return ''
+    const read = (name) => {
+      if (!$(name).isExecuted) return ''
+      const json = $(name).first().json || {}
+      if (json.raw_text) return String(json.raw_text)
+      const input = String(json.agent_input || '')
+      const match = input.match(/\[USER\]\s*([\s\S]*)$/)
+      return match ? match[1].trim() : ''
+    }
+    return read('Build Turn') || read('Playground Turn')
+  } catch (error) {
+    return ''
+  }
+}
+function accountNamesClock(text) {
+  return /(?:\b(?:klo|kello|kl\.?|klockan|at)\s*)\d{1,2}(?:[:.]\d{2})?\b|\b\d{1,2}[:.]\d{2}\b/i.test(String(text || ''))
+}
+function accountAsks(text) {
+  const t = String(text || '')
+  const prepay = /ennakkoon|etukäteen|\bprepay\b|pay in advance|pay beforehand|pay ahead|betala i förväg|ennakkomaks/i.test(t)
+  const changeBooking = /(?:\b(?:muuttaa|muutta\w*|muuta|vaihtaa|vaihta\w*|vaihda|change|ändra\w*)\b).{0,80}(?:\b(?:varaus\w*|bokning\w*|booking)\b)|(?:\b(?:varaus\w*|bokning\w*|booking)\b).{0,80}(?:\b(?:muuttaa|muutta\w*|muuta|vaihtaa|vaihta\w*|vaihda|change|ändra\w*)\b)/i.test(t)
+  const differentPay = /erilaisen varauksen/i.test(t) && /maksa|pay|betala|ennakko/i.test(t)
+  const clockMove = accountNamesClock(t) && /\b(?:siirr\w*|reschedul\w*|flytta\w*|move|toiseen aikaan|uuden ajan)\b/i.test(t)
+  if ((clockMove || (changeBooking && accountNamesClock(t))) && !prepay && !differentPay) return false
+  return prepay || changeBooking || differentPay
+}
+function accountLanguage(text) {
+  const t = ' ' + String(text || '').toLowerCase() + ' '
+  if (/\b(och|att|för|inte|boka|betala|bokning|förväg|logga|vill|jag)\b/.test(t)) return 'sv'
+  if (/[äöå]/.test(t) || /\b(haluaisin|varaus|maksaa|ennakkoon|kirjautua|miten|voit|erilaisen)\b/.test(t)) return 'fi'
+  if (/\b(the|your|you|pay|book|ahead|beforehand|advance|can|booking)\b/.test(t)) return 'en'
+  return 'fi'
+}
+function accountPayLine(text) {
+  const sentence = accountLanguage(text) === 'sv'
+    ? 'Du kan logga in på din bokning och betala i förväg.'
+    : accountLanguage(text) === 'en'
+      ? 'You can log in to your booking and pay beforehand.'
+      : 'Voit kirjautua varaukseesi ja maksaa ennakkoon.'
+  return sentence + ' ' + ACCOUNT_PAY_URL
+}
+function accountPriorBooking(steps, readData) {
+  try {
+    if (typeof $ === 'function' && $('Parse Staging').isExecuted) {
+      const staging = ($('Parse Staging').first().json || {}).staging || {}
+      if (staging.hasBooking === true || staging.hasBooking === 'true') return true
+    }
+  } catch (error) {}
+  for (const step of steps || []) {
+    const tool = String(step && step.action && step.action.tool || step && step.tool || '')
+    if (tool !== 'get_my_bookings') continue
+    const data = readData(step)
+    if (!data) continue
+    if (Number(data.count) > 0) return true
+    if (Array.isArray(data.bookings) && data.bookings.length > 0) return true
+  }
+  return false
+}
+function finishReply(messages, agent) {
+  const notes = []
+  const cleaned = (Array.isArray(messages) ? messages : []).map((line) => {
+    const text = String(line)
+    const punctuated = text.replace(/; /g, '. ')
+    if (punctuated !== text) notes.push('semicolon')
+    const cased = punctuated.replace(/\bhttps?:\/\//gi, (found) => found.toLowerCase())
+    if (cased !== punctuated) notes.push('link_scheme')
+    return cased
+  })
+  if (!cleaned.length) return { messages: [], rewrites: [] }
+  const steps = Array.isArray(agent && agent.intermediateSteps) ? agent.intermediateSteps : []
+  const dataOf = (step) => {
+    let data = step && step.observation
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data) } catch (e) { data = null }
+    }
+    if (Array.isArray(data)) data = data[0]
+    if (data && data.json && typeof data.json === 'object') data = data.json
+    return data && typeof data === 'object' ? data : null
+  }
+  const booked = steps.some((step) => {
+    if (String(step.action?.tool || step.tool || '') !== 'book_inspection_invite') return false
+    const data = dataOf(step)
+    return Boolean(data && data.booking_number && (data.success || data.ok))
+  })
+  let link = ''
+  let station = ''
+  let offeredSlots = false
+  const allowedUrls = new Set()
+  for (const step of steps) {
+    addToolUrls(step && step.observation, allowedUrls)
+    const tool = String(step.action?.tool || step.tool || '')
+    if (tool === 'get_slots') offeredSlots = true
+    if (tool !== 'get_slots' && tool !== 'get_station_info') continue
+    const data = dataOf(step)
+    const direct = data && (data.official_booking_link || data.booking_url || (data.booking && data.booking.official_booking_link))
+    if (typeof direct === 'string' && direct.startsWith('https://')) link = direct
+    else {
+      const text = String(step.observation ?? '').replace(/\\\//g, '/')
+      const found = text.match(/https:\/\/(?:ajanvaraus\.k1katsastus\.fi|k1-katsastus-ajanvaraus\.stage\.geniem\.io)[^"\s\\]*/)
+      if (found) link = found[0].replace(/[),.;]+$/, '')
+    }
+    const price = data && data.price
+    const raw = price && (price.station_eur != null ? price.station_eur : price.total_eur)
+    if (raw != null && Number.isFinite(Number(raw))) station = String(Math.round(Number(raw)))
+  }
+  let reply = cleaned.join('\n\n')
+  const quotesGreen = /vihre|green price|prepaid|ennakkoon|verkossa makset|online/i.test(reply)
+  if (quotesGreen && station && !new RegExp('(^|[^0-9])' + station + '([^0-9]|$)').test(reply)) {
+    const sentence = /asemalla|verkossa|vihre|huomenna|ennakkoon|varaa|maks/i.test(reply)
+      ? 'Asemalla: ' + station + ' €.'
+      : /stationen|imorgon|grön|priset|jämfört|boka/i.test(reply)
+        ? 'På stationen: ' + station + ' €.'
+        : 'At the station: ' + station + ' €.'
+    cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + sentence
+    notes.push('station_price')
+    reply = cleaned.join('\n\n')
+  }
+  if (!(booked || /https:\/\//i.test(reply) || !quotesGreen || !link)) {
+    cleaned[cleaned.length - 1] = cleaned[cleaned.length - 1].replace(/\s*$/, '') + ' ' + link
+    notes.push('booking_link')
+    reply = cleaned.join('\n\n')
+  }
+  if (link) allowedUrls.add(link)
+  const userText = accountCustomerText()
+  const accountPay = !booked && accountAsks(userText) && accountPriorBooking(steps, dataOf)
+  if (accountPay) allowedUrls.add(ACCOUNT_PAY_URL)
+  const mapNote = (name, fn) => {
+    let changed = false
+    const next = cleaned.map((row) => {
+      const out = fn(row)
+      if (out !== row) changed = true
+      return out
+    })
+    if (changed) notes.push(name)
+    cleaned.splice(0, cleaned.length, ...next)
+  }
+  mapNote('fuel_link', separateFuelLink)
+  mapNote('ground_link', (row) => groundLinks(row, allowedUrls, booked ? '' : link))
+  mapNote('dedupe_link', dedupeLinks)
+  mapNote('name_ask', (row) => dropExtraNameAsk(row, offeredSlots && !booked))
+  mapNote('unclaim', (row) => unclaimBooking(row, booked))
+  if (accountPay) {
+    cleaned.splice(0, cleaned.length, accountPayLine(userText))
+    notes.push('account_pay')
+  }
+  return { messages: cleaned.filter(Boolean), rewrites: [...new Set(notes)] }
+}
+"""
+PLAN_FINISH_OLD = "msgs = finishReply(msgs, $input.first().json);"
+PLAN_FINISH_CALL = """const finished = finishReply(msgs, $input.first().json);
+msgs = finished.messages;
+const replyRewrites = finished.rewrites || [];"""
+PLAN_REWRITES_FIELD = (
+    "delay_seconds: d, skip_send: false",
+    "delay_seconds: d, skip_send: false, rewrites: replyRewrites",
+)
+NORMALIZE_JOIN_OLD = "reply: finished.join('\\n\\n'), fallback:"
+NORMALIZE_JOIN_NEW = "reply: finished.messages.join('\\n\\n'), rewrites: finished.rewrites || [], fallback:"
+NORMALIZE_INSERT = (
+    "return [{ json: { reply: messages.join('\\n\\n'), fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
+    "const finished = finishReply(messages, agent)\nreturn [{ json: { reply: finished.messages.join('\\n\\n'), rewrites: finished.rewrites || [], fallback: !lines.some((line) => typeof line === 'string' && line.trim()) && !reactionOnly } }]",
+)
+
+
+def ensure_finish(code, kind):
+    if kind == 'plan':
+        if PLAN_FINISH_CALL not in code:
+            if PLAN_FINISH_OLD in code:
+                code = replace_once(code, (PLAN_FINISH_OLD, PLAN_FINISH_CALL), 'Plan Delivery finish call')
+            else:
+                anchor = '.filter(Boolean).slice(0, maxBubbles);'
+                if code.count(anchor) != 1:
+                    raise SystemExit(f'cannot patch Plan Delivery finish: anchor count {code.count(anchor)}')
+                code = code.replace(anchor, anchor + '\n' + PLAN_FINISH_CALL, 1)
+        if 'rewrites: replyRewrites' not in code:
+            code = replace_once(code, PLAN_REWRITES_FIELD, 'Plan Delivery rewrites')
+    if kind == 'normalize' and 'finished.messages.join' not in code:
+        if NORMALIZE_JOIN_OLD in code:
+            code = replace_once(code, (NORMALIZE_JOIN_OLD, NORMALIZE_JOIN_NEW), 'Normalize finish join')
+        else:
+            code = replace_once(code, NORMALIZE_INSERT, 'Normalize finish')
+    return upsert_finish_fn(code)
+
+
+def upsert_finish_fn(code):
+    """Insert finishReply, or replace an older copy. The call sites stay where they are."""
+    fresh = FINISH_FN.rstrip() + '\n'
+    if fresh.strip() in code:
+        return code
+    names = (
+        'function separateFuelLink(', 'function dedupeLinks(', 'function addToolUrls(', 'function groundLinks(',
+        'function bookingLinkFor(', 'function leadBookingLink(', 'function replaceInventedLink(',
+        'function dropExtraNameAsk(', 'function unclaimBooking(', 'function emailIsNotFuel(', 'function finishReply(',
+    )
+    positions = [code.find(name) for name in names if code.find(name) >= 0]
+    if not positions:
+        return fresh + code
+    start = min(positions)
+    reply_at = code.find('function finishReply(')
+    if reply_at < 0:
+        return code[:start] + fresh + code[start:]
+    brace = code.find('{', reply_at)
+    depth = 0
+    end = None
+    for index in range(brace, len(code)):
+        if code[index] == '{':
+            depth += 1
+        elif code[index] == '}':
+            depth -= 1
+            if depth == 0:
+                end = index + 1
+                break
+    if end is None:
+        raise SystemExit('finishReply brace mismatch')
+    if code[end:end + 1] == '\n':
+        end += 1
+    return code[:start] + fresh + code[end:]
+
+
+def patch_agent_finish(agent):
+    for node in agent['nodes']:
+        if node['name'] == 'Plan Delivery':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'plan')
+        elif node['name'] == 'Normalize playground reply':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'normalize')
+        elif node['name'] == 'Log WhatsApp turn':
+            node['parameters']['jsCode'] = WHATSAPP_LOG_JS
+            node['onError'] = 'continueRegularOutput'
+        elif node['name'] == '⚙️ CONFIG':
+            for item in node['parameters']['assignments']['assignments']:
+                if item['name'] == 'business_prompt':
+                    item['value'] = business_prompt(item['value'])
+    return agent
+
+
+def assert_reply_node(code, label):
+    if 'function groundLinks(' not in code or 'function emailIsNotFuel(' in code or 'meili' in code:
+        raise SystemExit(f'{label} still has the old reply rewrite')
+    if 'function replaceInventedLink(' in code or 'function bookingLinkFor(' in code:
+        raise SystemExit(f'{label} still invents a station link')
+    if 'rewrites:' not in code:
+        raise SystemExit(f'{label} does not record rewrites')
+    if 'https://ajanvaraus.k1katsastus.fi/varaus' not in code or 'account_pay' not in code:
+        raise SystemExit(f'{label} does not send the account login')
+
+
+def ensure_account_finish(agent):
+    """Keep the pay-ahead replacement on the reply nodes the next deploy touches."""
+    for node in agent['nodes']:
+        if node['name'] == 'Plan Delivery':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'plan')
+        elif node['name'] == 'Normalize playground reply':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'normalize')
+    return agent
+
+
+HOLD_FOR_COMPOSING_JS = """// Ack Wasup immediately with {skip:true}.
+// n8n runs Webhook siblings one after another under executionOrder v1.
+// This node MUST run before CONFIG: if CONFIG (RESET send / AI / bubbles)
+// runs while the inbound webhook is still open, Wasup locks the chat and
+// /api/send hard-times out after 25s with no typing and no reply.
+// Do not wait for Plan Delivery here — that used to delay CONFIG too.
+return [{ json: { skip: true } }];
+"""
+
+
+def ensure_wasup_inbound(agent):
+    """Wasup calls the inbound webhook with no Clerk session. The builder sign-in stays on Playground only.
+
+    Friday's working run answered the webhook with {skip:true} before CONFIG touched Wasup.
+    A later {ok:true} from the same webhook left the chat locked, so sends never left.
+    """
+    named = {item['name']: item for item in agent['nodes']}
+    webhook = named['Webhook']['position']
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Hold For Composing')),
+        'name': 'Hold For Composing',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [webhook[0] + 220, webhook[1] - 180],
+        'onError': 'continueRegularOutput',
+        'parameters': {'mode': 'runOnceForAllItems', 'jsCode': HOLD_FOR_COMPOSING_JS},
+    })
+    ack = named['Ack Webhook (empty)']
+    ack['parameters']['responseBody'] = "={{ $json.reply ? { reply: $json.reply } : { skip: true } }}"
+    agent['connections']['Webhook'] = {'main': [[
+        {'node': 'Hold For Composing', 'type': 'main', 'index': 0},
+        {'node': 'Webhook · Pass Request', 'type': 'main', 'index': 0},
+    ]]}
+    agent['connections']['Hold For Composing'] = {'main': [[{'node': 'Ack Webhook (empty)', 'type': 'main', 'index': 0}]]}
+    agent['connections']['Webhook · Pass Request'] = {'main': [[{'node': '⚙️ CONFIG', 'type': 'main', 'index': 0}]]}
+    return agent
+
+
+WASUP_CRED = {'wasupApi': {'id': 'SW7J0tWGyyYAPdkN', 'name': 'Wasup Account'}}
+PRESENCE_URL = (
+    "={{ 'https://wasup.northeurope.cloudapp.azure.com/api/instances/' + "
+    "(($('Webhook').first().json.body && $('Webhook').first().json.body.webhook_id) || "
+    "$('⚙️ CONFIG').first().json.wasup_instance_id || 'wa_mt1j5bcl_sch23') + '/presence' }}"
+)
+INBOUND_DM_EXPR = (
+    "={{ (() => { const b = $('Webhook').first().json.body || {}; "
+    "return !b.is_group && !String(b.from_jid || '').includes('@g.us') && "
+    "String(b.event || 'message').toLowerCase() === 'message'; })() }}"
+)
+KEEP_BUBBLE_JS = """let bubble = null
+try { bubble = $('Still Our Turn?').first().json } catch (error) {}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Loop Bubbles').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Plan Delivery').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
+return [{ json: { ...bubble } }]
+"""
+KEEP_FOLLOWUP_JS = """let bubble = null
+try { bubble = $('Clear To Chase?').first().json } catch (error) {}
+if (!bubble || bubble.text === undefined) {
+  try { bubble = $('Plan Follow-up Delivery').first().json } catch (error) {}
+}
+if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
+return [{ json: { ...bubble } }]
+"""
+
+
+def _link(name):
+    return {'node': name, 'type': 'main', 'index': 0}
+
+
+def _presence_body(state, hold, prefer_jid=False):
+    if prefer_jid:
+        target = (
+            "($('Webhook').first().json.body || {}).from_jid || "
+            "($('Webhook').first().json.body || {}).sender_jid || "
+            "($('Webhook').first().json.body || {}).from_phone || $json.to_phone"
+        )
+    else:
+        target = "($('Webhook').first().json.body || {}).from_phone || $json.to_phone"
+    return "={{ JSON.stringify({ to: " + target + ", state: '" + state + "', hold: " + ('true' if hold else 'false') + " }) }}"
+
+
+def _upsert_node(agent, node):
+    named = {item['name']: item for item in agent['nodes']}
+    current = named.get(node['name'])
+    if current:
+        keep = ('id', 'position')
+        for key, value in node.items():
+            if key not in keep:
+                current[key] = value
+        if 'credentials' not in node:
+            current.pop('credentials', None)
+        return current
+    agent['nodes'].append(node)
+    return node
+
+
+def _retarget(agent, source, branch, old, new):
+    links = agent['connections'][source]['main'][branch]
+    nodes = [item.get('node') for item in links]
+    if new in nodes:
+        agent['connections'][source]['main'][branch] = [item for item in links if item.get('node') != old]
+        return
+    if old not in nodes:
+        raise SystemExit(f'{source} output {branch} is {nodes}, expected {old}')
+    for item in links:
+        if item.get('node') == old:
+            item['node'] = new
+
+
+def ensure_composing(agent):
+    """Show WhatsApp typing while a real inbound is answered, then clear it after the send.
+
+    The 30 Oct presence calls (Hold Composing, Pulse Typing, Pause Composing) are what put the
+    dots on screen. Send Bubble's own typing switch stays off; Wasup kept the chat locked when
+    typing lived inside the send. Hold Composing is a side branch: Friday left it with no
+    downstream. Chaining the agent behind it dropped the reply whenever the presence call
+    returned nothing ("Can't use .first() here" on Restore Inbound, executions 1155691 and
+    1155772). A failed presence call must not block the reply.
+    """
+    named = {item['name']: item for item in agent['nodes']}
+    for required in ('From playground?', 'Still Our Turn?', 'Send Bubble', 'Clear To Chase?', 'Send Double-Text', 'Purge Session', 'Loop Bubbles'):
+        if required not in named:
+            raise SystemExit(f'composing restore cannot find {required}')
+
+    def code(name, position, js, each=False):
+        return {
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-composing/{name}')),
+            'name': name,
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': position,
+            'parameters': {'mode': 'runOnceForEachItem' if each else 'runOnceForAllItems', 'jsCode': js},
+        }
+
+    def presence(name, position, state, hold, prefer_jid=False):
+        return {
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-composing/{name}')),
+            'name': name,
+            'type': 'n8n-nodes-base.httpRequest',
+            'typeVersion': 4.2,
+            'position': position,
+            'onError': 'continueRegularOutput',
+            'credentials': json.loads(json.dumps(WASUP_CRED)),
+            'parameters': {
+                'method': 'POST',
+                'url': PRESENCE_URL,
+                'authentication': 'predefinedCredentialType',
+                'nodeCredentialType': 'wasupApi',
+                'sendBody': True,
+                'contentType': 'json',
+                'specifyBody': 'json',
+                'jsonBody': _presence_body(state, hold, prefer_jid),
+                'options': {'timeout': 3000},
+            },
+        }
+
+    playground = named['From playground?']['position']
+    send = named['Send Bubble']['position']
+    chase = named['Clear To Chase?']['position']
+    reset = named['Purge Session']['position']
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Inbound DM?')),
+        'name': 'Inbound DM?',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 2.2,
+        'position': [playground[0] + 220, playground[1] + 180],
+        'parameters': {
+            'conditions': {
+                'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
+                'conditions': [{
+                    'id': 'inbound-dm',
+                    'leftValue': INBOUND_DM_EXPR,
+                    'rightValue': '',
+                    'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True},
+                }],
+                'combinator': 'and',
+            },
+            'looseTypeValidation': True,
+            'options': {},
+        },
+    })
+    loop = named['Loop Bubbles']['position']
+    # hold:true keeps a Wasup lease that sends composing again after the message has
+    # already cleared the bubble. The tick when the inbound arrives is the typing the
+    # customer should see. A composing call in the moment before the send lands after
+    # the message and leaves the bubble up, so nothing on the send path may compose.
+    _upsert_node(agent, presence('Hold Composing', [playground[0] + 440, playground[1] + 80], 'composing', False, True))
+    _upsert_node(agent, presence('Pulse Typing', [send[0] - 420, send[1]], 'composing', False, True))
+    _upsert_node(agent, code('Keep Bubble', [send[0] - 200, send[1]], KEEP_BUBBLE_JS))
+    _upsert_node(agent, presence('Pause Composing', [send[0] + 220, send[1]], 'paused', False, True))
+    _upsert_node(agent, presence('Pause Composing Phone', [send[0] + 440, send[1]], 'paused', False, False))
+    _upsert_node(agent, presence('Pulse Follow-up', [chase[0] + 220, chase[1] - 80], 'composing', False, True))
+    _upsert_node(agent, code('Keep Follow-up', [chase[0] + 440, chase[1] - 80], KEEP_FOLLOWUP_JS))
+    _upsert_node(agent, presence('Pause Composing Follow-up', [chase[0] + 880, chase[1]], 'paused', False, True))
+    _upsert_node(agent, presence('Pause Follow-up Phone', [chase[0] + 1100, chase[1]], 'paused', False, False))
+    _upsert_node(agent, presence('Release Before Reset', [reset[0] + 220, reset[1] - 120], 'paused', False, True))
+    _upsert_node(agent, presence('Pause After Turn', [loop[0] + 440, loop[1] - 140], 'paused', False, True))
+    _upsert_node(agent, presence('Pause Phone After Turn', [loop[0] + 660, loop[1] - 140], 'paused', False, False))
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Typing')),
+        'name': 'Settle Typing',
+        'type': 'n8n-nodes-base.wait',
+        'typeVersion': 1.1,
+        'position': [loop[0] + 220, loop[1] - 140],
+        'webhookId': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Typing hook')),
+        'parameters': {'amount': 3},
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Follow-up')),
+        'name': 'Settle Follow-up',
+        'type': 'n8n-nodes-base.wait',
+        'typeVersion': 1.1,
+        'position': [chase[0] + 1320, chase[1]],
+        'webhookId': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Follow-up hook')),
+        'parameters': {'amount': 3},
+    })
+    _upsert_node(agent, presence('Pause Follow-up Late', [chase[0] + 1540, chase[1]], 'paused', False, True))
+    _upsert_node(agent, presence('Pause Follow-up Phone Late', [chase[0] + 1760, chase[1]], 'paused', False, False))
+    # The Wasup send operation simulates typing unless the option is sent as false.
+    # That simulation is a lease: the dots come back after the message has arrived.
+    for send_name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+        send_node = named.get(send_name)
+        if not send_node or send_node['parameters'].get('operation') == 'sendRaw':
+            continue
+        send_node['parameters']['advancedOptions'] = {
+            'typingSimulation': False,
+            'delayEnabled': False,
+        }
+
+    # Inbound DM? runs first and ends at Hold Composing. Presence Event? is the sibling that
+    # carries the message, so an empty presence response cannot stop the agent.
+    agent['connections']['From playground?']['main'][1] = [_link('Inbound DM?'), _link('Presence Event?')]
+    agent['connections']['Inbound DM?'] = {'main': [[_link('Hold Composing')], []]}
+    agent['connections'].pop('Hold Composing', None)
+    agent['connections'].pop('Restore Inbound', None)
+    # No composing call sits next to the send. A tick there is delivered after the
+    # bubble and the dots come back once the message is already on screen.
+    agent['connections']['Still Our Turn?']['main'][0] = [_link('Keep Bubble')]
+    agent['connections'].pop('Last Bubble?', None)
+    agent['connections'].pop('Pulse Typing', None)
+    agent['connections']['Keep Bubble'] = {'main': [[_link('Send Bubble')]]}
+    _retarget(agent, 'Send Bubble', 0, 'Loop Bubbles', 'Pause Composing')
+    agent['connections']['Pause Composing'] = {'main': [[_link('Pause Composing Phone')]]}
+    # The second pause is a few seconds later, on this same chain. A composing
+    # tick that the send applied after the first pause is cleared before the
+    # loop finishes and the follow-up starts.
+    agent['connections']['Pause Composing Phone'] = {'main': [[_link('Settle Typing')]]}
+    agent['connections']['Settle Typing'] = {'main': [[_link('Pause After Turn')]]}
+    agent['connections']['Pause After Turn'] = {'main': [[_link('Pause Phone After Turn')]]}
+    agent['connections']['Pause Phone After Turn'] = {'main': [[_link('Loop Bubbles')]]}
+    agent['connections']['Clear To Chase?']['main'][0] = [_link('Keep Follow-up')]
+    agent['connections'].pop('Pulse Follow-up', None)
+    agent['connections']['Keep Follow-up'] = {'main': [[_link('Send Double-Text')]]}
+    _retarget(agent, 'Send Double-Text', 0, 'Mark Follow-up Sent', 'Pause Composing Follow-up')
+    agent['connections']['Pause Composing Follow-up'] = {'main': [[_link('Pause Follow-up Phone')]]}
+    agent['connections']['Pause Follow-up Phone'] = {'main': [[_link('Settle Follow-up')]]}
+    agent['connections']['Settle Follow-up'] = {'main': [[_link('Pause Follow-up Late')]]}
+    agent['connections']['Pause Follow-up Late'] = {'main': [[_link('Pause Follow-up Phone Late')]]}
+    agent['connections']['Pause Follow-up Phone Late'] = {'main': [[_link('Mark Follow-up Sent')]]}
+    _retarget(agent, 'Purge Session', 0, 'Send Reset Notice', 'Release Before Reset')
+    agent['connections']['Release Before Reset'] = {'main': [[_link('Send Reset Notice')]]}
+    done = [item for item in agent['connections']['Loop Bubbles']['main'][0] if item.get('node') not in ('Pause After Turn', 'Pause Phone After Turn', 'Settle Typing')]
+    agent['connections']['Loop Bubbles']['main'][0] = done
+    return agent
+
+
+LOAD_STAGING_SQL = r"""with phone as (
+  select '{{ String($('Webhook').first().json.body.from_phone || '').replace(/\D/g, '') }}' as digits
+), marked as (
+  select (
+    exists (
+      select 1
+      from k1_staging_messages m
+      join k1_staging_conversations c on c.id = m.conversation_id
+      where c.phone_key = phone.digits
+        and m.role = 'agent'
+        and m.text ~* 'varausnumero|bokningsnummer|booking number'
+    )
+    or exists (
+      select 1
+      from chat_history h
+      where h.session_id in ('k1_katsastus_demo_' || phone.digits, 'k1_katsastus_demo_+' || phone.digits)
+        and h.message::text ~* 'varausnumero|bokningsnummer|booking number'
+    )
+  ) as has_booking
+  from phone
+)
+select coalesce(
+  (
+    select json_build_object(
+      'found', true,
+      'phone', s.phone,
+      'phoneKey', s.phone_key,
+      'versionId', s.version_id,
+      'versionNumber', s.version_number,
+      'conversationId', s.conversation_id::text,
+      'leadContext', s.lead_context,
+      'opener', s.opener,
+      'plate', coalesce(s.lead->>'plateNumber', ''),
+      'stationName', coalesce(s.lead->>'stationName', ''),
+      'product', coalesce(s.lead->>'product', ''),
+      'hasBooking', marked.has_booking
+    )
+    from k1_staging_sessions s
+    cross join phone
+    cross join marked
+    where s.phone_key = phone.digits
+  ),
+  json_build_object('found', false, 'hasBooking', (select has_booking from marked))
+) as staging"""
+PARSE_STAGING_JS = """const row = $input.first().json || {}
+let staging = row.staging
+if (typeof staging === 'string') {
+  try { staging = JSON.parse(staging) } catch (error) { staging = null }
+}
+const hasBooking = Boolean(staging && (staging.hasBooking === true || staging.hasBooking === 'true'))
+if (!staging || staging.found !== true) staging = { found: false }
+if (hasBooking) staging.hasBooking = true
+return [{ json: { staging } }]
+"""
+REPLY_RULE_LINE = (
+    "const replyRule = '[THIS REPLY] If this reply needs times, hours, a price or a link, call the tool before the JSON. "
+    "Palokka and Itäharju: get_slots. Every other station: get_station_info, then the free times and official_booking_link. "
+    "Never tell the customer you will check, look, or come back. A language switch is not a pause: answer in their language with the times in this same reply.'\n"
+)
+LEAD_PREAMBLE = """let leadBlock = ''
+let openerBlock = ''
+""" + REPLY_RULE_LINE + """try {
+  if ($('Parse Staging').isExecuted) {
+    const staging = $('Parse Staging').first().json.staging || {}
+    if (staging.found === true) {
+      leadBlock = String(staging.leadContext || '').trim()
+      if (!leadBlock) {
+        const bits = [
+          staging.plate ? 'Registration: ' + staging.plate : '',
+          staging.stationName ? 'Station the customer last visited: ' + staging.stationName : '',
+          staging.product ? 'Product on the reminder: ' + staging.product : '',
+        ].filter(Boolean)
+        if (bits.length) leadBlock = "LEAD CONTEXT (from K1's lead data for this customer)\\n- " + bits.join('\\n- ')
+      }
+      const opener = String(staging.opener || '').trim()
+      if (opener) openerBlock = '[OPENER ALREADY SENT]\\n' + opener + '\\nThe customer is replying to this message. Do not send the opener again.'
+    }
+  }
+} catch (error) {}
+"""
+
+
+def _inject_lead(code):
+    if 'let leadBlock' not in code or 'openerBlock || null' not in code:
+        needle = 'const agent_input = ['
+        if needle not in code:
+            raise SystemExit('turn builder has no agent_input')
+        code = code.replace(needle, LEAD_PREAMBLE + needle, 1)
+        old = "  'turn_type: user_message',\n"
+        new = "  'turn_type: user_message',\n  leadBlock || null,\n  openerBlock || null,\n  replyRule,\n"
+        if old not in code:
+            old = "  'turn_type: your_own_followup',\n"
+            new = "  'turn_type: your_own_followup',\n  leadBlock || null,\n  openerBlock || null,\n  replyRule,\n"
+        if old not in code:
+            raise SystemExit('turn builder has no turn_type line')
+        return code.replace(old, new, 1)
+    if 'const replyRule' not in code:
+        code = code.replace("let openerBlock = ''\n", "let openerBlock = ''\n" + REPLY_RULE_LINE, 1)
+        code = code.replace("  openerBlock || null,\n", "  openerBlock || null,\n  replyRule,\n")
+    return code
+
+
+def ensure_lead(agent):
+    """A WhatsApp reply does not carry the car. The staging session for that phone does."""
+    named = {item['name']: item for item in agent['nodes']}
+    for required in ('Queue Inbound', 'New Message?', 'Debounce', 'Build Turn'):
+        if required not in named:
+            raise SystemExit(f'lead restore cannot find {required}')
+    queue = named['Queue Inbound']
+    origin = named['New Message?']['position']
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-lead/Load Staging Session')),
+        'name': 'Load Staging Session',
+        'type': 'n8n-nodes-base.postgres',
+        'typeVersion': 2.6,
+        'position': [origin[0] + 220, origin[1]],
+        'onError': 'continueRegularOutput',
+        'credentials': json.loads(json.dumps(queue['credentials'])),
+        'parameters': {'resource': 'database', 'operation': 'executeQuery', 'query': LOAD_STAGING_SQL, 'options': {}},
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-lead/Parse Staging')),
+        'name': 'Parse Staging',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [origin[0] + 440, origin[1]],
+        'parameters': {'mode': 'runOnceForAllItems', 'jsCode': PARSE_STAGING_JS},
+    })
+    _retarget(agent, 'New Message?', 0, 'Debounce', 'Load Staging Session')
+    agent['connections']['Load Staging Session'] = {'main': [[_link('Parse Staging')]]}
+    agent['connections']['Parse Staging'] = {'main': [[_link('Debounce')]]}
+    named['Build Turn']['parameters']['jsCode'] = _inject_lead(named['Build Turn']['parameters']['jsCode'])
+    if 'Build Follow-up Turn' in named:
+        named['Build Follow-up Turn']['parameters']['jsCode'] = _inject_lead(named['Build Follow-up Turn']['parameters']['jsCode'])
+    return agent
+
+
+def assert_lead(agent):
+    first = [item.get('node') for item in agent['connections']['New Message?']['main'][0]]
+    if first != ['Load Staging Session']:
+        raise SystemExit(f'a new message skips the lead lookup: {first}')
+    if [item.get('node') for item in agent['connections']['Parse Staging']['main'][0]] != ['Debounce']:
+        raise SystemExit('staging parse does not continue into the debounce')
+    code = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Build Turn')
+    if 'let leadBlock' not in code or 'leadBlock || null' not in code:
+        raise SystemExit('Build Turn does not pass the lead to the model')
+    query = next(node['parameters']['query'] for node in agent['nodes'] if node['name'] == 'Load Staging Session')
+    if 'k1_staging_sessions' not in query or 'lead_context' not in query:
+        raise SystemExit('lead lookup query is wrong')
+    if 'hasBooking' not in query or 'k1_staging_messages' not in query or 'chat_history' not in query:
+        raise SystemExit('lead lookup does not record an existing booking')
+    if 'varausnumero' not in query or 'bokningsnummer' not in query or 'booking number' not in query:
+        raise SystemExit('lead lookup booking match is wrong')
+    if 'k1_katsastus_demo_' not in query:
+        raise SystemExit('lead lookup session key is wrong')
+    parse = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Parse Staging')
+    if 'hasBooking' not in parse:
+        raise SystemExit('Parse Staging drops hasBooking')
+
+
+def assert_composing(agent):
+    play = [item.get('node') for item in agent['connections']['From playground?']['main'][1]]
+    if play != ['Inbound DM?', 'Presence Event?']:
+        raise SystemExit(f'inbound no longer reaches the agent beside composing: {play}')
+    inbound = [[item.get('node') for item in branch] for branch in agent['connections']['Inbound DM?']['main']]
+    if inbound != [['Hold Composing'], []]:
+        raise SystemExit(f'Inbound DM? wiring changed: {inbound}')
+    if agent['connections'].get('Hold Composing') or agent['connections'].get('Restore Inbound'):
+        raise SystemExit('a presence call is back on the reply path')
+    send = [item.get('node') for item in agent['connections']['Still Our Turn?']['main'][0]]
+    if send != ['Keep Bubble']:
+        raise SystemExit(f'send path still refreshes typing: {send}')
+    for source, conn in agent['connections'].items():
+        for branch in conn.get('main') or []:
+            for item in branch or []:
+                if item.get('node') in ('Pulse Typing', 'Pulse Follow-up', 'Last Bubble?'):
+                    raise SystemExit(f'{source} still starts typing next to a send')
+    if [item.get('node') for item in agent['connections']['Pause Composing']['main'][0]] != ['Pause Composing Phone']:
+        raise SystemExit('pause composing does not also clear the phone')
+    if [item.get('node') for item in agent['connections']['Pause Composing Phone']['main'][0]] != ['Settle Typing']:
+        raise SystemExit('the send does not wait before the second pause')
+    if [item.get('node') for item in agent['connections']['Settle Typing']['main'][0]] != ['Pause After Turn']:
+        raise SystemExit('the delayed pause is missing')
+    if [item.get('node') for item in agent['connections']['Pause Phone After Turn']['main'][0]] != ['Loop Bubbles']:
+        raise SystemExit('the delayed pause does not return to the bubble loop')
+    if [item.get('node') for item in agent['connections']['Pause Follow-up Phone']['main'][0]] != ['Settle Follow-up']:
+        raise SystemExit('the follow-up does not wait before its second pause')
+    if [item.get('node') for item in agent['connections']['Pause Follow-up Phone Late']['main'][0]] != ['Mark Follow-up Sent']:
+        raise SystemExit('the follow-up pause does not reach the sent mark')
+    webhook = [item.get('node') for branch in agent['connections']['Webhook']['main'] for item in branch]
+    if webhook != ['Hold For Composing', 'Webhook · Pass Request']:
+        raise SystemExit(f'Wasup inbound is not acked before the agent: {webhook}')
+    if [item.get('node') for item in agent['connections']['Hold For Composing']['main'][0]] != ['Ack Webhook (empty)']:
+        raise SystemExit('Hold For Composing does not answer the webhook')
+    passed = [item.get('node') for item in agent['connections']['Webhook · Pass Request']['main'][0]]
+    if passed != ['⚙️ CONFIG']:
+        raise SystemExit(f'pass request still shares the webhook response: {passed}')
+    names = {item['name']: item for item in agent['nodes']}
+    for name in ('Hold For Composing', 'Hold Composing', 'Pause Composing', 'Pause Composing Phone', 'Pause Composing Follow-up', 'Pause Follow-up Phone', 'Release Before Reset', 'Settle Typing', 'Pause After Turn', 'Pause Phone After Turn', 'Settle Follow-up', 'Pause Follow-up Late', 'Pause Follow-up Phone Late'):
+        if name not in names:
+            raise SystemExit(f'{name} missing')
+    done = [item.get('node') for item in agent['connections']['Loop Bubbles']['main'][0]]
+    if not done or 'Follow-up Due?' not in done or any(name in done for name in ('Settle Typing', 'Pause After Turn', 'Pulse Typing')):
+        raise SystemExit(f'the finished turn waits on typing instead of the follow-up: {done}')
+    if [item.get('node') for item in agent['connections']['Pause After Turn']['main'][0]] != ['Pause Phone After Turn']:
+        raise SystemExit('the final pause does not clear the phone')
+    if [item.get('node') for item in agent['connections']['Clear To Chase?']['main'][0]] == ['Pulse Follow-up']:
+        raise SystemExit('the follow-up still starts typing after the reply')
+    for name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+        options = names[name]['parameters'].get('advancedOptions') or {}
+        if options.get('typingSimulation') is not False or options.get('delayEnabled') is not False:
+            raise SystemExit(f'{name} still simulates typing after the reply')
+    hold_body = names['Hold Composing']['parameters'].get('jsonBody') or ''
+    pause_body = names['Pause Composing']['parameters'].get('jsonBody') or ''
+    if 'hold: true' in hold_body:
+        raise SystemExit('Hold Composing still keeps a typing lease after the reply')
+    if 'from_jid' not in pause_body or 'from_jid' not in (names['Pause After Turn']['parameters'].get('jsonBody') or ''):
+        raise SystemExit('pause does not clear the same chat the typing started on')
+    ack = names['Ack Webhook (empty)']['parameters'].get('responseBody') or ''
+    if 'skip: true' not in ack:
+        raise SystemExit('Wasup ack is not skip:true')
+
+
+CTA_JS = r"""const LABELS = {
+  fi: { pay: 'Maksa nyt', book: 'Varaa aika', open: 'Avaa', ahead: 'Maksa ennakkoon' },
+  sv: { pay: 'Betala nu', book: 'Boka tid', open: 'Öppna', ahead: 'Betala i förväg' },
+  en: { pay: 'Pay now', book: 'Book a time', open: 'Open', ahead: 'Pay ahead' },
+}
+function language(text) {
+  const t = ' ' + String(text || '').toLowerCase() + ' '
+  if (/\b(och|att|för|boka|öppna|betala|på stationen|bokning|tiderna)\b/.test(t)) return 'sv'
+  if (/[äöå]/.test(t)) return 'fi'
+  if (/\b(the|your|you|book|pay|open|at the|station|time|here|link|can|for)\b/.test(t)) return 'en'
+  return 'fi'
+}
+function hostOf(url) {
+  const match = String(url).match(/^https?:\/\/([^/?#]+)/i)
+  return match ? match[1].toLowerCase() : ''
+}
+function firstMark() {
+  try {
+    const staging = $('Parse Staging').isExecuted ? ($('Parse Staging').first().json.staging || {}) : null
+    if (staging && String(staging.opener || '').trim()) return ''
+    if ($('Pause Composing').isExecuted || $('Pause Composing Follow-up').isExecuted) return ''
+    return 'K1 AI Agent'
+  } catch (error) {
+    return ''
+  }
+}
+function lastTool(name) {
+  try {
+    if (!$(name).isExecuted) return null
+    const rows = $(name).all()
+    return rows.length ? rows[rows.length - 1].json : null
+  } catch (error) {
+    return null
+  }
+}
+function findLink(value, depth) {
+  if (value == null || depth > 8) return ''
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed || (trimmed[0] !== '{' && trimmed[0] !== '[')) return ''
+    try { return findLink(JSON.parse(trimmed), depth + 1) } catch (error) { return '' }
+  }
+  if (Array.isArray(value)) {
+    for (let i = value.length - 1; i >= 0; i--) {
+      const found = findLink(value[i], depth + 1)
+      if (found) return found
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    const direct = value.official_booking_link || value.booking_url
+    if (typeof direct === 'string' && /^https?:\/\//i.test(direct)) return direct.replace(/[.,;:!?)]+$/g, '')
+    const booking = value.booking
+    if (booking && typeof booking === 'object') {
+      const nested = booking.official_booking_link || booking.booking_url
+      if (typeof nested === 'string' && /^https?:\/\//i.test(nested)) return nested.replace(/[.,;:!?)]+$/g, '')
+    }
+    for (const key of Object.keys(value)) {
+      if (key === 'agent_input' || key === 'binary' || key === 'pairedItem') continue
+      const found = findLink(value[key], depth + 1)
+      if (found) return found
+    }
+  }
+  return ''
+}
+function bookedThisTurn() {
+  const blob = JSON.stringify(lastTool('book_inspection_invite') || lastTool('reschedule_booking') || null)
+  return /"success"\s*:\s*true/.test(blob) && /booking_number/.test(blob)
+}
+function accountLogin(url) {
+  const raw = String(url || '')
+  if (/[?&]stationId=/i.test(raw)) return false
+  try {
+    const parsed = new URL(raw)
+    const host = parsed.hostname.toLowerCase()
+    if (host !== 'ajanvaraus.k1katsastus.fi' && host !== 'www.ajanvaraus.k1katsastus.fi') return false
+    const path = parsed.pathname.replace(/\/+$/, '') || '/'
+    return path === '/varaus'
+  } catch (error) {
+    return false
+  }
+}
+function toolBookingLink() {
+  if (bookedThisTurn()) return ''
+  if (/booking number|varausnumero|bokningsnummer/i.test(arguments[0] || '')) return ''
+  return findLink(lastTool('get_slots')) || findLink(lastTool('get_station_info')) || ''
+}
+function decorate(item) {
+  const text = String(item.text || '')
+  let urls = text.match(/https?:\/\/[^\s<>)]+/gi) || []
+  let fromTool = false
+  if (urls.length === 0 && /\b\d{1,2}[:.]\d{2}\b/.test(text)) {
+    const link = toolBookingLink(text)
+    if (link) {
+      urls = [link]
+      fromTool = true
+    }
+  }
+  if (urls.length !== 1) return { ...item, cta_url: '', cta_label: '', cta_body: text, cta_footer: '' }
+  const raw = urls[0]
+  const only = raw.replace(/[.,;:!?)]+$/g, '')
+  const host = hostOf(only)
+  const payment = host === 'buy.stripe.com' || host === 'checkout.stripe.com'
+  const booking = host === 'ajanvaraus.k1katsastus.fi' || host === 'www.ajanvaraus.k1katsastus.fi' || host === 'k1-katsastus-ajanvaraus.stage.geniem.io' || /[?&]stationId=/i.test(only)
+  const kind = payment ? 'pay' : accountLogin(only) ? 'ahead' : booking ? 'book' : 'open'
+  const lang = language(text)
+  let body = text
+  if (!fromTool) {
+    const marker = '@@LINK@@'
+    body = text.replace(raw, marker)
+    body = body.replace(/(^|\s)(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)\s*[:,]?\s*(?=@@LINK@@)/iu, '$1')
+    body = body.replace(/\s*:\s*(?=@@LINK@@)/g, '')
+    body = body.replace(/@@LINK@@\s*[:,]?\s*(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)(?=$|\s|[.,!?;:])/iu, marker)
+    body = body.replace(/@@LINK@@\s*:/g, marker)
+    body = body.split(marker).join(' ').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim()
+  }
+  if (!body) {
+    body = kind === 'pay'
+      ? (lang === 'en' ? 'Pay here.' : lang === 'sv' ? 'Betala här.' : 'Maksa tästä.')
+      : (lang === 'en' ? 'Here.' : lang === 'sv' ? 'Här.' : 'Tässä.')
+  }
+  return {
+    ...item,
+    cta_url: only,
+    cta_label: LABELS[lang][kind].slice(0, 20),
+    cta_body: body,
+    cta_footer: firstMark(),
+  }
+}
+return $input.all().map((row) => ({ json: decorate(row.json) }))
+"""
+CTA_RAW = (
+    "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, "
+    "ctaUrl: { url: $json.cta_url, label: $json.cta_label }, "
+    "footer: $json.cta_footer || undefined, "
+    "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
+)
+OPENER_RAW = r"""={{ JSON.stringify((() => {
+  const text = String($('Normalize').first().json.opener || '');
+  const t = ' ' + text.toLowerCase() + ' ';
+  const swedish = /\b(besikta|bilen|hjälper|hitta|dags|snart|och|att|för|boka)\b/.test(t) || t.includes('det är') || t.includes('vill du');
+  const label = swedish ? 'Boka tid' : (/[äöå]/.test(t) ? 'Varaa aika' : 'Book a time');
+  return {
+    to: $('Normalize').first().json.to,
+    text,
+    messageType: 'buttons',
+    buttons: [{ id: 'book', text: label }],
+    footer: 'K1 Agent',
+    linkPreview: false,
+    allowColdWithoutToken: true,
+    typingSimulation: false,
+    delayEnabled: false
+  };
+})()) }}"""
+
+
+def _wire_link_button(agent, keep_name, send_name, pause_name):
+    named = {item['name']: item for item in agent['nodes']}
+    send = named[send_name]
+    x, y = send['position']
+    fields, gate_name, button = f'{send_name} CTA fields', f'{send_name} CTA?', f'{send_name} CTA'
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-cta/{fields}')),
+        'name': fields,
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [x - 420, y],
+        'parameters': {'mode': 'runOnceForAllItems', 'jsCode': CTA_JS},
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-cta/{gate_name}')),
+        'name': gate_name,
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 2.2,
+        'position': [x - 200, y],
+        'parameters': {
+            'conditions': {
+                'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
+                'conditions': [{
+                    'id': 'cta-url',
+                    'leftValue': '={{ $json.cta_url }}',
+                    'rightValue': '',
+                    'operator': {'type': 'string', 'operation': 'notEquals'},
+                }],
+                'combinator': 'and',
+            },
+            'looseTypeValidation': True,
+            'options': {},
+        },
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-cta/{button}')),
+        'name': button,
+        'type': send['type'],
+        'typeVersion': send.get('typeVersion', 1),
+        'position': [x, y - 160],
+        'credentials': json.loads(json.dumps(send.get('credentials') or WASUP_CRED)),
+        'parameters': {
+            'resource': 'message',
+            'operation': 'sendRaw',
+            'instanceId': json.loads(json.dumps(send['parameters']['instanceId'])),
+            'rawBody': CTA_RAW,
+        },
+    })
+    agent['connections'][keep_name] = {'main': [[_link(fields)]]}
+    agent['connections'][fields] = {'main': [[_link(gate_name)]]}
+    agent['connections'][gate_name] = {'main': [[_link(button)], [_link(send_name)]]}
+    agent['connections'][button] = {'main': [[_link(pause_name)]]}
+    agent['connections'][send_name] = {'main': [[_link(pause_name)]]}
+
+
+def ensure_cta(agent):
+    """One https link in a bubble becomes the native WhatsApp button. Two links stay as text.
+
+    Friday's button required staging === true and a k1katsastus.fi host, so a staging-host
+    link and any other link never became a button, and the current turn does not set that flag.
+    A booking host (including the staging booking site) is labelled as a booking. Stripe is a
+    payment. Every other single link still gets a button. A times reply with no URL takes the
+    station's official_booking_link from get_station_info or get_slots, so the button opens that
+    station. A booked confirmation does not get a second link.
+    """
+    names = {item['name'] for item in agent['nodes']}
+    for required in ('Keep Bubble', 'Send Bubble', 'Pause Composing', 'Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up'):
+        if required not in names:
+            raise SystemExit(f'link button cannot find {required}')
+    _wire_link_button(agent, 'Keep Bubble', 'Send Bubble', 'Pause Composing')
+    _wire_link_button(agent, 'Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up')
+    return agent
+
+
+def assert_cta(agent):
+    names = {item['name']: item for item in agent['nodes']}
+    for keep, send, pause in (
+        ('Keep Bubble', 'Send Bubble', 'Pause Composing'),
+        ('Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up'),
+    ):
+        fields, gate_name, button = f'{send} CTA fields', f'{send} CTA?', f'{send} CTA'
+        if [item.get('node') for item in agent['connections'][keep]['main'][0]] != [fields]:
+            raise SystemExit(f'{keep} does not prepare the link button')
+        branches = [[item.get('node') for item in branch] for branch in agent['connections'][gate_name]['main']]
+        if branches != [[button], [send]]:
+            raise SystemExit(f'{gate_name} wiring changed: {branches}')
+        if [item.get('node') for item in agent['connections'][button]['main'][0]] != [pause]:
+            raise SystemExit(f'{button} does not clear typing')
+        if [item.get('node') for item in agent['connections'][send]['main'][0]] != [pause]:
+            raise SystemExit(f'{send} does not clear typing')
+        code = names[fields]['parameters']['jsCode']
+        if 'staging !== true' in code or 'item.staging' in code:
+            raise SystemExit(f'{fields} still skips links outside the old staging gate')
+        if 'k1-katsastus-ajanvaraus.stage.geniem.io' not in code or 'checkout.stripe.com' not in code:
+            raise SystemExit(f'{fields} does not cover booking and payment links')
+        if '@@LINK@@' not in code or 'tästä' not in code or 'linkin' not in code or 'länken' not in code:
+            raise SystemExit(f'{fields} leaves the link introduction in the bubble')
+        if 'official_booking_link' not in code or 'get_station_info' not in code or 'bookedThisTurn' not in code:
+            raise SystemExit(f'{fields} does not put the station booking link on the button')
+        for label in ('Maksa ennakkoon', 'Betala i förväg', 'Pay ahead'):
+            if label not in code:
+                raise SystemExit(f'{fields} does not label /varaus as pay ahead ({label})')
+        if "path === '/varaus'" not in code or 'accountLogin' not in code:
+            raise SystemExit(f'{fields} does not recognise the account login path')
+        params = names[button]['parameters']
+        if params.get('operation') != 'sendRaw' or 'ctaUrl' not in (params.get('rawBody') or ''):
+            raise SystemExit(f'{button} is not the native link button')
+        if names[button]['credentials']['wasupApi']['id'] != WASUP_CRED['wasupApi']['id']:
+            raise SystemExit(f'{button} credential changed')
+
+
+def stamp_opener_footer():
+    """The first bubble is the staging opener. Footer 'K1 Agent' plus one quick reply.
+
+    WhatsApp only draws the grey footer on a bubble that has a button. The button is a
+    quick reply, not a link: Book a time, Varaa aika, or Boka tid, from the opener language.
+    A later typing, cta, or reply deploy must not replace it with a URL button.
+    """
+    body = snapshot(STAGING_SEND)
+    was_active = bool(body['active'])
+    node = next(item for item in body['nodes'] if item['name'] == 'Send opener')
+    raw = node['parameters'].get('rawBody') or ''
+    if "$('Normalize').first().json.opener" not in raw:
+        raise SystemExit('opener send no longer uses the stored opener')
+    node['parameters']['resource'] = 'message'
+    node['parameters']['operation'] = 'sendRaw'
+    node['parameters']['rawBody'] = OPENER_RAW
+    put_live(STAGING_SEND, body, was_active)
+    check = gate.request('GET', f'/workflows/{STAGING_SEND}')
+    saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
+    if "footer: 'K1 Agent'" not in saved or "$('Normalize').first().json.opener" not in saved:
+        raise SystemExit('opener footer was not saved')
+    for label in ('Book a time', 'Varaa aika', 'Boka tid'):
+        if label not in saved:
+            raise SystemExit(f'opener quick reply missing {label}')
+    if 'ctaUrl' in saved or "text: 'OK'" in saved:
+        raise SystemExit('opener link or OK button came back')
+    if not check.get('active'):
+        raise SystemExit('staging send left inactive')
+    print(f'opener footer on {STAGING_SEND} active={check["active"]}')
+
+
+def ensure_reply_discipline(agent):
+    """A promise to check is not a reply. The channel rules used to allow that bubble."""
+    node = next(item for item in agent['nodes'] if item['name'] == 'AI Agent')
+    text = node['parameters']['options']['systemMessage']
+    eyes = "a short bubble says you'll look"
+    if eyes in text:
+        text = '\n'.join(
+            "- 👀 — never. Do not tell the customer you will look or check. Call the tool and send the result." if eyes in line else line
+            for line in text.split('\n')
+        )
+    elif 'Do not tell the customer you will look or check' not in text:
+        raise SystemExit('reply discipline lost the eyes rule')
+    old_style = 'the reply is the times themselves from get_slots.'
+    new_style = (
+        'call the tool and the reply is the times. Palokka and Itäharju: get_slots. '
+        'Every other station: get_station_info, then the free times and the official booking link. '
+        'Never say you will check, look, or come back.'
+    )
+    if old_style in text:
+        text = text.replace(old_style, new_style, 1)
+    elif 'Never say you will check, look, or come back.' not in text:
+        raise SystemExit('reply discipline lost the style rule')
+    node['parameters']['options']['systemMessage'] = text
+    return agent
+
+
+def ensure_reaction_survives(agent):
+    """A Wasup 400 on the emoji must not cancel the text that was planned with it.
+
+    Plan Delivery starts Has Reaction? and Loop Bubbles together. v1 runs Has Reaction?
+    first, and React To Message has nowhere to go, so a thrown react stops the sibling
+    that sends the reply. Wasup's antiban answer (rate limit or identical-message spam)
+    stays a 400; this only stops that 400 from eating the message. Do not retry the emoji.
+    """
+    node = next((item for item in agent['nodes'] if item['name'] == 'React To Message'), None)
+    if node is None:
+        raise SystemExit('React To Message is missing')
+    node['onError'] = 'continueRegularOutput'
+    node.pop('retryOnFail', None)
+    return agent
+
+
+def assert_reaction_survives(agent):
+    node = next((item for item in agent['nodes'] if item['name'] == 'React To Message'), None)
+    if node is None or node.get('onError') != 'continueRegularOutput' or node.get('retryOnFail'):
+        raise SystemExit('React To Message still aborts the reply when Wasup rejects the emoji')
+    if agent['connections'].get('React To Message'):
+        raise SystemExit('React To Message grew an output; a continued error would run it')
+    branch = ((agent['connections'].get('Plan Delivery') or {}).get('main') or [[]])[0]
+    targets = [link.get('node') for link in branch]
+    if targets[:1] != ['Has Reaction?'] or 'Loop Bubbles' not in targets:
+        raise SystemExit(f'reaction is no longer beside the send: {targets}')
+
+
+def lock_live_path(agent):
+    """Put back the WhatsApp path that Friday proved and no backup ever stored.
+
+    A rebuild starts from the 29 Sept workflow. Without this, the next promote drops the
+    inbound bypass, the composing calls, the staging car, and the link buttons in one put.
+    """
+    ensure_account_finish(agent)
+    ensure_wasup_inbound(agent)
+    ensure_composing(agent)
+    ensure_lead(agent)
+    ensure_cta(agent)
+    ensure_reply_discipline(agent)
+    ensure_reaction_survives(agent)
+    assert_composing(agent)
+    assert_lead(agent)
+    assert_cta(agent)
+    assert_reaction_survives(agent)
+    return agent
+
+
+def finish_live():
+    apply_log_schema()
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    patch_agent_finish(agent)
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
+    norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
+    log = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Log WhatsApp turn')
+    brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
+    assert_reply_node(plan, 'Plan Delivery')
+    assert_reply_node(norm, 'Normalize playground reply')
+    if PLAN_FINISH_CALL not in plan or 'rewrites: replyRewrites' not in plan:
+        raise SystemExit('Plan Delivery finish call missing after put')
+    if 'finished.messages.join' not in norm:
+        raise SystemExit('Normalize finish call missing after put')
+    if 'rewrites' not in log or "role, text, is_opener, rewrites" not in log:
+        raise SystemExit('WhatsApp log does not store rewrites')
+    if "I see you came into" not in brief or "prepay online with the button below" not in brief:
+        raise SystemExit('business brief line missing after put')
+    inbound = (check['connections'].get('Webhook') or {}).get('main') or []
+    inbound_to = [link.get('node') for branch in inbound for link in (branch or [])]
+    if inbound_to != ['Hold For Composing', 'Webhook · Pass Request']:
+        raise SystemExit(f'Wasup inbound is not acked before the agent: {inbound_to}')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    stamp_opener_footer()
+    print(f'finish live agent {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
+def restore_lead():
+    """Attach the staging car and station to live WhatsApp turns. Keeps the current prompt."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    print(f'lead restored on {LIVE_AGENT} active={check["active"]}')
+
+
+def restore_typing():
+    """Put the composing calls back on the live agent without rewriting the prompt."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    hold = next(node for node in check['nodes'] if node['name'] == 'Hold Composing')
+    if hold['parameters'].get('jsonBody', '').find("state: 'composing'") < 0 or hold['credentials']['wasupApi']['id'] != WASUP_CRED['wasupApi']['id']:
+        raise SystemExit('Hold Composing was not saved')
+    print(f'typing restored on {LIVE_AGENT} active={check["active"]}')
+
+
+def apply_reply_rule():
+    """Put the no-promise rule on the live brief and stop a 'I'll check' bubble standing in for the times."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    for item in next(node['parameters']['assignments']['assignments'] for node in agent['nodes'] if node['name'] == '⚙️ CONFIG'):
+        if item['name'] == 'business_prompt':
+            item['value'] = business_prompt('')
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
+    system = next(node['parameters']['options']['systemMessage'] for node in check['nodes'] if node['name'] == 'AI Agent')
+    turn = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Build Turn')
+    if 'Never say you will check, look, or come back' not in brief:
+        raise SystemExit('live brief is not the latest prompt')
+    if "a short bubble says you'll look" in system or 'Never say you will check, look, or come back.' not in system:
+        raise SystemExit('live channel rules still allow a promise to check')
+    if 'const replyRule' not in turn or 'replyRule,' not in turn:
+        raise SystemExit('the turn does not carry the reply rule')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    stamp_opener_footer()
+    print(f'reply rule on {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
+def restore_cta():
+    """Turn a single link into a WhatsApp button, and mark the first bubble. Keeps the current prompt."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    stamp_opener_footer()
+    print(f'link buttons restored on {LIVE_AGENT} active={check["active"]}')
+
+
+def restore_reaction():
+    """Let a rejected emoji finish the turn. The reply is the sibling after Has Reaction?."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    ensure_reaction_survives(agent)
+    assert_reaction_survives(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_reaction_survives(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    print(f'reaction continues on {LIVE_AGENT} active={check["active"]}')
 
 
 def cache_layout(named):
@@ -405,7 +1775,146 @@ def cache_layout(named):
         named[name]['parameters']['jsCode'] = replace_once(named[name]['parameters']['jsCode'], pair, f'{name} date')
 
 
+ACCOUNT_PAY_RULE = (
+    'Already booked, and they ask to pay beforehand or to change that booking '
+    '(ennakkoon, etukäteen, prepay, pay in advance, betala i förväg, muuttaa, vaihtaa, change, ändra, '
+    'or a different booking they can pay): send one line and the login page https://ajanvaraus.k1katsastus.fi/varaus. '
+    'Finnish: "Voit kirjautua varaukseesi ja maksaa ennakkoon." '
+    'Swedish: "Du kan logga in på din bokning och betala i förväg." '
+    'English: "You can log in to your booking and pay beforehand." '
+    'Do not tell them to cancel and book again, and do not send a new station link. '
+    'A named new clock time stays a move. Before any booking, prepay keeps the green station link.'
+)
+
+
+def ensure_account_pay_prompt(current):
+    """Insert the login-link rule into the live brief. Leave every other line where it is."""
+    text = current or ''
+    if ACCOUNT_PAY_RULE in text:
+        return text
+    heading = '## Number, opt-out, FAQ, escalation'
+    joined = 'Cancelled only on success with recorded true, or already_cancelled.\n\n' + heading
+    if joined in text:
+        return text.replace(
+            joined,
+            'Cancelled only on success with recorded true, or already_cancelled.\n' + ACCOUNT_PAY_RULE + '\n\n' + heading,
+            1,
+        )
+    if heading in text:
+        return text.replace(heading, ACCOUNT_PAY_RULE + '\n\n' + heading, 1)
+    marker = '## Existing bookings\n'
+    if marker in text:
+        return text.replace(marker, marker + ACCOUNT_PAY_RULE + '\n', 1)
+    return text.rstrip() + '\n\n## Existing bookings\n' + ACCOUNT_PAY_RULE + '\n'
+
+
+def _prompt_value(agent):
+    return next(
+        item['value']
+        for node in agent['nodes']
+        if node['name'] == '⚙️ CONFIG'
+        for item in node['parameters']['assignments']['assignments']
+        if item['name'] == 'business_prompt'
+    )
+
+
+def _set_prompt(agent, value):
+    for node in agent['nodes']:
+        if node['name'] != '⚙️ CONFIG':
+            continue
+        for item in node['parameters']['assignments']['assignments']:
+            if item['name'] == 'business_prompt':
+                item['value'] = value
+
+
+def apply_account_pay():
+    """Ship the login CTA on the live agent without replacing the rest of the brief."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    original = json.loads(json.dumps({k: agent[k] for k in ('name', 'nodes', 'connections', 'settings', 'active')}))
+    siblings = json.dumps((agent['connections'].get('Plan Delivery') or {}).get('main'))
+    prompt_before = _prompt_value(agent)
+    kept = (
+        'prepay online with the button below',
+        'Once you have asked for the name',
+        'Never for swearing, and never for a booking question',
+    )
+    for line in kept:
+        if line not in prompt_before:
+            raise SystemExit(f'live brief is missing the line this deploy must keep: {line}')
+    repo = (ROOT / 'prompts/k1-whatsapp-prompt-final.md').read_text()
+    if ACCOUNT_PAY_RULE not in repo:
+        raise SystemExit('repo prompt is missing the account pay rule')
+    lock_live_path(agent)
+    if json.dumps((agent['connections'].get('Plan Delivery') or {}).get('main')) != siblings:
+        raise SystemExit('Plan Delivery siblings were reordered')
+    brief = ensure_account_pay_prompt(prompt_before)
+    if ACCOUNT_PAY_RULE not in brief:
+        raise SystemExit('live brief did not gain the account pay rule')
+    for line in kept:
+        if line not in brief:
+            raise SystemExit(f'live brief lost a line: {line}')
+    if not brief.startswith(prompt_before[:120]):
+        raise SystemExit('live brief was replaced')
+    _set_prompt(agent, brief)
+    plan = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Plan Delivery')
+    norm = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Normalize playground reply')
+    assert_reply_node(plan, 'Plan Delivery')
+    assert_reply_node(norm, 'Normalize playground reply')
+    try:
+        put_live(LIVE_AGENT, agent, was_active)
+        check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+        _verify_account_pay(check, brief)
+    except Exception:
+        put_live(LIVE_AGENT, original, was_active)
+        raise
+    print(f'account pay on {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
+def _verify_account_pay(check, brief):
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
+    norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
+    assert_reply_node(plan, 'Plan Delivery')
+    assert_reply_node(norm, 'Normalize playground reply')
+    if 'https://ajanvaraus.k1katsastus.fi/varaus' not in plan or 'account_pay' not in plan:
+        raise SystemExit('finishReply is missing the account URL')
+    saved = _prompt_value(check)
+    if saved != brief or ACCOUNT_PAY_RULE not in saved:
+        raise SystemExit('live brief was not saved')
+    for line in (
+        'prepay online with the button below',
+        'Once you have asked for the name',
+        'Never for swearing, and never for a booking question',
+    ):
+        if line not in saved:
+            raise SystemExit(f'live brief lost a line after put: {line}')
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    assert_composing(check)
+    query = next(node['parameters']['query'] for node in check['nodes'] if node['name'] == 'Load Staging Session')
+    if 'hasBooking' not in query:
+        raise SystemExit('Load Staging Session query has no hasBooking')
+    names = {item['name']: item for item in check['nodes']}
+    react = names['React To Message']
+    if react.get('onError') != 'continueRegularOutput':
+        raise SystemExit('React To Message onError changed')
+    options = names['Send Bubble']['parameters'].get('advancedOptions') or {}
+    if options.get('typingSimulation') is not False or options.get('delayEnabled') is not False:
+        raise SystemExit('Send Bubble typing flags changed')
+    siblings = [link.get('node') for link in ((check['connections'].get('Plan Delivery') or {}).get('main') or [[]])[0]]
+    if siblings[:1] != ['Has Reaction?'] or 'Loop Bubbles' not in siblings:
+        raise SystemExit(f'Plan Delivery siblings changed: {siblings}')
+
+
 def business_prompt(current):
+    # Live WhatsApp uses the hand-written WhatsApp prompt (v5.x), not the guidelines YAML catalog.
+    path = ROOT / 'prompts/k1-whatsapp-prompt-final.md'
+    if path.exists():
+        text = path.read_text()
+        return text if text.endswith('\n') else text + '\n'
     return k1_prompt.prompt()
 
 
@@ -425,7 +1934,7 @@ def build_agent(booking_id):
         if node['name'] == 'opt_out':
             node['parameters']['description'] = 'Stop reminders for this number. Call when the customer asks to stop messages or not be contacted, refuses reminders, or says the car is already inspected. Never for a sold car, a new plate or another vehicle. Pass puhelin.'
         if node['name'] == 'escalate_to_human':
-            node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, demands compensation, refuses to continue, or reports a legal, safety or accident matter. Never for swearing or rudeness alone, payment methods, phone hours, off-topic chat, or a question you can answer or point to 0306 100 100 for. Pass syy.'
+            node['parameters']['description'] = 'Flag the conversation for staff. Only when the customer asks for a person, makes a complaint, or reports a legal, safety or accident matter. Never for a booking question (why don\'t you book it, can you book this, book it for me), payment, hours, prices, links, swearing, or anything you can answer. Pass syy.'
         if node['name'] == 'AI Agent':
             options = node['parameters']['options']
             options['systemMessage'] = replace_once(
@@ -435,14 +1944,14 @@ def build_agent(booking_id):
             for pair, label in SYSTEM_STYLE_PATCHES:
                 options['systemMessage'] = replace_once(options['systemMessage'], pair, f'system message {label}')
         if node['name'] == 'Plan Delivery':
-            node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_DELIVERY_CLEAN, 'Plan Delivery dashes')
+            node['parameters']['jsCode'] = ensure_finish(replace_once(node['parameters']['jsCode'], PLAN_DELIVERY_CLEAN, 'Plan Delivery dashes'), 'plan')
         if node['name'] == 'Plan Follow-up Delivery':
             node['parameters']['jsCode'] = replace_once(node['parameters']['jsCode'], PLAN_FOLLOWUP_CLEAN, 'Plan Follow-up Delivery dashes')
         if node['name'] == 'Normalize playground reply':
             code = node['parameters']['jsCode']
             for label, pair in enumerate(NORMALIZE_PATCHES):
                 code = replace_once(code, pair, f'Normalize playground reply {label}')
-            node['parameters']['jsCode'] = code
+            node['parameters']['jsCode'] = ensure_finish(code, 'normalize')
         if node['name'] == 'Playground Turn':
             code = node['parameters']['jsCode']
             for pair, label in ((PLAYGROUND_PREAMBLE, 'preamble'), (PLAYGROUND_OPENER, 'opener'), (PLAYGROUND_LANGUAGE, 'language'), (PLAYGROUND_LEADLANG, 'lead language'), (PLAYGROUND_TAIL, 'language order'), (PLAYGROUND_PATCH, 'agent input'), (PLAYGROUND_RETURN, 'return')):
@@ -460,9 +1969,18 @@ def build_agent(booking_id):
             code = replace_once(code, ("new Set(['get_slots',", "new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'allowed tools')
             code = replace_once(code, ("new Set(['station_id',", "new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'allowed inputs')
             code = replace_once(code, ("new Set(['faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',",
-                                        "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',"), 'payment tool')
+                                        "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots', 'send_booking_confirmation',"), 'payment tool')
+            # Idempotent if payment tool already present from an earlier build.
+            if 'send_booking_confirmation' not in code:
+                code = code.replace(
+                    "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots',",
+                    "new Set(['create_payment_link', 'faq_lookup', 'get_station_info', 'get_my_bookings', 'get_slots', 'send_booking_confirmation',",
+                    1,
+                )
             code = replace_once(code, ("new Set(['query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',",
-                                        "new Set(['booking_number', 'station_name', 'when_text', 'query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id',"), 'payment inputs')
+                                        "new Set(['booking_number', 'station_name', 'when_text', 'query', 'station', 'product', 'vehicle_category', 'include_measuring', 'date', 'station_id', 'event_id',"), 'payment inputs')
+            if "'event_id'" not in code.split('allowInputs')[1][:400] if 'allowInputs' in code else True:
+                pass
             node['parameters']['jsCode'] = code
 
     if os.environ.get('K1_CACHE_LAYOUT', '1') != '0':
@@ -499,6 +2017,8 @@ def build_agent(booking_id):
         value['phone'] = PHONE
         if name in ('book_inspection_invite', 'reschedule_booking'):
             value['time'] = from_ai('time', 'The clock time the customer chose, written HH:MM in Finnish local time exactly as the get_slots time field shows it (for example 16:30). Always fill it in.')
+            value['language'] = LINK_LANG
+            value['booking_site'] = BOOKING_SITE
         for key in ('lead_station', 'lead_station_id', 'lead_product', 'lead_vehicle_category'):
             value.pop(key, None)
         node['parameters']['workflowInputs']['schema'] = [entry for entry in node['parameters']['workflowInputs'].get('schema', []) if entry['id'] in value]
@@ -508,7 +2028,11 @@ def build_agent(booking_id):
 
     add_payment_tool(nodes, connections, named, define)
     add_agent_error_branch(nodes, connections)
-    return save(AGENT_NAME, nodes, connections, live, activate=True)
+    add_booking_site_lookup(nodes, connections)
+    ensure_booking_site(nodes)
+    add_whatsapp_log(nodes, connections)
+    locked = lock_live_path({'nodes': nodes, 'connections': connections})
+    return save(AGENT_NAME, locked['nodes'], locked['connections'], live, activate=True)
 
 
 def add_payment_tool(nodes, connections, named, define):
@@ -593,6 +2117,263 @@ def add_agent_error_branch(nodes, connections):
     connections['AI Agent']['main'] = [main[0], [{'node': 'Agent error reply', 'type': 'main', 'index': 0}, {'node': 'Agent error WhatsApp', 'type': 'main', 'index': 0}]]
     connections['Agent error reply'] = {'main': [[{'node': 'Respond to playground', 'type': 'main', 'index': 0}]]}
     connections['Agent error WhatsApp'] = {'main': [[{'node': 'Plan Delivery', 'type': 'main', 'index': 0}]]}
+
+
+ATTACH_BOOKING_SITE_JS = r"""const turn = $('Build Turn').first().json || {}
+let booking_site = 'live'
+try {
+  const site = String($input.first().json.booking_site || '').toLowerCase()
+  if (site === 'staging' || site === 'live') booking_site = site
+} catch (error) {}
+return [{ json: { ...turn, booking_site } }]"""
+
+BOOKING_SITE_QUERY = (
+    "={{ (() => { const digits = String(($('Build Turn').first().json.from_phone) || '').replace(/\\D/g, '').slice(0, 15); "
+    "return \"select coalesce((select link_host from k1_staging_conversations where phone_key = '\" + digits + \"' order by updated_at desc limit 1), 'live') as booking_site\"; })() }}"
+)
+
+# After the WhatsApp reply has already been sent. Same conversation for a phone, and the inbound
+# message id is unique, so a retry does not write the turn twice. Errors are caught by the caller.
+WHATSAPP_LOG_JS = r"""const sqlLiteral = (value) => "'" + String(value ?? '').replace(/'/g, "''").replace(/\u0000/g, '').slice(0, 8000) + "'"
+const maskMatch = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits.length >= 8 ? '···' + digits.slice(-4) : 'WhatsApp'
+}
+const hidePhones = (value) => String(value || '').replace(/(?:\+|00)?\d[\d\s\-()]{6,}\d/g, (match) => {
+  const digits = match.replace(/\D/g, '')
+  return digits.length >= 8 ? '···' + digits.slice(-4) : match
+})
+try {
+  const turn = $('Build Turn').first().json || {}
+  const digits = String(turn.from_phone || '').replace(/\D/g, '').slice(0, 15)
+  const user = String(turn.raw_text || '').trim()
+  const bubbles = $('Plan Delivery').all()
+  const agent = bubbles.map((item) => String(item.json.text || '').trim()).filter(Boolean).join('\n\n').trim()
+  const rewrites = [...new Set(bubbles.flatMap((item) => {
+    const value = item.json && item.json.rewrites
+    return Array.isArray(value) ? value : String(value || '').split(',')
+  }).map((name) => String(name || '').trim()).filter((name) => /^[a-z_]+$/.test(name)))].join(',')
+  const messageId = String(turn.anchor_message_id || '').replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 120)
+  if (!digits || !user || !agent || !messageId) return [{ json: { skip: true, query: 'select 0 as saved' } }]
+  const mask = maskMatch(digits)
+  const title = hidePhones(user).replace(/\s+/g, ' ').trim().slice(0, 140) || mask
+  let hex = ''
+  let x = 2166136261
+  const seed = 'k1-whatsapp:' + digits
+  for (let i = 0; i < 8; i++) {
+    x = Math.imul(x ^ seed.charCodeAt(i % seed.length), 16777619) >>> 0
+    hex += x.toString(16).padStart(8, '0')
+  }
+  hex = hex.slice(0, 32)
+  const conversationId = hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-4' + hex.slice(13, 16) + '-a' + hex.slice(17, 20) + '-' + hex.slice(20, 32)
+  const query = [
+    'with existing as (',
+    '  select id from k1_staging_conversations where phone_key = ' + sqlLiteral(digits) + ' order by updated_at desc limit 1',
+    '), inserted as (',
+    '  insert into k1_staging_conversations (id, phone_key, phone, version_id, version_number, title, started_by, link_host)',
+    '  select ' + sqlLiteral(conversationId) + '::uuid, ' + sqlLiteral(digits) + ', ' + sqlLiteral(mask) + ',',
+    "  'fb38cc92-e22b-4ff3-8599-c5672f108902', 16, " + sqlLiteral(title) + ', ' + sqlLiteral('WhatsApp ' + mask) + ", 'live'",
+    '  where not exists (select 1 from existing)',
+    '  on conflict (id) do nothing',
+    '  returning id',
+    '), conv as (',
+    '  select id from existing union all select id from inserted limit 1',
+    '), fresh as (',
+    '  insert into k1_staging_messages (conversation_id, role, text, is_opener, inbound_message_id)',
+    '  select id, \'user\', ' + sqlLiteral(user) + ', false, ' + sqlLiteral(messageId),
+    '  from conv',
+    '  where not exists (select 1 from k1_staging_messages where conversation_id = (select id from conv) and role = \'user\' and inbound_message_id = ' + sqlLiteral(messageId) + ')',
+    '  returning conversation_id',
+    '), agent_row as (',
+    '  insert into k1_staging_messages (conversation_id, role, text, is_opener, rewrites)',
+    '  select conversation_id, \'agent\', ' + sqlLiteral(agent) + ', false, ' + sqlLiteral(rewrites) + ' from fresh',
+    '  returning conversation_id',
+    '), touched as (',
+    '  update k1_staging_conversations set updated_at = now() where id in (select conversation_id from agent_row) returning id',
+    ')',
+    'select (select id::text from conv) as conversation_id, (select count(*) from touched) as saved',
+  ].join('\n')
+  return [{ json: { skip: false, query } }]
+} catch (error) {
+  return [{ json: { skip: true, query: 'select 0 as saved', error: String(error).slice(0, 200) } }]
+}"""
+
+
+def ensure_booking_site(nodes):
+    for node in nodes:
+        if node['name'] not in ('get_slots', 'get_station_info', 'book_inspection_invite', 'reschedule_booking'):
+            continue
+        inputs = node['parameters'].setdefault('workflowInputs', {})
+        value = inputs.setdefault('value', {})
+        value['booking_site'] = BOOKING_SITE
+        schema = inputs.setdefault('schema', [])
+        if not any(entry.get('id') == 'booking_site' for entry in schema):
+            schema.append(SCHEMA_ENTRY('booking_site'))
+
+
+def add_booking_site_lookup(nodes, connections):
+    """One indexed read before the model. A failure still continues, and defaults the link to production."""
+    named = {node['name']: node for node in nodes}
+    if 'Is Reset?' not in named or 'Build Turn' not in named or 'Queue Inbound' not in named:
+        return
+    reset = named['Is Reset?']
+    if 'Booking site' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-booking-site')),
+            'name': 'Booking site',
+            'type': 'n8n-nodes-base.postgres',
+            'typeVersion': named['Queue Inbound']['typeVersion'],
+            'position': [reset['position'][0] + 40, reset['position'][1] + 220],
+            'onError': 'continueRegularOutput',
+            'alwaysOutputData': True,
+            'credentials': named['Queue Inbound']['credentials'],
+            'parameters': {'operation': 'executeQuery', 'query': BOOKING_SITE_QUERY},
+        })
+    else:
+        named['Booking site']['parameters']['query'] = BOOKING_SITE_QUERY
+        named['Booking site']['onError'] = 'continueRegularOutput'
+        named['Booking site']['alwaysOutputData'] = True
+    if 'Attach booking site' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-attach-booking-site')),
+            'name': 'Attach booking site',
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': [reset['position'][0] + 260, reset['position'][1] + 220],
+            'onError': 'continueRegularOutput',
+            'parameters': {'mode': 'runOnceForAllItems', 'jsCode': ATTACH_BOOKING_SITE_JS},
+        })
+    else:
+        named['Attach booking site']['parameters']['jsCode'] = ATTACH_BOOKING_SITE_JS
+        named['Attach booking site']['onError'] = 'continueRegularOutput'
+    false_branch = connections['Is Reset?']['main'][1]
+    if not any(item['node'] == 'Booking site' for item in false_branch):
+        connections['Is Reset?']['main'][1] = [{'node': 'Booking site', 'type': 'main', 'index': 0}]
+    connections['Booking site'] = {'main': [[{'node': 'Attach booking site', 'type': 'main', 'index': 0}]]}
+    connections['Attach booking site'] = {'main': [[{'node': 'AI Agent', 'type': 'main', 'index': 0}]]}
+
+
+def add_whatsapp_log(nodes, connections):
+    """Side branch after every bubble has been sent. Loop Bubbles does not wait on it."""
+    named = {node['name']: node for node in nodes}
+    if 'Loop Bubbles' not in named or 'Queue Inbound' not in named:
+        return
+    loop = named['Loop Bubbles']
+    if 'Log WhatsApp turn' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-log-whatsapp')),
+            'name': 'Log WhatsApp turn',
+            'type': 'n8n-nodes-base.code',
+            'typeVersion': 2,
+            'position': [loop['position'][0] + 220, loop['position'][1] + 260],
+            'onError': 'continueRegularOutput',
+            'parameters': {'mode': 'runOnceForAllItems', 'jsCode': WHATSAPP_LOG_JS},
+        })
+    else:
+        named['Log WhatsApp turn']['parameters']['jsCode'] = WHATSAPP_LOG_JS
+        named['Log WhatsApp turn']['onError'] = 'continueRegularOutput'
+    if 'Write WhatsApp turn' not in named:
+        nodes.append({
+            'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-write-whatsapp')),
+            'name': 'Write WhatsApp turn',
+            'type': 'n8n-nodes-base.postgres',
+            'typeVersion': named['Queue Inbound']['typeVersion'],
+            'position': [loop['position'][0] + 460, loop['position'][1] + 260],
+            'onError': 'continueRegularOutput',
+            'alwaysOutputData': True,
+            'credentials': named['Queue Inbound']['credentials'],
+            'parameters': {'operation': 'executeQuery', 'query': '={{ $json.query }}'},
+        })
+    else:
+        named['Write WhatsApp turn']['onError'] = 'continueRegularOutput'
+        named['Write WhatsApp turn']['alwaysOutputData'] = True
+    done = connections['Loop Bubbles']['main'][0]
+    if not any(item['node'] == 'Log WhatsApp turn' for item in done):
+        done.append({'node': 'Log WhatsApp turn', 'type': 'main', 'index': 0})
+    connections['Log WhatsApp turn'] = {'main': [[{'node': 'Write WhatsApp turn', 'type': 'main', 'index': 0}]]}
+
+
+def patch_live_booking_link(code):
+    start, end = code.find('const linkLang'), code.find('const EXONYMS')
+    source = (HERE / 'k1-muster-v2.js').read_text()
+    src_start, src_end = source.find('const linkLang'), source.find('const EXONYMS')
+    if min(start, end, src_start, src_end) < 0:
+        raise SystemExit('bookingLink markers missing')
+    return code[:start] + source[src_start:src_end] + code[end:]
+
+
+def apply_log_schema():
+    """Adds the two columns the WhatsApp log writes. Idempotent."""
+    agent = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    queue = next(node for node in agent['nodes'] if node['name'] == 'Queue Inbound')
+    sql = (ROOT.parent.parent / 'supabase' / 'k1-agent-builder-007-whatsapp-chats.sql').read_text()
+    kept = '\n'.join(line for line in sql.splitlines() if not line.strip().startswith('--'))
+    statements = [part.strip() for part in kept.split(';') if part.strip()]
+    nonce = uuid.uuid4().hex[:10]
+    nodes = [{
+        'id': 'hook', 'name': 'Hook', 'type': 'n8n-nodes-base.webhook', 'typeVersion': 2.1, 'position': [0, 0],
+        'parameters': {'httpMethod': 'POST', 'path': f'k1-whatsapp-schema-{nonce}', 'responseMode': 'responseNode', 'options': {}},
+    }]
+    connections = {}
+    previous = 'Hook'
+    for index, statement in enumerate(statements):
+        name = f'Sql {index}'
+        nodes.append({
+            'id': f'sql{index}', 'name': name, 'type': queue['type'], 'typeVersion': queue['typeVersion'],
+            'position': [240 * (index + 1), 0], 'credentials': queue['credentials'],
+            'parameters': {'operation': 'executeQuery', 'query': statement},
+        })
+        connections[previous] = {'main': [[{'node': name, 'type': 'main', 'index': 0}]]}
+        previous = name
+    nodes.append({
+        'id': 'out', 'name': 'Out', 'type': 'n8n-nodes-base.respondToWebhook', 'typeVersion': 1.5, 'position': [240 * (len(statements) + 1), 0],
+        'parameters': {'respondWith': 'json', 'responseBody': '={{ { ok: true } }}', 'options': {}},
+    })
+    connections[previous] = {'main': [[{'node': 'Out', 'type': 'main', 'index': 0}]]}
+    body = {'name': f'k1 whatsapp schema {nonce}', 'nodes': nodes, 'connections': connections, 'settings': {'executionOrder': 'v1'}}
+    wid = gate.request('POST', '/workflows', body)['id']
+    try:
+        gate.request('POST', f'/workflows/{wid}/activate')
+        base = (os.environ.get('N8N_RAPID_BASE_URL') or gate.local_env().get('N8N_RAPID_BASE_URL') or gate.DEFAULT_BASE).rstrip('/')
+        url = f'{base}/webhook/k1-whatsapp-schema-{nonce}'
+        for attempt in range(8):
+            request = urllib.request.Request(url, data=b'{}', headers={'Content-Type': 'application/json'}, method='POST')
+            try:
+                with urllib.request.urlopen(request, timeout=40) as response:
+                    print('schema', response.status)
+                    return
+            except urllib.error.HTTPError as error:
+                if error.code == 404 and attempt < 7:
+                    time.sleep(1)
+                    continue
+                raise
+    finally:
+        for attempt in range(5):
+            try:
+                gate.request('POST', f'/workflows/{wid}/deactivate')
+            except urllib.error.HTTPError:
+                pass
+            try:
+                gate.request('DELETE', f'/workflows/{wid}')
+                break
+            except urllib.error.HTTPError:
+                time.sleep(1 + attempt)
+
+
+def wire_live():
+    apply_log_schema()
+    booking = snapshot(LIVE_BOOKING)
+    for node in booking['nodes']:
+        if node['name'] == 'Muster':
+            node['parameters']['jsCode'] = patch_live_booking_link(node['parameters']['jsCode'])
+    put_live(LIVE_BOOKING, booking, booking['active'])
+    agent = snapshot(LIVE_AGENT)
+    add_booking_site_lookup(agent['nodes'], agent['connections'])
+    ensure_booking_site(agent['nodes'])
+    add_whatsapp_log(agent['nodes'], agent['connections'])
+    patch_agent_finish(agent)
+    put_live(LIVE_AGENT, agent, agent['active'])
+    print(f'wired live booking {LIVE_BOOKING} and agent {LIVE_AGENT}')
 
 
 SMOKE_CASES = [
@@ -714,7 +2495,7 @@ def promote(without_gate=False):
     (BACKUPS / f'{stamp}-booking.json').write_text(scrub_secrets(json.dumps(live_booking, ensure_ascii=False)))
     (BACKUPS / f'{stamp}-agent.json').write_text(scrub_secrets(json.dumps(live_agent, ensure_ascii=False)))
     new_booking = transplant(snapshot(booking_id), live_booking)
-    new_agent = transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name']))
+    new_agent = lock_live_path(transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name'])))
     put_live(LIVE_BOOKING, new_booking, live_booking['active'])
     put_live(LIVE_AGENT, new_agent, live_agent['active'])
     print(f'promoted: backups {stamp}-*.json; live booking {LIVE_BOOKING}, live agent {LIVE_AGENT}')
@@ -726,6 +2507,8 @@ def rollback():
     stamp = stamps[-1]
     for wid, kind in ((LIVE_BOOKING, 'booking'), (LIVE_AGENT, 'agent')):
         body = json.loads((BACKUPS / f'{stamp}-{kind}.json').read_text())
+        if kind == 'agent':
+            lock_live_path(body)
         put_live(wid, body, body['active'])
     print('rolled back to', stamp)
 
@@ -745,6 +2528,22 @@ def main():
         promote(without_gate='--without-gate' in sys.argv)
     elif command == 'rollback':
         rollback()
+    elif command == 'wire':
+        wire_live()
+    elif command == 'finish':
+        finish_live()
+    elif command == 'typing':
+        restore_typing()
+    elif command == 'lead':
+        restore_lead()
+    elif command == 'cta':
+        restore_cta()
+    elif command == 'reply':
+        apply_reply_rule()
+    elif command == 'reaction':
+        restore_reaction()
+    elif command == 'account-pay':
+        apply_account_pay()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)

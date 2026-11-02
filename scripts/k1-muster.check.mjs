@@ -449,6 +449,23 @@ test('faq: the right entry is among the matches for every kind of question', asy
   assert.equal(misses.length, 0, misses.join('\n'))
 })
 
+test('booking link: a live lead uses the production form in that language', async () => {
+  const run = makeRun()
+  const english = (await run({ action: 'station_info', station: 'Tampere Sarankulma', booking_site: 'live', language: 'English' })).result
+  assert.equal(english.booking.official_booking_link, 'https://ajanvaraus.k1katsastus.fi/en?stationId=1452')
+  const swedish = (await run({ action: 'get_slots', station: 'Tampere Sarankulma', product: '004', date_from: '2026-09-30', booking_site: 'live', language: 'Swedish' })).result
+  assert.equal(swedish.booking_url, 'https://ajanvaraus.k1katsastus.fi/sv?stationId=1452')
+  assert.equal(swedish.official_booking_link, swedish.booking_url)
+})
+
+test('booking link: staging uses the staging site only when that station exists there', async () => {
+  const run = makeRun()
+  const palokka = (await run({ action: 'station_info', station: PALOKKA, booking_site: 'staging', language: 'fi' })).result
+  assert.equal(palokka.booking.official_booking_link, 'https://k1-katsastus-ajanvaraus.stage.geniem.io/?stationId=256')
+  const other = (await run({ action: 'station_info', station: 'Tampere Sarankulma', booking_site: 'staging', language: 'sv' })).result
+  assert.equal(other.booking.official_booking_link, 'https://ajanvaraus.k1katsastus.fi/sv?stationId=1452')
+})
+
 let failed = 0
 for (const [name, fn] of cases) {
   try { await fn(); console.log(`ok   ${name}`) } catch (error) { failed++; console.log(`FAIL ${name}\n     ${error.message}`) }
