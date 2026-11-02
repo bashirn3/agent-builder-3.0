@@ -420,7 +420,7 @@ SYSTEM_STYLE_PATCHES = (
     (("Split like a person does: acknowledgement, then substance, then the question.", "Default to ONE bubble. Give the substance and the single question together; never add an acknowledgement bubble."), 'shape'),
     (("Say something warm and ask for a day.", "Do not ask which day. Call get_slots from tomorrow and offer the first day's times. Do not echo their word and do not open with an acknowledgement."), 'ack'),
     (("(\"no rush — want me to leave this with you?\")", "(\"no rush, want me to leave this with you?\")"), 'dash example'),
-    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\" to your offer to find a time, the reply is the times themselves from get_slots.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
+    (("## OUTPUT CONTRACT\n", "## STYLE (overrides everything above)\n- Terse: one bubble, one short sentence, two at most.\n- Never open with an acknowledgement or an echo of the customer's word (Sure, Okay, Great, Absolutely, Of course, Selvä, Okei, Hyvä, Visst, Okej). If they answer \"sure\", \"yes\", \"joo\" or \"ok\", or they switch language, call the tool and the reply is the times. Palokka and Itäharju: get_slots. Every other station: get_station_info, then the free times and the official booking link. Never say you will check, look, or come back.\n- No em dashes, no spaced en dashes or hyphens as punctuation. Use a comma or a new sentence.\n\n## OUTPUT CONTRACT\n"), 'style'),
 )
 
 
@@ -884,9 +884,14 @@ if (typeof staging === 'string') {
 if (!staging || staging.found !== true) staging = { found: false }
 return [{ json: { staging } }]
 """
+REPLY_RULE_LINE = (
+    "const replyRule = '[THIS REPLY] If this reply needs times, hours, a price or a link, call the tool before the JSON. "
+    "Palokka and Itäharju: get_slots. Every other station: get_station_info, then the free times and official_booking_link. "
+    "Never tell the customer you will check, look, or come back. A language switch is not a pause: answer in their language with the times in this same reply.'\n"
+)
 LEAD_PREAMBLE = """let leadBlock = ''
 let openerBlock = ''
-try {
+""" + REPLY_RULE_LINE + """try {
   if ($('Parse Staging').isExecuted) {
     const staging = $('Parse Staging').first().json.staging || {}
     if (staging.found === true) {
@@ -908,20 +913,23 @@ try {
 
 
 def _inject_lead(code):
-    if 'let leadBlock' in code and 'openerBlock || null' in code:
-        return code
-    needle = 'const agent_input = ['
-    if needle not in code:
-        raise SystemExit('turn builder has no agent_input')
-    code = code.replace(needle, LEAD_PREAMBLE + needle, 1)
-    old = "  'turn_type: user_message',\n"
-    new = "  'turn_type: user_message',\n  leadBlock || null,\n  openerBlock || null,\n"
-    if old not in code:
-        old = "  'turn_type: your_own_followup',\n"
-        new = "  'turn_type: your_own_followup',\n  leadBlock || null,\n  openerBlock || null,\n"
-    if old not in code:
-        raise SystemExit('turn builder has no turn_type line')
-    return code.replace(old, new, 1)
+    if 'let leadBlock' not in code or 'openerBlock || null' not in code:
+        needle = 'const agent_input = ['
+        if needle not in code:
+            raise SystemExit('turn builder has no agent_input')
+        code = code.replace(needle, LEAD_PREAMBLE + needle, 1)
+        old = "  'turn_type: user_message',\n"
+        new = "  'turn_type: user_message',\n  leadBlock || null,\n  openerBlock || null,\n  replyRule,\n"
+        if old not in code:
+            old = "  'turn_type: your_own_followup',\n"
+            new = "  'turn_type: your_own_followup',\n  leadBlock || null,\n  openerBlock || null,\n  replyRule,\n"
+        if old not in code:
+            raise SystemExit('turn builder has no turn_type line')
+        return code.replace(old, new, 1)
+    if 'const replyRule' not in code:
+        code = code.replace("let openerBlock = ''\n", "let openerBlock = ''\n" + REPLY_RULE_LINE, 1)
+        code = code.replace("  openerBlock || null,\n", "  openerBlock || null,\n  replyRule,\n")
+    return code
 
 
 def ensure_lead(agent):
@@ -1057,8 +1065,9 @@ CTA_RAW = (
     "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 )
 OPENER_RAW = (
-    "={{ JSON.stringify({ to: $('Normalize').first().json.to, message: $('Normalize').first().json.opener, "
-    "footer: 'K1 AI Agent', linkPreview: false, allowColdWithoutToken: true }) }}"
+    "={{ JSON.stringify({ to: $('Normalize').first().json.to, text: $('Normalize').first().json.opener, "
+    "footer: 'K1 AI Agent', ctaUrl: { url: 'https://www.k1katsastus.fi/', label: 'k1katsastus.fi' }, "
+    "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 )
 
 
@@ -1176,11 +1185,37 @@ def stamp_opener_footer():
     put_live(STAGING_SEND, body, was_active)
     check = gate.request('GET', f'/workflows/{STAGING_SEND}')
     saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
-    if "footer: 'K1 AI Agent'" not in saved or "$('Normalize').first().json.opener" not in saved:
+    if "footer: 'K1 AI Agent'" not in saved or "$('Normalize').first().json.opener" not in saved or 'ctaUrl' not in saved:
         raise SystemExit('opener footer was not saved')
     if not check.get('active'):
         raise SystemExit('staging send left inactive')
     print(f'opener footer on {STAGING_SEND} active={check["active"]}')
+
+
+def ensure_reply_discipline(agent):
+    """A promise to check is not a reply. The channel rules used to allow that bubble."""
+    node = next(item for item in agent['nodes'] if item['name'] == 'AI Agent')
+    text = node['parameters']['options']['systemMessage']
+    eyes = "a short bubble says you'll look"
+    if eyes in text:
+        text = '\n'.join(
+            "- 👀 — never. Do not tell the customer you will look or check. Call the tool and send the result." if eyes in line else line
+            for line in text.split('\n')
+        )
+    elif 'Do not tell the customer you will look or check' not in text:
+        raise SystemExit('reply discipline lost the eyes rule')
+    old_style = 'the reply is the times themselves from get_slots.'
+    new_style = (
+        'call the tool and the reply is the times. Palokka and Itäharju: get_slots. '
+        'Every other station: get_station_info, then the free times and the official booking link. '
+        'Never say you will check, look, or come back.'
+    )
+    if old_style in text:
+        text = text.replace(old_style, new_style, 1)
+    elif 'Never say you will check, look, or come back.' not in text:
+        raise SystemExit('reply discipline lost the style rule')
+    node['parameters']['options']['systemMessage'] = text
+    return agent
 
 
 def lock_live_path(agent):
@@ -1193,6 +1228,7 @@ def lock_live_path(agent):
     ensure_composing(agent)
     ensure_lead(agent)
     ensure_cta(agent)
+    ensure_reply_discipline(agent)
     assert_composing(agent)
     assert_lead(agent)
     assert_cta(agent)
@@ -1265,6 +1301,34 @@ def restore_typing():
     if hold['parameters'].get('jsonBody', '').find("state: 'composing'") < 0 or hold['credentials']['wasupApi']['id'] != WASUP_CRED['wasupApi']['id']:
         raise SystemExit('Hold Composing was not saved')
     print(f'typing restored on {LIVE_AGENT} active={check["active"]}')
+
+
+def apply_reply_rule():
+    """Put the no-promise rule on the live brief and stop a 'I'll check' bubble standing in for the times."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    for item in next(node['parameters']['assignments']['assignments'] for node in agent['nodes'] if node['name'] == '⚙️ CONFIG'):
+        if item['name'] == 'business_prompt':
+            item['value'] = business_prompt('')
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    brief = next(item['value'] for node in check['nodes'] if node['name'] == '⚙️ CONFIG' for item in node['parameters']['assignments']['assignments'] if item['name'] == 'business_prompt')
+    system = next(node['parameters']['options']['systemMessage'] for node in check['nodes'] if node['name'] == 'AI Agent')
+    turn = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Build Turn')
+    if 'Never say you will check, look, or come back' not in brief:
+        raise SystemExit('live brief is not the latest prompt')
+    if "a short bubble says you'll look" in system or 'Never say you will check, look, or come back.' not in system:
+        raise SystemExit('live channel rules still allow a promise to check')
+    if 'const replyRule' not in turn or 'replyRule,' not in turn:
+        raise SystemExit('the turn does not carry the reply rule')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    stamp_opener_footer()
+    print(f'reply rule on {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
 
 
 def restore_cta():
@@ -1921,6 +1985,8 @@ def main():
         restore_lead()
     elif command == 'cta':
         restore_cta()
+    elif command == 'reply':
+        apply_reply_rule()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
