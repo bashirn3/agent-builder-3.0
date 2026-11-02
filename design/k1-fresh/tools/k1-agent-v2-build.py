@@ -17,6 +17,7 @@ Usage:
   python3 k1-agent-v2-build.py cta       put link buttons back on live sends, and the first-bubble footer
   python3 k1-agent-v2-build.py typing    ack Wasup with skip:true before the agent, and clear typing once the reply is delivered
   python3 k1-agent-v2-build.py reaction  keep going when Wasup rejects an emoji, so the text reply still sends
+  python3 k1-agent-v2-build.py account-pay  login link when a booked customer asks to prepay or change the booking
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -438,6 +439,9 @@ def replace_once(text, pair, label):
 # append official_booking_link from this turn's tool result. A URL the tools did not
 # return is replaced with that link, or removed when the turn has none. Never add the
 # link on a turn that already booked. rewrites names what changed, for the WhatsApp log.
+# A customer who already has a booking and asks to prepay or to change it gets one
+# login sentence and https://ajanvaraus.k1katsastus.fi/varaus after grounding. That URL
+# is allowed. A booking made on this turn, a time offer, and a clock-time move stay.
 FINISH_FN = r"""function separateFuelLink(line) {
   const fuel = /bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)/i
   if (!fuel.test(line) || !line.includes('?')) return line
@@ -506,6 +510,67 @@ function unclaimBooking(line, booked) {
   if (booked || !/ei ole|en näe|ei vahvist|not confirmed|is not confirmed|inte bekräft/i.test(line)) return line
   return line.replace(/\b(varausnumero|booking number|bokningsnummer)\s+(?!0306\b)[A-Z0-9-]*\d+\b/gi, 'ehdottamasi numero')
 }
+const ACCOUNT_PAY_URL = 'https://ajanvaraus.k1katsastus.fi/varaus'
+function accountCustomerText() {
+  try {
+    if (typeof $ !== 'function') return ''
+    const read = (name) => {
+      if (!$(name).isExecuted) return ''
+      const json = $(name).first().json || {}
+      if (json.raw_text) return String(json.raw_text)
+      const input = String(json.agent_input || '')
+      const match = input.match(/\[USER\]\s*([\s\S]*)$/)
+      return match ? match[1].trim() : ''
+    }
+    return read('Build Turn') || read('Playground Turn')
+  } catch (error) {
+    return ''
+  }
+}
+function accountNamesClock(text) {
+  return /(?:\b(?:klo|kello|kl\.?|klockan|at)\s*)\d{1,2}(?:[:.]\d{2})?\b|\b\d{1,2}[:.]\d{2}\b/i.test(String(text || ''))
+}
+function accountAsks(text) {
+  const t = String(text || '')
+  const prepay = /ennakkoon|etukäteen|\bprepay\b|pay in advance|pay beforehand|pay ahead|betala i förväg|ennakkomaks/i.test(t)
+  const changeBooking = /(?:\b(?:muuttaa|muutta\w*|muuta|vaihtaa|vaihta\w*|vaihda|change|ändra\w*)\b).{0,80}(?:\b(?:varaus\w*|bokning\w*|booking)\b)|(?:\b(?:varaus\w*|bokning\w*|booking)\b).{0,80}(?:\b(?:muuttaa|muutta\w*|muuta|vaihtaa|vaihta\w*|vaihda|change|ändra\w*)\b)/i.test(t)
+  const differentPay = /erilaisen varauksen/i.test(t) && /maksa|pay|betala|ennakko/i.test(t)
+  const clockMove = accountNamesClock(t) && /\b(?:siirr\w*|reschedul\w*|flytta\w*|move|toiseen aikaan|uuden ajan)\b/i.test(t)
+  if ((clockMove || (changeBooking && accountNamesClock(t))) && !prepay && !differentPay) return false
+  return prepay || changeBooking || differentPay
+}
+function accountLanguage(text) {
+  const t = ' ' + String(text || '').toLowerCase() + ' '
+  if (/\b(och|att|för|inte|boka|betala|bokning|förväg|logga|vill|jag)\b/.test(t)) return 'sv'
+  if (/[äöå]/.test(t) || /\b(haluaisin|varaus|maksaa|ennakkoon|kirjautua|miten|voit|erilaisen)\b/.test(t)) return 'fi'
+  if (/\b(the|your|you|pay|book|ahead|beforehand|advance|can|booking)\b/.test(t)) return 'en'
+  return 'fi'
+}
+function accountPayLine(text) {
+  const sentence = accountLanguage(text) === 'sv'
+    ? 'Du kan logga in på din bokning och betala i förväg.'
+    : accountLanguage(text) === 'en'
+      ? 'You can log in to your booking and pay beforehand.'
+      : 'Voit kirjautua varaukseesi ja maksaa ennakkoon.'
+  return sentence + ' ' + ACCOUNT_PAY_URL
+}
+function accountPriorBooking(steps, readData) {
+  try {
+    if (typeof $ === 'function' && $('Parse Staging').isExecuted) {
+      const staging = ($('Parse Staging').first().json || {}).staging || {}
+      if (staging.hasBooking === true || staging.hasBooking === 'true') return true
+    }
+  } catch (error) {}
+  for (const step of steps || []) {
+    const tool = String(step && step.action && step.action.tool || step && step.tool || '')
+    if (tool !== 'get_my_bookings') continue
+    const data = readData(step)
+    if (!data) continue
+    if (Number(data.count) > 0) return true
+    if (Array.isArray(data.bookings) && data.bookings.length > 0) return true
+  }
+  return false
+}
 function finishReply(messages, agent) {
   const notes = []
   const cleaned = (Array.isArray(messages) ? messages : []).map((line) => {
@@ -571,6 +636,9 @@ function finishReply(messages, agent) {
     reply = cleaned.join('\n\n')
   }
   if (link) allowedUrls.add(link)
+  const userText = accountCustomerText()
+  const accountPay = !booked && accountAsks(userText) && accountPriorBooking(steps, dataOf)
+  if (accountPay) allowedUrls.add(ACCOUNT_PAY_URL)
   const mapNote = (name, fn) => {
     let changed = false
     const next = cleaned.map((row) => {
@@ -586,6 +654,10 @@ function finishReply(messages, agent) {
   mapNote('dedupe_link', dedupeLinks)
   mapNote('name_ask', (row) => dropExtraNameAsk(row, offeredSlots && !booked))
   mapNote('unclaim', (row) => unclaimBooking(row, booked))
+  if (accountPay) {
+    cleaned.splice(0, cleaned.length, accountPayLine(userText))
+    notes.push('account_pay')
+  }
   return { messages: cleaned.filter(Boolean), rewrites: [...new Set(notes)] }
 }
 """
@@ -683,6 +755,18 @@ def assert_reply_node(code, label):
         raise SystemExit(f'{label} still invents a station link')
     if 'rewrites:' not in code:
         raise SystemExit(f'{label} does not record rewrites')
+    if 'https://ajanvaraus.k1katsastus.fi/varaus' not in code or 'account_pay' not in code:
+        raise SystemExit(f'{label} does not send the account login')
+
+
+def ensure_account_finish(agent):
+    """Keep the pay-ahead replacement on the reply nodes the next deploy touches."""
+    for node in agent['nodes']:
+        if node['name'] == 'Plan Delivery':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'plan')
+        elif node['name'] == 'Normalize playground reply':
+            node['parameters']['jsCode'] = ensure_finish(node['parameters']['jsCode'], 'normalize')
+    return agent
 
 
 HOLD_FOR_COMPOSING_JS = """// Ack Wasup immediately with {skip:true}.
@@ -956,20 +1040,58 @@ def ensure_composing(agent):
     return agent
 
 
-LOAD_STAGING_SQL = (
-    "select coalesce(( select json_build_object( 'found', true, 'phone', s.phone, 'phoneKey', s.phone_key, "
-    "'versionId', s.version_id, 'versionNumber', s.version_number, 'conversationId', s.conversation_id::text, "
-    "'leadContext', s.lead_context, 'opener', s.opener, 'plate', coalesce(s.lead->>'plateNumber', ''), "
-    "'stationName', coalesce(s.lead->>'stationName', ''), 'product', coalesce(s.lead->>'product', '')) "
-    "from k1_staging_sessions s where s.phone_key = '{{ String($('Webhook').first().json.body.from_phone || '').replace(/\\D/g, '') }}'), "
-    "'{\"found\":false}'::json) as staging"
+LOAD_STAGING_SQL = r"""with phone as (
+  select '{{ String($('Webhook').first().json.body.from_phone || '').replace(/\D/g, '') }}' as digits
+), marked as (
+  select (
+    exists (
+      select 1
+      from k1_staging_messages m
+      join k1_staging_conversations c on c.id = m.conversation_id
+      where c.phone_key = phone.digits
+        and m.role = 'agent'
+        and m.text ~* 'varausnumero|bokningsnummer|booking number'
+    )
+    or exists (
+      select 1
+      from chat_history h
+      where h.session_id in ('k1_katsastus_demo_' || phone.digits, 'k1_katsastus_demo_+' || phone.digits)
+        and h.message::text ~* 'varausnumero|bokningsnummer|booking number'
+    )
+  ) as has_booking
+  from phone
 )
+select coalesce(
+  (
+    select json_build_object(
+      'found', true,
+      'phone', s.phone,
+      'phoneKey', s.phone_key,
+      'versionId', s.version_id,
+      'versionNumber', s.version_number,
+      'conversationId', s.conversation_id::text,
+      'leadContext', s.lead_context,
+      'opener', s.opener,
+      'plate', coalesce(s.lead->>'plateNumber', ''),
+      'stationName', coalesce(s.lead->>'stationName', ''),
+      'product', coalesce(s.lead->>'product', ''),
+      'hasBooking', marked.has_booking
+    )
+    from k1_staging_sessions s
+    cross join phone
+    cross join marked
+    where s.phone_key = phone.digits
+  ),
+  json_build_object('found', false, 'hasBooking', (select has_booking from marked))
+) as staging"""
 PARSE_STAGING_JS = """const row = $input.first().json || {}
 let staging = row.staging
 if (typeof staging === 'string') {
   try { staging = JSON.parse(staging) } catch (error) { staging = null }
 }
+const hasBooking = Boolean(staging && (staging.hasBooking === true || staging.hasBooking === 'true'))
 if (!staging || staging.found !== true) staging = { found: false }
+if (hasBooking) staging.hasBooking = true
 return [{ json: { staging } }]
 """
 REPLY_RULE_LINE = (
@@ -1067,6 +1189,15 @@ def assert_lead(agent):
     query = next(node['parameters']['query'] for node in agent['nodes'] if node['name'] == 'Load Staging Session')
     if 'k1_staging_sessions' not in query or 'lead_context' not in query:
         raise SystemExit('lead lookup query is wrong')
+    if 'hasBooking' not in query or 'k1_staging_messages' not in query or 'chat_history' not in query:
+        raise SystemExit('lead lookup does not record an existing booking')
+    if 'varausnumero' not in query or 'bokningsnummer' not in query or 'booking number' not in query:
+        raise SystemExit('lead lookup booking match is wrong')
+    if 'k1_katsastus_demo_' not in query:
+        raise SystemExit('lead lookup session key is wrong')
+    parse = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Parse Staging')
+    if 'hasBooking' not in parse:
+        raise SystemExit('Parse Staging drops hasBooking')
 
 
 def assert_composing(agent):
@@ -1133,9 +1264,9 @@ def assert_composing(agent):
 
 
 CTA_JS = r"""const LABELS = {
-  fi: { pay: 'Maksa nyt', book: 'Varaa aika', open: 'Avaa' },
-  sv: { pay: 'Betala nu', book: 'Boka tid', open: 'Öppna' },
-  en: { pay: 'Pay now', book: 'Book a time', open: 'Open' },
+  fi: { pay: 'Maksa nyt', book: 'Varaa aika', open: 'Avaa', ahead: 'Maksa ennakkoon' },
+  sv: { pay: 'Betala nu', book: 'Boka tid', open: 'Öppna', ahead: 'Betala i förväg' },
+  en: { pay: 'Pay now', book: 'Book a time', open: 'Open', ahead: 'Pay ahead' },
 }
 function language(text) {
   const t = ' ' + String(text || '').toLowerCase() + ' '
@@ -1201,6 +1332,19 @@ function bookedThisTurn() {
   const blob = JSON.stringify(lastTool('book_inspection_invite') || lastTool('reschedule_booking') || null)
   return /"success"\s*:\s*true/.test(blob) && /booking_number/.test(blob)
 }
+function accountLogin(url) {
+  const raw = String(url || '')
+  if (/[?&]stationId=/i.test(raw)) return false
+  try {
+    const parsed = new URL(raw)
+    const host = parsed.hostname.toLowerCase()
+    if (host !== 'ajanvaraus.k1katsastus.fi' && host !== 'www.ajanvaraus.k1katsastus.fi') return false
+    const path = parsed.pathname.replace(/\/+$/, '') || '/'
+    return path === '/varaus'
+  } catch (error) {
+    return false
+  }
+}
 function toolBookingLink() {
   if (bookedThisTurn()) return ''
   if (/booking number|varausnumero|bokningsnummer/i.test(arguments[0] || '')) return ''
@@ -1223,7 +1367,7 @@ function decorate(item) {
   const host = hostOf(only)
   const payment = host === 'buy.stripe.com' || host === 'checkout.stripe.com'
   const booking = host === 'ajanvaraus.k1katsastus.fi' || host === 'www.ajanvaraus.k1katsastus.fi' || host === 'k1-katsastus-ajanvaraus.stage.geniem.io' || /[?&]stationId=/i.test(only)
-  const kind = payment ? 'pay' : booking ? 'book' : 'open'
+  const kind = payment ? 'pay' : accountLogin(only) ? 'ahead' : booking ? 'book' : 'open'
   const lang = language(text)
   let body = text
   if (!fromTool) {
@@ -1374,6 +1518,11 @@ def assert_cta(agent):
             raise SystemExit(f'{fields} leaves the link introduction in the bubble')
         if 'official_booking_link' not in code or 'get_station_info' not in code or 'bookedThisTurn' not in code:
             raise SystemExit(f'{fields} does not put the station booking link on the button')
+        for label in ('Maksa ennakkoon', 'Betala i förväg', 'Pay ahead'):
+            if label not in code:
+                raise SystemExit(f'{fields} does not label /varaus as pay ahead ({label})')
+        if "path === '/varaus'" not in code or 'accountLogin' not in code:
+            raise SystemExit(f'{fields} does not recognise the account login path')
         params = names[button]['parameters']
         if params.get('operation') != 'sendRaw' or 'ctaUrl' not in (params.get('rawBody') or ''):
             raise SystemExit(f'{button} is not the native link button')
@@ -1472,6 +1621,7 @@ def lock_live_path(agent):
     A rebuild starts from the 29 Sept workflow. Without this, the next promote drops the
     inbound bypass, the composing calls, the staging car, and the link buttons in one put.
     """
+    ensure_account_finish(agent)
     ensure_wasup_inbound(agent)
     ensure_composing(agent)
     ensure_lead(agent)
@@ -1623,6 +1773,140 @@ def cache_layout(named):
         agent['text'] = replace_once(agent['text'], AGENT_TEXT, 'agent text')
     for name, pair in (('Playground Turn', PLAYGROUND_DATE), ('Build Turn', BUILD_TURN_DATE), ('Build Follow-up Turn', BUILD_TURN_DATE)):
         named[name]['parameters']['jsCode'] = replace_once(named[name]['parameters']['jsCode'], pair, f'{name} date')
+
+
+ACCOUNT_PAY_RULE = (
+    'Already booked, and they ask to pay beforehand or to change that booking '
+    '(ennakkoon, etukäteen, prepay, pay in advance, betala i förväg, muuttaa, vaihtaa, change, ändra, '
+    'or a different booking they can pay): send one line and the login page https://ajanvaraus.k1katsastus.fi/varaus. '
+    'Finnish: "Voit kirjautua varaukseesi ja maksaa ennakkoon." '
+    'Swedish: "Du kan logga in på din bokning och betala i förväg." '
+    'English: "You can log in to your booking and pay beforehand." '
+    'Do not tell them to cancel and book again, and do not send a new station link. '
+    'A named new clock time stays a move. Before any booking, prepay keeps the green station link.'
+)
+
+
+def ensure_account_pay_prompt(current):
+    """Insert the login-link rule into the live brief. Leave every other line where it is."""
+    text = current or ''
+    if ACCOUNT_PAY_RULE in text:
+        return text
+    heading = '## Number, opt-out, FAQ, escalation'
+    joined = 'Cancelled only on success with recorded true, or already_cancelled.\n\n' + heading
+    if joined in text:
+        return text.replace(
+            joined,
+            'Cancelled only on success with recorded true, or already_cancelled.\n' + ACCOUNT_PAY_RULE + '\n\n' + heading,
+            1,
+        )
+    if heading in text:
+        return text.replace(heading, ACCOUNT_PAY_RULE + '\n\n' + heading, 1)
+    marker = '## Existing bookings\n'
+    if marker in text:
+        return text.replace(marker, marker + ACCOUNT_PAY_RULE + '\n', 1)
+    return text.rstrip() + '\n\n## Existing bookings\n' + ACCOUNT_PAY_RULE + '\n'
+
+
+def _prompt_value(agent):
+    return next(
+        item['value']
+        for node in agent['nodes']
+        if node['name'] == '⚙️ CONFIG'
+        for item in node['parameters']['assignments']['assignments']
+        if item['name'] == 'business_prompt'
+    )
+
+
+def _set_prompt(agent, value):
+    for node in agent['nodes']:
+        if node['name'] != '⚙️ CONFIG':
+            continue
+        for item in node['parameters']['assignments']['assignments']:
+            if item['name'] == 'business_prompt':
+                item['value'] = value
+
+
+def apply_account_pay():
+    """Ship the login CTA on the live agent without replacing the rest of the brief."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    original = json.loads(json.dumps({k: agent[k] for k in ('name', 'nodes', 'connections', 'settings', 'active')}))
+    siblings = json.dumps((agent['connections'].get('Plan Delivery') or {}).get('main'))
+    prompt_before = _prompt_value(agent)
+    kept = (
+        'prepay online with the button below',
+        'Once you have asked for the name',
+        'Never for swearing, and never for a booking question',
+    )
+    for line in kept:
+        if line not in prompt_before:
+            raise SystemExit(f'live brief is missing the line this deploy must keep: {line}')
+    repo = (ROOT / 'prompts/k1-whatsapp-prompt-final.md').read_text()
+    if ACCOUNT_PAY_RULE not in repo:
+        raise SystemExit('repo prompt is missing the account pay rule')
+    lock_live_path(agent)
+    if json.dumps((agent['connections'].get('Plan Delivery') or {}).get('main')) != siblings:
+        raise SystemExit('Plan Delivery siblings were reordered')
+    brief = ensure_account_pay_prompt(prompt_before)
+    if ACCOUNT_PAY_RULE not in brief:
+        raise SystemExit('live brief did not gain the account pay rule')
+    for line in kept:
+        if line not in brief:
+            raise SystemExit(f'live brief lost a line: {line}')
+    if not brief.startswith(prompt_before[:120]):
+        raise SystemExit('live brief was replaced')
+    _set_prompt(agent, brief)
+    plan = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Plan Delivery')
+    norm = next(node['parameters']['jsCode'] for node in agent['nodes'] if node['name'] == 'Normalize playground reply')
+    assert_reply_node(plan, 'Plan Delivery')
+    assert_reply_node(norm, 'Normalize playground reply')
+    try:
+        put_live(LIVE_AGENT, agent, was_active)
+        check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+        _verify_account_pay(check, brief)
+    except Exception:
+        put_live(LIVE_AGENT, original, was_active)
+        raise
+    print(f'account pay on {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
+
+
+def _verify_account_pay(check, brief):
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
+    norm = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Normalize playground reply')
+    assert_reply_node(plan, 'Plan Delivery')
+    assert_reply_node(norm, 'Normalize playground reply')
+    if 'https://ajanvaraus.k1katsastus.fi/varaus' not in plan or 'account_pay' not in plan:
+        raise SystemExit('finishReply is missing the account URL')
+    saved = _prompt_value(check)
+    if saved != brief or ACCOUNT_PAY_RULE not in saved:
+        raise SystemExit('live brief was not saved')
+    for line in (
+        'prepay online with the button below',
+        'Once you have asked for the name',
+        'Never for swearing, and never for a booking question',
+    ):
+        if line not in saved:
+            raise SystemExit(f'live brief lost a line after put: {line}')
+    assert_lead(check)
+    assert_cta(check)
+    assert_reaction_survives(check)
+    assert_composing(check)
+    query = next(node['parameters']['query'] for node in check['nodes'] if node['name'] == 'Load Staging Session')
+    if 'hasBooking' not in query:
+        raise SystemExit('Load Staging Session query has no hasBooking')
+    names = {item['name']: item for item in check['nodes']}
+    react = names['React To Message']
+    if react.get('onError') != 'continueRegularOutput':
+        raise SystemExit('React To Message onError changed')
+    options = names['Send Bubble']['parameters'].get('advancedOptions') or {}
+    if options.get('typingSimulation') is not False or options.get('delayEnabled') is not False:
+        raise SystemExit('Send Bubble typing flags changed')
+    siblings = [link.get('node') for link in ((check['connections'].get('Plan Delivery') or {}).get('main') or [[]])[0]]
+    if siblings[:1] != ['Has Reaction?'] or 'Loop Bubbles' not in siblings:
+        raise SystemExit(f'Plan Delivery siblings changed: {siblings}')
 
 
 def business_prompt(current):
@@ -2258,6 +2542,8 @@ def main():
         apply_reply_rule()
     elif command == 'reaction':
         restore_reaction()
+    elif command == 'account-pay':
+        apply_account_pay()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
