@@ -995,14 +995,26 @@ def assert_composing(agent):
             raise SystemExit(f'{name} missing')
 
 
+def lock_live_path(agent):
+    """Put back the WhatsApp path that Friday proved and no backup ever stored.
+
+    A rebuild starts from the 29 Sept workflow. Without this, the next promote drops the
+    inbound bypass, the composing calls, and the staging car in one put.
+    """
+    ensure_wasup_inbound(agent)
+    ensure_composing(agent)
+    ensure_lead(agent)
+    assert_composing(agent)
+    assert_lead(agent)
+    return agent
+
+
 def finish_live():
     apply_log_schema()
     agent = snapshot(LIVE_AGENT)
     was_active = bool(agent['active'])
     patch_agent_finish(agent)
-    ensure_wasup_inbound(agent)
-    ensure_composing(agent)
-    ensure_lead(agent)
+    lock_live_path(agent)
     put_live(LIVE_AGENT, agent, was_active)
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     plan = next(node['parameters']['jsCode'] for node in check['nodes'] if node['name'] == 'Plan Delivery')
@@ -1034,11 +1046,7 @@ def restore_lead():
     """Attach the staging car and station to live WhatsApp turns. Keeps the current prompt."""
     agent = snapshot(LIVE_AGENT)
     was_active = bool(agent['active'])
-    ensure_wasup_inbound(agent)
-    ensure_composing(agent)
-    ensure_lead(agent)
-    assert_composing(agent)
-    assert_lead(agent)
+    lock_live_path(agent)
     put_live(LIVE_AGENT, agent, was_active)
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     assert_composing(check)
@@ -1052,12 +1060,11 @@ def restore_typing():
     """Put the composing calls back on the live agent without rewriting the prompt."""
     agent = snapshot(LIVE_AGENT)
     was_active = bool(agent['active'])
-    ensure_wasup_inbound(agent)
-    ensure_composing(agent)
-    assert_composing(agent)
+    lock_live_path(agent)
     put_live(LIVE_AGENT, agent, was_active)
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     assert_composing(check)
+    assert_lead(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     hold = next(node for node in check['nodes'] if node['name'] == 'Hold Composing')
@@ -1197,7 +1204,8 @@ def build_agent(booking_id):
     add_booking_site_lookup(nodes, connections)
     ensure_booking_site(nodes)
     add_whatsapp_log(nodes, connections)
-    return save(AGENT_NAME, nodes, connections, live, activate=True)
+    locked = lock_live_path({'nodes': nodes, 'connections': connections})
+    return save(AGENT_NAME, locked['nodes'], locked['connections'], live, activate=True)
 
 
 def add_payment_tool(nodes, connections, named, define):
@@ -1660,7 +1668,7 @@ def promote(without_gate=False):
     (BACKUPS / f'{stamp}-booking.json').write_text(scrub_secrets(json.dumps(live_booking, ensure_ascii=False)))
     (BACKUPS / f'{stamp}-agent.json').write_text(scrub_secrets(json.dumps(live_agent, ensure_ascii=False)))
     new_booking = transplant(snapshot(booking_id), live_booking)
-    new_agent = transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name']))
+    new_agent = lock_live_path(transplant(snapshot(agent_id), live_agent, (LIVE_BOOKING, live_booking['name'])))
     put_live(LIVE_BOOKING, new_booking, live_booking['active'])
     put_live(LIVE_AGENT, new_agent, live_agent['active'])
     print(f'promoted: backups {stamp}-*.json; live booking {LIVE_BOOKING}, live agent {LIVE_AGENT}')
@@ -1672,6 +1680,8 @@ def rollback():
     stamp = stamps[-1]
     for wid, kind in ((LIVE_BOOKING, 'booking'), (LIVE_AGENT, 'agent')):
         body = json.loads((BACKUPS / f'{stamp}-{kind}.json').read_text())
+        if kind == 'agent':
+            lock_live_path(body)
         put_live(wid, body, body['active'])
     print('rolled back to', stamp)
 
