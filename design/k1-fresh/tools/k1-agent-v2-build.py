@@ -718,12 +718,9 @@ if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
 return [{ json: { ...bubble } }]
 """
 RESTORE_INBOUND_JS = """let item = {}
-try { item = $('From playground?').item.json } catch (error) {}
-if (!item || !Object.keys(item).length) {
-  try { item = $('From playground?').first().json } catch (error) { item = {} }
-}
+try { item = $('From playground?').first().json } catch (error) { item = {} }
 if (!item || !Object.keys(item).length) item = $input.first().json || {}
-return { json: item }
+return [{ json: item }]
 """
 
 
@@ -841,7 +838,7 @@ def ensure_composing(agent):
         },
     })
     _upsert_node(agent, presence('Hold Composing', [playground[0] + 440, playground[1] + 80], 'composing', True, True))
-    _upsert_node(agent, code('Restore Inbound', [playground[0] + 660, playground[1] + 80], RESTORE_INBOUND_JS, each=True))
+    _upsert_node(agent, code('Restore Inbound', [playground[0] + 660, playground[1] + 80], RESTORE_INBOUND_JS))
     _upsert_node(agent, presence('Pulse Typing', [send[0] - 420, send[1]], 'composing', False))
     _upsert_node(agent, code('Keep Bubble', [send[0] - 200, send[1]], KEEP_BUBBLE_JS))
     _upsert_node(agent, presence('Pause Composing', [send[0] + 220, send[1]], 'paused', False))
@@ -989,10 +986,13 @@ def assert_composing(agent):
     webhook = [item.get('node') for branch in agent['connections']['Webhook']['main'] for item in branch]
     if webhook != ['Webhook · Pass Request']:
         raise SystemExit(f'Wasup inbound is not reaching the agent: {webhook}')
-    names = {item['name'] for item in agent['nodes']}
+    names = {item['name']: item for item in agent['nodes']}
     for name in ('Hold Composing', 'Pulse Typing', 'Pause Composing', 'Pause Composing Follow-up', 'Release Before Reset'):
         if name not in names:
             raise SystemExit(f'{name} missing')
+    restore = names['Restore Inbound']['parameters']
+    if restore.get('mode') != 'runOnceForAllItems' or '.item' in restore.get('jsCode', ''):
+        raise SystemExit('Restore Inbound still uses the per-item call that drops the reply')
 
 
 def lock_live_path(agent):
