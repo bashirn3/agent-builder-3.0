@@ -15,7 +15,7 @@ Usage:
   python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
   python3 k1-agent-v2-build.py finish    patch the live reply nodes and the WhatsApp rewrite log in place
   python3 k1-agent-v2-build.py cta       put link buttons back on live sends, and the first-bubble footer
-  python3 k1-agent-v2-build.py typing    ack Wasup with skip:true before the agent, and keep composing off the reply path
+  python3 k1-agent-v2-build.py typing    ack Wasup with skip:true before the agent, and clear typing once the reply is delivered
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -873,30 +873,9 @@ def ensure_composing(agent):
     loop = named['Loop Bubbles']['position']
     # hold:true keeps a Wasup lease that sends composing again after the message has
     # already cleared the bubble. The tick when the inbound arrives is the typing the
-    # customer should see. A second composing call in the moment before the send lands
-    # after the message and leaves the bubble up.
+    # customer should see. A composing call in the moment before the send lands after
+    # the message and leaves the bubble up, so nothing on the send path may compose.
     _upsert_node(agent, presence('Hold Composing', [playground[0] + 440, playground[1] + 80], 'composing', False, True))
-    _upsert_node(agent, {
-        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Last Bubble?')),
-        'name': 'Last Bubble?',
-        'type': 'n8n-nodes-base.if',
-        'typeVersion': 2.2,
-        'position': [send[0] - 640, send[1]],
-        'parameters': {
-            'conditions': {
-                'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
-                'conditions': [{
-                    'id': 'last-bubble',
-                    'leftValue': '={{ Number($json.seq || 1) >= Number($json.total || 1) }}',
-                    'rightValue': '',
-                    'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True},
-                }],
-                'combinator': 'and',
-            },
-            'looseTypeValidation': True,
-            'options': {},
-        },
-    })
     _upsert_node(agent, presence('Pulse Typing', [send[0] - 420, send[1]], 'composing', False, True))
     _upsert_node(agent, code('Keep Bubble', [send[0] - 200, send[1]], KEEP_BUBBLE_JS))
     _upsert_node(agent, presence('Pause Composing', [send[0] + 220, send[1]], 'paused', False, True))
@@ -906,8 +885,38 @@ def ensure_composing(agent):
     _upsert_node(agent, presence('Pause Composing Follow-up', [chase[0] + 880, chase[1]], 'paused', False, True))
     _upsert_node(agent, presence('Pause Follow-up Phone', [chase[0] + 1100, chase[1]], 'paused', False, False))
     _upsert_node(agent, presence('Release Before Reset', [reset[0] + 220, reset[1] - 120], 'paused', False, True))
-    _upsert_node(agent, presence('Pause After Turn', [loop[0] + 220, loop[1] - 140], 'paused', False, True))
-    _upsert_node(agent, presence('Pause Phone After Turn', [loop[0] + 440, loop[1] - 140], 'paused', False, False))
+    _upsert_node(agent, presence('Pause After Turn', [loop[0] + 440, loop[1] - 140], 'paused', False, True))
+    _upsert_node(agent, presence('Pause Phone After Turn', [loop[0] + 660, loop[1] - 140], 'paused', False, False))
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Typing')),
+        'name': 'Settle Typing',
+        'type': 'n8n-nodes-base.wait',
+        'typeVersion': 1.1,
+        'position': [loop[0] + 220, loop[1] - 140],
+        'webhookId': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Typing hook')),
+        'parameters': {'amount': 3},
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Follow-up')),
+        'name': 'Settle Follow-up',
+        'type': 'n8n-nodes-base.wait',
+        'typeVersion': 1.1,
+        'position': [chase[0] + 1320, chase[1]],
+        'webhookId': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Settle Follow-up hook')),
+        'parameters': {'amount': 3},
+    })
+    _upsert_node(agent, presence('Pause Follow-up Late', [chase[0] + 1540, chase[1]], 'paused', False, True))
+    _upsert_node(agent, presence('Pause Follow-up Phone Late', [chase[0] + 1760, chase[1]], 'paused', False, False))
+    # The Wasup send operation simulates typing unless the option is sent as false.
+    # That simulation is a lease: the dots come back after the message has arrived.
+    for send_name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+        send_node = named.get(send_name)
+        if not send_node or send_node['parameters'].get('operation') == 'sendRaw':
+            continue
+        send_node['parameters']['advancedOptions'] = {
+            'typingSimulation': False,
+            'delayEnabled': False,
+        }
 
     # Inbound DM? runs first and ends at Hold Composing. Presence Event? is the sibling that
     # carries the message, so an empty presence response cannot stop the agent.
@@ -915,29 +924,34 @@ def ensure_composing(agent):
     agent['connections']['Inbound DM?'] = {'main': [[_link('Hold Composing')], []]}
     agent['connections'].pop('Hold Composing', None)
     agent['connections'].pop('Restore Inbound', None)
-    # Another bubble in this same reply still gets a typing tick. The last bubble does not,
-    # or that tick shows up again once the message is already on screen.
-    agent['connections']['Still Our Turn?']['main'][0] = [_link('Last Bubble?')]
-    agent['connections']['Last Bubble?'] = {'main': [[_link('Keep Bubble')], [_link('Pulse Typing')]]}
-    agent['connections']['Pulse Typing'] = {'main': [[_link('Keep Bubble')]]}
+    # No composing call sits next to the send. A tick there is delivered after the
+    # bubble and the dots come back once the message is already on screen.
+    agent['connections']['Still Our Turn?']['main'][0] = [_link('Keep Bubble')]
+    agent['connections'].pop('Last Bubble?', None)
+    agent['connections'].pop('Pulse Typing', None)
     agent['connections']['Keep Bubble'] = {'main': [[_link('Send Bubble')]]}
     _retarget(agent, 'Send Bubble', 0, 'Loop Bubbles', 'Pause Composing')
     agent['connections']['Pause Composing'] = {'main': [[_link('Pause Composing Phone')]]}
-    agent['connections']['Pause Composing Phone'] = {'main': [[_link('Loop Bubbles')]]}
+    # The second pause is a few seconds later, on this same chain. A composing
+    # tick that the send applied after the first pause is cleared before the
+    # loop finishes and the follow-up starts.
+    agent['connections']['Pause Composing Phone'] = {'main': [[_link('Settle Typing')]]}
+    agent['connections']['Settle Typing'] = {'main': [[_link('Pause After Turn')]]}
+    agent['connections']['Pause After Turn'] = {'main': [[_link('Pause Phone After Turn')]]}
+    agent['connections']['Pause Phone After Turn'] = {'main': [[_link('Loop Bubbles')]]}
     agent['connections']['Clear To Chase?']['main'][0] = [_link('Keep Follow-up')]
     agent['connections'].pop('Pulse Follow-up', None)
     agent['connections']['Keep Follow-up'] = {'main': [[_link('Send Double-Text')]]}
     _retarget(agent, 'Send Double-Text', 0, 'Mark Follow-up Sent', 'Pause Composing Follow-up')
     agent['connections']['Pause Composing Follow-up'] = {'main': [[_link('Pause Follow-up Phone')]]}
-    agent['connections']['Pause Follow-up Phone'] = {'main': [[_link('Mark Follow-up Sent')]]}
+    agent['connections']['Pause Follow-up Phone'] = {'main': [[_link('Settle Follow-up')]]}
+    agent['connections']['Settle Follow-up'] = {'main': [[_link('Pause Follow-up Late')]]}
+    agent['connections']['Pause Follow-up Late'] = {'main': [[_link('Pause Follow-up Phone Late')]]}
+    agent['connections']['Pause Follow-up Phone Late'] = {'main': [[_link('Mark Follow-up Sent')]]}
     _retarget(agent, 'Purge Session', 0, 'Send Reset Notice', 'Release Before Reset')
     agent['connections']['Release Before Reset'] = {'main': [[_link('Send Reset Notice')]]}
-    # First sibling on the finished-turn output, and a dead end. It clears the
-    # indicator after the last bubble without blocking the follow-up or the log.
-    done = [item for item in agent['connections']['Loop Bubbles']['main'][0] if item.get('node') not in ('Pause After Turn', 'Pause Phone After Turn')]
-    agent['connections']['Loop Bubbles']['main'][0] = [_link('Pause After Turn')] + done
-    agent['connections']['Pause After Turn'] = {'main': [[_link('Pause Phone After Turn')]]}
-    agent['connections'].pop('Pause Phone After Turn', None)
+    done = [item for item in agent['connections']['Loop Bubbles']['main'][0] if item.get('node') not in ('Pause After Turn', 'Pause Phone After Turn', 'Settle Typing')]
+    agent['connections']['Loop Bubbles']['main'][0] = done
     return agent
 
 
@@ -1064,15 +1078,25 @@ def assert_composing(agent):
     if agent['connections'].get('Hold Composing') or agent['connections'].get('Restore Inbound'):
         raise SystemExit('a presence call is back on the reply path')
     send = [item.get('node') for item in agent['connections']['Still Our Turn?']['main'][0]]
-    if send != ['Last Bubble?']:
-        raise SystemExit(f'send path skipped the last-bubble check: {send}')
-    last = [[item.get('node') for item in branch] for branch in agent['connections']['Last Bubble?']['main']]
-    if last != [['Keep Bubble'], ['Pulse Typing']]:
-        raise SystemExit(f'last bubble still refreshes typing: {last}')
+    if send != ['Keep Bubble']:
+        raise SystemExit(f'send path still refreshes typing: {send}')
+    for source, conn in agent['connections'].items():
+        for branch in conn.get('main') or []:
+            for item in branch or []:
+                if item.get('node') in ('Pulse Typing', 'Pulse Follow-up', 'Last Bubble?'):
+                    raise SystemExit(f'{source} still starts typing next to a send')
     if [item.get('node') for item in agent['connections']['Pause Composing']['main'][0]] != ['Pause Composing Phone']:
         raise SystemExit('pause composing does not also clear the phone')
-    if [item.get('node') for item in agent['connections']['Pause Composing Phone']['main'][0]] != ['Loop Bubbles']:
-        raise SystemExit('pause composing does not return to the bubble loop')
+    if [item.get('node') for item in agent['connections']['Pause Composing Phone']['main'][0]] != ['Settle Typing']:
+        raise SystemExit('the send does not wait before the second pause')
+    if [item.get('node') for item in agent['connections']['Settle Typing']['main'][0]] != ['Pause After Turn']:
+        raise SystemExit('the delayed pause is missing')
+    if [item.get('node') for item in agent['connections']['Pause Phone After Turn']['main'][0]] != ['Loop Bubbles']:
+        raise SystemExit('the delayed pause does not return to the bubble loop')
+    if [item.get('node') for item in agent['connections']['Pause Follow-up Phone']['main'][0]] != ['Settle Follow-up']:
+        raise SystemExit('the follow-up does not wait before its second pause')
+    if [item.get('node') for item in agent['connections']['Pause Follow-up Phone Late']['main'][0]] != ['Mark Follow-up Sent']:
+        raise SystemExit('the follow-up pause does not reach the sent mark')
     webhook = [item.get('node') for branch in agent['connections']['Webhook']['main'] for item in branch]
     if webhook != ['Hold For Composing', 'Webhook · Pass Request']:
         raise SystemExit(f'Wasup inbound is not acked before the agent: {webhook}')
@@ -1082,18 +1106,20 @@ def assert_composing(agent):
     if passed != ['⚙️ CONFIG']:
         raise SystemExit(f'pass request still shares the webhook response: {passed}')
     names = {item['name']: item for item in agent['nodes']}
-    for name in ('Hold For Composing', 'Hold Composing', 'Pulse Typing', 'Pause Composing', 'Pause Composing Phone', 'Pause Composing Follow-up', 'Pause Follow-up Phone', 'Release Before Reset', 'Pause After Turn', 'Pause Phone After Turn'):
+    for name in ('Hold For Composing', 'Hold Composing', 'Pause Composing', 'Pause Composing Phone', 'Pause Composing Follow-up', 'Pause Follow-up Phone', 'Release Before Reset', 'Settle Typing', 'Pause After Turn', 'Pause Phone After Turn', 'Settle Follow-up', 'Pause Follow-up Late', 'Pause Follow-up Phone Late'):
         if name not in names:
             raise SystemExit(f'{name} missing')
     done = [item.get('node') for item in agent['connections']['Loop Bubbles']['main'][0]]
-    if not done or done[0] != 'Pause After Turn':
-        raise SystemExit(f'the finished turn does not clear typing: {done}')
+    if not done or 'Follow-up Due?' not in done or any(name in done for name in ('Settle Typing', 'Pause After Turn', 'Pulse Typing')):
+        raise SystemExit(f'the finished turn waits on typing instead of the follow-up: {done}')
     if [item.get('node') for item in agent['connections']['Pause After Turn']['main'][0]] != ['Pause Phone After Turn']:
         raise SystemExit('the final pause does not clear the phone')
-    if agent['connections'].get('Pause Phone After Turn'):
-        raise SystemExit('the final pause is blocking the rest of the turn')
     if [item.get('node') for item in agent['connections']['Clear To Chase?']['main'][0]] == ['Pulse Follow-up']:
         raise SystemExit('the follow-up still starts typing after the reply')
+    for name in ('Send Bubble', 'Send Double-Text', 'Send Reset Notice'):
+        options = names[name]['parameters'].get('advancedOptions') or {}
+        if options.get('typingSimulation') is not False or options.get('delayEnabled') is not False:
+            raise SystemExit(f'{name} still simulates typing after the reply')
     hold_body = names['Hold Composing']['parameters'].get('jsonBody') or ''
     pause_body = names['Pause Composing']['parameters'].get('jsonBody') or ''
     if 'hold: true' in hold_body:
