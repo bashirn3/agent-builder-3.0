@@ -49,9 +49,10 @@ NOTE = NOTE_V8 if LEGACY else NOTE_V11
 PROMPT_V5 = ROOT / 'prompts/k1-whatsapp-prompt-final.md'
 OUT_V15 = ROOT / 'prompts/k1-platform-v15.json'
 NOTE_V15 = (
-    'Agent v16: a reply to the name question is the name (Ap mikkola books as Ap Mikkola); '
-    'booking questions are not escalations. Links from tools: staging host, '
-    '/varaus /en/reservation /sv/bokning. WhatsApp with no pinned version uses this active one.'
+    'Agent v16: final WhatsApp prompt. A reply to the name question is the name (Ap mikkola books as Ap Mikkola); '
+    'booking questions are not escalations. A green price keeps the station price. '
+    'The booking link is the one the tool returned. Oulu Alppila goes through the booking page. '
+    'WhatsApp with no pinned version uses this active one.'
 )
 ADDITIONAL = ('All K1 stations can be asked about; hours, prices and free times always come from the tools. '
               'Booking works only at Palokka (256) and Itäharju (241) on Muster staging; other stations get the official booking link or 0306 100 100. '
