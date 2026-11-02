@@ -1101,7 +1101,13 @@ function decorate(item) {
   const booking = host === 'ajanvaraus.k1katsastus.fi' || host === 'www.ajanvaraus.k1katsastus.fi' || host === 'k1-katsastus-ajanvaraus.stage.geniem.io' || /[?&]stationId=/i.test(only)
   const kind = payment ? 'pay' : booking ? 'book' : 'open'
   const lang = language(text)
-  let body = text.replace(raw, ' ').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim()
+  const marker = '@@LINK@@'
+  let body = text.replace(raw, marker)
+  body = body.replace(/(^|\s)(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)\s*[:,]?\s*(?=@@LINK@@)/iu, '$1')
+  body = body.replace(/\s*:\s*(?=@@LINK@@)/g, '')
+  body = body.replace(/@@LINK@@\s*[:,]?\s*(?:through\s+the\s+link|via\s+länken|linkin\s+kautta|tästä|here|här)(?=$|\s|[.,!?;:])/iu, marker)
+  body = body.replace(/@@LINK@@\s*:/g, marker)
+  body = body.split(marker).join(' ').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim()
   if (!body) {
     body = kind === 'pay'
       ? (lang === 'en' ? 'Pay here.' : lang === 'sv' ? 'Betala här.' : 'Maksa tästä.')
@@ -1235,6 +1241,8 @@ def assert_cta(agent):
             raise SystemExit(f'{fields} still skips links outside the old staging gate')
         if 'k1-katsastus-ajanvaraus.stage.geniem.io' not in code or 'checkout.stripe.com' not in code:
             raise SystemExit(f'{fields} does not cover booking and payment links')
+        if '@@LINK@@' not in code or 'tästä' not in code or 'linkin' not in code or 'länken' not in code:
+            raise SystemExit(f'{fields} leaves the link introduction in the bubble')
         params = names[button]['parameters']
         if params.get('operation') != 'sendRaw' or 'ctaUrl' not in (params.get('rawBody') or ''):
             raise SystemExit(f'{button} is not the native link button')
@@ -1336,7 +1344,7 @@ def finish_live():
         raise SystemExit('Normalize finish call missing after put')
     if 'rewrites' not in log or "role, text, is_opener, rewrites" not in log:
         raise SystemExit('WhatsApp log does not store rewrites')
-    if "Oulu Alppila bookings go through K1's booking page" not in brief:
+    if "I see you came into" not in brief or "prepay online with the button below" not in brief:
         raise SystemExit('business brief line missing after put')
     inbound = (check['connections'].get('Webhook') or {}).get('main') or []
     inbound_to = [link.get('node') for branch in inbound for link in (branch or [])]
