@@ -1103,11 +1103,23 @@ CTA_RAW = (
     "footer: $json.cta_footer || undefined, "
     "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 )
-OPENER_RAW = (
-    "={{ JSON.stringify({ to: $('Normalize').first().json.to, text: $('Normalize').first().json.opener, "
-    "footer: 'K1 Agent', "
-    "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
-)
+OPENER_RAW = r"""={{ JSON.stringify((() => {
+  const text = String($('Normalize').first().json.opener || '');
+  const t = ' ' + text.toLowerCase() + ' ';
+  const swedish = /\b(besikta|bilen|hjälper|hitta|dags|snart|och|att|för|boka)\b/.test(t) || t.includes('det är') || t.includes('vill du');
+  const label = swedish ? 'Boka tid' : (/[äöå]/.test(t) ? 'Varaa aika' : 'Book a time');
+  return {
+    to: $('Normalize').first().json.to,
+    text,
+    messageType: 'buttons',
+    buttons: [{ id: 'book', text: label }],
+    footer: 'K1 Agent',
+    linkPreview: false,
+    allowColdWithoutToken: true,
+    typingSimulation: false,
+    delayEnabled: false
+  };
+})()) }}"""
 
 
 def _wire_link_button(agent, keep_name, send_name, pause_name):
@@ -1211,12 +1223,11 @@ def assert_cta(agent):
 
 
 def stamp_opener_footer():
-    """The first bubble is the staging opener. The footer field is 'K1 Agent', with no button.
+    """The first bubble is the staging opener. Footer 'K1 Agent' plus one quick reply.
 
-    WhatsApp does not draw that grey line unless the bubble also has a button.
-    Do not add a link, a quick reply, or an OK button to make the footer render.
-    A later typing, cta, or reply deploy must not put `ctaUrl`, `messageType: 'buttons'`,
-    or an OK button back.
+    WhatsApp only draws the grey footer on a bubble that has a button. The button is a
+    quick reply, not a link: Book a time, Varaa aika, or Boka tid, from the opener language.
+    A later typing, cta, or reply deploy must not replace it with a URL button.
     """
     body = snapshot(STAGING_SEND)
     was_active = bool(body['active'])
@@ -1232,8 +1243,11 @@ def stamp_opener_footer():
     saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
     if "footer: 'K1 Agent'" not in saved or "$('Normalize').first().json.opener" not in saved:
         raise SystemExit('opener footer was not saved')
-    if 'ctaUrl' in saved or 'buttons' in saved:
-        raise SystemExit('opener button came back')
+    for label in ('Book a time', 'Varaa aika', 'Boka tid'):
+        if label not in saved:
+            raise SystemExit(f'opener quick reply missing {label}')
+    if 'ctaUrl' in saved or "text: 'OK'" in saved:
+        raise SystemExit('opener link or OK button came back')
     if not check.get('active'):
         raise SystemExit('staging send left inactive')
     print(f'opener footer on {STAGING_SEND} active={check["active"]}')
