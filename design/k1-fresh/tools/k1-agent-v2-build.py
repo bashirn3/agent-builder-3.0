@@ -15,6 +15,7 @@ Usage:
   python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
   python3 k1-agent-v2-build.py finish    patch the live reply nodes and the WhatsApp rewrite log in place
   python3 k1-agent-v2-build.py cta       put link buttons back on live sends, and the first-bubble footer
+  python3 k1-agent-v2-build.py typing    ack Wasup with skip:true before the agent, and keep composing off the reply path
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -683,9 +684,41 @@ def assert_reply_node(code, label):
         raise SystemExit(f'{label} does not record rewrites')
 
 
+HOLD_FOR_COMPOSING_JS = """// Ack Wasup immediately with {skip:true}.
+// n8n runs Webhook siblings one after another under executionOrder v1.
+// This node MUST run before CONFIG: if CONFIG (RESET send / AI / bubbles)
+// runs while the inbound webhook is still open, Wasup locks the chat and
+// /api/send hard-times out after 25s with no typing and no reply.
+// Do not wait for Plan Delivery here — that used to delay CONFIG too.
+return [{ json: { skip: true } }];
+"""
+
+
 def ensure_wasup_inbound(agent):
-    """Wasup calls the inbound webhook with no Clerk session. The builder sign-in stays on Playground only."""
-    agent['connections']['Webhook'] = {'main': [[{'node': 'Webhook · Pass Request', 'type': 'main', 'index': 0}]]}
+    """Wasup calls the inbound webhook with no Clerk session. The builder sign-in stays on Playground only.
+
+    Friday's working run answered the webhook with {skip:true} before CONFIG touched Wasup.
+    A later {ok:true} from the same webhook left the chat locked, so sends never left.
+    """
+    named = {item['name']: item for item in agent['nodes']}
+    webhook = named['Webhook']['position']
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, 'k1-composing/Hold For Composing')),
+        'name': 'Hold For Composing',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [webhook[0] + 220, webhook[1] - 180],
+        'onError': 'continueRegularOutput',
+        'parameters': {'mode': 'runOnceForAllItems', 'jsCode': HOLD_FOR_COMPOSING_JS},
+    })
+    ack = named['Ack Webhook (empty)']
+    ack['parameters']['responseBody'] = "={{ $json.reply ? { reply: $json.reply } : { skip: true } }}"
+    agent['connections']['Webhook'] = {'main': [[
+        {'node': 'Hold For Composing', 'type': 'main', 'index': 0},
+        {'node': 'Webhook · Pass Request', 'type': 'main', 'index': 0},
+    ]]}
+    agent['connections']['Hold For Composing'] = {'main': [[{'node': 'Ack Webhook (empty)', 'type': 'main', 'index': 0}]]}
+    agent['connections']['Webhook · Pass Request'] = {'main': [[{'node': '⚙️ CONFIG', 'type': 'main', 'index': 0}]]}
     return agent
 
 
@@ -718,11 +751,6 @@ if (!bubble || bubble.text === undefined) {
 }
 if (!bubble || bubble.text === undefined) bubble = $input.first().json || {}
 return [{ json: { ...bubble } }]
-"""
-RESTORE_INBOUND_JS = """let item = {}
-try { item = $('From playground?').first().json } catch (error) { item = {} }
-if (!item || !Object.keys(item).length) item = $input.first().json || {}
-return [{ json: item }]
 """
 
 
@@ -775,7 +803,10 @@ def ensure_composing(agent):
 
     The 30 Oct presence calls (Hold Composing, Pulse Typing, Pause Composing) are what put the
     dots on screen. Send Bubble's own typing switch stays off; Wasup kept the chat locked when
-    typing lived inside the send. A failed presence call must not block the reply.
+    typing lived inside the send. Hold Composing is a side branch: Friday left it with no
+    downstream. Chaining the agent behind it dropped the reply whenever the presence call
+    returned nothing ("Can't use .first() here" on Restore Inbound, executions 1155691 and
+    1155772). A failed presence call must not block the reply.
     """
     named = {item['name']: item for item in agent['nodes']}
     for required in ('From playground?', 'Still Our Turn?', 'Send Bubble', 'Clear To Chase?', 'Send Double-Text', 'Purge Session', 'Loop Bubbles'):
@@ -840,7 +871,6 @@ def ensure_composing(agent):
         },
     })
     _upsert_node(agent, presence('Hold Composing', [playground[0] + 440, playground[1] + 80], 'composing', True, True))
-    _upsert_node(agent, code('Restore Inbound', [playground[0] + 660, playground[1] + 80], RESTORE_INBOUND_JS))
     _upsert_node(agent, presence('Pulse Typing', [send[0] - 420, send[1]], 'composing', False))
     _upsert_node(agent, code('Keep Bubble', [send[0] - 200, send[1]], KEEP_BUBBLE_JS))
     _upsert_node(agent, presence('Pause Composing', [send[0] + 220, send[1]], 'paused', False))
@@ -849,10 +879,12 @@ def ensure_composing(agent):
     _upsert_node(agent, presence('Pause Composing Follow-up', [chase[0] + 880, chase[1]], 'paused', False))
     _upsert_node(agent, presence('Release Before Reset', [reset[0] + 220, reset[1] - 120], 'paused', False))
 
-    agent['connections']['From playground?']['main'][1] = [_link('Inbound DM?')]
-    agent['connections']['Inbound DM?'] = {'main': [[_link('Hold Composing')], [_link('Presence Event?')]]}
-    agent['connections']['Hold Composing'] = {'main': [[_link('Restore Inbound')]]}
-    agent['connections']['Restore Inbound'] = {'main': [[_link('Presence Event?')]]}
+    # Inbound DM? runs first and ends at Hold Composing. Presence Event? is the sibling that
+    # carries the message, so an empty presence response cannot stop the agent.
+    agent['connections']['From playground?']['main'][1] = [_link('Inbound DM?'), _link('Presence Event?')]
+    agent['connections']['Inbound DM?'] = {'main': [[_link('Hold Composing')], []]}
+    agent['connections'].pop('Hold Composing', None)
+    agent['connections'].pop('Restore Inbound', None)
     _retarget(agent, 'Still Our Turn?', 0, 'Send Bubble', 'Pulse Typing')
     agent['connections']['Pulse Typing'] = {'main': [[_link('Keep Bubble')]]}
     agent['connections']['Keep Bubble'] = {'main': [[_link('Send Bubble')]]}
@@ -983,26 +1015,33 @@ def assert_lead(agent):
 
 def assert_composing(agent):
     play = [item.get('node') for item in agent['connections']['From playground?']['main'][1]]
-    if play != ['Inbound DM?']:
-        raise SystemExit(f'inbound no longer reaches composing: {play}')
+    if play != ['Inbound DM?', 'Presence Event?']:
+        raise SystemExit(f'inbound no longer reaches the agent beside composing: {play}')
     inbound = [[item.get('node') for item in branch] for branch in agent['connections']['Inbound DM?']['main']]
-    if inbound != [['Hold Composing'], ['Presence Event?']]:
+    if inbound != [['Hold Composing'], []]:
         raise SystemExit(f'Inbound DM? wiring changed: {inbound}')
+    if agent['connections'].get('Hold Composing') or agent['connections'].get('Restore Inbound'):
+        raise SystemExit('a presence call is back on the reply path')
     send = [item.get('node') for item in agent['connections']['Still Our Turn?']['main'][0]]
     if send != ['Pulse Typing']:
         raise SystemExit(f'send path skipped the typing pulse: {send}')
     if [item.get('node') for item in agent['connections']['Pause Composing']['main'][0]] != ['Loop Bubbles']:
         raise SystemExit('pause composing does not return to the bubble loop')
     webhook = [item.get('node') for branch in agent['connections']['Webhook']['main'] for item in branch]
-    if webhook != ['Webhook · Pass Request']:
-        raise SystemExit(f'Wasup inbound is not reaching the agent: {webhook}')
+    if webhook != ['Hold For Composing', 'Webhook · Pass Request']:
+        raise SystemExit(f'Wasup inbound is not acked before the agent: {webhook}')
+    if [item.get('node') for item in agent['connections']['Hold For Composing']['main'][0]] != ['Ack Webhook (empty)']:
+        raise SystemExit('Hold For Composing does not answer the webhook')
+    passed = [item.get('node') for item in agent['connections']['Webhook · Pass Request']['main'][0]]
+    if passed != ['⚙️ CONFIG']:
+        raise SystemExit(f'pass request still shares the webhook response: {passed}')
     names = {item['name']: item for item in agent['nodes']}
-    for name in ('Hold Composing', 'Pulse Typing', 'Pause Composing', 'Pause Composing Follow-up', 'Release Before Reset'):
+    for name in ('Hold For Composing', 'Hold Composing', 'Pulse Typing', 'Pause Composing', 'Pause Composing Follow-up', 'Release Before Reset'):
         if name not in names:
             raise SystemExit(f'{name} missing')
-    restore = names['Restore Inbound']['parameters']
-    if restore.get('mode') != 'runOnceForAllItems' or '.item' in restore.get('jsCode', ''):
-        raise SystemExit('Restore Inbound still uses the per-item call that drops the reply')
+    ack = names['Ack Webhook (empty)']['parameters'].get('responseBody') or ''
+    if 'skip: true' not in ack:
+        raise SystemExit('Wasup ack is not skip:true')
 
 
 CTA_JS = r"""const LABELS = {
@@ -1064,11 +1103,23 @@ CTA_RAW = (
     "footer: $json.cta_footer || undefined, "
     "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 )
-OPENER_RAW = (
-    "={{ JSON.stringify({ to: $('Normalize').first().json.to, text: $('Normalize').first().json.opener, "
-    "footer: 'K1 AI Agent', ctaUrl: { url: 'https://www.k1katsastus.fi/', label: 'k1katsastus.fi' }, "
-    "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
-)
+OPENER_RAW = r"""={{ JSON.stringify((() => {
+  const text = String($('Normalize').first().json.opener || '');
+  const t = ' ' + text.toLowerCase() + ' ';
+  const swedish = /\b(besikta|bilen|hjälper|hitta|dags|snart|och|att|för|boka)\b/.test(t) || t.includes('det är') || t.includes('vill du');
+  const label = swedish ? 'Boka tid' : (/[äöå]/.test(t) ? 'Varaa aika' : 'Book a time');
+  return {
+    to: $('Normalize').first().json.to,
+    text,
+    messageType: 'buttons',
+    buttons: [{ id: 'book', text: label }],
+    footer: 'K1 Agent',
+    linkPreview: false,
+    allowColdWithoutToken: true,
+    typingSimulation: false,
+    delayEnabled: false
+  };
+})()) }}"""
 
 
 def _wire_link_button(agent, keep_name, send_name, pause_name):
@@ -1172,7 +1223,12 @@ def assert_cta(agent):
 
 
 def stamp_opener_footer():
-    """The first bubble is the staging opener. 'K1 AI Agent' is the small footer, not part of the stored text."""
+    """The first bubble is the staging opener. Footer 'K1 Agent' plus one quick reply.
+
+    WhatsApp only draws the grey footer on a bubble that has a button. The button is a
+    quick reply, not a link: Book a time, Varaa aika, or Boka tid, from the opener language.
+    A later typing, cta, or reply deploy must not replace it with a URL button.
+    """
     body = snapshot(STAGING_SEND)
     was_active = bool(body['active'])
     node = next(item for item in body['nodes'] if item['name'] == 'Send opener')
@@ -1185,8 +1241,13 @@ def stamp_opener_footer():
     put_live(STAGING_SEND, body, was_active)
     check = gate.request('GET', f'/workflows/{STAGING_SEND}')
     saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
-    if "footer: 'K1 AI Agent'" not in saved or "$('Normalize').first().json.opener" not in saved or 'ctaUrl' not in saved:
+    if "footer: 'K1 Agent'" not in saved or "$('Normalize').first().json.opener" not in saved:
         raise SystemExit('opener footer was not saved')
+    for label in ('Book a time', 'Varaa aika', 'Boka tid'):
+        if label not in saved:
+            raise SystemExit(f'opener quick reply missing {label}')
+    if 'ctaUrl' in saved or "text: 'OK'" in saved:
+        raise SystemExit('opener link or OK button came back')
     if not check.get('active'):
         raise SystemExit('staging send left inactive')
     print(f'opener footer on {STAGING_SEND} active={check["active"]}')
@@ -1259,8 +1320,8 @@ def finish_live():
         raise SystemExit('business brief line missing after put')
     inbound = (check['connections'].get('Webhook') or {}).get('main') or []
     inbound_to = [link.get('node') for branch in inbound for link in (branch or [])]
-    if inbound_to != ['Webhook · Pass Request']:
-        raise SystemExit(f'Wasup inbound is not reaching the agent: {inbound_to}')
+    if inbound_to != ['Hold For Composing', 'Webhook · Pass Request']:
+        raise SystemExit(f'Wasup inbound is not acked before the agent: {inbound_to}')
     assert_composing(check)
     assert_lead(check)
     assert_cta(check)
