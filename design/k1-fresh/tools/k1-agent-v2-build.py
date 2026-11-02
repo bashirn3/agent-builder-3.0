@@ -1065,7 +1065,7 @@ function firstMark() {
     const staging = $('Parse Staging').isExecuted ? ($('Parse Staging').first().json.staging || {}) : null
     if (staging && String(staging.opener || '').trim()) return ''
     if ($('Pause Composing').isExecuted || $('Pause Composing Follow-up').isExecuted) return ''
-    return 'K1 Agent'
+    return 'K1 AI Agent'
   } catch (error) {
     return ''
   }
@@ -1105,7 +1105,7 @@ CTA_RAW = (
 )
 OPENER_RAW = (
     "={{ JSON.stringify({ to: $('Normalize').first().json.to, text: $('Normalize').first().json.opener, "
-    "footer: 'K1 Agent', "
+    "footer: 'K1 AI Agent', ctaUrl: { url: 'https://www.k1katsastus.fi/', label: 'k1katsastus.fi' }, "
     "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
 )
 
@@ -1211,7 +1211,7 @@ def assert_cta(agent):
 
 
 def stamp_opener_footer():
-    """The first bubble is the staging opener. 'K1 Agent' is the small footer, with no link button."""
+    """The first bubble is the staging opener. 'K1 AI Agent' is the small footer, not part of the stored text."""
     body = snapshot(STAGING_SEND)
     was_active = bool(body['active'])
     node = next(item for item in body['nodes'] if item['name'] == 'Send opener')
@@ -1224,7 +1224,7 @@ def stamp_opener_footer():
     put_live(STAGING_SEND, body, was_active)
     check = gate.request('GET', f'/workflows/{STAGING_SEND}')
     saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
-    if "footer: 'K1 Agent'" not in saved or "$('Normalize').first().json.opener" not in saved or 'ctaUrl' in saved:
+    if "footer: 'K1 AI Agent'" not in saved or "$('Normalize').first().json.opener" not in saved or 'ctaUrl' not in saved:
         raise SystemExit('opener footer was not saved')
     if not check.get('active'):
         raise SystemExit('staging send left inactive')
