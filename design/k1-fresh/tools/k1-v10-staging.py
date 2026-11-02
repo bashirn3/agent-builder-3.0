@@ -235,7 +235,6 @@ def check(saved, booking_id, payment_id):
     live_paths = [node['parameters'].get('path') for node in live['nodes'] if node['type'] == 'n8n-nodes-base.webhook']
     assert 'k1-muster-agent-inbound' in live_paths
     assert live['active'] is True
-    assert not any(node['name'] == 'Send Bubble CTA' for node in live['nodes'])
 
 
 def main():

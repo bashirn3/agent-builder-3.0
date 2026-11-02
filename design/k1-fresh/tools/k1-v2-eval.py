@@ -272,7 +272,18 @@ Use connected workflow results for available appointments and booking outcomes. 
 If a required detail is missing, ask one clear follow-up question. If workflow data is unavailable, say so and hand off to staff."""
 
 
-PLATFORM = json.loads(PLATFORM_FILE.read_text()) if os.environ.get('K1_EVAL_MASTER') != 'generic' else {'masterPrompt': MASTER, 'additionalInformation': ''}
+def load_platform():
+    mode = os.environ.get('K1_EVAL_MASTER', '')
+    if mode == 'generic':
+        return {'masterPrompt': MASTER, 'additionalInformation': ''}
+    # v16 repeats the live prompt in the user turn. The provider rejects that block, so the WhatsApp
+    # path is the one to test: the business brief is already the system message, and this stays empty.
+    if mode in ('v16', 'brief'):
+        return {'masterPrompt': '', 'additionalInformation': ''}
+    return json.loads(PLATFORM_FILE.read_text())
+
+
+PLATFORM = load_platform()
 
 
 def lead_context(lead):
@@ -554,8 +565,9 @@ def main():
                 turns = [{'user': '', 'reply': '', 'status': 0, 'latency': 0, 'fallback': False, 'error': f'harness: {error}', 'tools': [], 'params': [], 'steps': []}]
             flags = checks_module.evaluate(scenario, turns)
             results.append({'id': scenario['id'], 'suite': scenario['suite'], 'lang': scenario['lead']['lang'], 'lead': scenario['lead'], 'turns': turns, 'flags': flags, 'note': scenario.get('note', '')})
-            if len(results) % 20 == 0:
-                print(f'progress {len(results)}/{len(scenarios)} flagged {sum(bool(r["flags"]) for r in results)} elapsed {round(time.monotonic() - started)}s', flush=True)
+            if flags or len(scenarios) <= 120 or len(results) % 20 == 0:
+                mark = 'FLAG ' + '; '.join(flags) if flags else 'clean'
+                print(f'progress {len(results)}/{len(scenarios)} {scenario["id"]} {mark} elapsed {round(time.monotonic() - started)}s', flush=True)
 
         def booking_lane(items):
             for scenario in items:
@@ -583,6 +595,22 @@ def main():
     lat = [t['latency'] for r in results for t in r['turns'] if t['latency']]
     print(json.dumps({'scenarios': len(results), 'clean': sum(not r['flags'] for r in results), 'flagged': sum(bool(r['flags']) for r in results),
                       'turns': len(lat), 'p50': statistics.median(lat) if lat else 0, 'p95': sorted(lat)[int(len(lat) * .95) - 1] if lat else 0}))
+    flagged = [r for r in results if r['flags']]
+    if flagged and not any('#' in r['id'] for r in results):
+        for result in flagged:
+            print(result['id'], '; '.join(result['flags']), flush=True)
+    if any('#' in r['id'] for r in results):
+        groups = {}
+        for result in results:
+            groups.setdefault(result['id'].split('#', 1)[0], []).append(result)
+        for base, runs in sorted(groups.items()):
+            clean = sum(not run['flags'] for run in runs)
+            counted = {}
+            for run in runs:
+                for flag in run['flags'] or []:
+                    counted[flag] = counted.get(flag, 0) + 1
+            extra = '' if clean == len(runs) else ' ' + ', '.join(f'{flag} x{count}' for flag, count in sorted(counted.items(), key=lambda item: -item[1]))
+            print(f'{clean}/{len(runs)} {base}{extra}', flush=True)
 
 
 if __name__ == '__main__':
