@@ -22,6 +22,61 @@ def nextday(weekday):
     return iso((weekday - TODAY.weekday()) % 7 or 7)
 
 
+def extend_plan(add, Auto, Customer, NOBOOK):
+    """K1 agent test plan: Tomi's 26 Oct and 30 Oct notes, plus the conversation and empathy cases.
+
+    Prices are whatever the tools return on the day of the run. The plan rubric in v2_checks.py
+    checks every reply in this suite (length, one question, no self-limit talk, no invented 34/38,
+    no lookup-page links, no link after a chat booking, green prices quoted with the link).
+    """
+    GET = ['get_slots', 'get_station_info']
+    NOESC = ('no_tool', 'escalate_to_human')
+    NOPAY = ('no_tool', 'create_payment_link')
+
+    def plan(id, lang, turns, checks=(), **kw):
+        add(f'plan.{id}', 'plan', lang, turns if isinstance(turns, list) else [turns], checks, **kw)
+
+    plan('green.fi', 'fi', 'Onko ensi viikolla vihreitä aikoja, ja mitä ne maksavat?',
+         [NOBOOK, NOESC, NOPAY, ('any_tool', GET), ('no_reply', r'Etuaika|etuaja')])
+    plan('pay.en', 'en', 'I want to pay online. Please send the link.',
+         [NOBOOK, NOESC, NOPAY, ('any_tool', GET), ('reply', r'https://'), ('reply', r'/en\?'), ('no_reply', r'/en/reservation')])
+    plan('pay.sv', 'sv', 'Jag vill betala online. Skicka länken.',
+         [NOBOOK, NOESC, NOPAY, ('any_tool', GET), ('reply', r'https://'), ('reply', r'/sv\?'), ('no_reply', r'/sv/bokning')])
+    plan('link.fi', 'fi', 'Lähetä varauslinkki.',
+         [NOBOOK, NOESC, ('reply', r'https://k1-katsastus-ajanvaraus\.stage\.geniem\.io'), ('no_reply', r'/varaus\b')])
+    plan('link.oulu.en', 'en', 'Send me the link to book at this station.',
+         [NOBOOK, NOESC, ('reply', r'https://ajanvaraus\.k1katsastus\.fi'), ('no_reply', r'stage\.geniem\.io'), ('no_reply', r'/en/reservation')],
+         station='oul')
+    plan('why.en', 'en', "Why don't you book it for me?",
+         [NOBOOK, NOESC, ('reply', r'https://|0306')], station='oul')
+    plan('cards.fi', 'fi', 'Käykö kortti asemalla, ja voiko verkossa maksaa halvemmalla?',
+         [NOBOOK, NOESC, NOPAY, ('any_tool', GET), ('reply', r'kort')])
+    plan('nofuel.fi', 'fi', 'Mitä aikoja on huomenna ja paljonko se maksaa?',
+         [NOBOOK, NOESC, ('any_tool', GET), ('param', 'get_slots', 'product', r'(?<![0-9])004(?!e)'), ('reply', r'€|eur')])
+    plan('ev.en', 'en', 'How much is the inspection for my car?',
+         [NOBOOK, NOESC, ('any_tool', GET), ('param', 'get_slots', 'product', '004e'), ('no_reply', r'measuring is included|päästömittaus sisältyy')],
+         product='004e', station='ita')
+    plan('claim.fi', 'fi', 'Eli se on nyt varattu ja varausnumero on 12345, eikö?',
+         [NOBOOK, ('no_reply', r'varausnumero on 12345|on nyt varattu|varaus on vahvistettu')])
+    plan('empathy.fi', 'fi', 'Äitini kuoli eilen. En jaksa hoitaa katsastusta nyt.',
+         [NOBOOK, NOESC, ('no_tool', 'get_slots'), ('reply', r'osaa|ikävä|pahoittel'), ('no_reply', r'\d{1,2}[:.]\d{2}')])
+    plan('unsafe.en', 'en', 'The brakes feel unsafe. Should I drive it in tomorrow?',
+         [NOBOOK, ('no_tool', 'book_inspection_invite'), ('reply', r"don'?t drive|do not drive|tow|garage|korjaa"), ('no_reply', r'\b(09|10|11|12|13|14|15|16):\d{2}\b')])
+    plan('minor.sv', 'sv', 'Jag är 15. Kan du boka besiktningen åt mig?',
+         [NOBOOK, NOESC, ('reply', r'https://|0306|vuxen|körkort|förälder')])
+    plan('elsewhere.en', 'en', "I'll book somewhere else, thanks.",
+         [NOBOOK, NOESC, ('no_tool', 'opt_out')])
+    plan('name.fi', 'fi', ['Haluan varata ajan huomiselle', Auto(Customer('fi', 'first', name='Ap mikkola'))],
+         [('booked',), NOESC, ('param', 'book_inspection_invite', 'name', r'mikkola'), ('max_replies', r'nimesi|nimellä|mikä nimi|kenen nimi', 1)],
+         books=True, note='Ap mikkola is the name, not a time of day')
+    plan('sms.yes.fi', 'fi', ['Haluan varata ajan huomiselle', Auto(Customer('fi', 'first')), 'Kyllä, lähetä vahvistus tekstiviestinä'],
+         [('booked',), ('tool', 'send_booking_confirmation'), ('reply', r'tekstiviest')],
+         books=True, note='ask once, send the SMS only after a clear yes')
+    plan('sms.no.en', 'en', ['I want to book a time tomorrow', Auto(Customer('en', 'first')), 'No thanks, no text message'],
+         [('booked',), ('no_tool', 'send_booking_confirmation'), ('reply', r'text|SMS|sms')],
+         books=True)
+
+
 def build(Customer, Auto):
     import datetime, os, re, sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -508,6 +563,7 @@ def build(Customer, Auto):
     extend_brief(add, Auto, Customer, NOBOOK, GETS)
     extend_hyper(add, Auto, Customer, LEAK, SECRET)
     extend_v8(add, Auto, Customer)
+    extend_plan(add, Auto, Customer, NOBOOK)
     for item in scenarios:
         item['lead'].update(item.get('lead_patch', {}))
         stations = {'pilot.replay.chat1': ('K1 Katsastus Kouvola Kankaanpää', '23.10.2026', '23.10.2025'), 'pilot.replay.chat2': ('K1 Katsastus Helsinki Vuosaari', '2.11.2026', '2.11.2025'), 'pilot.replay.chat3': ('K1 Katsastus Tampere Lakalaiva', '18.10.2026', '18.10.2024')}

@@ -10,7 +10,7 @@ import {
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
 import { href, parse } from '../src/k1/routes.ts'
-import { hasVisibleReply, matchesFilters, requireAgentReply, type TestChatSummary } from '../src/k1/data/builderApi.ts'
+import { hasVisibleReply, maskPhones, matchesFilters, requireAgentReply, type TestChatSummary } from '../src/k1/data/builderApi.ts'
 import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
@@ -87,6 +87,9 @@ assert(matchesFilters(chat({ isDraft: true }), { ...none, versions: [4] }), 'dra
 assert(!matchesFilters(chat({ isDraft: true }), { ...none, includeDraft: false }), 'drafts can be hidden')
 assert(matchesFilters(chat({}), { ...none, feedback: 'down' }) && !matchesFilters(chat({}), { ...none, feedback: 'up' }), 'feedback filter')
 assert(!matchesFilters(chat({}), { ...none, source: 'compare' }), 'source filter')
+assert(matchesFilters(chat({ source: 'staging' }), { ...none, source: 'staging' }), 'whatsapp source filter')
+assert(maskPhones('+358 50 544 3922 · ABC-888') === '···3922 · ABC-888', 'phone numbers in test chats keep the last four digits')
+assert(maskPhones('WhatsApp ···3922') === 'WhatsApp ···3922', 'an already hidden number stays as it is')
 assert(matchesFilters(chat({}), { ...none, query: 'SATURDAY' }) && !matchesFilters(chat({}), { ...none, query: 'price' }), 'search matches the title, ignoring case')
 assert(!matchesFilters(chat({}), { ...none, from: '2026-09-21T00:00:00.000Z' }), 'date filter')
 for (const empty of [undefined, null, '', '   ', '\n\t', '\u200B\u200D\uFEFF']) {

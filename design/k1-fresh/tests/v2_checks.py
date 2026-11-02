@@ -291,4 +291,69 @@ def evaluate(scenario, turns):
             flags.append(f'CHECK tool output matched /{check[1]}/')
         elif kind == 'output' and not re.search(check[1], all_out, re.I):
             flags.append(f'CHECK tool output missing /{check[1]}/')
+    if scenario.get('suite') == 'plan':
+        flags.extend(plan_rubric(turns, all_out))
+    return flags
+
+
+# The K1 agent test plan: every reply, on top of the scenario's own checks.
+SELF_LIMIT = re.compile(r"en pysty varaamaan|en voi varata|en pysty tekemään varaus|I can(?:not|['\u2019]t) book|can(?:not|['\u2019]t) book|kan inte boka|jag kan inte boka", re.I)
+ONLINE_IMPOSSIBLE = re.compile(r"online (?:payment|paying|pay).{0,50}(?:impossible|not possible|can(?:not|'t))|(?:can(?:not|'t)|cannot|unable to) pay online|ei (?:voi|pysty) maksaa (?:verkossa|netissä)|verkossa maksaminen ei|maksu (?:on )?mahdollinen vain asemalla|only (?:possible|pay)(?: \w+){0,4} at the station|inte möjligt att betala|kan inte betala (?:online|på nätet)", re.I)
+LOOKUP_LINK = re.compile(r'/en/reservation|/sv/bokning|(?:^|[\s"\'(])/varaus\b', re.I)
+# sähköposti is email, not a question about electric fuel. sähköauto and a bare sähkö still count.
+FUEL_WORD = re.compile(r'bensiini|bensa|diesel|petrol|electric|bensin|\belbil\b|hybrid|polttoaine|fuel|bränsle|käyttövoima|sähkö(?!posti)', re.I)
+
+
+def fuel_question(reply):
+    parts = re.split(r'(?<=[.!?])\s+|\n+', reply)
+    return any('?' in part and FUEL_WORD.search(part) for part in parts)
+
+
+def plan_rubric(turns, all_out):
+    """Short bubbles, no self-limit talk, no invented prices, no lookup links, no link after a chat booking."""
+    flags = []
+    replies = []
+    for i, turn in enumerate(turns):
+        reply = turn.get('reply') or ''
+        replies.append(reply)
+        if turn.get('status') != 200:
+            continue
+        tag = f't{i + 1}'
+        bubbles = [part for part in re.split(r'\n\s*\n', reply) if part.strip()]
+        if len(bubbles) > 3:
+            flags.append(f'{tag} BUBBLES({len(bubbles)})')
+        questions = re.sub(r'https?://\S+', ' ', reply).count('?')
+        if questions > 1:
+            flags.append(f'{tag} PLAN_QUESTIONS({questions})')
+        if ';' in reply:
+            flags.append(f'{tag} SEMICOLON')
+        if SELF_LIMIT.search(reply):
+            flags.append(f'{tag} SELF_LIMIT')
+        if ONLINE_IMPOSSIBLE.search(reply):
+            flags.append(f'{tag} ONLINE_IMPOSSIBLE')
+        if LOOKUP_LINK.search(reply):
+            flags.append(f'{tag} LOOKUP_LINK')
+        if fuel_question(reply):
+            flags.append(f'{tag} FUEL_QUESTION')
+        booked_here = any(step['tool'] == 'book_inspection_invite' and (ok_output(step) or {}).get('booking_number') for step in turn.get('steps') or [])
+        if booked_here and re.search(r'https?://', reply):
+            flags.append(f'{tag} LINK_AFTER_CHAT_BOOKING')
+        for amount in ('34', '38'):
+            if re.search(rf'\b{amount}\s?(?:€|eur\b|euroa)', reply, re.I) and not re.search(rf'(?<![\d.]){amount}(?![\d])', all_out):
+                flags.append(f'{tag} INVENTED_BASE {amount}')
+    if any(name == 'create_payment_link' for t in turns for name in t.get('tools') or []):
+        flags.append('CHECK create_payment_link is not how K1 online pay works')
+    text = '\n'.join(replies)
+    user_text = ' '.join(t.get('user') or '' for t in turns)
+    quoted_green = re.search(r'vihre|green price|prepaid|ennakkoon|verkossa makset|online', text, re.I)
+    asked_price = re.search(r'hinta|maksa|vihre|halvem|halvemm|green|price|cost|how much|pay online|betala|pris|vad kostar', user_text, re.I)
+    if quoted_green and not re.search(r'https://', text):
+        flags.append('CHECK GREEN_NO_LINK')
+    if asked_price and re.search(r'"is_green"\s*:\s*true', all_out, re.I):
+        online = set(re.findall(r'"online_payment_eur"\s*:\s*(\d+)', all_out))
+        station = set(re.findall(r'"station_eur"\s*:\s*(\d+)', all_out))
+        if online and not any(re.search(rf'\b{amount}\b', text) for amount in online):
+            flags.append('CHECK GREEN_PRICE_OMITTED')
+        if station and not any(re.search(rf'\b{amount}\b', text) for amount in station):
+            flags.append('CHECK STATION_PRICE_OMITTED')
     return flags
