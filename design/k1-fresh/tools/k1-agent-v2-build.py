@@ -14,6 +14,7 @@ Usage:
   python3 k1-agent-v2-build.py rollback  restore the live workflows from the newest backup
   python3 k1-agent-v2-build.py wire      patch the live booking links and the WhatsApp test-chat log in place
   python3 k1-agent-v2-build.py finish    patch the live reply nodes and the WhatsApp rewrite log in place
+  python3 k1-agent-v2-build.py cta       put link buttons back on live sends, and the first-bubble footer
 
 The candidates keep the live Clerk gate. Their webhook paths end in -v2 (playground: /booking-chat-v2).
 """
@@ -40,6 +41,7 @@ spec.loader.exec_module(gate)
 BACKUPS = ROOT / 'backups'
 LIVE_BOOKING = 'wAE7EHLyJk6JsMue'
 LIVE_AGENT = 'w8a9S1uxB5U9qnNO'
+STAGING_SEND = 'p6V9Jtytz4eN4MYw'
 BOOKING_NAME = 'K1 Muster Booking v2 (candidate)'
 AGENT_NAME = 'K1 Muster agent v2 (candidate)'
 PAYMENT_NAME = 'K1 v10 payment'
@@ -995,17 +997,205 @@ def assert_composing(agent):
         raise SystemExit('Restore Inbound still uses the per-item call that drops the reply')
 
 
+CTA_JS = r"""const LABELS = {
+  fi: { pay: 'Maksa nyt', book: 'Varaa aika', open: 'Avaa' },
+  sv: { pay: 'Betala nu', book: 'Boka tid', open: 'Öppna' },
+  en: { pay: 'Pay now', book: 'Book a time', open: 'Open' },
+}
+function language(text) {
+  const t = ' ' + String(text || '').toLowerCase() + ' '
+  if (/\b(och|att|för|boka|öppna|betala|på stationen|bokning|tiderna)\b/.test(t)) return 'sv'
+  if (/[äöå]/.test(t)) return 'fi'
+  if (/\b(the|your|you|book|pay|open|at the|station|time|here|link|can|for)\b/.test(t)) return 'en'
+  return 'fi'
+}
+function hostOf(url) {
+  const match = String(url).match(/^https?:\/\/([^/?#]+)/i)
+  return match ? match[1].toLowerCase() : ''
+}
+function firstMark() {
+  try {
+    const staging = $('Parse Staging').isExecuted ? ($('Parse Staging').first().json.staging || {}) : null
+    if (staging && String(staging.opener || '').trim()) return ''
+    if ($('Pause Composing').isExecuted || $('Pause Composing Follow-up').isExecuted) return ''
+    return 'K1 AI Agent'
+  } catch (error) {
+    return ''
+  }
+}
+function decorate(item) {
+  const text = String(item.text || '')
+  const urls = text.match(/https?:\/\/[^\s<>)]+/gi) || []
+  if (urls.length !== 1) return { ...item, cta_url: '', cta_label: '', cta_body: text, cta_footer: '' }
+  const raw = urls[0]
+  const only = raw.replace(/[.,;:!?)]+$/g, '')
+  const host = hostOf(only)
+  const payment = host === 'buy.stripe.com' || host === 'checkout.stripe.com'
+  const booking = host === 'ajanvaraus.k1katsastus.fi' || host === 'www.ajanvaraus.k1katsastus.fi' || host === 'k1-katsastus-ajanvaraus.stage.geniem.io' || /[?&]stationId=/i.test(only)
+  const kind = payment ? 'pay' : booking ? 'book' : 'open'
+  const lang = language(text)
+  let body = text.replace(raw, ' ').replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim()
+  if (!body) {
+    body = kind === 'pay'
+      ? (lang === 'en' ? 'Pay here.' : lang === 'sv' ? 'Betala här.' : 'Maksa tästä.')
+      : (lang === 'en' ? 'Here.' : lang === 'sv' ? 'Här.' : 'Tässä.')
+  }
+  return {
+    ...item,
+    cta_url: only,
+    cta_label: LABELS[lang][kind].slice(0, 20),
+    cta_body: body,
+    cta_footer: firstMark(),
+  }
+}
+return $input.all().map((row) => ({ json: decorate(row.json) }))
+"""
+CTA_RAW = (
+    "={{ JSON.stringify({ to: $json.to_phone, text: $json.cta_body, "
+    "ctaUrl: { url: $json.cta_url, label: $json.cta_label }, "
+    "footer: $json.cta_footer || undefined, "
+    "linkPreview: false, allowColdWithoutToken: true, typingSimulation: false, delayEnabled: false }) }}"
+)
+OPENER_RAW = (
+    "={{ JSON.stringify({ to: $('Normalize').first().json.to, message: $('Normalize').first().json.opener, "
+    "footer: 'K1 AI Agent', linkPreview: false, allowColdWithoutToken: true }) }}"
+)
+
+
+def _wire_link_button(agent, keep_name, send_name, pause_name):
+    named = {item['name']: item for item in agent['nodes']}
+    send = named[send_name]
+    x, y = send['position']
+    fields, gate_name, button = f'{send_name} CTA fields', f'{send_name} CTA?', f'{send_name} CTA'
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-cta/{fields}')),
+        'name': fields,
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [x - 420, y],
+        'parameters': {'mode': 'runOnceForAllItems', 'jsCode': CTA_JS},
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-cta/{gate_name}')),
+        'name': gate_name,
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 2.2,
+        'position': [x - 200, y],
+        'parameters': {
+            'conditions': {
+                'options': {'caseSensitive': True, 'leftValue': '', 'typeValidation': 'loose', 'version': 2},
+                'conditions': [{
+                    'id': 'cta-url',
+                    'leftValue': '={{ $json.cta_url }}',
+                    'rightValue': '',
+                    'operator': {'type': 'string', 'operation': 'notEquals'},
+                }],
+                'combinator': 'and',
+            },
+            'looseTypeValidation': True,
+            'options': {},
+        },
+    })
+    _upsert_node(agent, {
+        'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'k1-cta/{button}')),
+        'name': button,
+        'type': send['type'],
+        'typeVersion': send.get('typeVersion', 1),
+        'position': [x, y - 160],
+        'credentials': json.loads(json.dumps(send.get('credentials') or WASUP_CRED)),
+        'parameters': {
+            'resource': 'message',
+            'operation': 'sendRaw',
+            'instanceId': json.loads(json.dumps(send['parameters']['instanceId'])),
+            'rawBody': CTA_RAW,
+        },
+    })
+    agent['connections'][keep_name] = {'main': [[_link(fields)]]}
+    agent['connections'][fields] = {'main': [[_link(gate_name)]]}
+    agent['connections'][gate_name] = {'main': [[_link(button)], [_link(send_name)]]}
+    agent['connections'][button] = {'main': [[_link(pause_name)]]}
+    agent['connections'][send_name] = {'main': [[_link(pause_name)]]}
+
+
+def ensure_cta(agent):
+    """One https link in a bubble becomes the native WhatsApp button. Two links stay as text.
+
+    Friday's button required staging === true and a k1katsastus.fi host, so a staging-host
+    link and any other link never became a button, and the current turn does not set that flag.
+    A booking host (including the staging booking site) is labelled as a booking. Stripe is a
+    payment. Every other single link still gets a button.
+    """
+    names = {item['name'] for item in agent['nodes']}
+    for required in ('Keep Bubble', 'Send Bubble', 'Pause Composing', 'Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up'):
+        if required not in names:
+            raise SystemExit(f'link button cannot find {required}')
+    _wire_link_button(agent, 'Keep Bubble', 'Send Bubble', 'Pause Composing')
+    _wire_link_button(agent, 'Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up')
+    return agent
+
+
+def assert_cta(agent):
+    names = {item['name']: item for item in agent['nodes']}
+    for keep, send, pause in (
+        ('Keep Bubble', 'Send Bubble', 'Pause Composing'),
+        ('Keep Follow-up', 'Send Double-Text', 'Pause Composing Follow-up'),
+    ):
+        fields, gate_name, button = f'{send} CTA fields', f'{send} CTA?', f'{send} CTA'
+        if [item.get('node') for item in agent['connections'][keep]['main'][0]] != [fields]:
+            raise SystemExit(f'{keep} does not prepare the link button')
+        branches = [[item.get('node') for item in branch] for branch in agent['connections'][gate_name]['main']]
+        if branches != [[button], [send]]:
+            raise SystemExit(f'{gate_name} wiring changed: {branches}')
+        if [item.get('node') for item in agent['connections'][button]['main'][0]] != [pause]:
+            raise SystemExit(f'{button} does not clear typing')
+        if [item.get('node') for item in agent['connections'][send]['main'][0]] != [pause]:
+            raise SystemExit(f'{send} does not clear typing')
+        code = names[fields]['parameters']['jsCode']
+        if 'staging !== true' in code or 'item.staging' in code:
+            raise SystemExit(f'{fields} still skips links outside the old staging gate')
+        if 'k1-katsastus-ajanvaraus.stage.geniem.io' not in code or 'checkout.stripe.com' not in code:
+            raise SystemExit(f'{fields} does not cover booking and payment links')
+        params = names[button]['parameters']
+        if params.get('operation') != 'sendRaw' or 'ctaUrl' not in (params.get('rawBody') or ''):
+            raise SystemExit(f'{button} is not the native link button')
+        if names[button]['credentials']['wasupApi']['id'] != WASUP_CRED['wasupApi']['id']:
+            raise SystemExit(f'{button} credential changed')
+
+
+def stamp_opener_footer():
+    """The first bubble is the staging opener. 'K1 AI Agent' is the small footer, not part of the stored text."""
+    body = snapshot(STAGING_SEND)
+    was_active = bool(body['active'])
+    node = next(item for item in body['nodes'] if item['name'] == 'Send opener')
+    raw = node['parameters'].get('rawBody') or ''
+    if "$('Normalize').first().json.opener" not in raw:
+        raise SystemExit('opener send no longer uses the stored opener')
+    node['parameters']['resource'] = 'message'
+    node['parameters']['operation'] = 'sendRaw'
+    node['parameters']['rawBody'] = OPENER_RAW
+    put_live(STAGING_SEND, body, was_active)
+    check = gate.request('GET', f'/workflows/{STAGING_SEND}')
+    saved = next(item['parameters'].get('rawBody') or '' for item in check['nodes'] if item['name'] == 'Send opener')
+    if "footer: 'K1 AI Agent'" not in saved or "$('Normalize').first().json.opener" not in saved:
+        raise SystemExit('opener footer was not saved')
+    if not check.get('active'):
+        raise SystemExit('staging send left inactive')
+    print(f'opener footer on {STAGING_SEND} active={check["active"]}')
+
+
 def lock_live_path(agent):
     """Put back the WhatsApp path that Friday proved and no backup ever stored.
 
     A rebuild starts from the 29 Sept workflow. Without this, the next promote drops the
-    inbound bypass, the composing calls, and the staging car in one put.
+    inbound bypass, the composing calls, the staging car, and the link buttons in one put.
     """
     ensure_wasup_inbound(agent)
     ensure_composing(agent)
     ensure_lead(agent)
+    ensure_cta(agent)
     assert_composing(agent)
     assert_lead(agent)
+    assert_cta(agent)
     return agent
 
 
@@ -1037,8 +1227,10 @@ def finish_live():
         raise SystemExit(f'Wasup inbound is not reaching the agent: {inbound_to}')
     assert_composing(check)
     assert_lead(check)
+    assert_cta(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
+    stamp_opener_footer()
     print(f'finish live agent {LIVE_AGENT} active={check["active"]} brief={len(brief)}')
 
 
@@ -1051,6 +1243,7 @@ def restore_lead():
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     assert_composing(check)
     assert_lead(check)
+    assert_cta(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     print(f'lead restored on {LIVE_AGENT} active={check["active"]}')
@@ -1065,12 +1258,29 @@ def restore_typing():
     check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
     assert_composing(check)
     assert_lead(check)
+    assert_cta(check)
     if not check.get('active'):
         raise SystemExit('live agent left inactive')
     hold = next(node for node in check['nodes'] if node['name'] == 'Hold Composing')
     if hold['parameters'].get('jsonBody', '').find("state: 'composing'") < 0 or hold['credentials']['wasupApi']['id'] != WASUP_CRED['wasupApi']['id']:
         raise SystemExit('Hold Composing was not saved')
     print(f'typing restored on {LIVE_AGENT} active={check["active"]}')
+
+
+def restore_cta():
+    """Turn a single link into a WhatsApp button, and mark the first bubble. Keeps the current prompt."""
+    agent = snapshot(LIVE_AGENT)
+    was_active = bool(agent['active'])
+    lock_live_path(agent)
+    put_live(LIVE_AGENT, agent, was_active)
+    check = gate.request('GET', f'/workflows/{LIVE_AGENT}')
+    assert_composing(check)
+    assert_lead(check)
+    assert_cta(check)
+    if not check.get('active'):
+        raise SystemExit('live agent left inactive')
+    stamp_opener_footer()
+    print(f'link buttons restored on {LIVE_AGENT} active={check["active"]}')
 
 
 def cache_layout(named):
@@ -1709,6 +1919,8 @@ def main():
         restore_typing()
     elif command == 'lead':
         restore_lead()
+    elif command == 'cta':
+        restore_cta()
     elif command == 'delete':
         for name in (AGENT_NAME, BOOKING_NAME):
             wid = by_name(name)
