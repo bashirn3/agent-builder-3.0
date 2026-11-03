@@ -21,7 +21,7 @@ import { Dialog } from '../ui/overlay'
 import { RefreshCw } from '../ui/icons'
 import { formatStamp } from './SplitView'
 import { noteStick, sameMessages, scrollIfStuck, useLiveReload } from './liveThread'
-import { stagingParts } from '../data/stagingView'
+import { latestActivity, stagingParts, whatsappRuns } from '../data/stagingView'
 import { orderVersions, versionHint } from './versionText'
 
 function sendFailure(error: unknown, copy: ReturnType<typeof useCopy>) {
@@ -154,6 +154,7 @@ export function StagingPage({ store, notify }: {
         : ''
   const canSend = Boolean(version && lead && opener && composed.ok && !composed.placeholder && !sending && !loadingVersion)
   const replied = messages.some((message) => message.role === 'user')
+  const activity = latestActivity(selected?.updatedAt, messages)
   const leadLabel = selected
     ? [selected.plate, shortStation(selected.stationName)].filter(Boolean).join(' · ')
     : ''
@@ -348,7 +349,7 @@ export function StagingPage({ store, notify }: {
                 <strong>{leadLabel}</strong>
                 <span>{selected.versionNumber ? `v${selected.versionNumber}` : ''}</span>
                 <span>{replied ? t.staging.statusReplied : t.staging.statusWaiting}</span>
-                <span>{formatStamp(selected.updatedAt)}</span>
+                <span>{activity ? formatStamp(activity) : ''}</span>
               </p>
             )}
             <div className="k1-tester__thread" ref={threadRef}>
@@ -356,7 +357,7 @@ export function StagingPage({ store, notify }: {
                 <div key={message.id} className={message.role === 'user' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
                   {stagingParts(message).map((part, index) => (
                     <div key={index} className="k1-msg__part">
-                      {part.text ? <p className="k1-msg__bubble">{part.text}</p> : null}
+                      {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
                       {part.link ? (
                         <a className={part.live ? 'k1-msg__link' : 'k1-msg__box'} href={part.link.url} target="_blank" rel="noreferrer">{part.link.label}</a>
                       ) : null}

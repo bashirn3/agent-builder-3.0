@@ -106,3 +106,38 @@ export function stagingParts(message: BubbleInput): StagingPart[] {
   const parsed = fromText(message.text)
   return parsed.length ? parsed : [{ text: message.text || '', link: null, copy: null, replies: [], live: false }]
 }
+
+export type WhatsAppRun = { bold: boolean; value: string }
+
+// WhatsApp uses *bold*. A space inside the markers, or a marker that runs onto the next line, stays as typed.
+const BOLD = /\*([^*\n]+)\*/g
+
+export function whatsappRuns(text: string): WhatsAppRun[] {
+  const runs: WhatsAppRun[] = []
+  let cursor = 0
+  for (const match of text.matchAll(BOLD)) {
+    const inner = match[1]
+    const start = match.index ?? 0
+    if (!inner || /^\s|\s$/.test(inner) || start < cursor) continue
+    if (start > cursor) runs.push({ bold: false, value: text.slice(cursor, start) })
+    runs.push({ bold: true, value: inner })
+    cursor = start + match[0].length
+  }
+  if (cursor < text.length || runs.length === 0) runs.push({ bold: false, value: text.slice(cursor) })
+  return runs
+}
+
+export function latestActivity(sessionAt: string | null | undefined, messages: { at?: string | null }[]) {
+  let best = sessionAt || ''
+  let bestMs = Date.parse(best)
+  if (Number.isNaN(bestMs)) bestMs = Number.NEGATIVE_INFINITY
+  for (const message of messages) {
+    const at = message.at || ''
+    const ms = Date.parse(at)
+    if (!Number.isNaN(ms) && ms >= bestMs) {
+      best = at
+      bestMs = ms
+    }
+  }
+  return best
+}

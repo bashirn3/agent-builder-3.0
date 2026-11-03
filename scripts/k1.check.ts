@@ -15,7 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
-import { stagingParts } from '../src/k1/data/stagingView.ts'
+import { latestActivity, stagingParts, whatsappRuns } from '../src/k1/data/stagingView.ts'
 import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
@@ -193,4 +193,12 @@ const tap = stagingParts({ role: 'user', text: '[button] Lähetä vahvistus' })
 assert(tap.length === 1 && tap[0].text === 'Lähetä vahvistus' && !tap[0].text.includes('[button]'), 'a button tap shows the label the customer sent')
 const markers = stagingParts({ role: 'agent', text: 'Hei\n[link button: Hallitse varausta → https://staging.example/varaus]\n[reply buttons: Lähetä vahvistus]' })
 assert(markers[0].text === 'Hei' && markers[1].link?.url === 'https://staging.example/varaus' && markers[1].live === false && markers[2].replies[0] === 'Lähetä vahvistus', 'marker lines stay grey until bubbles are stored')
+const booked = 'Thanks, Arslan. You’re booked at K1 Palokka for Wed 4 Nov at 10:00, booking number *QEFJEYKC*. The inspection is €76.'
+const runs = whatsappRuns(booked)
+assert(runs.some((run) => run.bold && run.value === 'QEFJEYKC') && runs.every((run) => !run.value.includes('*')), 'a WhatsApp booking number renders in bold without the asterisks')
+assert(whatsappRuns('price is * not bold * today')[0].value === 'price is * not bold * today', 'asterisks with a space inside stay as typed')
+assert(latestActivity('2026-11-03T06:48:56.29293+00:00', [
+  { at: '2026-11-03T13:36:59.409482+00:00' },
+  { at: '2026-11-03T13:38:22.679358+00:00' },
+]) === '2026-11-03T13:38:22.679358+00:00', 'the open chat clock follows the last message when the session row is older')
 console.log('staging bubble checks passed')
