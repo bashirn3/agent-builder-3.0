@@ -48,35 +48,84 @@ delete from inbound_message_queue where from_phone in (
 
 PHONE_BODY = "={{ { p_tenant_key: \"k1_katsastus_demo\", p_phone: $('Reset request').first().json.phone } }}"
 
-# One try against one proxy is how a reset reported success in the app while Muster still
-# held the slot. Retry across the proxy pool, and treat a missing reservation as already gone.
-CANCEL_LOOP = r"""const request = (options) => this.helpers.httpRequest.call(this, options)
+# DELETE /Reservations/{groupId} is rejected (400). The reservation route is
+# /Reservations/{stationId}/{reservationUid}. A missing reservation is already gone.
+# A proxy 407 never reached Muster, so try another proxy before the next url.
+CANCEL_LOOP = r"""const incoming = $input.all().map((item) => item.json)
+const only = incoming.length === 1 ? incoming[0] : null
+const rows = Array.isArray(only) ? only : incoming.filter((row) => row && row.groupId)
+const seen = new Set()
+const bookings = []
+for (const row of rows) {
+  if (!row || !row.groupId || seen.has(row.groupId)) continue
+  seen.add(row.groupId)
+  bookings.push(row)
+}
+const request = (options) => this.helpers.httpRequest.call(this, options)
 const cancelled = []
-for (const groupId of groups) {
+for (const booking of bookings) {
+  const urls = []
+  if (booking.stationId && booking.reservationUid) {
+    urls.push('https://staging-booking-api.muster.fi/v3/91/Reservations/' + booking.stationId + '/' + booking.reservationUid + '?sendConfirmation=false')
+  }
+  urls.push('https://staging-booking-api.muster.fi/v3/91/Reservations/' + booking.groupId + '?sendConfirmation=false')
   let ok = false
   let status = 0
-  for (let attempt = 0; attempt < 4 && !ok; attempt++) {
-    try {
-      const response = await request({
-        method: 'DELETE',
-        url: 'https://staging-booking-api.muster.fi/v3/91/Reservations/' + groupId + '?sendConfirmation=false',
-        json: true,
-        timeout: 25000,
-        returnFullResponse: true,
-        ignoreHttpStatusErrors: true,
-        proxy: PROXIES[Math.floor(Math.random() * PROXIES.length)],
-      })
-      status = Number(response.statusCode || response.status || 0)
-      if ((status >= 200 && status < 300) || status === 404) ok = true
-    } catch (error) {
-      status = Number(error.statusCode || error.httpCode || error.status || 0)
-      if (status === 404) ok = true
+  for (const url of urls) {
+    if (ok) break
+    for (let attempt = 0; attempt < 4 && !ok; attempt++) {
+      try {
+        const response = await request({
+          method: 'DELETE', url, json: true, timeout: 25000,
+          returnFullResponse: true, ignoreHttpStatusErrors: true,
+          proxy: PROXIES[Math.floor(Math.random() * PROXIES.length)],
+        })
+        status = Number(response.statusCode || response.status || 0)
+        if (status === 407 || status === 0 || status >= 500) continue
+        if ((status >= 200 && status < 300) || status === 404) ok = true
+        else break
+      } catch (error) {
+        status = Number(error.statusCode || error.httpCode || error.status || 0)
+        if (status === 404) ok = true
+        if (status === 407 || status === 0 || status >= 500) continue
+        break
+      }
     }
   }
-  cancelled.push({ groupId, ok, status })
+  cancelled.push({ groupId: booking.groupId, ok, status })
 }
 return [{ json: { cancelled } }]
 """
+
+# The agent cancel_booking tool deletes by group id and gets the same 400.
+# owned_details carries the station id; the event id carries the reservation uid.
+CANCEL_FN_OLD = """async function cancel() {
+  const groupId = repairedEventId(body.event_id || body.group_id).split('|')[0]
+  if (!groupId) return { ok: false, error: 'cancel needs the event_id from the booking' }
+  const notOwner = ownershipError(groupId)
+  if (notOwner) return notOwner
+  const response = await muster('DELETE', `/Reservations/${groupId}?sendConfirmation=false`)
+  if (response.status !== 200 && response.status !== 204) return { ok: false, step: 'cancel', status: response.status, error: response.data }
+  return { ok: true, success: true, already_cancelled: response.status === 204, group_id: groupId, cancelLocal: true }
+}"""
+
+CANCEL_FN_NEW = """async function cancel() {
+  const repaired = repairedEventId(body.event_id || body.group_id)
+  const parts = String(repaired || '').split('|')
+  const groupId = parts[0]
+  if (!groupId) return { ok: false, error: 'cancel needs the event_id from the booking' }
+  const notOwner = ownershipError(groupId)
+  if (notOwner) return notOwner
+  const owned = (input.owned_details || []).find((row) => row && row.groupId === groupId) || {}
+  const stationId = owned.stationId || body.station_id || body.stationId
+  const reservationUid = parts[1] || owned.reservationUid
+  const path = stationId && reservationUid
+    ? `/Reservations/${stationId}/${reservationUid}?sendConfirmation=false`
+    : `/Reservations/${groupId}?sendConfirmation=false`
+  const response = await muster('DELETE', path)
+  if (response.status !== 200 && response.status !== 204 && response.status !== 404) return { ok: false, step: 'cancel', status: response.status, error: response.data }
+  return { ok: true, success: true, already_cancelled: response.status === 204 || response.status === 404, group_id: groupId, cancelLocal: true }
+}"""
 
 SETTLED_JS = r"""const muster = $input.first().json || {}
 const rows = Array.isArray(muster.cancelled) ? muster.cancelled : []
@@ -189,13 +238,21 @@ def patch_booking(workflow):
     named['Clear local customer']['parameters']['jsonBody'] = PHONE_BODY
     named['Clear chat memory']['parameters']['query'] = CLEAR_SQL
     named['Reset result']['parameters']['jsCode'] = RESET_RESULT_JS
+    muster = named.get('Muster')
+    if muster is None:
+        raise SystemExit('booking workflow is missing Muster')
+    muster_js = muster['parameters']['jsCode']
+    if CANCEL_FN_NEW not in muster_js:
+        if CANCEL_FN_OLD not in muster_js:
+            raise SystemExit('booking tool cancel() no longer matches the group-id delete')
+        muster['parameters']['jsCode'] = muster_js.replace(CANCEL_FN_OLD, CANCEL_FN_NEW, 1)
     cancel = named['Cancel in Muster']
     js = cancel['parameters']['jsCode']
-    marker = 'const request = (options) => this.helpers.httpRequest.call(this, options)'
+    marker = 'const incoming = $input.all().map((item) => item.json)'
     start = js.find(marker)
     if start < 0:
         raise SystemExit('cancel node lost its request loop')
-    if 'attempt < 4' not in js:
+    if "booking.stationId + '/' + booking.reservationUid" not in js:
         cancel['parameters']['jsCode'] = js[:start] + CANCEL_LOOP
     settled_at = named['Cancel in Muster']['position']
     upsert(workflow, code_node('Cancel settled', [settled_at[0] + 220, settled_at[1]], SETTLED_JS))
@@ -299,8 +356,12 @@ def assert_live(gate):
     if 'conversation_state' not in query:
         raise SystemExit('conversation state is not cleared on reset')
     cancel_js = next(node['parameters']['jsCode'] for node in booking['nodes'] if node['name'] == 'Cancel in Muster')
+    if "booking.stationId + '/' + booking.reservationUid" not in cancel_js:
+        raise SystemExit('reset still deletes the muster slot by group id')
     if 'attempt < 4' not in cancel_js:
         raise SystemExit('muster cancel does not retry')
+    if '/Reservations/${stationId}/${reservationUid}?sendConfirmation=false' not in muster:
+        raise SystemExit('booking tool cancel still deletes by group id only')
     if booking['connections']['Cancel ok?']['main'][1][0]['node'] != 'Reset failed':
         raise SystemExit('a failed muster cancel still clears the local booking')
     if booking['connections']['Agent reset?']['main'][0][0]['node'] != 'Reset request':
@@ -378,22 +439,38 @@ def run_phone(gate, phone):
         reset = call(False)
         left = call(True)
         cancelled = reset.get('cancelled') or []
+        local = reset.get('local') or {}
         bookings = left.get('bookings') or []
         print(json.dumps({
-            'resetOk': bool(reset.get('ok')),
-            'cancelled': len(cancelled),
-            'cancelFailed': sum(1 for row in cancelled if not row.get('ok')),
-            'memoryCleared': bool(reset.get('memoryCleared')),
+            'ok': bool(reset.get('ok')),
+            'cancelled': [
+                {'groupId': row.get('groupId'), 'ok': row.get('ok'), 'status': row.get('status')}
+                for row in cancelled if isinstance(row, dict)
+            ],
+            'local': {
+                'removedBookings': local.get('removedBookings'),
+                'removedContext': local.get('removedContext'),
+            },
+            'memoryCleared': reset.get('memoryCleared') is True,
+            'error': reset.get('error'),
             'remaining': left.get('count', len(bookings) if isinstance(bookings, list) else None),
-            'numbers': [row.get('booking_number') for row in bookings] if isinstance(bookings, list) else [],
         }))
     finally:
         try:
             gate.request('POST', f'/workflows/{wid}/deactivate')
         except Exception:
             pass
-        time.sleep(1)
-        gate.request('DELETE', f'/workflows/{wid}')
+        last_error = None
+        for _ in range(4):
+            time.sleep(1)
+            try:
+                gate.request('DELETE', f'/workflows/{wid}')
+                last_error = None
+                break
+            except Exception as error:
+                last_error = error
+        if last_error:
+            raise last_error
 
 
 def main():

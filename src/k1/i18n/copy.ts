@@ -1392,7 +1392,7 @@ export const fi: Copy = {
     view: 'Näytä',
     reset: 'Nollaa',
     resetTitle: 'Nollataanko tämä numero?',
-    resetBody: 'Kirjoita RESET tyhjentääksesi keskustelumuistin ja peruaksesi tämän numeron staging-varaukset. Versio säilyy, eikä WhatsApp-viestiä lähetetä.',
+    resetBody: 'Kirjoita NOLLAA tyhjentääksesi keskustelumuistin ja peruaksesi tämän numeron staging-varaukset. Versio säilyy, eikä WhatsApp-viestiä lähetetä.',
     resetConfirm: 'Nollaa',
     resetDone: 'Nollattu',
     resetDoneBody: 'Versio on ennallaan ja seuraava viesti aloittaa uuden keskustelun.',
