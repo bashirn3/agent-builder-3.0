@@ -127,6 +127,11 @@ export function whatsappRuns(text: string): WhatsAppRun[] {
   return runs
 }
 
+export function pickConversation(current: string | null, rows: { conversationId: string }[]) {
+  if (current && rows.some((row) => row.conversationId === current)) return current
+  return rows[0]?.conversationId ?? null
+}
+
 export function latestActivity(sessionAt: string | null | undefined, messages: { at?: string | null }[]) {
   let best = sessionAt || ''
   let bestMs = Date.parse(best)

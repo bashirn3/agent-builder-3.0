@@ -219,17 +219,35 @@ LIST_CHATS_SQL = """select coalesce((
 ), '[]'::json) as rows"""
 
 LIST_SESSIONS_SQL = """select coalesce((
-  select json_agg(json_build_object(
-    'phone', s.phone,
-    'phoneKey', s.phone_key,
-    'plate', coalesce(s.lead->>'plateNumber', ''),
-    'stationName', coalesce(s.lead->>'stationName', ''),
-    'versionId', s.version_id,
-    'versionNumber', s.version_number,
-    'conversationId', s.conversation_id,
-    'updatedAt', s.updated_at
-  ) order by s.updated_at desc)
-  from k1_staging_sessions s
+  select json_agg(item order by item->>'updatedAt' desc)
+  from (
+    select json_build_object(
+      'phone', c.phone,
+      'phoneKey', c.phone_key,
+      'plate', coalesce(nullif(btrim(split_part(c.title, ' · ', 2)), ''), nullif(s.lead->>'plateNumber', ''), ''),
+      'stationName', coalesce(s.lead->>'stationName', ''),
+      'versionId', c.version_id,
+      'versionNumber', c.version_number,
+      'conversationId', c.id,
+      'updatedAt', c.updated_at
+    ) as item
+    from k1_staging_conversations c
+    left join k1_staging_sessions s on s.phone_key = c.phone_key
+    where exists (select 1 from k1_staging_messages m where m.conversation_id = c.id)
+    union all
+    select json_build_object(
+      'phone', s.phone,
+      'phoneKey', s.phone_key,
+      'plate', coalesce(s.lead->>'plateNumber', ''),
+      'stationName', coalesce(s.lead->>'stationName', ''),
+      'versionId', s.version_id,
+      'versionNumber', s.version_number,
+      'conversationId', s.conversation_id,
+      'updatedAt', s.updated_at
+    )
+    from k1_staging_sessions s
+    where not exists (select 1 from k1_staging_messages m where m.conversation_id = s.conversation_id)
+  ) listed
 ), '[]'::json) as sessions"""
 
 SHAPE_STAGING_JS = r"""function rowsOf(raw) {
@@ -657,6 +675,9 @@ return [{ json: { ok: !failed, error: failed ? 'reply_failed' : null } }]
 
 THREAD_JS = r"""const digits = String($('Normalize').first().json.phone || '').replace(/\D/g, '')
 if (!/^\d+$/.test(digits)) return [{ json: { query: "select json_build_object('ok', false, 'error', 'phone_required') as result" } }]
+const requested = String($('Normalize').first().json.conversationId || '')
+const wanted = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requested) ? requested : ''
+const chosen = wanted ? `(select c.id from k1_staging_conversations c where c.phone_key = '${digits}' and c.id = '${wanted}'::uuid)` : 'null'
 const query = `select json_build_object(
   'ok', true,
   'found', s.phone_key is not null,
@@ -664,10 +685,12 @@ const query = `select json_build_object(
   'plate', coalesce(s.lead->>'plateNumber', ''),
   'stationName', coalesce(s.lead->>'stationName', ''),
   'versionNumber', s.version_number,
-  'updatedAt', s.updated_at,
+  'conversationId', coalesce(${chosen}, s.conversation_id),
+  'updatedAt', coalesce((select c.updated_at from k1_staging_conversations c where c.id = coalesce(${chosen}, s.conversation_id)), s.updated_at),
   'messages', coalesce((
     select json_agg(json_build_object('id', m.id, 'role', m.role, 'text', m.text, 'at', m.created_at, 'bubbles', m.bubbles) order by m.created_at)
-    from k1_staging_messages m where m.conversation_id = s.conversation_id
+    from k1_staging_messages m
+    where m.conversation_id = coalesce(${chosen}, s.conversation_id)
   ), '[]'::json)
 ) as result
 from (select 1) seed
@@ -1307,6 +1330,36 @@ def put_send(wid, body):
             gate.request('POST', f'/workflows/{wid}/activate')
 
 
+def patch_send_history(workflow):
+    named = {item['name']: item for item in workflow['nodes']}
+    if 'List sessions' not in named or 'Prepare thread' not in named:
+        raise SystemExit('staging send is missing the list or the thread')
+    query = named['List sessions']['parameters'].get('query') or ''
+    js = named['Prepare thread']['parameters']['jsCode']
+    if 'as sessions' not in query or "'bubbles', m.bubbles" not in js:
+        raise SystemExit('staging list or thread shape changed')
+    named['List sessions']['parameters']['query'] = LIST_SESSIONS_SQL
+    named['Prepare thread']['parameters']['jsCode'] = THREAD_JS
+
+
+def history():
+    wid = send_workflow_id()
+    workflow = gate.request('GET', f'/workflows/{wid}')
+    patch_send_history(workflow)
+    put_send(wid, workflow)
+    saved = gate.request('GET', f'/workflows/{wid}')
+    if saved.get('active') is not True:
+        raise SystemExit('staging send left inactive')
+    named = {item['name']: item for item in saved['nodes']}
+    js = named['Prepare thread']['parameters']['jsCode']
+    listed = named['List sessions']['parameters']['query']
+    if 'k1_staging_conversations' not in listed or 'conversationId' not in js or "'bubbles', m.bubbles" not in js:
+        raise SystemExit('history list did not stick')
+    if saved['connections']['Reply?']['main'][1][0]['node'] != 'Reset?':
+        raise SystemExit('reply branch replaced reset')
+    print(f'staging send {wid} lists every saved conversation')
+
+
 def bubbles():
     apply_bubbles_column()
     wid = send_workflow_id()
@@ -1333,5 +1386,7 @@ if __name__ == '__main__':
         apply()
     elif command == 'bubbles':
         bubbles()
+    elif command == 'history':
+        history()
     else:
         raise SystemExit(__doc__)

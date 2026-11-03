@@ -21,7 +21,7 @@ import { Dialog } from '../ui/overlay'
 import { RefreshCw } from '../ui/icons'
 import { formatStamp } from './SplitView'
 import { noteStick, sameMessages, scrollIfStuck, useLiveReload } from './liveThread'
-import { latestActivity, stagingParts, whatsappRuns } from '../data/stagingView'
+import { latestActivity, pickConversation, stagingParts, whatsappRuns } from '../data/stagingView'
 import { orderVersions, versionHint } from './versionText'
 
 function sendFailure(error: unknown, copy: ReturnType<typeof useCopy>) {
@@ -55,6 +55,7 @@ export function StagingPage({ store, notify }: {
   const threadRef = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
   const phoneRef = useRef<string | null>(null)
+  const conversationRef = useRef<string | null>(null)
   const ids = { version: useId(), lead: useId(), phone: useId(), country: useId(), conversation: useId() }
 
   useEffect(() => {
@@ -79,15 +80,16 @@ export function StagingPage({ store, notify }: {
     listStagingSessions()
       .then((next) => {
         setSessions(next)
-        setSelectedKey((current) => current && next.some((item) => item.phoneKey === current) ? current : next[0]?.phoneKey ?? null)
+        setSelectedKey((current) => pickConversation(current, next))
       })
       .catch((error: unknown) => notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }))
   }
   useEffect(refresh, [])
 
-  const selected = sessions?.find((item) => item.phoneKey === selectedKey) ?? null
+  const selected = sessions?.find((item) => item.conversationId === selectedKey) ?? null
   const selectedPhone = selected?.phone ?? null
   phoneRef.current = selectedPhone
+  conversationRef.current = selected?.conversationId ?? null
 
   useEffect(() => {
     stick.current = true
@@ -109,7 +111,7 @@ export function StagingPage({ store, notify }: {
     if (!selectedPhone) { setMessages([]); return }
     let cancelled = false
     setLoadingThread(true)
-    getStagingThread(selectedPhone)
+    getStagingThread(selectedPhone, selected?.conversationId)
       .then((thread) => { if (!cancelled) setMessages(thread.messages) })
       .catch((error: unknown) => { if (!cancelled) notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }) })
       .finally(() => { if (!cancelled) setLoadingThread(false) })
@@ -119,16 +121,17 @@ export function StagingPage({ store, notify }: {
   useLiveReload(Boolean(selectedPhone), () => {
     const phone = phoneRef.current
     if (!phone) return
-    void getStagingThread(phone)
+    const conversationId = conversationRef.current
+    void getStagingThread(phone, conversationId)
       .then((thread) => {
-        if (phoneRef.current !== phone) return
+        if (phoneRef.current !== phone || conversationRef.current !== conversationId) return
         setMessages((current) => sameMessages(current, thread.messages) ? current : thread.messages)
-        if (!thread.updatedAt) return
+        if (!thread.updatedAt || !conversationId) return
         setSessions((current) => {
           if (!current) return current
-          const row = current.find((item) => item.phone === phone)
+          const row = current.find((item) => item.conversationId === conversationId)
           if (!row || row.updatedAt === thread.updatedAt) return current
-          return current.map((item) => item.phone === phone ? { ...item, updatedAt: thread.updatedAt ?? item.updatedAt } : item)
+          return current.map((item) => item.conversationId === conversationId ? { ...item, updatedAt: thread.updatedAt ?? item.updatedAt } : item)
         })
       })
       .catch(() => {})
@@ -172,7 +175,7 @@ export function StagingPage({ store, notify }: {
     setReplying(label)
     try {
       await sendStagingReply(selectedPhone, label)
-      const thread = await getStagingThread(selectedPhone)
+      const thread = await getStagingThread(selectedPhone, selected?.conversationId)
       setMessages(thread.messages)
     } catch (error) {
       notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) })
@@ -206,7 +209,7 @@ export function StagingPage({ store, notify }: {
         },
       })
       notify({ title: t.staging.sent, body: t.staging.sentBody(result.versionNumber ?? version.number, phone) })
-      setSelectedKey(phone.replace(/\D/g, ''))
+      setSelectedKey(result.conversationId)
       refresh()
     } catch (error) {
       notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) })
@@ -336,10 +339,10 @@ export function StagingPage({ store, notify }: {
                 placeholder={t.staging.chooseConversation}
                 search={{ placeholder: t.staging.chooseConversation, emptyText: t.staging.empty }}
                 options={(sessions ?? []).map((item) => ({
-                  value: item.phoneKey,
+                  value: item.conversationId,
                   label: item.phone,
-                  hint: [item.plate, item.versionNumber ? `v${item.versionNumber}` : ''].filter(Boolean).join(' · '),
-                  keywords: `${item.phone} ${item.plate} ${item.stationName}`,
+                  hint: [item.plate, item.versionNumber ? `v${item.versionNumber}` : '', formatStamp(item.updatedAt)].filter(Boolean).join(' · '),
+                  keywords: `${item.phone} ${item.phoneKey} ${item.plate} ${item.stationName}`,
                 }))}
                 onChange={setSelectedKey}
               />

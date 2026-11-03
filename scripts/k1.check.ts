@@ -15,7 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
-import { latestActivity, stagingParts, whatsappRuns } from '../src/k1/data/stagingView.ts'
+import { latestActivity, pickConversation, stagingParts, whatsappRuns } from '../src/k1/data/stagingView.ts'
 import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
@@ -197,6 +197,8 @@ const booked = 'Thanks, Arslan. You’re booked at K1 Palokka for Wed 4 Nov at 1
 const runs = whatsappRuns(booked)
 assert(runs.some((run) => run.bold && run.value === 'QEFJEYKC') && runs.every((run) => !run.value.includes('*')), 'a WhatsApp booking number renders in bold without the asterisks')
 assert(whatsappRuns('price is * not bold * today')[0].value === 'price is * not bold * today', 'asterisks with a space inside stay as typed')
+assert(pickConversation(null, [{ conversationId: 'a1615b53-7713-4e7e-8f1f-bb4ed46e8ca4' }, { conversationId: 'ef0225bc-504d-4e5f-a9a8-42dc637a3782' }]) === 'a1615b53-7713-4e7e-8f1f-bb4ed46e8ca4', 'the staging list opens on the newest saved conversation')
+assert(pickConversation('ef0225bc-504d-4e5f-a9a8-42dc637a3782', [{ conversationId: 'a1615b53-7713-4e7e-8f1f-bb4ed46e8ca4' }, { conversationId: 'ef0225bc-504d-4e5f-a9a8-42dc637a3782' }]) === 'ef0225bc-504d-4e5f-a9a8-42dc637a3782', 'an open older conversation stays selected when the list reloads')
 assert(latestActivity('2026-11-03T06:48:56.29293+00:00', [
   { at: '2026-11-03T13:36:59.409482+00:00' },
   { at: '2026-11-03T13:38:22.679358+00:00' },
