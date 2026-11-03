@@ -7,6 +7,7 @@ import {
   resetCustomer,
   resetStagingSession,
   sendStaging,
+  sendStagingReply,
   type StagingMessage,
   type StagingSession,
 } from '../data/builderApi'
@@ -20,6 +21,7 @@ import { Dialog } from '../ui/overlay'
 import { RefreshCw } from '../ui/icons'
 import { formatStamp } from './SplitView'
 import { noteStick, sameMessages, scrollIfStuck, useLiveReload } from './liveThread'
+import { stagingParts } from '../data/stagingView'
 import { orderVersions, versionHint } from './versionText'
 
 function sendFailure(error: unknown, copy: ReturnType<typeof useCopy>) {
@@ -45,6 +47,8 @@ export function StagingPage({ store, notify }: {
   const [messages, setMessages] = useState<StagingMessage[]>([])
   const [loadingThread, setLoadingThread] = useState(false)
   const [sending, setSending] = useState(false)
+  const [replying, setReplying] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
   const [resetting, setResetting] = useState<StagingSession | null>(null)
   const [country, setCountry] = useState<DialCountry>('fi')
   const [national, setNational] = useState('')
@@ -153,6 +157,28 @@ export function StagingPage({ store, notify }: {
   const leadLabel = selected
     ? [selected.plate, shortStation(selected.stationName)].filter(Boolean).join(' · ')
     : ''
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(code)
+      window.setTimeout(() => setCopied((current) => current === code ? null : current), 1500)
+    } catch { /* clipboard blocked */ }
+  }
+
+  const sendReply = async (label: string) => {
+    if (!selectedPhone || replying) return
+    setReplying(label)
+    try {
+      await sendStagingReply(selectedPhone, label)
+      const thread = await getStagingThread(selectedPhone)
+      setMessages(thread.messages)
+    } catch (error) {
+      notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) })
+    } finally {
+      setReplying(null)
+    }
+  }
 
   const send = async () => {
     if (!canSend || !version || !lead || !used || !composed.ok) return
@@ -328,7 +354,28 @@ export function StagingPage({ store, notify }: {
             <div className="k1-tester__thread" ref={threadRef}>
               {sessions === null || loadingThread ? <p className="k1-hint">{t.common.loading}</p> : !selected ? <p className="k1-hint">{t.staging.noConversation}</p> : messages.length === 0 ? <p className="k1-hint">{t.staging.noMessages}</p> : messages.map((message) => (
                 <div key={message.id} className={message.role === 'user' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
-                  <p className="k1-msg__bubble">{message.text}</p>
+                  {stagingParts(message).map((part, index) => (
+                    <div key={index} className="k1-msg__part">
+                      {part.text ? <p className="k1-msg__bubble">{part.text}</p> : null}
+                      {part.link ? (
+                        <a className={part.live ? 'k1-msg__link' : 'k1-msg__box'} href={part.link.url} target="_blank" rel="noreferrer">{part.link.label}</a>
+                      ) : null}
+                      {part.copy ? (
+                        <button type="button" className={part.live ? 'k1-msg__chip' : 'k1-msg__box'} onClick={() => void copyCode(part.copy!.code)}>
+                          {copied === part.copy.code ? part.copy.code : part.copy.label}
+                        </button>
+                      ) : null}
+                      {part.replies.length > 0 && (
+                        <div className="k1-msg__chips">
+                          {part.replies.map((label) => (
+                            <button key={label} type="button" className={part.live ? 'k1-msg__chip' : 'k1-msg__box'} disabled={replying !== null} onClick={() => void sendReply(label)}>
+                              {replying === label ? <Spinner /> : null}{label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

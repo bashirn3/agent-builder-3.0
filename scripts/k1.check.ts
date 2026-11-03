@@ -15,6 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
+import { stagingParts } from '../src/k1/data/stagingView.ts'
 import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
@@ -177,3 +178,19 @@ assert(electric.includes('Power type of the vehicle: electric'), 'lead context g
 assert(leadContext({ plateNumber: 'X-2', stationName: '', nextInspection: null, lastInspection: null, language: 'Suomi', product: '004', powerType: 'multi-power' }, 'fi').includes('Power type of the vehicle: multi-power.'), 'a power type on the lead wins over the derived one')
 assert(!/opening hours \(Europe\/Helsinki\)/i.test(electric) && !/Published station opening hours/.test(electric), 'lead context no longer hardcodes station hours')
 console.log('lead context checks passed')
+
+const sent = stagingParts({
+  role: 'agent',
+  text: 'draft that must not show',
+  bubbles: [
+    { text: 'Kiitos Joku, varaus on K1 Palokkaan. Varausnumero GUMLYYPW.', link: { url: 'https://staging.example/varaus', label: 'Hallitse varausta' }, copy: { label: 'Kopioi varausnumero', code: 'GUMLYYPW' }, replies: [] },
+    { text: 'Haluatko vahvistuksen tekstiviestinä?', link: null, copy: null, replies: ['Lähetä vahvistus'] },
+  ],
+})
+assert(sent.length === 2 && sent[0].text.startsWith('Kiitos Joku') && sent[0].link?.label === 'Hallitse varausta' && sent[0].copy?.code === 'GUMLYYPW' && sent[1].replies[0] === 'Lähetä vahvistus', 'a sent turn renders one bubble per item, with its link, copy code and reply')
+assert(sent.every((part) => part.live) && !sent.some((part) => part.text.includes('draft')), 'structured bubbles replace the draft text')
+const tap = stagingParts({ role: 'user', text: '[button] Lähetä vahvistus' })
+assert(tap.length === 1 && tap[0].text === 'Lähetä vahvistus' && !tap[0].text.includes('[button]'), 'a button tap shows the label the customer sent')
+const markers = stagingParts({ role: 'agent', text: 'Hei\n[link button: Hallitse varausta → https://staging.example/varaus]\n[reply buttons: Lähetä vahvistus]' })
+assert(markers[0].text === 'Hei' && markers[1].link?.url === 'https://staging.example/varaus' && markers[1].live === false && markers[2].replies[0] === 'Lähetä vahvistus', 'marker lines stay grey until bubbles are stored')
+console.log('staging bubble checks passed')

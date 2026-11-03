@@ -12,6 +12,9 @@ alter table public.k1_staging_messages
 alter table public.k1_staging_messages
   add column if not exists rewrites text;
 
+alter table public.k1_staging_messages
+  add column if not exists bubbles jsonb;
+
 create unique index if not exists k1_staging_messages_inbound_user
   on public.k1_staging_messages (conversation_id, inbound_message_id)
   where inbound_message_id is not null and role = 'user';

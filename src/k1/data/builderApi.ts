@@ -557,6 +557,7 @@ export type StagingMessage = {
   role: 'user' | 'agent'
   text: string
   at: string
+  bubbles?: unknown
 }
 
 export type StagingThread = {
@@ -655,6 +656,18 @@ export async function resetStagingSession(phone: string): Promise<{ found: boole
   })
   if (result.ok === false) throw new Error(result.error ?? 'reset_failed')
   return { found: Boolean(result.found), conversationId: result.conversationId ?? null }
+}
+
+// A reply chip is the customer's next WhatsApp message. The text is the chip label, not a free note.
+export async function sendStagingReply(phone: string, text: string): Promise<void> {
+  const label = text.trim()
+  if (!label || label.length > 80) throw new Error('reply_required')
+  if (!remote) return
+  const result = await call<{ ok?: boolean; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'reply', phone, text: label }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'reply_failed')
 }
 
 export async function getStagingThread(phone: string): Promise<StagingThread> {

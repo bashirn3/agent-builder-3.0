@@ -7,6 +7,7 @@ the current live path. The inactive workflow "K1 v10 staging" is not activated.
 
   python3 k1-staging-tab.py dry     patch the newest backups in memory
   python3 k1-staging-tab.py apply   back up, migrate, and update the live workflows
+  python3 k1-staging-tab.py bubbles add k1_staging_messages.bubbles and return it on the thread
 
 Sessions live in the agent database (v2back-working). The builder project has no
 postgres credential this listener can use, so supabase/k1-agent-builder-007-staging.sql
@@ -297,6 +298,7 @@ create table if not exists k1_staging_messages (
   conversation_id uuid not null,
   role text not null,
   text text not null,
+  bubbles jsonb,
   is_opener boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -630,6 +632,29 @@ if (typeof error !== 'string' || !/^[a-z0-9_.:-]{1,80}$/i.test(error)) error = '
 return [{ json: { ok: false, error } }]
 """
 
+REPLY_JS = r"""const body = $('Normalize').first().json || {}
+const phone = String(body.phone || '').replace(/\D/g, '')
+const text = String(body.text || '').trim()
+if (!/^\d{8,15}$/.test(phone) || !text || text.length > 80 || /[\r\n]/.test(text)) {
+  return [{ json: { ok: false, error: 'reply_required' } }]
+}
+return [{ json: { ok: true, inbound: {
+  event: 'message',
+  from_phone: phone,
+  to_phone: '',
+  message: text,
+  message_id: 'sandbox-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+  media_type: 'text',
+  created_at: new Date().toISOString(),
+} } }]
+"""
+
+READ_REPLY_JS = r"""const item = $input.first().json || {}
+const status = Number(item.statusCode || item.status || 0)
+const failed = Boolean(item.error) || status >= 400
+return [{ json: { ok: !failed, error: failed ? 'reply_failed' : null } }]
+"""
+
 THREAD_JS = r"""const digits = String($('Normalize').first().json.phone || '').replace(/\D/g, '')
 if (!/^\d+$/.test(digits)) return [{ json: { query: "select json_build_object('ok', false, 'error', 'phone_required') as result" } }]
 const query = `select json_build_object(
@@ -641,7 +666,7 @@ const query = `select json_build_object(
   'versionNumber', s.version_number,
   'updatedAt', s.updated_at,
   'messages', coalesce((
-    select json_agg(json_build_object('id', m.id, 'role', m.role, 'text', m.text, 'at', m.created_at) order by m.created_at)
+    select json_agg(json_build_object('id', m.id, 'role', m.role, 'text', m.text, 'at', m.created_at, 'bubbles', m.bubbles) order by m.created_at)
     from k1_staging_messages m where m.conversation_id = s.conversation_id
   ), '[]'::json)
 ) as result
@@ -741,6 +766,7 @@ const phone = String(body.phone || '').trim()
 return [{ json: { ...body, action, phone, to: phone.replace(/\D/g, '') } }]"""),
         node('Send?', 'n8n-nodes-base.if', 2.2, [680, 300], equals_if('={{ $json.action }}', 'send')),
         node('Thread?', 'n8n-nodes-base.if', 2.2, [900, 420], equals_if('={{ $json.action }}', 'thread')),
+        node('Reply?', 'n8n-nodes-base.if', 2.2, [1120, 760], equals_if('={{ $json.action }}', 'reply')),
         node('Reset?', 'n8n-nodes-base.if', 2.2, [1120, 620], equals_if('={{ $json.action }}', 'reset')),
         http_rpc('Fetch saved version', 'get_agent_builder_version',
                  "={{ { p_tenant_key: 'k1_katsastus_demo', p_version_id: $('Normalize').first().json.versionId } }}", [900, 120]),
@@ -760,6 +786,19 @@ return [{ json: { ...body, action, phone, to: phone.replace(/\D/g, '') } }]"""),
         respond('Respond send', [2880, -80], "={{ { ok: true, conversationId: $('Unwrap claim').first().json.conversationId, versionNumber: $('Unwrap claim').first().json.versionNumber, phone: $('Normalize').first().json.phone } }}"),
         code('Explain failure', [2440, 180], EXPLAIN_JS),
         respond('Respond send failed', [2660, 180], "={{ { ok: false, error: $json.error || 'send_failed' } }}", 400),
+        code('Prepare reply', [1340, 700], REPLY_JS),
+        node('Reply ready?', 'n8n-nodes-base.if', 2.2, [1560, 700], equals_if("={{ String($json.ok) }}", 'true')),
+        node('Post reply', 'n8n-nodes-base.httpRequest', 4.2, [1780, 640], {
+            'method': 'POST',
+            'url': gate.DEFAULT_BASE.rstrip('/') + '/webhook/k1-muster-agent-inbound',
+            'sendBody': True,
+            'specifyBody': 'json',
+            'jsonBody': '={{ $json.inbound }}',
+            'options': {'timeout': 120000},
+        }, None, {'onError': 'continueRegularOutput'}),
+        code('Read reply', [2000, 640], READ_REPLY_JS),
+        respond('Respond reply', [2220, 640], '={{ { ok: $json.ok === true, error: $json.error || null } }}'),
+        respond('Respond reply failed', [1780, 820], '={{ { ok: false, error: $json.error || \'reply_required\' } }}', 400),
         code('Prepare thread', [1120, 420], THREAD_JS),
         pg('Read thread', '={{ $json.query }}', [1340, 420]),
         code('Unwrap thread', [1560, 420], UNWRAP_RESULT_JS),
@@ -776,7 +815,12 @@ return [{ json: { ...body, action, phone, to: phone.replace(/\D/g, '') } }]"""),
         'Webhook': link('Normalize'),
         'Normalize': link('Send?'),
         'Send?': {'main': [[{'node': 'Fetch saved version', 'type': 'main', 'index': 0}], [{'node': 'Thread?', 'type': 'main', 'index': 0}]]},
-        'Thread?': {'main': [[{'node': 'Prepare thread', 'type': 'main', 'index': 0}], [{'node': 'Reset?', 'type': 'main', 'index': 0}]]},
+        'Thread?': {'main': [[{'node': 'Prepare thread', 'type': 'main', 'index': 0}], [{'node': 'Reply?', 'type': 'main', 'index': 0}]]},
+        'Reply?': {'main': [[{'node': 'Prepare reply', 'type': 'main', 'index': 0}], [{'node': 'Reset?', 'type': 'main', 'index': 0}]]},
+        'Prepare reply': link('Reply ready?'),
+        'Reply ready?': {'main': [[{'node': 'Post reply', 'type': 'main', 'index': 0}], [{'node': 'Respond reply failed', 'type': 'main', 'index': 0}]]},
+        'Post reply': link('Read reply'),
+        'Read reply': link('Respond reply'),
         'Fetch saved version': link('Read version'),
         'Read version': link('Version ok?'),
         'Version ok?': {'main': [[{'node': 'Prepare claim', 'type': 'main', 'index': 0}], [{'node': 'Explain failure', 'type': 'main', 'index': 0}]]},
@@ -997,6 +1041,8 @@ def dry():
     assert any(item['name'] == 'Read version' for item in send['nodes'])
     assert any(item['name'] == 'Explain failure' for item in send['nodes'])
     assert any(item['name'] == 'Prepare thread' for item in send['nodes'])
+    assert "'bubbles', m.bubbles" in next(item['parameters']['jsCode'] for item in send['nodes'] if item['name'] == 'Prepare thread')
+    assert send['connections']['Reply?']['main'][1][0]['node'] == 'Reset?'
     opener = next(item for item in send['nodes'] if item['name'] == 'Send opener')
     assert opener['parameters']['resource'] == 'message'
     assert opener['parameters']['operation'] == 'sendRaw'
@@ -1161,6 +1207,123 @@ def apply():
     print(f'live agent {LIVE_AGENT} active={live.get("active")}; booking noted; staging send {wid}')
 
 
+def send_workflow_id():
+    cursor = None
+    while True:
+        page = gate.request('GET', '/workflows?limit=100' + (f'&cursor={cursor}' if cursor else ''))
+        for item in page.get('data') or []:
+            if item.get('name') == SEND_NAME:
+                return item['id']
+        cursor = page.get('nextCursor')
+        if not cursor:
+            break
+    raise SystemExit('staging send workflow is missing')
+
+
+def apply_bubbles_column():
+    path = f'k1-bubbles-column-{uuid.uuid4().hex[:12]}'
+    query = (
+        "alter table k1_staging_messages add column if not exists bubbles jsonb; "
+        "select column_name from information_schema.columns "
+        "where table_name = 'k1_staging_messages' and column_name = 'bubbles'"
+    )
+    respond = node('Respond', 'n8n-nodes-base.respondToWebhook', 1.5, [640, 300], {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}})
+    hook = node('Webhook', 'n8n-nodes-base.webhook', 2.1, [240, 300], {'httpMethod': 'POST', 'path': path, 'responseMode': 'responseNode', 'options': {}})
+    sql = node('Migrate', 'n8n-nodes-base.postgres', 2.6, [440, 300], {'operation': 'executeQuery', 'query': query, 'options': {}}, POSTGRES)
+    created = gate.request('POST', '/workflows', {
+        'name': 'tmp bubbles column',
+        'nodes': [hook, sql, respond],
+        'connections': {'Webhook': link('Migrate'), 'Migrate': link('Respond')},
+        'settings': {'executionOrder': 'v1', 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'none'},
+    })
+    wid = created['id']
+    try:
+        gate.request('POST', f'/workflows/{wid}/activate')
+        status, body = post_webhook(path)
+        if status != 200 or 'bubbles' not in body:
+            raise SystemExit(f'bubbles column was not added ({status})')
+        print('bubbles column ready')
+    finally:
+        delete_workflow(wid)
+
+
+def patch_send_bubbles(workflow):
+    named = {item['name']: item for item in workflow['nodes']}
+    if 'Prepare thread' not in named or 'Thread?' not in named or 'Reset?' not in named:
+        raise SystemExit('staging send is missing the thread branch')
+    js = named['Prepare thread']['parameters']['jsCode']
+    needle = "'id', m.id, 'role', m.role, 'text', m.text, 'at', m.created_at"
+    if "'bubbles', m.bubbles" not in js:
+        if needle not in js:
+            raise SystemExit('thread query shape changed')
+        named['Prepare thread']['parameters']['jsCode'] = js.replace(needle, needle + ", 'bubbles', m.bubbles", 1)
+    if 'Reply?' in named:
+        return
+    false_branch = workflow['connections']['Thread?']['main'][1]
+    if not false_branch or false_branch[0].get('node') != 'Reset?':
+        raise SystemExit('thread false branch is not reset')
+    spot = named['Reset?']['position']
+    workflow['nodes'].extend([
+        node('Reply?', 'n8n-nodes-base.if', 2.2, [spot[0], spot[1] + 180], equals_if('={{ $json.action }}', 'reply')),
+        node('Prepare reply', 'n8n-nodes-base.code', 2, [spot[0] + 220, spot[1] + 180], {'mode': 'runOnceForAllItems', 'jsCode': REPLY_JS}),
+        node('Reply ready?', 'n8n-nodes-base.if', 2.2, [spot[0] + 440, spot[1] + 180], equals_if("={{ String($json.ok) }}", 'true')),
+        node('Post reply', 'n8n-nodes-base.httpRequest', 4.2, [spot[0] + 660, spot[1] + 120], {
+            'method': 'POST',
+            'url': gate.DEFAULT_BASE.rstrip('/') + '/webhook/k1-muster-agent-inbound',
+            'sendBody': True,
+            'specifyBody': 'json',
+            'jsonBody': '={{ $json.inbound }}',
+            'options': {'timeout': 120000},
+        }, None, {'onError': 'continueRegularOutput'}),
+        node('Read reply', 'n8n-nodes-base.code', 2, [spot[0] + 880, spot[1] + 120], {'mode': 'runOnceForAllItems', 'jsCode': READ_REPLY_JS}),
+        node('Respond reply', 'n8n-nodes-base.respondToWebhook', 1.5, [spot[0] + 1100, spot[1] + 120], {
+            'respondWith': 'json', 'responseBody': '={{ { ok: $json.ok === true, error: $json.error || null } }}', 'options': {},
+        }),
+        node('Respond reply failed', 'n8n-nodes-base.respondToWebhook', 1.5, [spot[0] + 660, spot[1] + 300], {
+            'respondWith': 'json', 'responseBody': "={{ { ok: false, error: $json.error || 'reply_required' } }}", 'options': {'responseCode': 400},
+        }),
+    ])
+    workflow['connections']['Thread?']['main'][1] = [{'node': 'Reply?', 'type': 'main', 'index': 0}]
+    workflow['connections']['Reply?'] = {'main': [[{'node': 'Prepare reply', 'type': 'main', 'index': 0}], [{'node': 'Reset?', 'type': 'main', 'index': 0}]]}
+    workflow['connections']['Prepare reply'] = link('Reply ready?')
+    workflow['connections']['Reply ready?'] = {'main': [[{'node': 'Post reply', 'type': 'main', 'index': 0}], [{'node': 'Respond reply failed', 'type': 'main', 'index': 0}]]}
+    workflow['connections']['Post reply'] = link('Read reply')
+    workflow['connections']['Read reply'] = link('Respond reply')
+
+
+def put_send(wid, body):
+    was_active = bool(body.get('active'))
+    payload = {
+        'name': body['name'],
+        'nodes': body['nodes'],
+        'connections': body['connections'],
+        'settings': {key: value for key, value in (body.get('settings') or {}).items() if key in SETTINGS_KEEP or key == 'binaryMode'},
+    }
+    gate.request('POST', f'/workflows/{wid}/deactivate')
+    try:
+        gate.request('PUT', f'/workflows/{wid}', payload)
+    finally:
+        if was_active:
+            gate.request('POST', f'/workflows/{wid}/activate')
+
+
+def bubbles():
+    apply_bubbles_column()
+    wid = send_workflow_id()
+    workflow = gate.request('GET', f'/workflows/{wid}')
+    patch_send_bubbles(workflow)
+    put_send(wid, workflow)
+    saved = gate.request('GET', f'/workflows/{wid}')
+    if saved.get('active') is not True:
+        raise SystemExit('staging send left inactive')
+    js = next(item['parameters']['jsCode'] for item in saved['nodes'] if item['name'] == 'Prepare thread')
+    if "'bubbles', m.bubbles" not in js:
+        raise SystemExit('thread query does not return bubbles')
+    if saved['connections']['Reply?']['main'][1][0]['node'] != 'Reset?':
+        raise SystemExit('reply branch replaced reset')
+    print(f'staging send {wid} returns bubbles')
+
+
 if __name__ == '__main__':
     import sys
     command = sys.argv[1] if len(sys.argv) > 1 else 'dry'
@@ -1168,5 +1331,7 @@ if __name__ == '__main__':
         dry()
     elif command == 'apply':
         apply()
+    elif command == 'bubbles':
+        bubbles()
     else:
         raise SystemExit(__doc__)
