@@ -557,6 +557,7 @@ export type StagingMessage = {
   role: 'user' | 'agent'
   text: string
   at: string
+  bubbles?: unknown
 }
 
 export type StagingThread = {
@@ -657,11 +658,23 @@ export async function resetStagingSession(phone: string): Promise<{ found: boole
   return { found: Boolean(result.found), conversationId: result.conversationId ?? null }
 }
 
-export async function getStagingThread(phone: string): Promise<StagingThread> {
+// A reply chip is the customer's next WhatsApp message. The text is the chip label, not a free note.
+export async function sendStagingReply(phone: string, text: string): Promise<void> {
+  const label = text.trim()
+  if (!label || label.length > 80) throw new Error('reply_required')
+  if (!remote) return
+  const result = await call<{ ok?: boolean; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'reply', phone, text: label }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'reply_failed')
+}
+
+export async function getStagingThread(phone: string, conversationId?: string | null): Promise<StagingThread> {
   const empty: StagingThread = { found: false, phone, plate: '', stationName: '', versionNumber: null, updatedAt: null, messages: [] }
   if (!remote) {
     const key = phone.replace(/\D/g, '')
-    const session = readStaging().find((item) => item.phone === phone || item.phoneKey === key)
+    const session = readStaging().find((item) => item.conversationId === conversationId || item.phone === phone || item.phoneKey === key)
     if (!session) return empty
     return {
       found: true,
@@ -675,7 +688,7 @@ export async function getStagingThread(phone: string): Promise<StagingThread> {
   }
   const result = await call<StagingThread & { ok?: boolean; error?: string }>('/staging-send', {
     method: 'POST',
-    body: JSON.stringify({ action: 'thread', phone }),
+    body: JSON.stringify({ action: 'thread', phone, ...(conversationId ? { conversationId } : {}) }),
   })
   if (result.ok === false) throw new Error(result.error ?? 'request_failed')
   return {

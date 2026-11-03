@@ -15,6 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
+import { latestActivity, pickConversation, stagingParts, whatsappRuns } from '../src/k1/data/stagingView.ts'
 import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
@@ -177,3 +178,29 @@ assert(electric.includes('Power type of the vehicle: electric'), 'lead context g
 assert(leadContext({ plateNumber: 'X-2', stationName: '', nextInspection: null, lastInspection: null, language: 'Suomi', product: '004', powerType: 'multi-power' }, 'fi').includes('Power type of the vehicle: multi-power.'), 'a power type on the lead wins over the derived one')
 assert(!/opening hours \(Europe\/Helsinki\)/i.test(electric) && !/Published station opening hours/.test(electric), 'lead context no longer hardcodes station hours')
 console.log('lead context checks passed')
+
+const sent = stagingParts({
+  role: 'agent',
+  text: 'draft that must not show',
+  bubbles: [
+    { text: 'Kiitos Joku, varaus on K1 Palokkaan. Varausnumero GUMLYYPW.', link: { url: 'https://staging.example/varaus', label: 'Hallitse varausta' }, copy: { label: 'Kopioi varausnumero', code: 'GUMLYYPW' }, replies: [] },
+    { text: 'Haluatko vahvistuksen tekstiviestinä?', link: null, copy: null, replies: ['Lähetä vahvistus'] },
+  ],
+})
+assert(sent.length === 2 && sent[0].text.startsWith('Kiitos Joku') && sent[0].link?.label === 'Hallitse varausta' && sent[0].copy?.code === 'GUMLYYPW' && sent[1].replies[0] === 'Lähetä vahvistus', 'a sent turn renders one bubble per item, with its link, copy code and reply')
+assert(sent.every((part) => part.live) && !sent.some((part) => part.text.includes('draft')), 'structured bubbles replace the draft text')
+const tap = stagingParts({ role: 'user', text: '[button] Lähetä vahvistus' })
+assert(tap.length === 1 && tap[0].text === 'Lähetä vahvistus' && !tap[0].text.includes('[button]'), 'a button tap shows the label the customer sent')
+const markers = stagingParts({ role: 'agent', text: 'Hei\n[link button: Hallitse varausta → https://staging.example/varaus]\n[reply buttons: Lähetä vahvistus]' })
+assert(markers[0].text === 'Hei' && markers[1].link?.url === 'https://staging.example/varaus' && markers[1].live === false && markers[2].replies[0] === 'Lähetä vahvistus', 'marker lines stay grey until bubbles are stored')
+const booked = 'Thanks, Arslan. You’re booked at K1 Palokka for Wed 4 Nov at 10:00, booking number *QEFJEYKC*. The inspection is €76.'
+const runs = whatsappRuns(booked)
+assert(runs.some((run) => run.bold && run.value === 'QEFJEYKC') && runs.every((run) => !run.value.includes('*')), 'a WhatsApp booking number renders in bold without the asterisks')
+assert(whatsappRuns('price is * not bold * today')[0].value === 'price is * not bold * today', 'asterisks with a space inside stay as typed')
+assert(pickConversation(null, [{ conversationId: 'a1615b53-7713-4e7e-8f1f-bb4ed46e8ca4' }, { conversationId: 'ef0225bc-504d-4e5f-a9a8-42dc637a3782' }]) === 'a1615b53-7713-4e7e-8f1f-bb4ed46e8ca4', 'the staging list opens on the newest saved conversation')
+assert(pickConversation('ef0225bc-504d-4e5f-a9a8-42dc637a3782', [{ conversationId: 'a1615b53-7713-4e7e-8f1f-bb4ed46e8ca4' }, { conversationId: 'ef0225bc-504d-4e5f-a9a8-42dc637a3782' }]) === 'ef0225bc-504d-4e5f-a9a8-42dc637a3782', 'an open older conversation stays selected when the list reloads')
+assert(latestActivity('2026-11-03T06:48:56.29293+00:00', [
+  { at: '2026-11-03T13:36:59.409482+00:00' },
+  { at: '2026-11-03T13:38:22.679358+00:00' },
+]) === '2026-11-03T13:38:22.679358+00:00', 'the open chat clock follows the last message when the session row is older')
+console.log('staging bubble checks passed')
