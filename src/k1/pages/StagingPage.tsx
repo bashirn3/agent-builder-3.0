@@ -360,23 +360,44 @@ export function StagingPage({ store, notify }: {
                 <div key={message.id} className={message.role === 'user' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
                   {stagingParts(message).map((part, index) => (
                     <div key={index} className="k1-msg__part">
-                      {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
-                      {part.link ? (
-                        <a className={part.live ? 'k1-msg__link' : 'k1-msg__box'} href={part.link.url} target="_blank" rel="noreferrer">{part.link.label}</a>
-                      ) : null}
-                      {part.copy ? (
-                        <button type="button" className={part.live ? 'k1-msg__chip' : 'k1-msg__box'} onClick={() => void copyCode(part.copy!.code)}>
-                          {copied === part.copy.code ? part.copy.code : part.copy.label}
-                        </button>
-                      ) : null}
-                      {part.replies.length > 0 && (
-                        <div className="k1-msg__chips">
-                          {part.replies.map((label) => (
-                            <button key={label} type="button" className={part.live ? 'k1-msg__chip' : 'k1-msg__box'} disabled={replying !== null} onClick={() => void sendReply(label)}>
-                              {replying === label ? <Spinner /> : null}{label}
-                            </button>
-                          ))}
+                      {part.live && (part.link || part.copy || part.replies.length > 0) ? (
+                        <div className="k1-msg__wa">
+                          {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
+                          <div className="k1-msg__actions">
+                            {part.link ? (
+                              <a className="k1-msg__link" href={part.link.url} target="_blank" rel="noreferrer"><WaGlyph kind="link" />{part.link.label}</a>
+                            ) : null}
+                            {part.copy ? (
+                              <button type="button" className="k1-msg__chip" onClick={() => void copyCode(part.copy!.code)}>
+                                <WaGlyph kind="copy" />{copied === part.copy.code ? part.copy.code : part.copy.label}
+                              </button>
+                            ) : null}
+                            {part.replies.map((label) => (
+                              <button key={label} type="button" className="k1-msg__chip" disabled={replying !== null} onClick={() => void sendReply(label)}>
+                                {replying === label ? <Spinner /> : <WaGlyph kind="reply" />}{label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
+                          {part.link ? <a className="k1-msg__box" href={part.link.url} target="_blank" rel="noreferrer">{part.link.label}</a> : null}
+                          {part.copy ? (
+                            <button type="button" className="k1-msg__box" onClick={() => void copyCode(part.copy!.code)}>
+                              {copied === part.copy.code ? part.copy.code : part.copy.label}
+                            </button>
+                          ) : null}
+                          {part.replies.length > 0 && (
+                            <div className="k1-msg__chips">
+                              {part.replies.map((label) => (
+                                <button key={label} type="button" className="k1-msg__box" disabled={replying !== null} onClick={() => void sendReply(label)}>
+                                  {replying === label ? <Spinner /> : null}{label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   ))}
@@ -396,6 +417,17 @@ export function StagingPage({ store, notify }: {
     </div>
   )
 }
+function WaGlyph({ kind }: { kind: 'link' | 'copy' | 'reply' }) {
+  const shared = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true as const }
+  if (kind === 'link') {
+    return <svg {...shared}><path d="M14 5h5v5" /><path d="M19 5 10 14" /><path d="M17 13.5V18a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h4.5" /></svg>
+  }
+  if (kind === 'copy') {
+    return <svg {...shared}><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M4 16V6a2 2 0 0 1 2-2h10" /></svg>
+  }
+  return <svg {...shared}><path d="M9 14 4 9l5-5" /><path d="M4 9h9a7 7 0 0 1 7 7v3" /></svg>
+}
+
 function ResetDialog({ session, onClose, onDone, notify }: {
   session: StagingSession | null
   onClose: () => void
