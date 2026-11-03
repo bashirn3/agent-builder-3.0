@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { describeError, localized, openerPreview, type AgentVersion } from '../data/agentConfig'
 import {
   currentActor,
@@ -19,6 +19,7 @@ import { Select, Spinner } from '../ui/controls'
 import { Dialog } from '../ui/overlay'
 import { RefreshCw } from '../ui/icons'
 import { formatStamp } from './SplitView'
+import { noteStick, sameMessages, scrollIfStuck, useLiveReload } from './liveThread'
 import { orderVersions, versionHint } from './versionText'
 
 function sendFailure(error: unknown, copy: ReturnType<typeof useCopy>) {
@@ -47,6 +48,9 @@ export function StagingPage({ store, notify }: {
   const [resetting, setResetting] = useState<StagingSession | null>(null)
   const [country, setCountry] = useState<DialCountry>('fi')
   const [national, setNational] = useState('')
+  const threadRef = useRef<HTMLDivElement>(null)
+  const stick = useRef(true)
+  const phoneRef = useRef<string | null>(null)
   const ids = { version: useId(), lead: useId(), phone: useId(), country: useId(), conversation: useId() }
 
   useEffect(() => {
@@ -78,17 +82,53 @@ export function StagingPage({ store, notify }: {
   useEffect(refresh, [])
 
   const selected = sessions?.find((item) => item.phoneKey === selectedKey) ?? null
+  const selectedPhone = selected?.phone ?? null
+  phoneRef.current = selectedPhone
 
   useEffect(() => {
-    if (!selected) { setMessages([]); return }
+    stick.current = true
+  }, [selectedPhone, selected?.conversationId])
+
+  useEffect(() => {
+    const node = threadRef.current
+    if (!node) return
+    const onScroll = () => noteStick(node, stick)
+    node.addEventListener('scroll', onScroll, { passive: true })
+    return () => node.removeEventListener('scroll', onScroll)
+  }, [selectedPhone])
+
+  useEffect(() => {
+    scrollIfStuck(threadRef.current, stick)
+  }, [messages])
+
+  useEffect(() => {
+    if (!selectedPhone) { setMessages([]); return }
     let cancelled = false
     setLoadingThread(true)
-    getStagingThread(selected.phone)
+    getStagingThread(selectedPhone)
       .then((thread) => { if (!cancelled) setMessages(thread.messages) })
       .catch((error: unknown) => { if (!cancelled) notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }) })
       .finally(() => { if (!cancelled) setLoadingThread(false) })
     return () => { cancelled = true }
-  }, [selected?.phone, selected?.conversationId])
+  }, [selectedPhone, selected?.conversationId])
+
+  useLiveReload(Boolean(selectedPhone), () => {
+    const phone = phoneRef.current
+    if (!phone) return
+    void getStagingThread(phone)
+      .then((thread) => {
+        if (phoneRef.current !== phone) return
+        setMessages((current) => sameMessages(current, thread.messages) ? current : thread.messages)
+        if (!thread.updatedAt) return
+        setSessions((current) => {
+          if (!current) return current
+          const row = current.find((item) => item.phone === phone)
+          if (!row || row.updatedAt === thread.updatedAt) return current
+          return current.map((item) => item.phone === phone ? { ...item, updatedAt: thread.updatedAt ?? item.updatedAt } : item)
+        })
+      })
+      .catch(() => {})
+  })
 
   const lead = store.lead
   useEffect(() => {
@@ -285,7 +325,7 @@ export function StagingPage({ store, notify }: {
                 <span>{formatStamp(selected.updatedAt)}</span>
               </p>
             )}
-            <div className="k1-tester__thread">
+            <div className="k1-tester__thread" ref={threadRef}>
               {sessions === null || loadingThread ? <p className="k1-hint">{t.common.loading}</p> : !selected ? <p className="k1-hint">{t.staging.noConversation}</p> : messages.length === 0 ? <p className="k1-hint">{t.staging.noMessages}</p> : messages.map((message) => (
                 <div key={message.id} className={message.role === 'user' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
                   <p className="k1-msg__bubble">{message.text}</p>
