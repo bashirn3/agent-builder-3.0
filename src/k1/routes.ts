@@ -19,7 +19,6 @@ export type Route =
 
 export type Environment = 'staging' | 'production'
 
-const ENVIRONMENT_KEY = 'k1.environment'
 const STAGING_PAGES: Route['page'][] = ['playground', 'chats', 'leads', 'compare', 'calendar', 'staging']
 const PRODUCTION_PAGES: Route['page'][] = ['home', 'liveChats', 'liveLeads', 'optimise', 'control']
 
@@ -29,19 +28,9 @@ const modeParam = (): Environment | null => {
   return mode === 'production' || mode === 'staging' ? mode : null
 }
 
-function remember(environment: Environment) {
-  try { window.localStorage.setItem(ENVIRONMENT_KEY, environment) } catch { /* storage blocked */ }
-}
-
-// A link with ?mode= wins over the mode this browser used last.
+// Everyone opens in Production; only a link with ?mode=staging opens Staging.
 export function storedEnvironment(): Environment {
-  const fromLink = modeParam()
-  if (fromLink) return fromLink
-  try {
-    return window.localStorage.getItem(ENVIRONMENT_KEY) === 'production' ? 'production' : 'staging'
-  } catch {
-    return 'staging'
-  }
+  return modeParam() ?? 'production'
 }
 
 export const environmentOf = (page: Route['page']): Environment | null =>
@@ -64,14 +53,12 @@ export function useEnvironment(route: Route): Environment {
   const environment = implied ?? remembered
   useEffect(() => {
     if (implied) setRemembered(implied)
-    remember(environment)
     writeModeParam(environment)
   }, [environment, implied])
   return environment
 }
 
 export function openEnvironment(environment: Environment) {
-  remember(environment)
   go(landing(environment))
 }
 
@@ -100,7 +87,7 @@ export function parse(hash: string): Route {
     case 'live':
       if (parts[1] === 'leads') return { page: 'liveLeads' }
       return { page: 'liveChats', id: parts[2] ?? null }
-    default: return parts.length ? { page: 'playground' } : landing()
+    default: return landing()
   }
 }
 
