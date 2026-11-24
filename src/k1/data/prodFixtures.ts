@@ -164,9 +164,10 @@ const LEADS: LeadItem[] = [
 ].sort((a, b) => a.days_left - b.days_left)
 
 const settings: Omit<Controls, 'can_edit' | 'batch' | 'history'> = {
-  outreach_on: false,
-  sending_ready: false,
-  cap_today: 0,
+  outreach_on: true,
+  sending_ready: true,
+  cap_today: 5,
+  daily_total_cap: 60,
   ramp: { start_date: isoDay(now + DAY), per_sending_day: [5, 5, 6, 6, 8], after: { min: 15, max: 20 } },
   bot_on: true,
   stations: STATIONS.map((station) => ({ ...station, first_messages_on: true, reminders_on: true })),
@@ -182,6 +183,7 @@ let batch: Batch = {
   id: 'b_789',
   status: 'proposed',
   created_at: at(now - 3 * 3_600_000),
+  planned_for: isoDay(now),
   total: 50,
   by_station: [{ station: 'Mikkeli Pitkäjärvi', count: 13 }, { station: 'Salo Meriniitty', count: 14 }, { station: 'Rauma Papinhaka', count: 12 }, { station: 'Kemi Karjalahti', count: 11 }],
   by_message: [{ step: 'opener', count: 38 }, { step: 'reminder_1', count: 9 }, { step: 'reminder_2', count: 3 }],

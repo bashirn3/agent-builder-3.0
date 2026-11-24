@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { isSample, ProdError, prodApi, type Batch, type Controls, type Settings, type SettingsPatch, type Timing } from '../../data/prodApi'
 import { copy, useCopy } from '../../i18n'
 import { Spinner, Switch } from '../../ui/controls'
@@ -31,13 +31,20 @@ function failure(error: unknown) {
 export function ControlPage({ notify }: { notify: Notify }) {
   const t = useCopy()
   const p = t.prod.control
-  const { data, setData, error, loading, refreshing, reload } = useProdData((signal) => prodApi.controls(signal), [])
+  const { data, setData, error, loading, refreshing, reload } = useProdData((signal) => prodApi.controls(signal), [], true)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [inWindow, setInWindow] = useState<number | null>(null)
 
-  useEffect(() => { if (data) setPlan(planOf(data)) }, [data])
+  // The page refreshes every 30 s, so a new answer only replaces Planning when nothing there is being edited.
+  const savedPlan = useRef<Plan | null>(null)
+  useEffect(() => {
+    if (!data) return
+    const next = planOf(data)
+    setPlan((current) => (!current || !savedPlan.current || same(current, savedPlan.current) ? next : current))
+    savedPlan.current = next
+  }, [data])
 
   const editable = Boolean(data?.can_edit)
   const sendingReady = data?.sending_ready === true
@@ -67,6 +74,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
     setSaving(key)
     try {
       const next = await prodApi.saveControls(change)
+      if (key === 'plan') setPlan(planOf(next))
       setData(next)
       notify(success)
     } catch (error) {
@@ -219,6 +227,15 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 </span>
               </label>
 
+              {data.daily_total_cap !== undefined && (
+                <div className="k1-set__row">
+                  <span className="k1-set__label">
+                    <strong>{p.totalCap}</strong>
+                    <small>{p.totalCapHint}</small>
+                  </span>
+                  <span className="k1-prod-number k1-prod-number--read"><strong>{fmtNum(data.daily_total_cap)}</strong><span>{p.perDay}</span></span>
+                </div>
+              )}
               {data.cap_today !== undefined && (
                 <div className="k1-set__row">
                   <span className="k1-set__label">
@@ -333,7 +350,7 @@ function BatchCard({ controls, sendingReady, editable, busy, onRelease, onHold }
   return (
     <Section
       title={p.batch}
-      description={batch ? p.proposedAt(fmtTime(batch.created_at)) : undefined}
+      description={batch ? (batch.planned_for ? p.plannedFor(fmtDay(batch.planned_for, true), fmtTime(batch.created_at)) : p.proposedAt(fmtTime(batch.created_at))) : undefined}
       aside={<span className="k1-tag">{release === 'manual' ? p.manual : p.auto}</span>}
       footer={batch ? (release === 'manual' ? (
         <>

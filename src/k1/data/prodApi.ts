@@ -95,6 +95,7 @@ export type Batch = {
   id: string
   status: 'proposed' | 'released' | 'sending' | 'sent' | 'held' | 'cancelled'
   created_at: string
+  planned_for?: string
   total: number
   by_station: Array<{ station: string; count: number }>
   by_message: Array<{ step: Step; count: number }>
@@ -119,6 +120,7 @@ export type Controls = Settings & {
   // False until the production bot, planner and sender are connected. Missing counts as false.
   sending_ready?: boolean
   cap_today?: number
+  daily_total_cap?: number
   ramp?: { start_date?: string; per_sending_day?: number[]; after?: { min: number; max: number } }
 }
 export type SettingsPatch = Partial<Omit<Settings, 'holdout_percent' | 'release'>>
