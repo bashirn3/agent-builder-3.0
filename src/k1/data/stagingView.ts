@@ -100,6 +100,11 @@ function fromText(text: string): StagingPart[] {
   return parts
 }
 
+// The production sender puts this one quick reply under every first message and reminder, and does not store it.
+export function outreachReply(language: string) {
+  return language === 'sv' ? 'Boka tid' : language === 'en' ? 'Book a time' : 'Varaa aika'
+}
+
 export function stagingParts(message: BubbleInput): StagingPart[] {
   const saved = structured(message.bubbles)
   if (saved) return saved

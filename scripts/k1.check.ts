@@ -15,7 +15,7 @@ import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
 import { normalizeDate, parseCsv, readLeads } from '../src/k1/data/csv.ts'
 import { detectLanguage, fillTemplate, leadContext } from '../src/k1/data/language.ts'
-import { latestActivity, pickConversation, stagingParts, whatsappRuns } from '../src/k1/data/stagingView.ts'
+import { latestActivity, outreachReply, pickConversation, stagingParts, whatsappRuns } from '../src/k1/data/stagingView.ts'
 import { applyPhoneInput, composePhone, prefillPhone } from '../src/k1/data/phone.ts'
 import { TJ_SHOWCASE, matchingShowcase, showcaseById } from '../src/k1/data/tjShowcase.ts'
 
@@ -31,6 +31,9 @@ assert(TJ_SHOWCASE.every((chat) => chat.messages.every((message, i) =>
 assert(TJ_SHOWCASE.every((chat) => chat.conversation.messageCount === chat.messages.length), 'showcase counts must match visible turns')
 assert(TJ_SHOWCASE.every((chat) => showcaseById(chat.conversation.id)?.conversation.id === chat.conversation.id), 'showcase detail links must resolve')
 assert(matchingShowcase('CGP-3').length === 1 && matchingShowcase('viikolla 41').length === 1, 'showcase search must include plates and customer messages')
+
+assert(outreachReply('fi') === 'Varaa aika' && outreachReply('sv') === 'Boka tid' && outreachReply('en') === 'Book a time', 'outreach reply button must match the production sender in every language')
+assert(stagingParts({ role: 'user', text: '[button] Varaa aika' })[0].text === 'Varaa aika', 'a tapped button shows its label')
 
 for (const route of [
   { page: 'signin' },

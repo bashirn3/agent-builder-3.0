@@ -6,7 +6,8 @@ import { Menu, Spinner } from '../../ui/controls'
 import { Check, Link2, Search, SlidersHorizontal, X } from '../../ui/icons'
 import { ThreadSkeleton } from '../../ui/skeletons'
 import { DetailPane, Facts, ListSkeleton, MobileSwap, relativeTime, SampleBadge } from '../SplitView'
-import { whatsappRuns } from '../../data/stagingView'
+import { outreachReply, stagingParts, whatsappRuns } from '../../data/stagingView'
+import { WaGlyph } from '../../ui/WaGlyph'
 import { DeliveryTag, EmptyState, PreviewNote, ErrorState, fmtClock, fmtDay, fmtNum, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
 
 const FILTERS: ConversationFilter[] = ['all', 'open', 'no_answer', 'booked', 'stopped']
@@ -156,18 +157,35 @@ function Chat({ detail }: { detail: ConversationDetail }) {
         <span>{t.prod.zone}</span>
       </p>
       {detail.messages.length === 0 && <p className="k1-hint">{p.noMessages}</p>}
-      {detail.messages.map((message, index) => (
-        <div key={`${message.at}-${index}`} className={message.from === 'customer' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
-          {(message.step || message.kind === 'reminder') && <span className="k1-prod-thread__kind">{message.step ? stepLabel(message.step) : p.reminderSent}</span>}
-          <p className="k1-msg__bubble">{whatsappRuns(message.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p>
-          {message.buttons?.length ? (
-            <div className="k1-msg__chips">
-              {message.buttons.map((label) => <span key={label} className="k1-msg__box">{label}</span>)}
-            </div>
-          ) : null}
-          <time className="k1-prod-thread__time" dateTime={message.at}>{fmtClock(message.at)} · {fmtDay(message.at.slice(0, 10))}</time>
-        </div>
-      ))}
+      {detail.messages.map((message, index) => {
+        const outreach = message.from === 'bot' && (Boolean(message.step) || message.kind === 'reminder')
+        const replies = message.buttons?.length ? message.buttons : outreach ? [outreachReply(detail.customer.language)] : []
+        const parts = stagingParts({ role: message.from === 'customer' ? 'user' : 'agent', text: message.text })
+        return (
+          <div key={`${message.at}-${index}`} className={message.from === 'customer' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
+            {(message.step || message.kind === 'reminder') && <span className="k1-prod-thread__kind">{message.step ? stepLabel(message.step) : p.reminderSent}</span>}
+            {replies.length ? (
+              <div className="k1-msg__wa">
+                <p className="k1-msg__bubble">{whatsappRuns(message.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p>
+                <div className="k1-msg__actions">
+                  {replies.map((label) => <span key={label} className="k1-msg__chip k1-msg__chip--static"><WaGlyph kind="reply" />{label}</span>)}
+                </div>
+              </div>
+            ) : parts.map((part, partIndex) => (
+              <div key={partIndex} className="k1-msg__part">
+                {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
+                {part.link ? <a className="k1-msg__box" href={part.link.url} target="_blank" rel="noreferrer">{part.link.label}</a> : null}
+                {part.replies.length > 0 && (
+                  <div className="k1-msg__chips">
+                    {part.replies.map((label) => <span key={label} className="k1-msg__box">{label}</span>)}
+                  </div>
+                )}
+              </div>
+            ))}
+            <time className="k1-prod-thread__time" dateTime={message.at}>{fmtClock(message.at)} · {fmtDay(message.at.slice(0, 10))}</time>
+          </div>
+        )
+      })}
     </div>
   )
 }
