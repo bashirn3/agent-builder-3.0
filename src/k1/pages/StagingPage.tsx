@@ -307,16 +307,6 @@ export function StagingPage({ store, notify }: {
               </button>
             </div>
           </div>
-          <section className="k1-staging__card" aria-labelledby="k1-staging-card">
-            <h2 id="k1-staging-card" className="k1-section-title">{t.staging.stripeTitle}</h2>
-            <p className="k1-hint">{t.staging.stripeNote}</p>
-            <dl>
-              <div><dt>{t.staging.cardNumber}</dt><dd>{t.staging.cardNumberValue}</dd></div>
-              <div><dt>{t.staging.cardExpiry}</dt><dd>{t.staging.cardExpiryValue}</dd></div>
-              <div><dt>{t.staging.cardCvc}</dt><dd>{t.staging.cardCvcValue}</dd></div>
-              <div><dt>{t.staging.cardPromo}</dt><dd>{t.staging.cardPromoValue}</dd></div>
-            </dl>
-          </section>
         </aside>
         <div className="k1-canvas">
           <div className="k1-tester" aria-label={t.staging.conversation}>

@@ -4,7 +4,7 @@ import { usePlayground } from './data/usePlayground'
 import { AuthPage, NoTeamPage, SsoCallbackPage } from './pages/AuthPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { ComparePage } from './pages/ComparePage'
-import { DeployPage } from './pages/DeployPage'
+import { BlankPage } from './pages/BlankPage'
 import { LeadsPage } from './pages/LeadsPage'
 import { PlaygroundPage } from './pages/PlaygroundPage'
 import { StagingPage } from './pages/StagingPage'
@@ -27,7 +27,7 @@ function Workspace({ compact }: { compact: boolean }) {
   const [filters, setFilters] = useState<ChatFilters>(EMPTY_CHAT_FILTERS)
 
   const t = useCopy()
-  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, calendar: t.nav.calendar, staging: t.nav.staging, deploy: t.nav.deploy, team: t.nav.team }
+  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, calendar: t.nav.calendar, staging: t.nav.staging, home: t.nav.homePage, optimise: t.nav.optimise, control: t.nav.control, team: t.nav.team }
   useEffect(() => {
     document.title = `${titles[route.page] ?? 'A-Katsastus'} · A-Katsastus`
   }, [route.page, t])
@@ -39,8 +39,9 @@ function Workspace({ compact }: { compact: boolean }) {
   else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} onImported={playground.refreshLeads} />
   else if (route.page === 'calendar') page = <CalendarPage notify={push} />
   else if (route.page === 'staging') page = <StagingPage store={playground} notify={push} />
-  else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} versionId={route.version} onChanged={(force) => void playground.refresh({ force })} />
-
+  else if (route.page === 'home') page = <BlankPage title={t.nav.homePage} />
+  else if (route.page === 'optimise') page = <BlankPage title={t.nav.optimise} />
+  else if (route.page === 'control') page = <BlankPage title={t.nav.control} />
   else if (route.page === 'team') page = <TeamPage notify={push} />
 
   return (

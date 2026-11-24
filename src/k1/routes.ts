@@ -10,8 +10,40 @@ export type Route =
   | { page: 'leads'; id: string | null }
   | { page: 'calendar' }
   | { page: 'staging' }
-  | { page: 'deploy'; version?: string }
+  | { page: 'home' }
+  | { page: 'optimise' }
+  | { page: 'control' }
   | { page: 'team' }
+
+export type Environment = 'staging' | 'production'
+
+const ENVIRONMENT_KEY = 'k1.environment'
+const STAGING_PAGES: Route['page'][] = ['playground', 'compare', 'calendar', 'staging']
+const PRODUCTION_PAGES: Route['page'][] = ['home', 'optimise', 'control']
+
+function storedEnvironment(): Environment {
+  try {
+    return window.localStorage.getItem(ENVIRONMENT_KEY) === 'production' ? 'production' : 'staging'
+  } catch {
+    return 'staging'
+  }
+}
+
+// Activity and Team belong to both environments, so they keep whichever one was open last.
+export function useEnvironment(route: Route): Environment {
+  const implied = PRODUCTION_PAGES.includes(route.page) ? 'production' : STAGING_PAGES.includes(route.page) ? 'staging' : null
+  const [remembered, setRemembered] = useState<Environment>(storedEnvironment)
+  useEffect(() => {
+    if (!implied) return
+    setRemembered(implied)
+    try { window.localStorage.setItem(ENVIRONMENT_KEY, implied) } catch { /* storage blocked */ }
+  }, [implied])
+  return implied ?? remembered
+}
+
+export function openEnvironment(environment: Environment) {
+  go({ page: environment === 'production' ? 'home' : 'playground' })
+}
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean)
@@ -22,7 +54,9 @@ export function parse(hash: string): Route {
     case 'playground': return { page: 'playground' }
     case 'compare': return { page: 'compare' }
     case 'team': return { page: 'team' }
-    case 'deploy': return parts[1] ? { page: 'deploy', version: parts[1] } : { page: 'deploy' }
+    case 'home': return { page: 'home' }
+    case 'optimise': return { page: 'optimise' }
+    case 'control': return { page: 'control' }
     case 'calendar': return { page: 'calendar' }
     case 'staging': return { page: 'staging' }
     case 'activity':
@@ -37,7 +71,6 @@ export function href(route: Route) {
     case 'chats': return route.id ? `#/activity/chats/${route.id}` : '#/activity/chats'
     case 'leads': return route.id ? `#/activity/leads/${route.id}` : '#/activity/leads'
     case 'calendar': return '#/calendar'
-    case 'deploy': return route.version ? `#/deploy/${route.version}` : '#/deploy'
     default: return `#/${route.page}`
   }
 }
