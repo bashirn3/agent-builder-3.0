@@ -4,7 +4,7 @@ import { ease } from '../../../lib/motion'
 import { ProdError, type ConversationStatus, type Delivery, type LeadStatus, type NeedsYou, type Step } from '../../data/prodApi'
 import { copy, locale, useCopy } from '../../i18n'
 import { href, type Route } from '../../routes'
-import { RefreshCw } from '../../ui/icons'
+import { CalendarDays, RefreshCw } from '../../ui/icons'
 import { Skeleton } from '../../ui/controls'
 import { SampleBadge } from '../SplitView'
 
@@ -125,14 +125,18 @@ export function PreviewNote({ text }: { text?: string }) {
   return <p className="k1-prod-note k1-prod-note--preview" role="note">{text ?? t.prod.preview}</p>
 }
 
-export function ProdHead({ title, sample, onRefresh, refreshing, preview, children }: { title: string; sample: boolean; onRefresh: () => void; refreshing: boolean; preview?: string; children?: ReactNode }) {
+export function ProdHead({ title, description, sample, onRefresh, refreshing, preview, children }: { title: string; description?: string; sample: boolean; onRefresh: () => void; refreshing: boolean; preview?: string; children?: ReactNode }) {
   const t = useCopy()
   return (
     <>
-      <header className="k1-page__head k1-prod-head">
-        <h1 className="k1-page-title">{title}</h1>
-        {sample && <SampleBadge />}
-        <span className="k1-prod-head__zone">{t.prod.zone}</span>
+      <header className="k1-prod-head">
+        <div className="k1-prod-head__text">
+          <div className="k1-prod-head__title">
+            <h1 className="k1-page-title">{title}</h1>
+            {sample && <SampleBadge />}
+          </div>
+          <p className="k1-prod-head__sub">{description ? `${description} ` : ''}{t.prod.zone}.</p>
+        </div>
         <div className="k1-prod-head__end">
           {children}
           <RefreshButton onClick={onRefresh} busy={refreshing} />
@@ -141,6 +145,10 @@ export function ProdHead({ title, sample, onRefresh, refreshing, preview, childr
       {sample && <PreviewNote text={preview} />}
     </>
   )
+}
+
+export function DatePill({ children }: { children: ReactNode }) {
+  return <span className="k1-prod-date"><CalendarDays size={16} />{children}</span>
 }
 
 export function CardsSkeleton({ cards = 4 }: { cards?: number }) {
@@ -169,43 +177,6 @@ export function Card({ title, aside, children, className }: { title?: string; as
       )}
       {children}
     </section>
-  )
-}
-
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
-  return (
-    <div className="k1-prod-stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {hint && <small>{hint}</small>}
-    </div>
-  )
-}
-
-export function Bars({ bars, legend, label }: { bars: Array<{ key: string; label: string; values: number[] }>; legend?: string[]; label: string }) {
-  const top = Math.max(1, ...bars.map((bar) => bar.values.reduce((sum, value) => sum + value, 0)))
-  return (
-    <figure className="k1-bars" aria-label={label}>
-      <div className="k1-bars__plot">
-        {bars.map((bar) => {
-          const total = bar.values.reduce((sum, value) => sum + value, 0)
-          return (
-            <div key={bar.key} className="k1-bars__col" title={`${bar.label}: ${bar.values.join(' + ')}`}>
-              <span className="k1-bars__value">{total}</span>
-              <div className="k1-bars__stack" style={{ height: `${(total / top) * 100}%` }}>
-                {bar.values.map((value, index) => <span key={index} className={`k1-bars__seg k1-bars__seg--${index}`} style={{ flexGrow: value }} />)}
-              </div>
-              <span className="k1-bars__label">{bar.label}</span>
-            </div>
-          )
-        })}
-      </div>
-      {legend && (
-        <figcaption className="k1-bars__legend">
-          {legend.map((item, index) => <span key={item}><i className={`k1-bars__seg--${index}`} />{item}</span>)}
-        </figcaption>
-      )}
-    </figure>
   )
 }
 

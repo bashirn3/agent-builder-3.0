@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { isSample, prodApi, type Performance, type Range } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
-import { Bars, Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, fmtUplift, ProdHead, Stat, stepLabel, useProdData } from './shared'
+import { CalendarDays, Check, MessagesSquare, Optimise } from '../../ui/icons'
+import { BarChart, PieChart, RankTable, StatCard } from './charts'
+import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, fmtUplift, ProdHead, stepLabel, useProdData } from './shared'
 
 const RANGES: Range[] = ['week', 'month', 'all']
 const MIN_SENDS = 10
@@ -14,7 +16,7 @@ export function OptimisePage() {
 
   return (
     <div className="k1-page k1-prod">
-      <ProdHead title={t.nav.optimise} sample={isSample('performance')} onRefresh={reload} refreshing={refreshing}>
+      <ProdHead title={t.nav.optimise} description={t.prod.describe.optimise} sample={isSample('performance')} onRefresh={reload} refreshing={refreshing}>
         <div className="k1-segmented" role="group" aria-label={p.range}>
           {RANGES.map((value) => (
             <button key={value} type="button" className={range === value ? 'is-active' : undefined} aria-pressed={range === value} onClick={() => setRange(value)}>{p.ranges[value]}</button>
@@ -41,56 +43,46 @@ function Report({ data }: { data: Performance }) {
     [t.prod.funnel.leftList, f.left_list],
   ]
   const top = Math.max(1, f.sent)
+  const bestRate = Math.max(0.0001, ...data.by_station.map((row) => row.rate ?? 0))
   return (
     <>
-      <div className="k1-prod-grid k1-prod-grid--optimise">
-        <Card title={p.funnel} className="k1-prod-card--wide">
-          <ol className="k1-funnel">
-            {funnel.map(([label, value]) => (
-              <li key={label}>
-                <span className="k1-funnel__label">{label}</span>
-                <span className="k1-funnel__track"><span style={{ width: `${(value / top) * 100}%` }} /></span>
-                <strong>{fmtNum(value)}</strong>
-              </li>
-            ))}
-          </ol>
-        </Card>
-        <Card title={p.result}>
-          <div className="k1-prod-stats k1-prod-stats--stack">
-            <Stat label={p.rate} value={fmtRate(f.rate)} hint={p.rateHint(fmtNum(f.converted), fmtNum(f.delivered))} />
-            <Stat label={p.uplift} value={fmtUplift(f.uplift)} hint={p.upliftHint(fmtNum(f.holdout_converted), fmtNum(f.holdout))} />
-          </div>
-        </Card>
+      <div className="k1-stat-cards">
+        <StatCard icon={<Check size={14} />} label={t.prod.funnel.delivered} value={fmtNum(f.delivered)} />
+        <StatCard icon={<MessagesSquare size={14} />} label={t.prod.funnel.replied} value={fmtNum(f.replied)} />
+        <StatCard icon={<CalendarDays size={14} />} label={p.rate} value={fmtRate(f.rate)} hint={p.rateHint(fmtNum(f.converted), fmtNum(f.delivered))} />
+        <StatCard icon={<Optimise size={14} />} label={p.uplift} value={fmtUplift(f.uplift)} hint={p.upliftHint(fmtNum(f.holdout_converted), fmtNum(f.holdout))} />
       </div>
 
       <Card title={p.bookingsPerWeek}>
-        <Bars
+        <BarChart
           label={p.bookingsPerWeek}
           legend={[p.beforeDeadline, p.afterDeadline]}
           bars={data.bookings_per_week.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start), values: [week.before_deadline, week.after_deadline] }))}
         />
       </Card>
 
-      <div className="k1-prod-grid k1-prod-grid--optimise">
-        <Card title={p.byStation}>
-          <div className="k1-prod-scroll">
-            <table className="k1-table">
-              <thead>
-                <tr><th scope="col">{p.station}</th><th scope="col" className="k1-table__num">{t.prod.funnel.delivered}</th><th scope="col" className="k1-table__num">{p.converted}</th><th scope="col" className="k1-table__num">{p.rate}</th></tr>
-              </thead>
-              <tbody>
-                {data.by_station.map((row) => (
-                  <tr key={row.station} className="is-static">
-                    <td>{row.station}</td>
-                    <td className="k1-table__num">{fmtNum(row.delivered)}</td>
-                    <td className="k1-table__num">{fmtNum(row.converted)}</td>
-                    <td className="k1-table__num">{fmtRate(row.rate)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="k1-prod-grid k1-prod-grid--two">
+        <Card title={p.funnel}>
+          <RankTable
+            head={[p.stage, p.customers]}
+            rows={funnel.map(([label, value]) => ({ key: label, label, value: fmtNum(value), share: value / top }))}
+          />
         </Card>
+        <Card title={p.byStation}>
+          <RankTable
+            head={[p.station, p.rate]}
+            rows={data.by_station.map((row) => ({
+              key: row.station,
+              label: row.station,
+              detail: p.ofDelivered(fmtNum(row.converted), fmtNum(row.delivered)),
+              value: fmtRate(row.rate),
+              share: (row.rate ?? 0) / bestRate,
+            }))}
+          />
+        </Card>
+      </div>
+
+      <div className="k1-prod-grid k1-prod-grid--two">
         <Card title={p.byMessage}>
           <div className="k1-prod-scroll">
             <table className="k1-table">
@@ -109,6 +101,11 @@ function Report({ data }: { data: Performance }) {
               </tbody>
             </table>
           </div>
+        </Card>
+        <Card title={p.reasons}>
+          {data.reasons.length
+            ? <PieChart label={p.reasons} slices={data.reasons.map((reason) => ({ key: reason.label, label: reason.label, value: reason.count }))} />
+            : <p className="k1-hint">{p.noReasons}</p>}
         </Card>
       </div>
 
@@ -144,14 +141,6 @@ function Report({ data }: { data: Performance }) {
           </table>
         </div>
       </Card>
-
-      <Card title={p.reasons}>
-        {data.reasons.length ? (
-          <ul className="k1-prod-reasons">
-            {data.reasons.map((reason) => <li key={reason.label}><span>{reason.label}</span><strong>{fmtNum(reason.count)}</strong></li>)}
-          </ul>
-        ) : <p className="k1-hint">{p.noReasons}</p>}
-      </Card>
     </>
   )
 }
@@ -181,7 +170,7 @@ function SendHours({ data }: { data: Performance }) {
                     const strength = cell?.reply_rate != null ? cell.reply_rate / top : 0
                     return (
                       <td key={hour} title={cell ? p.cellHint(fmtNum(cell.sends), fmtRate(cell.reply_rate)) : undefined}>
-                        {cell ? <span style={{ background: `rgba(29, 78, 216, ${0.08 + strength * 0.6})`, color: strength > 0.6 ? '#fff' : undefined }}>{fmtRate(cell.reply_rate)}</span> : <span className="is-empty" />}
+                        {cell ? <span style={{ background: `rgba(37, 99, 235, ${0.08 + strength * 0.72})`, color: strength > 0.6 ? '#fff' : undefined }}>{fmtRate(cell.reply_rate)}</span> : <span className="is-empty" />}
                       </td>
                     )
                   })}

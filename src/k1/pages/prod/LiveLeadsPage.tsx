@@ -4,7 +4,8 @@ import { useCopy } from '../../i18n'
 import { go, hashQuery, href } from '../../routes'
 import { Select, Spinner } from '../../ui/controls'
 import { DayRange } from '../../ui/DayRange'
-import { Search } from '../../ui/icons'
+import { CalendarDays, Search, Users } from '../../ui/icons'
+import { StatCard } from './charts'
 import { CardListSkeleton, TableSkeleton } from '../../ui/skeletons'
 import { DeliveryTag, EmptyState, ErrorState, fmtDay, fmtNum, PILOT_STATIONS, ProdHead, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
 
@@ -43,7 +44,14 @@ export function LiveLeadsPage({ compact }: { compact: boolean }) {
 
   return (
     <div className="k1-page k1-prod">
-      <ProdHead title={p.title} sample={isSample('leads')} onRefresh={reload} refreshing={refreshing} />
+      <ProdHead title={p.title} description={t.prod.describe.leads} sample={isSample('leads')} onRefresh={reload} refreshing={refreshing} />
+
+      {data && (
+        <div className="k1-stat-cards k1-stat-cards--five" aria-label={p.bands}>
+          <StatCard icon={<Users size={14} />} label={p.title} value={fmtNum(data.total ?? items.length)} />
+          {BANDS.map((band) => <StatCard key={band} icon={<CalendarDays size={14} />} label={t.prod.band(band)} value={fmtNum(data.bands[band])} />)}
+        </div>
+      )}
 
       <div className="k1-page__filters">
         <span className="k1-label">{t.leads.filters}</span>
@@ -79,14 +87,6 @@ export function LiveLeadsPage({ compact }: { compact: boolean }) {
           <DayRange min={span.min} max={span.max} onChange={(next) => { setSpan(next); reset() }} label={{ from: t.prod.fromDays, to: t.prod.toDays }} />
           <p className="k1-hint">{p.windowHint}</p>
         </div>
-        {data && (
-          <div className="k1-prod-bands" aria-label={p.bands}>
-            <span className="k1-prod-total">{p.total(data.total ?? items.length)}</span>
-            {BANDS.map((band) => (
-              <span key={band} className="k1-chip k1-prod-band"><span>{t.prod.band(band)}</span><strong>{fmtNum(data.bands[band])}</strong></span>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="k1-table-card k1-prod-table">

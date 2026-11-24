@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isSample, ProdError, prodApi, type Batch, type Controls, type Settings, type SettingsPatch, type Timing } from '../../data/prodApi'
 import { copy, useCopy } from '../../i18n'
 import { Spinner, Switch } from '../../ui/controls'
 import { DayRange } from '../../ui/DayRange'
 import { Dialog } from '../../ui/overlay'
-import { Card, CardsSkeleton, ErrorState, fmtDay, fmtNum, fmtTime, ProdHead, prodMessage, stepLabel, useProdData } from './shared'
+import { RankTable } from './charts'
+import { CardsSkeleton, ErrorState, fmtDay, fmtNum, fmtTime, ProdHead, prodMessage, stepLabel, useProdData } from './shared'
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 type Plan = Pick<Settings, 'window' | 'timing' | 'daily_cap' | 'sending_hours'>
@@ -136,44 +137,53 @@ export function ControlPage({ notify }: { notify: Notify }) {
         : null
 
   return (
-    <div className="k1-page k1-prod">
-      <ProdHead title={t.nav.control} sample={isSample('controls')} preview={t.prod.previewControl} onRefresh={reload} refreshing={refreshing} />
+    <div className="k1-page k1-prod k1-prod--settings">
+      <ProdHead title={t.nav.control} description={t.prod.describe.control} sample={isSample('controls')} preview={t.prod.previewControl} onRefresh={reload} refreshing={refreshing} />
       {loading ? <CardsSkeleton cards={3} /> : error && !data ? <ErrorState error={error} onRetry={reload} /> : data && plan && (
         <>
           {!editable && <p className="k1-prod-note" role="note">{p.readOnly}</p>}
 
-          <div className="k1-prod-grid k1-prod-grid--control">
-            <Card title={p.sending}>
-              <div className="k1-prod-switches">
-                <SwitchRow label={p.outreach} hint={p.outreachHint} checked={data.outreach_on} disabled={!editable || busy} pending={saving === 'outreach_on'} onChange={(on) => toggleMaster('outreach_on', on)} />
-                <SwitchRow label={p.bot} hint={p.botHint} checked={data.bot_on} disabled={!editable || busy} pending={saving === 'bot_on'} onChange={(on) => toggleMaster('bot_on', on)} />
+          <Section title={p.sending} description={p.sendingHint}>
+            <SwitchRow label={p.outreach} hint={p.outreachHint} checked={data.outreach_on} disabled={!editable || busy} pending={saving === 'outreach_on'} onChange={(on) => toggleMaster('outreach_on', on)} />
+            <SwitchRow label={p.bot} hint={p.botHint} checked={data.bot_on} disabled={!editable || busy} pending={saving === 'bot_on'} onChange={(on) => toggleMaster('bot_on', on)} />
+          </Section>
+
+          <Section title={p.stations} description={p.stationsHint}>
+            {data.stations.map((station) => (
+              <div key={station.id} className="k1-set__row k1-set__row--station">
+                <span className="k1-set__label"><strong>{station.name}</strong><small>{station.id}</small></span>
+                <span className="k1-set__switches">
+                  <label>{p.firstMessages}<Switch checked={station.first_messages_on} disabled={!editable || busy} label={p.firstMessagesAt(station.name)} onChange={(on) => toggleStation(station.id, 'first_messages_on', on)} /></label>
+                  <label>{p.reminders}<Switch checked={station.reminders_on} disabled={!editable || busy} label={p.remindersAt(station.name)} onChange={(on) => toggleStation(station.id, 'reminders_on', on)} /></label>
+                </span>
               </div>
-              <p className="k1-hint">{p.atOnce}</p>
-            </Card>
+            ))}
+          </Section>
 
-            <Card title={p.stations}>
-              <table className="k1-table k1-prod-stations">
-                <thead>
-                  <tr><th scope="col">{p.station}</th><th scope="col">{p.firstMessages}</th><th scope="col">{p.reminders}</th></tr>
-                </thead>
-                <tbody>
-                  {data.stations.map((station) => (
-                    <tr key={station.id}>
-                      <th scope="row">{station.name}<span className="k1-hint k1-prod-stations__id">{station.id}</span></th>
-                      <td><Switch checked={station.first_messages_on} disabled={!editable || busy} label={p.firstMessagesAt(station.name)} onChange={(on) => toggleStation(station.id, 'first_messages_on', on)} /></td>
-                      <td><Switch checked={station.reminders_on} disabled={!editable || busy} label={p.remindersAt(station.name)} onChange={(on) => toggleStation(station.id, 'reminders_on', on)} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          </div>
-
-          <Card title={p.planning} aside={<span className="k1-tag">{p.nextRun}</span>} className="k1-prod-plan">
-            <fieldset className="k1-prod-plan__body" disabled={!editable || busy}>
-              <div className="k1-prod-window">
+          <Section
+            title={p.planning}
+            description={p.planningHint}
+            aside={<span className="k1-tag">{p.nextRun}</span>}
+            footer={(
+              <>
+                <p className="k1-hint">{p.nextRunHint}</p>
+                <button type="button" className="k1-btn k1-btn--outline" disabled={!dirty || busy} onClick={() => setPlan(planOf(data))}>{p.discard}</button>
+                <button
+                  type="button"
+                  className="k1-btn k1-btn--primary"
+                  disabled={!editable || !dirty || busy || !hoursValid || !capValid}
+                  aria-busy={saving === 'plan'}
+                  onClick={() => void save(patch, 'plan', { title: p.saved, body: p.nextRunHint })}
+                >
+                  {saving === 'plan' && <Spinner />}{p.save}
+                </button>
+              </>
+            )}
+          >
+            <fieldset className="k1-set__fields" disabled={!editable || busy}>
+              <div className="k1-set__row k1-set__row--stack">
                 <div className="k1-prod-window__head">
-                  <span className="k1-label">{p.window}</span>
+                  <span className="k1-set__label"><strong>{p.window}</strong></span>
                   <span className="k1-prod-window__value">
                     {t.prod.days(plan.window.min_days, plan.window.max_days)}
                     <span className="k1-prod-window__count">{inWindow === null ? <Spinner size={12} /> : p.leadsInWindow(fmtNum(inWindow))}</span>
@@ -189,27 +199,25 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 <p className="k1-hint">{p.windowHint}</p>
               </div>
 
-              <div className="k1-prod-fields">
-                {TIMING.map((key) => (
-                  <label key={key} className="k1-field">
-                    <span>{p.timing[key]}</span>
-                    <span className="k1-prod-number">
-                      <input className="k1-input" type="number" min={0} max={60} inputMode="numeric" value={plan.timing[key]} onChange={(event) => setTiming(key, event.target.value)} />
-                      <span>{p.dayUnit}</span>
-                    </span>
-                  </label>
-                ))}
-                <label className="k1-field">
-                  <span>{p.dailyCap}</span>
+              {TIMING.map((key) => (
+                <label key={key} className="k1-set__row">
+                  <span className="k1-set__label"><strong>{p.timing[key]}</strong></span>
                   <span className="k1-prod-number">
-                    <input className="k1-input" type="number" min={0} max={1000} inputMode="numeric" value={plan.daily_cap} aria-invalid={!capValid} onChange={(event) => setPlan((current) => current && { ...current, daily_cap: Math.max(0, Math.round(Number(event.target.value) || 0)) })} />
-                    <span>{p.perDay}</span>
+                    <input className="k1-input" type="number" min={0} max={60} inputMode="numeric" value={plan.timing[key]} onChange={(event) => setTiming(key, event.target.value)} />
+                    <span>{p.dayUnit}</span>
                   </span>
                 </label>
-              </div>
+              ))}
+              <label className="k1-set__row">
+                <span className="k1-set__label"><strong>{p.dailyCap}</strong></span>
+                <span className="k1-prod-number">
+                  <input className="k1-input" type="number" min={0} max={1000} inputMode="numeric" value={plan.daily_cap} aria-invalid={!capValid} onChange={(event) => setPlan((current) => current && { ...current, daily_cap: Math.max(0, Math.round(Number(event.target.value) || 0)) })} />
+                  <span>{p.perDay}</span>
+                </span>
+              </label>
 
-              <div className="k1-prod-hours">
-                <span className="k1-label">{p.hours}</span>
+              <div className="k1-set__row k1-set__row--stack">
+                <span className="k1-set__label"><strong>{p.hours}</strong></span>
                 <div className="k1-prod-days" role="group" aria-label={p.hours}>
                   {WEEKDAYS.map((day) => (
                     <button key={day} type="button" className={`k1-prod-day${plan.sending_hours.days.includes(day) ? ' is-active' : ''}`} aria-pressed={plan.sending_hours.days.includes(day)} onClick={() => toggleDay(day)}>
@@ -230,37 +238,24 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 {!hoursValid && <p className="k1-field__error">{p.hoursInvalid}</p>}
               </div>
 
-              <div className="k1-prod-readonly">
-                <span className="k1-label">{p.holdout}</span>
-                <strong>{data.holdout_percent} %</strong>
-                <span className="k1-hint">{p.holdoutHint}</span>
+              <div className="k1-set__row">
+                <span className="k1-set__label"><strong>{p.holdout}</strong><small>{p.holdoutHint}</small></span>
+                <strong className="k1-set__value">{data.holdout_percent} %</strong>
               </div>
             </fieldset>
-            <footer className="k1-prod-plan__foot">
-              <p className="k1-hint">{p.nextRunHint}</p>
-              <button type="button" className="k1-btn k1-btn--outline" disabled={!dirty || busy} onClick={() => setPlan(planOf(data))}>{p.discard}</button>
-              <button
-                type="button"
-                className="k1-btn k1-btn--primary"
-                disabled={!editable || !dirty || busy || !hoursValid || !capValid}
-                aria-busy={saving === 'plan'}
-                onClick={() => void save(patch, 'plan', { title: p.saved, body: p.nextRunHint })}
-              >
-                {saving === 'plan' && <Spinner />}{p.save}
-              </button>
-            </footer>
-          </Card>
+          </Section>
 
-          <div className="k1-prod-grid k1-prod-grid--control">
-            <BatchCard
-              controls={data}
-              editable={editable}
-              busy={saving}
-              onRelease={(batch) => setConfirm({ kind: 'release', batch })}
-              onHold={(batch) => void runBatch(batch, 'hold')}
-            />
-            <Card title={p.history}>
-              {data.history.length ? (
+          <BatchCard
+            controls={data}
+            editable={editable}
+            busy={saving}
+            onRelease={(batch) => setConfirm({ kind: 'release', batch })}
+            onHold={(batch) => void runBatch(batch, 'hold')}
+          />
+
+          <Section title={p.history} description={p.historyHint}>
+            {data.history.length ? (
+              <div className="k1-set__table">
                 <table className="k1-table">
                   <thead>
                     <tr><th scope="col">{p.date}</th><th scope="col" className="k1-table__num">{t.prod.funnel.sent}</th><th scope="col" className="k1-table__num">{t.prod.funnel.delivered}</th><th scope="col" className="k1-table__num">{p.failed}</th></tr>
@@ -276,9 +271,9 @@ export function ControlPage({ notify }: { notify: Notify }) {
                     ))}
                   </tbody>
                 </table>
-              ) : <p className="k1-hint">{p.noHistory}</p>}
-            </Card>
-          </div>
+              </div>
+            ) : <p className="k1-hint">{p.noHistory}</p>}
+          </Section>
         </>
       )}
 
@@ -293,10 +288,26 @@ export function ControlPage({ notify }: { notify: Notify }) {
   )
 }
 
+function Section({ title, description, aside, footer, children }: { title: string; description?: string; aside?: ReactNode; footer?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="k1-set">
+      <header className="k1-set__head">
+        <div>
+          <h2>{title}</h2>
+          {description && <p>{description}</p>}
+        </div>
+        {aside}
+      </header>
+      <div className="k1-set__body">{children}</div>
+      {footer && <footer className="k1-set__foot">{footer}</footer>}
+    </section>
+  )
+}
+
 function SwitchRow({ label, hint, checked, disabled, pending, onChange }: { label: string; hint: string; checked: boolean; disabled: boolean; pending: boolean; onChange: (on: boolean) => void }) {
   return (
-    <div className="k1-prod-switch">
-      <span>
+    <div className="k1-set__row">
+      <span className="k1-set__label">
         <strong>{label}{pending && <Spinner size={12} />}</strong>
         <small>{hint}</small>
       </span>
@@ -309,38 +320,36 @@ function BatchCard({ controls, editable, busy, onRelease, onHold }: { controls: 
   const t = useCopy()
   const p = t.prod.control
   const { batch, release } = controls
+  const most = batch ? Math.max(1, ...batch.by_station.map((row) => row.count), ...batch.by_message.map((row) => row.count)) : 1
   return (
-    <Card title={p.batch} aside={<span className="k1-tag">{release === 'manual' ? p.manual : p.auto}</span>}>
+    <Section
+      title={p.batch}
+      description={batch ? p.proposedAt(fmtTime(batch.created_at)) : undefined}
+      aside={<span className="k1-tag">{release === 'manual' ? p.manual : p.auto}</span>}
+      footer={batch ? (release === 'manual' ? (
+        <>
+          <p className="k1-hint">{batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : p.releasedNote}</p>
+          <button type="button" className="k1-btn k1-btn--outline" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'hold'} onClick={() => onHold(batch)}>
+            {busy === 'hold' && <Spinner />}{p.hold}
+          </button>
+          <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
+            {busy === 'release' && <Spinner />}{['released', 'sending', 'sent'].includes(batch.status) ? p.releasedButton : p.release}
+          </button>
+        </>
+      ) : <p className="k1-hint">{p.autoNote}</p>) : undefined}
+    >
       {!batch ? <p className="k1-hint">{p.noBatch}</p> : (
-        <div className="k1-prod-batch">
-          <div className="k1-prod-batch__head">
-            <strong>{p.batchOf(fmtNum(batch.total))}</strong>
+        <>
+          <div className="k1-set__row">
+            <span className="k1-set__label"><strong className="k1-set__big">{p.batchOf(fmtNum(batch.total))}</strong></span>
             <span className={`k1-status k1-status--batch-${batch.status}`}>{p.batchStatus[batch.status]}</span>
           </div>
-          <span className="k1-hint">{p.proposedAt(fmtTime(batch.created_at))}</span>
           <div className="k1-prod-batch__split">
-            <dl aria-label={p.byStation}>
-              <span className="k1-label">{p.byStation}</span>
-              {batch.by_station.map((row) => <div key={row.station}><dt>{row.station}</dt><dd>{fmtNum(row.count)}</dd></div>)}
-            </dl>
-            <dl aria-label={p.byMessage}>
-              <span className="k1-label">{p.byMessage}</span>
-              {batch.by_message.map((row) => <div key={row.step}><dt>{stepLabel(row.step)}</dt><dd>{fmtNum(row.count)}</dd></div>)}
-            </dl>
+            <RankTable head={[p.byStation, '']} rows={batch.by_station.map((row) => ({ key: row.station, label: row.station, value: fmtNum(row.count), share: row.count / most }))} />
+            <RankTable head={[p.byMessage, '']} rows={batch.by_message.map((row) => ({ key: row.step, label: stepLabel(row.step), value: fmtNum(row.count), share: row.count / most }))} />
           </div>
-          {release === 'manual' ? (
-            <div className="k1-prod-batch__actions">
-              <p className="k1-hint">{batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : p.releasedNote}</p>
-              <button type="button" className="k1-btn k1-btn--outline" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'hold'} onClick={() => onHold(batch)}>
-                {busy === 'hold' && <Spinner />}{p.hold}
-              </button>
-              <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
-                {busy === 'release' && <Spinner />}{['released', 'sending', 'sent'].includes(batch.status) ? p.releasedButton : p.release}
-              </button>
-            </div>
-          ) : <p className="k1-hint">{p.autoNote}</p>}
-        </div>
+        </>
       )}
-    </Card>
+    </Section>
   )
 }

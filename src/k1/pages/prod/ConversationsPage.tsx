@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { isSample, prodApi, type ConversationDetail, type ConversationFilter } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
 import { go, hashQuery, href } from '../../routes'
-import { Spinner } from '../../ui/controls'
-import { Link2, Search } from '../../ui/icons'
+import { Menu, Spinner } from '../../ui/controls'
+import { Check, Link2, Search, SlidersHorizontal, X } from '../../ui/icons'
 import { ThreadSkeleton } from '../../ui/skeletons'
-import { DetailPane, Facts, ListSkeleton, MobileSwap, relativeTime, SampleBadge, Tabs } from '../SplitView'
+import { DetailPane, Facts, ListSkeleton, MobileSwap, relativeTime, SampleBadge } from '../SplitView'
 import { whatsappRuns } from '../../data/stagingView'
-import { DeliveryTag, EmptyState, PreviewNote, ErrorState, fmtClock, fmtDay, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
+import { DeliveryTag, EmptyState, PreviewNote, ErrorState, fmtClock, fmtDay, fmtNum, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
 
 const FILTERS: ConversationFilter[] = ['all', 'needs_reply', 'no_answer', 'booked', 'stopped']
 const PAGE = 50
@@ -44,22 +44,40 @@ export function ConversationsPage({ id, compact, notify }: {
       <header className="k1-list__head">
         <h1 className="k1-page-title">{p.title}</h1>
         {isSample('conversations') && <SampleBadge />}
-        <div className="k1-list__actions"><RefreshButton onClick={list.reload} busy={list.refreshing} /></div>
+        <div className="k1-list__actions">
+          <Menu
+            label={p.filterLabel}
+            align="end"
+            items={FILTERS.map((value) => ({
+              label: p.filters[value],
+              hint: list.data ? fmtNum(list.data.counts[value]) : undefined,
+              icon: <span className="k1-menu__check">{filter === value && <Check size={14} />}</span>,
+              onSelect: () => pickFilter(value),
+            }))}
+            trigger={(props) => (
+              <button {...props} type="button" className="k1-icon-btn k1-icon-btn--boxed k1-icon-btn--lg k1-prod-filter-btn" aria-label={p.filter}>
+                <SlidersHorizontal size={16} />
+                {filter !== 'all' && <span className="k1-prod-filter-btn__badge">1</span>}
+              </button>
+            )}
+          />
+          <RefreshButton onClick={list.reload} busy={list.refreshing} />
+        </div>
       </header>
       {isSample('conversations') && <div className="k1-prod-list-note"><PreviewNote /></div>}
       <label className="k1-list-search k1-prod-search">
         {list.refreshing ? <Spinner size={14} /> : <Search size={14} />}
         <input className="k1-input" value={query} placeholder={p.search} aria-label={p.search} onChange={(event) => { setQuery(event.target.value); setLimit(PAGE) }} />
       </label>
-      <div className="k1-prod-filters">
-        <Tabs
-          idBase="k1-live-filter"
-          label={p.filterLabel}
-          value={filter}
-          onChange={pickFilter}
-          tabs={FILTERS.map((value) => ({ value, label: list.data ? `${p.filters[value]} ${list.data.counts[value]}` : p.filters[value] }))}
-        />
-      </div>
+      {filter !== 'all' && (
+        <div className="k1-chips"><div className="k1-chips__row">
+          <span className="k1-chip">
+            {p.filters[filter]}{list.data ? ` · ${fmtNum(list.data.counts[filter])}` : ''}
+            <button type="button" aria-label={`${p.clearAll}: ${p.filters[filter]}`} onClick={() => pickFilter('all')}><X size={14} /></button>
+          </span>
+          <button type="button" className="k1-link k1-link--danger" onClick={() => pickFilter('all')}>{p.clearAll}</button>
+        </div></div>
+      )}
       {list.loading ? <ListSkeleton /> : list.error && !list.data ? (
         <ErrorState error={list.error} onRetry={list.reload} />
       ) : items.length ? (
