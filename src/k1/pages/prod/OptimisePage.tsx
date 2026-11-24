@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { isSample, prodApi, type Performance, type Range, type Step } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
 import { CalendarDays, Check, Copy, MessagesSquare, Optimise } from '../../ui/icons'
-import { AreaChart, PieChart, RankTable, StatCard } from './charts'
+import { BarChart, PieChart, RankTable, StatCard } from './charts'
 import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, fmtUplift, ProdHead, stepLabel, useProdData } from './shared'
 
 const RANGES: Range[] = ['week', 'month', 'all']
@@ -173,7 +173,7 @@ function Report({ data }: { data: Performance }) {
   )
 }
 
-const STEP_COLORS: Record<Step, string> = { opener: '#1d4ed8', reminder_1: '#06b6d4', reminder_2: '#8b5cf6', reminder_3: '#f59e0b' }
+const STEP_COLORS: Record<Step, string> = { opener: '#1d4ed8', reminder_1: '#3b82f6', reminder_2: '#60a5fa', reminder_3: '#93c5fd' }
 const STEPS: Step[] = ['opener', 'reminder_1', 'reminder_2', 'reminder_3']
 
 function BookedAfter({ data }: { data: Performance }) {
@@ -191,7 +191,7 @@ function BookedAfter({ data }: { data: Performance }) {
   const series = raw.map((item) => ({ ...item, note: total ? `${Math.round((item.values.reduce((a, b) => a + b, 0) / total) * 100)}\u00a0%` : undefined }))
   return (
     <Card title={byStep ? p.bookedAfter : p.bookingsPerWeek} aside={<span className="k1-hint">{p.bookedAfterHint}</span>}>
-      <AreaChart label={byStep ? p.bookedAfter : p.bookingsPerWeek} x={x} series={series} share />
+      <BarChart label={byStep ? p.bookedAfter : p.bookingsPerWeek} x={x} series={series} share />
     </Card>
   )
 }

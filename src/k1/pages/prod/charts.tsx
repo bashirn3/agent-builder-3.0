@@ -118,6 +118,56 @@ export function AreaChart({ label, x: columns, series, share, footer }: {
   )
 }
 
+// Chatbase "Usage history": columns on gridlines, series stacked bottom to top in the order given.
+export function BarChart({ label, x: columns, series, share }: { label: string; x: Array<{ key: string; label: string }>; series: AreaSeries[]; share?: boolean }) {
+  const hover = useHover(columns.length)
+  const totals = columns.map((_, index) => series.reduce((sum, item) => sum + (item.values[index] ?? 0), 0))
+  const top = Math.max(1, ...totals) * 1.1
+  const at = hover.index
+  const left = (index: number) => ((index + 0.5) / columns.length) * 100
+
+  return (
+    <figure className="k1-barchart" aria-label={label}>
+      {series.length > 1 && (
+        <figcaption className="k1-chart__legend">
+          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label}{item.note && <b>{item.note}</b>}</span>)}
+        </figcaption>
+      )}
+      <div ref={hover.ref} className="k1-barchart__plot" onPointerMove={hover.onMove} onPointerLeave={hover.onLeave}>
+        {[0, 1, 2, 3, 4].map((line) => <span key={line} className="k1-chart__grid" style={{ top: `${line * 25}%` }} />)}
+        {columns.map((column, index) => (
+          <div key={column.key} className={`k1-barchart__col${at === index ? ' is-active' : ''}`}>
+            <div className="k1-barchart__stack" style={{ height: `${(totals[index] / top) * 100}%` }}>
+              {series.map((item) => <span key={item.key} style={{ flexGrow: item.values[index] ?? 0, background: item.color }} />)}
+            </div>
+          </div>
+        ))}
+        {at !== null && (
+          <span className={`k1-chart__tip${left(at) > 60 ? ' is-left' : ''}`} style={{ left: `${left(at)}%` }}>
+            <small>{columns[at].label}</small>
+            {series.length === 1
+              ? <strong>{fmtNum(totals[at])}</strong>
+              : series.map((item) => (
+                <span key={item.key}>
+                  <i style={{ background: item.color }} />{item.label}
+                  <b>{fmtNum(item.values[at] ?? 0)}{share && totals[at] > 0 && <em> · {Math.round(((item.values[at] ?? 0) / totals[at]) * 100)}&nbsp;%</em>}</b>
+                </span>
+              ))}
+          </span>
+        )}
+      </div>
+      <div className="k1-chart__axis k1-chart__axis--bars">
+        {columns.map((column) => <span key={column.key}>{column.label}</span>)}
+      </div>
+      <table className="k1-sr-only">
+        <caption>{label}</caption>
+        <thead><tr><th scope="col" />{series.map((item) => <th key={item.key} scope="col">{item.label}</th>)}</tr></thead>
+        <tbody>{columns.map((column, index) => <tr key={column.key}><th scope="row">{column.label}</th>{series.map((item) => <td key={item.key}>{item.values[index] ?? 0}</td>)}</tr>)}</tbody>
+      </table>
+    </figure>
+  )
+}
+
 export type RankRow = { key: string; label: ReactNode; value: ReactNode; detail?: ReactNode; share: number }
 
 // Chatbase "Chats by country": label and value on one line, a thin blue bar underneath.
