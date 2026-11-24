@@ -82,7 +82,7 @@ export type Performance = {
   funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
   bookings_per_week: Array<{ week_start: string; before_deadline: number; after_deadline: number }>
   by_station: Array<{ station: string; delivered: number; converted: number; rate: number | null }>
-  send_hours: Array<{ weekday: number; hour: number; sends: number; reply_rate: number | null }>
+  send_hours: Array<{ weekday: number; hour: number; sends: number; reply_rate: number | null; booking_rate?: number | null }>
   by_message: Array<{ step: Step; sent: number; replied: number; converted: number }>
   matrix: MatrixRow[]
   reasons: Array<{ label: string; count: number }>

@@ -1187,6 +1187,7 @@ body { overscroll-behavior: none; }
 .k1-prod-head__end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 .k1-prod-head__end .k1-segmented { height: 36px; padding: 3px; }
 .k1-prod-head__end .k1-segmented button { height: 30px; padding: 0 12px; font-size: 13px; }
+.k1-prod-copy { height: 36px; padding: 0 12px; gap: 6px; font-size: 13px; }
 .k1-prod-date { display: inline-flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px; border: 1px solid var(--k1-field-line); border-radius: var(--k1-r-md); background: var(--k1-surface); box-shadow: var(--k1-shadow-xs); font-size: 13px; font-weight: 500; color: var(--k1-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .k1-prod-date svg { color: var(--k1-ink-2); }
 .k1-prod-state p { max-width: 380px; }
@@ -1276,10 +1277,10 @@ body { overscroll-behavior: none; }
 
 .k1-prod-scroll { overflow-x: auto; }
 .k1-prod-matrix th, .k1-prod-matrix td { font-size: 13px; }
-.k1-heat { border-collapse: separate; border-spacing: 4px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.k1-heat { width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .k1-heat th { padding: 0 4px; font-weight: 500; color: var(--k1-muted); text-align: center; }
 .k1-heat tbody th { text-align: left; color: var(--k1-ink-2); }
-.k1-heat td span { display: grid; place-items: center; min-width: 52px; height: 30px; border-radius: 6px; color: #1e3a8a; }
+.k1-heat td span { display: grid; place-items: center; min-width: 38px; height: 30px; border-radius: 6px; color: #1e3a8a; }
 .k1-heat td span.is-empty { background: var(--k1-line-soft); }
 
 .k1-pie { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); align-items: center; gap: 24px; margin: 0; }
@@ -1387,7 +1388,8 @@ body { overscroll-behavior: none; }
 @media (max-width: 900px) {
   .k1-prod { padding: 20px 16px 32px; gap: 14px; }
   .k1-prod-head { flex-wrap: wrap; }
-  .k1-prod-head__end { margin-left: 0; width: 100%; justify-content: space-between; }
+  .k1-prod-head__end { margin-left: 0; width: 100%; flex-wrap: wrap; justify-content: space-between; }
+  .k1-prod-copy { order: 1; width: 100%; }
   .k1-prod-head__end:not(:has(.k1-segmented, .k1-prod-date)) { position: absolute; top: 20px; right: 16px; width: auto; }
   .k1-stat-cards, .k1-stat-cards--five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .k1-stat-card { padding: 12px 14px 14px; }

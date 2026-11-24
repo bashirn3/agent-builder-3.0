@@ -284,7 +284,8 @@ function performance(range: Range): Performance {
     }),
     send_hours: [1, 2, 3, 4, 5].flatMap((weekday) => Array.from({ length: 9 }, (_, offset) => {
       const sends = Math.round(int(0, 40) * weekCount / 2)
-      return { weekday, hour: 9 + offset, sends, reply_rate: sends ? 0.12 + random() * 0.3 : null }
+      const replyRate = sends ? 0.12 + random() * 0.3 : null
+      return { weekday, hour: 9 + offset, sends, reply_rate: replyRate, booking_rate: replyRate === null ? null : replyRate * (0.35 + random() * 0.3) }
     })),
     by_message: (['opener', 'reminder_1', 'reminder_2', 'reminder_3'] as Step[]).map((step, index) => {
       const sent = Math.round(sum('sent') / (index + 1) / (index ? 1.6 : 1))

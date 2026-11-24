@@ -822,6 +822,11 @@ export const en = {
       sendHoursHint: (min: number) => `Hours with ${min}+ sends`,
       cellHint: (sends: string, rate: string) => `${sends} sends, ${rate} replied`,
       noSendHours: (min: number) => `Each hour needs ${min} sends before it shows here.`,
+      bookingHours: 'Booking rate by send hour',
+      bookingCellHint: (sends: string, rate: string) => `${sends} sends, ${rate} booked`,
+      copyAll: 'Copy all data',
+      copied: 'Data copied',
+      copiedBody: (range: string) => `Raw numbers for ${range.toLowerCase()} are on your clipboard, with a short field guide. Paste them into your AI assistant to analyse.`,
     },
     control: {
       readOnly: 'You can see the controls. Production admins can change them.',
@@ -1725,6 +1730,11 @@ export const fi: Copy = {
       sendHoursHint: (min: number) => `Tunnit, joilla vähintään ${min} lähetystä`,
       cellHint: (sends: string, rate: string) => `${sends} lähetystä, ${rate} vastasi`,
       noSendHours: (min: number) => `Tunti näkyy täällä, kun sillä on ${min} lähetystä.`,
+      bookingHours: 'Varausaste lähetystunneittain',
+      bookingCellHint: (sends: string, rate: string) => `${sends} lähetystä, ${rate} varasi`,
+      copyAll: 'Kopioi kaikki tiedot',
+      copied: 'Tiedot kopioitu',
+      copiedBody: (range: string) => `Raakaluvut (${range.toLowerCase()}) ja lyhyt kenttäopas ovat leikepöydällä. Liitä ne tekoälyavustajalle analysoitavaksi.`,
     },
     control: {
       readOnly: 'Näet asetukset. Tuotannon ylläpitäjät voivat muuttaa niitä.',

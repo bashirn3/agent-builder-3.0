@@ -1,22 +1,55 @@
 import { useState } from 'react'
 import { isSample, prodApi, type Performance, type Range } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
-import { CalendarDays, Check, MessagesSquare, Optimise } from '../../ui/icons'
+import { CalendarDays, Check, Copy, MessagesSquare, Optimise } from '../../ui/icons'
 import { BarChart, PieChart, RankTable, StatCard } from './charts'
 import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, fmtUplift, ProdHead, stepLabel, useProdData } from './shared'
 
 const RANGES: Range[] = ['week', 'month', 'all']
 const MIN_SENDS = 10
 
-export function OptimisePage() {
+type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
+
+const FIELD_GUIDE = [
+  'K1 Katsastus WhatsApp outreach: raw performance data from the Optimise page.',
+  'Customers whose vehicle inspection deadline is near get a WhatsApp first message and up to 3 reminders, and can book in the chat.',
+  'Times and weekdays are Europe/Helsinki. weekday 1 = Monday. week_start is the Monday of the week.',
+  'Rates are fractions from 0 to 1. funnel.rate and by_station.rate = converted / delivered, where converted means booked.',
+  'holdout = customers deliberately not messaged (10%); holdout_converted = how many of them booked anyway. uplift = rate minus the hold-out booking rate.',
+  'send_hours gives reply_rate and booking_rate for messages sent in that weekday and hour. It lists every cell, including those with few sends; the page only shows cells with 10 or more sends.',
+  'by_message.step: opener is the first message, reminder_1 to reminder_3 follow it.',
+  'A null rate or uplift means there is not enough data yet.',
+]
+
+function rawExport(data: Performance, range: Range, rangeLabel: string) {
+  return JSON.stringify({
+    about: FIELD_GUIDE,
+    range: { key: range, label: rangeLabel },
+    sample_data: isSample('performance'),
+    copied_at: new Date().toISOString(),
+    data,
+  }, null, 2)
+}
+
+export function OptimisePage({ notify }: { notify: Notify }) {
   const t = useCopy()
   const p = t.prod.optimise
   const [range, setRange] = useState<Range>('month')
   const { data, error, loading, refreshing, reload } = useProdData((signal) => prodApi.performance(range, signal), [range])
 
+  const copyAll = () => {
+    if (!data) return
+    void navigator.clipboard?.writeText(rawExport(data, range, p.ranges[range]))
+      .then(() => notify({ title: p.copied, body: p.copiedBody(p.ranges[range]) }))
+      .catch(() => notify({ tone: 'error', title: t.common.copyFailed, body: t.common.clipboardBlocked }))
+  }
+
   return (
     <div className="k1-page k1-prod">
       <ProdHead title={t.nav.optimise} description={t.prod.describe.optimise} sample={isSample('performance')} onRefresh={reload} refreshing={refreshing}>
+        <button type="button" className="k1-btn k1-btn--outline k1-prod-copy" onClick={copyAll} disabled={!data}>
+          <Copy size={14} strokeWidth={1.75} />{p.copyAll}
+        </button>
         <div className="k1-segmented" role="group" aria-label={p.range}>
           {RANGES.map((value) => (
             <button key={value} type="button" className={range === value ? 'is-active' : undefined} aria-pressed={range === value} onClick={() => setRange(value)}>{p.ranges[value]}</button>
@@ -145,16 +178,29 @@ function Report({ data }: { data: Performance }) {
   )
 }
 
+type HourCell = Performance['send_hours'][number]
+
 function SendHours({ data }: { data: Performance }) {
+  const p = useCopy().prod.optimise
+  const cells = data.send_hours.filter((cell) => cell.sends >= MIN_SENDS)
+  const hasBookings = cells.some((cell) => cell.booking_rate !== undefined)
+  return (
+    <div className="k1-prod-grid k1-prod-grid--two">
+      <HourHeat title={p.sendHours} cells={cells} rate={(cell) => cell.reply_rate} hint={p.cellHint} />
+      <HourHeat title={p.bookingHours} cells={hasBookings ? cells : []} rate={(cell) => cell.booking_rate ?? null} hint={p.bookingCellHint} />
+    </div>
+  )
+}
+
+function HourHeat({ title, cells, rate, hint }: { title: string; cells: HourCell[]; rate: (cell: HourCell) => number | null; hint: (sends: string, rate: string) => string }) {
   const t = useCopy()
   const p = t.prod.optimise
-  const cells = data.send_hours.filter((cell) => cell.sends >= MIN_SENDS)
   const hours = [...new Set(cells.map((cell) => cell.hour))].sort((a, b) => a - b)
   const days = [...new Set(cells.map((cell) => cell.weekday))].sort((a, b) => a - b)
-  const top = Math.max(0.01, ...cells.map((cell) => cell.reply_rate ?? 0))
+  const top = Math.max(0.01, ...cells.map((cell) => rate(cell) ?? 0))
   const find = (weekday: number, hour: number) => cells.find((cell) => cell.weekday === weekday && cell.hour === hour)
   return (
-    <Card title={p.sendHours} aside={<span className="k1-hint">{p.sendHoursHint(MIN_SENDS)}</span>}>
+    <Card title={title} aside={<span className="k1-hint">{p.sendHoursHint(MIN_SENDS)}</span>}>
       {cells.length ? (
         <div className="k1-prod-scroll">
           <table className="k1-heat">
@@ -167,10 +213,11 @@ function SendHours({ data }: { data: Performance }) {
                   <th scope="row">{t.prod.weekdays[day - 1]}</th>
                   {hours.map((hour) => {
                     const cell = find(day, hour)
-                    const strength = cell?.reply_rate != null ? cell.reply_rate / top : 0
+                    const value = cell ? rate(cell) : null
+                    const strength = value != null ? value / top : 0
                     return (
-                      <td key={hour} title={cell ? p.cellHint(fmtNum(cell.sends), fmtRate(cell.reply_rate)) : undefined}>
-                        {cell ? <span style={{ background: `rgba(37, 99, 235, ${0.08 + strength * 0.72})`, color: strength > 0.6 ? '#fff' : undefined }}>{fmtRate(cell.reply_rate)}</span> : <span className="is-empty" />}
+                      <td key={hour} title={cell ? hint(fmtNum(cell.sends), fmtRate(value)) : undefined}>
+                        {cell ? <span style={{ background: `rgba(37, 99, 235, ${0.08 + strength * 0.72})`, color: strength > 0.6 ? '#fff' : undefined }}>{fmtPercent(value)}</span> : <span className="is-empty" />}
                       </td>
                     )
                   })}
@@ -182,4 +229,8 @@ function SendHours({ data }: { data: Performance }) {
       ) : <p className="k1-hint">{p.noSendHours(MIN_SENDS)}</p>}
     </Card>
   )
+}
+
+function fmtPercent(rate: number | null) {
+  return rate === null || !Number.isFinite(rate) ? '—' : `${Math.round(rate * 100)}\u00a0%`
 }

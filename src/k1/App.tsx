@@ -46,7 +46,7 @@ function Workspace({ compact }: { compact: boolean }) {
   else if (route.page === 'home') page = <HomePage />
   else if (route.page === 'liveChats') page = <ConversationsPage id={route.id} compact={compact} notify={push} />
   else if (route.page === 'liveLeads') page = <LiveLeadsPage compact={compact} />
-  else if (route.page === 'optimise') page = <OptimisePage />
+  else if (route.page === 'optimise') page = <OptimisePage notify={push} />
   else if (route.page === 'control') page = <ControlPage notify={push} />
   else if (route.page === 'team') page = <TeamPage notify={push} />
 
