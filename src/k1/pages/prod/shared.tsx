@@ -1,9 +1,9 @@
 import { ReactNode, useCallback, useEffect, useRef, useState, type DependencyList } from 'react'
 import { motion } from 'motion/react'
 import { ease } from '../../../lib/motion'
-import { ProdError, type ConversationStatus, type Delivery, type LeadStatus, type NeedsYou, type Step } from '../../data/prodApi'
+import { ProdError, type ConversationStatus, type Delivery, type LeadStatus, type Step } from '../../data/prodApi'
 import { copy, locale, useCopy } from '../../i18n'
-import { href, type Route } from '../../routes'
+import { href } from '../../routes'
 import { CalendarDays, RefreshCw } from '../../ui/icons'
 import { Skeleton } from '../../ui/controls'
 import { SampleBadge } from '../SplitView'
@@ -219,23 +219,6 @@ export function DeliveryTag({ delivery }: { delivery: Delivery }) {
 }
 
 export const stepLabel = (step: Step) => copy().prod.steps[step] ?? step
-
-export function needsTitle(item: NeedsYou) {
-  const phrase = copy().prod.home.needs[item.kind]
-  return phrase && Number.isFinite(item.count) ? phrase(item.count) : item.title
-}
-
-export function needsHref(link: string) {
-  const [target, query] = link.split('?')
-  const routes: Record<string, Route> = {
-    control: { page: 'control' },
-    conversations: { page: 'liveChats', id: null },
-    leads: { page: 'liveLeads' },
-    optimise: { page: 'optimise' },
-  }
-  const base = href(routes[target] ?? { page: 'home' })
-  return query ? `${base}?${query}` : base
-}
 
 export function useDebounced<T>(value: T, ms = 300) {
   const [settled, setSettled] = useState(value)
