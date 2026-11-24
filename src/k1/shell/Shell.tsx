@@ -4,7 +4,7 @@ import { CalendarDays, Check, ChevronDown, ChevronsUpDown, Columns, Control, His
 import { space } from '../../lib/motion'
 import { useSession } from '../auth/session'
 import { setUiLang, useCopy, useUiLang } from '../i18n'
-import { go, href, openEnvironment, useEnvironment, type Environment, type Route } from '../routes'
+import { go, href, openEnvironment, productionVisible, useEnvironment, type Environment, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
 export function BrandLogo({ height = 22 }: { height?: number }) {
@@ -73,6 +73,7 @@ function useEnvironmentLabel() {
 function EnvironmentMenu({ environment }: { environment: Environment }) {
   const t = useCopy()
   const label = useEnvironmentLabel()
+  if (!productionVisible) return <span className="k1-crumbs__item">{label(environment)}</span>
   return (
     <Menu
       label={t.nav.environment}
@@ -207,7 +208,7 @@ function MobileNav({ route, environment, onClose }: { route: Route; environment:
     <div ref={panelRef} id="k1-mobile-nav" className="k1-mobile-nav" role="dialog" aria-modal="true" aria-label={t.nav.navigation}>
       <div className="k1-mobile-nav__workspace">
         <strong>K1 Katsastus</strong>
-        <div className="k1-segmented" role="group" aria-label={t.nav.environment}>
+        {productionVisible && <div className="k1-segmented" role="group" aria-label={t.nav.environment}>
           {ENVIRONMENTS.map((option) => (
             <button
               key={option}
@@ -219,7 +220,7 @@ function MobileNav({ route, environment, onClose }: { route: Route; environment:
               {label(option)}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
       <Sidebar route={route} environment={environment} onNavigate={onClose} />
       <div className="k1-mobile-nav__foot">

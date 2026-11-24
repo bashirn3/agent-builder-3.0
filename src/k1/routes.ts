@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 
+declare const __K1_ENV__: Record<string, string> | undefined
+
 export type Route =
   | { page: 'signin' }
   | { page: 'signup' }
@@ -28,8 +30,12 @@ const modeParam = (): Environment | null => {
   return mode === 'production' || mode === 'staging' ? mode : null
 }
 
+// Production is hidden from everyone unless the build sets K1_SHOW_PRODUCTION=true.
+export const productionVisible = (typeof __K1_ENV__ === 'undefined' ? '' : __K1_ENV__.K1_SHOW_PRODUCTION ?? '').trim() === 'true'
+
 // Everyone opens in Production; only a link with ?mode=staging opens Staging.
 export function storedEnvironment(): Environment {
+  if (!productionVisible) return 'staging'
   return modeParam() ?? 'production'
 }
 
@@ -68,6 +74,11 @@ export function hashQuery() {
 }
 
 export function parse(hash: string): Route {
+  const route = parseHash(hash)
+  return !productionVisible && PRODUCTION_PAGES.includes(route.page) ? { page: 'playground' } : route
+}
+
+function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean)
   switch (parts[0]) {
     case 'signup': return { page: 'signup' }
