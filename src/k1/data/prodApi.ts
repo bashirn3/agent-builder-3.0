@@ -26,7 +26,6 @@ export type HomeData = {
   this_week: { from: string; to: string; sent: number; delivered: number; replied: number; booked: number; bookings_per_week: Array<{ week_start: string; booked: number; delivered?: number }> }
   value: { delivered_contacts: number; converted: number; rate: number | null }
   leads_left: { in_window: number; window: { min_days: number; max_days: number } }
-  savings?: { eur: number } | null
 }
 
 export type ConversationItem = {

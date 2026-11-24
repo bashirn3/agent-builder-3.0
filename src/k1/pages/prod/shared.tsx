@@ -210,7 +210,6 @@ export function fmtUplift(value: number | null | undefined) {
 }
 
 export const fmtNum = (value: number) => value.toLocaleString(locale())
-export const fmtEur = (value: number) => value.toLocaleString(locale(), { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export function StatusTag({ status }: { status: ConversationStatus | LeadStatus }) {
   const t = useCopy()

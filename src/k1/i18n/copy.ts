@@ -706,8 +706,6 @@ export const en = {
       seeLeads: 'See leads',
       inWindow: (min: number, max: number) => min === max ? `Exactly ${min} days before the deadline` : `In the ${min}–${max} day window`,
       windowHint: 'Customers who can still get a first message',
-      savings: 'Savings vs Meta API',
-      savingsLabel: 'Saved so far',
     },
     conversations: {
       title: 'Conversations',
@@ -1614,8 +1612,6 @@ export const fi: Copy = {
       seeLeads: 'Näytä liidit',
       inWindow: (min: number, max: number) => min === max ? `Tasan ${min} päivää ennen määräaikaa` : `${min}–${max} päivän ikkunassa`,
       windowHint: 'Asiakkaat, joille voi vielä lähettää ensimmäisen viestin',
-      savings: 'Säästö vs. Meta API',
-      savingsLabel: 'Säästetty tähän mennessä',
     },
     conversations: {
       title: 'Keskustelut',
