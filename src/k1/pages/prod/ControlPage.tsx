@@ -13,7 +13,12 @@ type Confirm = { kind: 'bot' | 'outreach' } | { kind: 'release'; batch: Batch }
 
 const TIMING: Array<keyof Timing> = ['reminder_1_days_before', 'reminder_2_days_before', 'reminder_3_days_after', 'gap_after_opener_days', 'gap_between_days']
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
-const HOURS = Array.from({ length: 25 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
+const TIMES = Array.from({ length: 49 }, (_, step) => `${String(Math.floor(step / 2)).padStart(2, '0')}:${step % 2 ? '30' : '00'}`)
+const RELEASABLE: Batch['status'][] = ['proposed', 'held']
+const HOLDABLE: Batch['status'][] = ['proposed', 'released', 'sending']
+
+// The backend takes any HH:MM, so a saved time off the half-hour grid stays selectable.
+const timeOptions = (times: string[], current: string) => times.includes(current) ? times : [...times, current].sort()
 
 const planOf = (controls: Controls): Plan => ({
   window: controls.window,
@@ -245,6 +250,15 @@ export function ControlPage({ notify }: { notify: Notify }) {
                   <span className="k1-prod-number k1-prod-number--read"><strong>{fmtNum(data.cap_today)}</strong><span>{p.perDay}</span></span>
                 </div>
               )}
+              {data.pacing && (
+                <div className="k1-set__row">
+                  <span className="k1-set__label">
+                    <strong>{p.pacing}</strong>
+                    <small>{p.pacingHint}</small>
+                  </span>
+                  <span className="k1-prod-number k1-prod-number--read"><strong>{p.pacingValue(data.pacing.min_gap_minutes, data.pacing.max_gap_minutes)}</strong></span>
+                </div>
+              )}
 
               <div className="k1-set__row k1-set__row--stack">
                 <span className="k1-set__label"><strong>{p.hours}</strong></span>
@@ -257,11 +271,11 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 </div>
                 <div className="k1-prod-hours__range">
                   <select className="k1-input" aria-label={p.from} value={plan.sending_hours.from} onChange={(event) => setPlan((current) => current && { ...current, sending_hours: { ...current.sending_hours, from: event.target.value } })}>
-                    {HOURS.slice(0, 24).map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                    {timeOptions(TIMES.slice(0, 48), plan.sending_hours.from).map((time) => <option key={time} value={time}>{time}</option>)}
                   </select>
                   <span>–</span>
                   <select className="k1-input" aria-label={p.to} value={plan.sending_hours.to} onChange={(event) => setPlan((current) => current && { ...current, sending_hours: { ...current.sending_hours, to: event.target.value } })}>
-                    {HOURS.slice(1).map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                    {timeOptions(TIMES.slice(1), plan.sending_hours.to).map((time) => <option key={time} value={time}>{time}</option>)}
                   </select>
                   <span className="k1-hint">{p.finnishTime}</span>
                 </div>
@@ -354,11 +368,11 @@ function BatchCard({ controls, sendingReady, editable, busy, onRelease, onHold }
       aside={<span className="k1-tag">{release === 'manual' ? p.manual : p.auto}</span>}
       footer={batch ? (release === 'manual' ? (
         <>
-          <p className="k1-hint">{!sendingReady && batch.status === 'proposed' ? p.notConnectedBatch : batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : p.releasedNote}</p>
-          <button type="button" className="k1-btn k1-btn--outline" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'hold'} onClick={() => onHold(batch)}>
+          <p className="k1-hint">{!sendingReady && RELEASABLE.includes(batch.status) ? p.notConnectedBatch : batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : batch.status === 'sent' ? p.sentNote : p.releasedNote}</p>
+          <button type="button" className="k1-btn k1-btn--outline" disabled={!editable || !HOLDABLE.includes(batch.status) || busy !== null} aria-busy={busy === 'hold'} onClick={() => onHold(batch)}>
             {busy === 'hold' && <Spinner />}{p.hold}
           </button>
-          <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || !sendingReady || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
+          <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || !sendingReady || !RELEASABLE.includes(batch.status) || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
             {busy === 'release' && <Spinner />}{['released', 'sending', 'sent'].includes(batch.status) ? p.releasedButton : p.release}
           </button>
         </>

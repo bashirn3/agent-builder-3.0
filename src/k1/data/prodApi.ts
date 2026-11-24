@@ -121,6 +121,8 @@ export type Controls = Settings & {
   sending_ready?: boolean
   cap_today?: number
   daily_total_cap?: number
+  pacing?: { min_gap_minutes: number; max_gap_minutes: number }
+  leads_in_window?: number
   ramp?: { start_date?: string; per_sending_day?: number[]; after?: { min: number; max: number } }
 }
 export type SettingsPatch = Partial<Omit<Settings, 'holdout_percent' | 'release'>>

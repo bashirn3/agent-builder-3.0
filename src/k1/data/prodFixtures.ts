@@ -168,6 +168,7 @@ const settings: Omit<Controls, 'can_edit' | 'batch' | 'history'> = {
   sending_ready: true,
   cap_today: 5,
   daily_total_cap: 60,
+  pacing: { min_gap_minutes: 6, max_gap_minutes: 17 },
   ramp: { start_date: isoDay(now + DAY), per_sending_day: [5, 5, 6, 6, 8], after: { min: 15, max: 20 } },
   bot_on: true,
   stations: STATIONS.map((station) => ({ ...station, first_messages_on: true, reminders_on: true })),
