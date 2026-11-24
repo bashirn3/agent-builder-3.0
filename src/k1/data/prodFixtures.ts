@@ -164,7 +164,10 @@ const LEADS: LeadItem[] = [
 ].sort((a, b) => a.days_left - b.days_left)
 
 const settings: Omit<Controls, 'can_edit' | 'batch' | 'history'> = {
-  outreach_on: true,
+  outreach_on: false,
+  sending_ready: false,
+  cap_today: 0,
+  ramp: { start_date: isoDay(now + DAY), per_sending_day: [5, 5, 6, 6, 8], after: { min: 15, max: 20 } },
   bot_on: true,
   stations: STATIONS.map((station) => ({ ...station, first_messages_on: true, reminders_on: true })),
   window: { min_days: 2, max_days: 21 },

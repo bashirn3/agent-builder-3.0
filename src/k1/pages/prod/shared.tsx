@@ -81,7 +81,10 @@ export function prodMessage(error: ProdError) {
   if (error.code === 'admin_required') return t.admin
   if (error.code === 'network_failed') return t.network
   if (error.code === 'not_found') return t.notFound
-  if (error.code.startsWith('invalid_')) return t.invalid
+  if (error.code === 'batch_not_changeable') return t.batchLocked
+  if (error.code === 'data_unavailable' || error.code === 'write_failed') return t.unavailable
+  if (error.code === 'invalid_timing' || error.code === 'invalid_window') return t.invalid
+  if (/^(invalid_|read_only_|unknown_field_)/.test(error.code)) return t.rejected(error.code)
   return t.generic(error.code)
 }
 

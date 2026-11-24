@@ -112,7 +112,15 @@ export type Settings = {
   release: 'manual' | 'auto'
 }
 
-export type Controls = Settings & { can_edit: boolean; batch: Batch | null; history: Array<{ date: string; sent: number; delivered: number; failed: number }> }
+export type Controls = Settings & {
+  can_edit: boolean
+  batch: Batch | null
+  history: Array<{ date: string; sent: number; delivered: number; failed: number }>
+  // False until the production bot, planner and sender are connected. Missing counts as false.
+  sending_ready?: boolean
+  cap_today?: number
+  ramp?: { start_date?: string; per_sending_day?: number[]; after?: { min: number; max: number } }
+}
 export type SettingsPatch = Partial<Omit<Settings, 'holdout_percent' | 'release'>>
 
 export class ProdError extends Error {
@@ -160,6 +168,8 @@ async function request<T>(endpoint: ProdEndpoint, path: string, options: { metho
     const data = await response.json().catch(() => null) as ({ ok?: boolean; error?: unknown } & T) | null
     if (!response.ok || !data || data.ok === false) {
       const code = typeof data?.error === 'string' && /^[a-z0-9_.:-]{1,80}$/i.test(data.error) ? data.error : `request_failed:${response.status}`
+      // The backend marks a database hiccup as safe to retry once; writes are left to the user.
+      if (code === 'data_unavailable' && method === 'GET' && attempt === 0) continue
       throw new ProdError(code, response.status)
     }
     return data

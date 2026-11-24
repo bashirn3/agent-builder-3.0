@@ -40,6 +40,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
   useEffect(() => { if (data) setPlan(planOf(data)) }, [data])
 
   const editable = Boolean(data?.can_edit)
+  const sendingReady = data?.sending_ready === true
   const busy = saving !== null
   const range = plan?.window
 
@@ -76,6 +77,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
   }
 
   const toggleMaster = (field: 'outreach_on' | 'bot_on', on: boolean) => {
+    if (field === 'outreach_on' && on && !sendingReady) return
     if (!on) {
       setConfirm({ kind: field === 'bot_on' ? 'bot' : 'outreach' })
       return
@@ -107,7 +109,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
     if (!confirm) return
     const current = confirm
     setConfirm(null)
-    if (current.kind === 'release') void runBatch(current.batch, 'release')
+    if (current.kind === 'release') { if (sendingReady) void runBatch(current.batch, 'release') }
     else {
       const field = current.kind === 'bot' ? 'bot_on' : 'outreach_on'
       void save({ [field]: false }, field, { title: p.saved, body: current.kind === 'bot' ? p.botOffDone : p.outreachOffDone })
@@ -144,7 +146,8 @@ export function ControlPage({ notify }: { notify: Notify }) {
           {!editable && <p className="k1-prod-note" role="note">{p.readOnly}</p>}
 
           <Section title={p.sending} description={p.sendingHint}>
-            <SwitchRow label={p.outreach} hint={p.outreachHint} checked={data.outreach_on} disabled={!editable || busy} pending={saving === 'outreach_on'} onChange={(on) => toggleMaster('outreach_on', on)} />
+            <SwitchRow label={p.outreach} hint={p.outreachHint} checked={data.outreach_on} disabled={!editable || busy || (!sendingReady && !data.outreach_on)} pending={saving === 'outreach_on'} onChange={(on) => toggleMaster('outreach_on', on)} />
+            {!sendingReady && <p className="k1-prod-note k1-set__notice" role="note">{p.notConnected}</p>}
             <SwitchRow label={p.bot} hint={p.botHint} checked={data.bot_on} disabled={!editable || busy} pending={saving === 'bot_on'} onChange={(on) => toggleMaster('bot_on', on)} />
           </Section>
 
@@ -216,6 +219,16 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 </span>
               </label>
 
+              {data.cap_today !== undefined && (
+                <div className="k1-set__row">
+                  <span className="k1-set__label">
+                    <strong>{p.capToday}</strong>
+                    <small>{p.capTodayHint(data.ramp?.start_date ? fmtDay(data.ramp.start_date, true) : null)}</small>
+                  </span>
+                  <span className="k1-prod-number k1-prod-number--read"><strong>{fmtNum(data.cap_today)}</strong><span>{p.perDay}</span></span>
+                </div>
+              )}
+
               <div className="k1-set__row k1-set__row--stack">
                 <span className="k1-set__label"><strong>{p.hours}</strong></span>
                 <div className="k1-prod-days" role="group" aria-label={p.hours}>
@@ -242,6 +255,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
 
           <BatchCard
             controls={data}
+            sendingReady={sendingReady}
             editable={editable}
             busy={saving}
             onRelease={(batch) => setConfirm({ kind: 'release', batch })}
@@ -311,7 +325,7 @@ function SwitchRow({ label, hint, checked, disabled, pending, onChange }: { labe
   )
 }
 
-function BatchCard({ controls, editable, busy, onRelease, onHold }: { controls: Controls; editable: boolean; busy: string | null; onRelease: (batch: Batch) => void; onHold: (batch: Batch) => void }) {
+function BatchCard({ controls, sendingReady, editable, busy, onRelease, onHold }: { controls: Controls; sendingReady: boolean; editable: boolean; busy: string | null; onRelease: (batch: Batch) => void; onHold: (batch: Batch) => void }) {
   const t = useCopy()
   const p = t.prod.control
   const { batch, release } = controls
@@ -323,11 +337,11 @@ function BatchCard({ controls, editable, busy, onRelease, onHold }: { controls: 
       aside={<span className="k1-tag">{release === 'manual' ? p.manual : p.auto}</span>}
       footer={batch ? (release === 'manual' ? (
         <>
-          <p className="k1-hint">{batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : p.releasedNote}</p>
+          <p className="k1-hint">{!sendingReady && batch.status === 'proposed' ? p.notConnectedBatch : batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : p.releasedNote}</p>
           <button type="button" className="k1-btn k1-btn--outline" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'hold'} onClick={() => onHold(batch)}>
             {busy === 'hold' && <Spinner />}{p.hold}
           </button>
-          <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
+          <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || !sendingReady || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
             {busy === 'release' && <Spinner />}{['released', 'sending', 'sent'].includes(batch.status) ? p.releasedButton : p.release}
           </button>
         </>

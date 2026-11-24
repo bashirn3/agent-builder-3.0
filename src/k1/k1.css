@@ -1358,6 +1358,8 @@ body { overscroll-behavior: none; }
 .k1-prod-number { display: flex; align-items: center; gap: 8px; flex: none; }
 .k1-prod-number .k1-input { width: 80px; height: 36px; background: var(--k1-surface); font-variant-numeric: tabular-nums; }
 .k1-prod-number span { min-width: 60px; font-size: 13px; color: var(--k1-muted); }
+.k1-prod-number--read strong { min-width: 80px; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
+.k1-set__notice { margin: 0; }
 .k1-prod-days { display: flex; flex-wrap: wrap; gap: 6px; }
 .k1-prod-day { height: 32px; min-width: 44px; padding: 0 10px; border: 1px solid var(--k1-field-line); border-radius: var(--k1-r-md); background: var(--k1-surface); font-size: 13px; font-weight: 500; color: var(--k1-para); box-shadow: var(--k1-shadow-xs); transition: all 140ms var(--k1-ease); }
 .k1-prod-day:hover:not(:disabled) { background: var(--k1-hover); }
