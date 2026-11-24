@@ -237,11 +237,6 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 </div>
                 {!hoursValid && <p className="k1-field__error">{p.hoursInvalid}</p>}
               </div>
-
-              <div className="k1-set__row">
-                <span className="k1-set__label"><strong>{p.holdout}</strong><small>{p.holdoutHint}</small></span>
-                <strong className="k1-set__value">{data.holdout_percent} %</strong>
-              </div>
             </fieldset>
           </Section>
 
