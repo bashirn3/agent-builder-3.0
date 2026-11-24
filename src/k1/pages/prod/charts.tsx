@@ -25,101 +25,94 @@ function useHover(count: number) {
   return { ref, index, onMove, onLeave: () => setIndex(null) }
 }
 
-// Chatbase "Chats started": one blue series, smooth line over a fading fill, gridlines and no y axis.
-export function AreaChart({ points, label, unit }: { points: Array<{ key: string; label: string; value: number }>; label: string; unit?: (value: number) => string }) {
-  const gradient = useId()
-  const hover = useHover(points.length)
+export type AreaSeries = { key: string; label: string; color: string; values: number[]; note?: string }
+
+// Chatbase "Chats started": smooth lines over fading fills, gridlines and no y axis. Several series overlay from
+// zero, largest drawn first so the smaller ones stay visible in front.
+export function AreaChart({ label, x: columns, series, share, footer }: {
+  label: string
+  x: Array<{ key: string; label: string }>
+  series: AreaSeries[]
+  share?: boolean
+  footer?: (index: number) => ReactNode
+}) {
+  const id = useId()
+  const hover = useHover(columns.length)
   const width = 1000
   const height = 240
-  const top = Math.max(1, ...points.map((point) => point.value)) * 1.15
-  const x = (index: number) => points.length === 1 ? width / 2 : (index / (points.length - 1)) * width
+  const single = columns.length === 1
+  const top = Math.max(1, ...series.flatMap((item) => item.values)) * 1.15
+  const xAt = (index: number) => single ? index * width : (index / (columns.length - 1)) * width
   const y = (value: number) => height - (value / top) * height
-  const line = points.map((point, index) => {
-    if (index === 0) return `M ${x(0)} ${y(point.value)}`
-    const mid = (x(index - 1) + x(index)) / 2
-    return `C ${mid} ${y(points[index - 1].value)} ${mid} ${y(point.value)} ${x(index)} ${y(point.value)}`
-  }).join(' ')
-  const area = `${line} L ${x(points.length - 1)} ${height} L ${x(0)} ${height} Z`
-  const active = hover.index !== null ? points[hover.index] : null
-  const left = (index: number) => points.length === 1 ? 50 : (index / (points.length - 1)) * 100
+  const path = (values: number[]) => {
+    const points = single ? [values[0], values[0]] : values
+    const line = points.map((value, index) => {
+      if (index === 0) return `M ${xAt(0)} ${y(value)}`
+      const mid = (xAt(index - 1) + xAt(index)) / 2
+      return `C ${mid} ${y(points[index - 1])} ${mid} ${y(value)} ${xAt(index)} ${y(value)}`
+    }).join(' ')
+    return { line, area: `${line} L ${xAt(points.length - 1)} ${height} L ${xAt(0)} ${height} Z` }
+  }
+  const sum = (values: number[]) => values.reduce((total, value) => total + value, 0)
+  const back = [...series].sort((a, b) => sum(b.values) - sum(a.values))
+  const left = (index: number) => single ? 50 : (index / (columns.length - 1)) * 100
+  const at = hover.index
+  const atTotal = at === null ? 0 : sum(series.map((item) => item.values[at] ?? 0))
 
   return (
     <figure className="k1-area" aria-label={label}>
+      {series.length > 1 && (
+        <figcaption className="k1-chart__legend">
+          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label}{item.note && <b>{item.note}</b>}</span>)}
+        </figcaption>
+      )}
       <div ref={hover.ref} className="k1-area__plot" onPointerMove={hover.onMove} onPointerLeave={hover.onLeave}>
         {[0, 1, 2, 3, 4].map((line) => <span key={line} className="k1-chart__grid" style={{ top: `${line * 25}%` }} />)}
         <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
           <defs>
-            <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.04" />
-            </linearGradient>
+            {series.map((item, index) => (
+              <linearGradient key={item.key} id={`${id}-${index}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={item.color} stopOpacity={series.length > 1 ? 0.18 : 0.9} />
+                <stop offset="100%" stopColor={item.color} stopOpacity={series.length > 1 ? 0.02 : 0.04} />
+              </linearGradient>
+            ))}
           </defs>
-          <path d={area} fill={`url(#${gradient})`} />
-          <path d={line} fill="none" stroke="#2563eb" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          {back.map((item) => {
+            const { line, area } = path(item.values)
+            return (
+              <g key={item.key}>
+                <path d={area} fill={`url(#${id}-${series.indexOf(item)})`} />
+                <path d={line} fill="none" stroke={item.color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+              </g>
+            )
+          })}
         </svg>
-        {active && hover.index !== null && (
+        {at !== null && (
           <>
-            <span className="k1-chart__cursor" style={{ left: `${left(hover.index)}%` }} />
-            <span className="k1-area__dot" style={{ left: `${left(hover.index)}%`, top: `${(y(active.value) / height) * 100}%` }} />
-            <span className={`k1-chart__tip${left(hover.index) > 70 ? ' is-left' : ''}`} style={{ left: `${left(hover.index)}%` }}>
-              <small>{active.label}</small>
-              <strong>{unit ? unit(active.value) : fmtNum(active.value)}</strong>
+            <span className="k1-chart__cursor" style={{ left: `${left(at)}%` }} />
+            {series.map((item) => <span key={item.key} className="k1-area__dot" style={{ left: `${left(at)}%`, top: `${(y(item.values[at] ?? 0) / height) * 100}%`, borderColor: item.color }} />)}
+            <span className={`k1-chart__tip${left(at) > 60 ? ' is-left' : ''}`} style={{ left: `${left(at)}%` }}>
+              <small>{columns[at].label}</small>
+              {series.length === 1
+                ? <strong>{fmtNum(series[0].values[at] ?? 0)}</strong>
+                : series.map((item) => (
+                  <span key={item.key}>
+                    <i style={{ background: item.color }} />{item.label}
+                    <b>{fmtNum(item.values[at] ?? 0)}{share && atTotal > 0 && <em> · {Math.round(((item.values[at] ?? 0) / atTotal) * 100)}&nbsp;%</em>}</b>
+                  </span>
+                ))}
+              {footer?.(at)}
             </span>
           </>
         )}
       </div>
       <div className="k1-chart__axis">
-        {points.map((point, index) => <span key={point.key} className={index === 0 || index === points.length - 1 || index === Math.floor((points.length - 1) / 2) ? 'is-key' : undefined} style={{ left: `${left(index)}%` }}>{point.label}</span>)}
+        {columns.map((column, index) => <span key={column.key} className={index === 0 || index === columns.length - 1 || index === Math.floor((columns.length - 1) / 2) ? 'is-key' : undefined} style={{ left: `${left(index)}%` }}>{column.label}</span>)}
       </div>
       <table className="k1-sr-only">
         <caption>{label}</caption>
-        <tbody>{points.map((point) => <tr key={point.key}><th scope="row">{point.label}</th><td>{point.value}</td></tr>)}</tbody>
-      </table>
-    </figure>
-  )
-}
-
-// Chatbase "Usage history": solid blue columns on gridlines; a second series stacks in light blue.
-export function BarChart({ bars, label, legend }: { bars: Array<{ key: string; label: string; values: number[] }>; label: string; legend?: string[] }) {
-  const hover = useHover(bars.length)
-  const top = Math.max(1, ...bars.map((bar) => bar.values.reduce((sum, value) => sum + value, 0))) * 1.1
-  const active = hover.index !== null ? bars[hover.index] : null
-  const left = (index: number) => ((index + 0.5) / bars.length) * 100
-
-  return (
-    <figure className="k1-barchart" aria-label={label}>
-      {legend && (
-        <figcaption className="k1-chart__legend">
-          {legend.map((item, index) => <span key={item}><i style={{ background: BLUES[index * 2 + 1] }} />{item}</span>)}
-        </figcaption>
-      )}
-      <div ref={hover.ref} className="k1-barchart__plot" onPointerMove={hover.onMove} onPointerLeave={hover.onLeave}>
-        {[0, 1, 2, 3, 4].map((line) => <span key={line} className="k1-chart__grid" style={{ top: `${line * 25}%` }} />)}
-        {bars.map((bar, index) => {
-          const total = bar.values.reduce((sum, value) => sum + value, 0)
-          return (
-            <div key={bar.key} className={`k1-barchart__col${hover.index === index ? ' is-active' : ''}`}>
-              <div className="k1-barchart__stack" style={{ height: `${(total / top) * 100}%` }}>
-                {bar.values.map((value, segment) => <span key={segment} style={{ flexGrow: value, background: BLUES[segment * 2 + 1] }} />)}
-              </div>
-            </div>
-          )
-        })}
-        {active && hover.index !== null && (
-          <span className={`k1-chart__tip${left(hover.index) > 70 ? ' is-left' : ''}`} style={{ left: `${left(hover.index)}%` }}>
-            <small>{active.label}</small>
-            {active.values.length > 1 && legend
-              ? active.values.map((value, segment) => <span key={segment}><i style={{ background: BLUES[segment * 2 + 1] }} />{legend[segment]} <b>{fmtNum(value)}</b></span>)
-              : <strong>{fmtNum(active.values.reduce((sum, value) => sum + value, 0))}</strong>}
-          </span>
-        )}
-      </div>
-      <div className="k1-chart__axis k1-chart__axis--bars">
-        {bars.map((bar) => <span key={bar.key}>{bar.label}</span>)}
-      </div>
-      <table className="k1-sr-only">
-        <caption>{label}</caption>
-        <tbody>{bars.map((bar) => <tr key={bar.key}><th scope="row">{bar.label}</th>{bar.values.map((value, index) => <td key={index}>{value}</td>)}</tr>)}</tbody>
+        <thead><tr><th scope="col" />{series.map((item) => <th key={item.key} scope="col">{item.label}</th>)}</tr></thead>
+        <tbody>{columns.map((column, index) => <tr key={column.key}><th scope="row">{column.label}</th>{series.map((item) => <td key={item.key}>{item.values[index] ?? 0}</td>)}</tr>)}</tbody>
       </table>
     </figure>
   )

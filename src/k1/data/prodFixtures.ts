@@ -216,8 +216,10 @@ function home(): HomeData {
   const items = CONVERSATIONS.map((entry) => entry.item)
   const handoffs = items.filter((item) => item.status === 'needs_reply').length
   const failed = LEADS.filter((lead) => lead.status === 'failed').length
-  const weeks = Array.from({ length: 8 }, (_, index) => ({ week_start: weekStart(now - (7 - index) * 7 * DAY), booked: index < 2 ? 0 : int(4, 15) }))
+  const weeks = Array.from({ length: 8 }, (_, index) => ({ week_start: weekStart(now - (7 - index) * 7 * DAY), booked: 0, delivered: index < 2 ? 0 : int(150, 230) }))
+  for (const week of weeks) week.booked = Math.round(week.delivered * (0.1 + random() * 0.06))
   weeks[7].booked = items.filter((item) => item.status === 'booked').length
+  weeks[7].delivered = 207
   return {
     status: {
       outreach_on: settings.outreach_on,
@@ -274,7 +276,12 @@ function performance(range: Range): Performance {
       const rows = matrix.filter((row) => row.week_start === week)
       const total = rows.reduce((value, row) => value + row.converted, 0)
       const after = Math.round(total * 0.18)
-      return { week_start: week, before_deadline: total - after, after_deadline: after }
+      const reminder1 = Math.round(total * (0.2 + random() * 0.08))
+      const reminder2 = Math.round(total * (0.1 + random() * 0.06))
+      return {
+        week_start: week, before_deadline: total - after, after_deadline: after,
+        by_step: { opener: total - after - reminder1 - reminder2, reminder_1: reminder1, reminder_2: reminder2, reminder_3: after },
+      }
     }),
     by_station: STATIONS.map((station) => {
       const rows = matrix.filter((row) => row.station === station.name)

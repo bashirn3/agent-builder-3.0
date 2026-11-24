@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { isSample, prodApi, type Performance, type Range } from '../../data/prodApi'
+import { isSample, prodApi, type Performance, type Range, type Step } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
 import { CalendarDays, Check, Copy, MessagesSquare, Optimise } from '../../ui/icons'
-import { BarChart, PieChart, RankTable, StatCard } from './charts'
+import { AreaChart, PieChart, RankTable, StatCard } from './charts'
 import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, fmtUplift, ProdHead, stepLabel, useProdData } from './shared'
 
 const RANGES: Range[] = ['week', 'month', 'all']
@@ -17,7 +17,8 @@ const FIELD_GUIDE = [
   'Rates are fractions from 0 to 1. funnel.rate and by_station.rate = converted / delivered, where converted means booked.',
   'holdout = customers deliberately not messaged (10%); holdout_converted = how many of them booked anyway. uplift = rate minus the hold-out booking rate.',
   'send_hours gives reply_rate and booking_rate for messages sent in that weekday and hour. It lists every cell, including those with few sends; the page only shows cells with 10 or more sends.',
-  'by_message.step: opener is the first message, reminder_1 to reminder_3 follow it.',
+  'by_message.step: opener is the first message, reminder_1 to reminder_3 follow it; reminder_3 goes out after the deadline.',
+  'bookings_per_week.by_step counts each booking under the last message the customer got before booking.',
   'A null rate or uplift means there is not enough data yet.',
 ]
 
@@ -86,13 +87,7 @@ function Report({ data }: { data: Performance }) {
         <StatCard icon={<Optimise size={14} />} label={p.uplift} value={fmtUplift(f.uplift)} hint={p.upliftHint(fmtNum(f.holdout_converted), fmtNum(f.holdout))} />
       </div>
 
-      <Card title={p.bookingsPerWeek}>
-        <BarChart
-          label={p.bookingsPerWeek}
-          legend={[p.beforeDeadline, p.afterDeadline]}
-          bars={data.bookings_per_week.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start), values: [week.before_deadline, week.after_deadline] }))}
-        />
-      </Card>
+      <BookedAfter data={data} />
 
       <div className="k1-prod-grid k1-prod-grid--two">
         <Card title={p.funnel}>
@@ -175,6 +170,29 @@ function Report({ data }: { data: Performance }) {
         </div>
       </Card>
     </>
+  )
+}
+
+const STEP_COLORS: Record<Step, string> = { opener: '#1d4ed8', reminder_1: '#06b6d4', reminder_2: '#8b5cf6', reminder_3: '#f59e0b' }
+const STEPS: Step[] = ['opener', 'reminder_1', 'reminder_2', 'reminder_3']
+
+function BookedAfter({ data }: { data: Performance }) {
+  const p = useCopy().prod.optimise
+  const weeks = data.bookings_per_week
+  const x = weeks.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start) }))
+  const byStep = weeks.some((week) => week.by_step)
+  const raw = byStep
+    ? STEPS.map((step) => ({ key: step, label: step === 'reminder_3' ? p.lastStep : stepLabel(step), color: STEP_COLORS[step], values: weeks.map((week) => week.by_step?.[step] ?? 0) }))
+    : [
+      { key: 'before', label: p.beforeDeadline, color: STEP_COLORS.opener, values: weeks.map((week) => week.before_deadline) },
+      { key: 'after', label: p.afterDeadline, color: STEP_COLORS.reminder_3, values: weeks.map((week) => week.after_deadline) },
+    ]
+  const total = raw.reduce((sum, item) => sum + item.values.reduce((a, b) => a + b, 0), 0)
+  const series = raw.map((item) => ({ ...item, note: total ? `${Math.round((item.values.reduce((a, b) => a + b, 0) / total) * 100)}\u00a0%` : undefined }))
+  return (
+    <Card title={byStep ? p.bookedAfter : p.bookingsPerWeek} aside={<span className="k1-hint">{p.bookedAfterHint}</span>}>
+      <AreaChart label={byStep ? p.bookedAfter : p.bookingsPerWeek} x={x} series={series} share />
+    </Card>
   )
 }
 

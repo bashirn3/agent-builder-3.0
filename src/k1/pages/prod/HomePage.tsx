@@ -9,6 +9,8 @@ export function HomePage() {
   const t = useCopy()
   const p = t.prod.home
   const { data, error, loading, refreshing, reload } = useProdData((signal) => prodApi.home(signal), [], true)
+  const weeks = data?.this_week.bookings_per_week.slice(-8) ?? []
+  const hasDelivered = weeks.some((week) => week.delivered !== undefined)
 
   return (
     <div className="k1-page k1-prod">
@@ -27,7 +29,15 @@ export function HomePage() {
           <Card title={p.bookings} aside={<span className="k1-hint">{p.lastWeeks}</span>}>
             <AreaChart
               label={p.bookingsPerWeek}
-              points={data.this_week.bookings_per_week.slice(-8).map((week) => ({ key: week.week_start, label: fmtDay(week.week_start), value: week.booked }))}
+              x={weeks.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start) }))}
+              series={[
+                ...(hasDelivered ? [{ key: 'delivered', label: t.prod.funnel.delivered, color: '#93c5fd', values: weeks.map((week) => week.delivered ?? 0) }] : []),
+                { key: 'booked', label: t.prod.funnel.booked, color: '#1d4ed8', values: weeks.map((week) => week.booked) },
+              ]}
+              footer={hasDelivered ? (index) => {
+                const week = weeks[index]
+                return week.delivered ? <small>{p.weekRate(fmtRate(week.booked / week.delivered))}</small> : null
+              } : undefined}
             />
           </Card>
 

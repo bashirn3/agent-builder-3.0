@@ -23,7 +23,7 @@ export type NeedsYou = { kind: 'batch_waiting' | 'handoff' | 'delivery_failed' |
 export type HomeData = {
   status: { outreach_on: boolean; bot_on: boolean; stations_sending: number; stations_total: number; last_send_at: string | null; messages_today: number }
   needs_you: NeedsYou[]
-  this_week: { from: string; to: string; sent: number; delivered: number; replied: number; booked: number; bookings_per_week: Array<{ week_start: string; booked: number }> }
+  this_week: { from: string; to: string; sent: number; delivered: number; replied: number; booked: number; bookings_per_week: Array<{ week_start: string; booked: number; delivered?: number }> }
   value: { delivered_contacts: number; converted: number; rate: number | null }
   leads_left: { in_window: number; window: { min_days: number; max_days: number } }
 }
@@ -80,7 +80,7 @@ export type MatrixRow = {
 export type Performance = {
   range: Range
   funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
-  bookings_per_week: Array<{ week_start: string; before_deadline: number; after_deadline: number }>
+  bookings_per_week: Array<{ week_start: string; before_deadline: number; after_deadline: number; by_step?: Partial<Record<Step, number>> }>
   by_station: Array<{ station: string; delivered: number; converted: number; rate: number | null }>
   send_hours: Array<{ weekday: number; hour: number; sends: number; reply_rate: number | null; booking_rate?: number | null }>
   by_message: Array<{ step: Step; sent: number; replied: number; converted: number }>
