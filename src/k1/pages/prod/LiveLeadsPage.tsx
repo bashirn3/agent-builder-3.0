@@ -27,11 +27,13 @@ export function LiveLeadsPage({ compact }: { compact: boolean }) {
   const search = useDebounced(query.trim())
   const days = useDebounced(span, 250)
 
+  // The full 0–30 range sends no day filter, so leads already past their deadline stay in the list.
+  const fullRange = days.min === 0 && days.max === 30
   const { data, error, loading, refreshing, reload } = useProdData((signal) => prodApi.leads({
     station: station === 'all' ? undefined : station,
     status: status === 'all' ? undefined : status,
-    min_days: days.min,
-    max_days: days.max,
+    min_days: fullRange ? undefined : days.min,
+    max_days: fullRange ? undefined : days.max,
     search,
     limit,
   }, signal), [station, status, days.min, days.max, search, limit])
