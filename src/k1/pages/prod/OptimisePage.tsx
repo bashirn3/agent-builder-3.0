@@ -75,7 +75,7 @@ function Report({ data }: { data: Performance }) {
     [t.prod.funnel.delivered, f.delivered],
     [t.prod.funnel.replied, f.replied],
     [t.prod.funnel.bookedInChat, f.booked_in_chat],
-    [t.prod.funnel.optOut, f.stops ?? 0],
+    [t.prod.funnel.leftList, f.left_list],
   ]
   const showUplift = f.uplift != null && f.uplift > UPLIFT_SHOWN_ABOVE
   const top = Math.max(1, f.sent)
