@@ -9,11 +9,12 @@ import { DetailPane, Facts, ListSkeleton, MobileSwap, relativeTime, SampleBadge 
 import { whatsappRuns } from '../../data/stagingView'
 import { DeliveryTag, EmptyState, PreviewNote, ErrorState, fmtClock, fmtDay, fmtNum, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
 
-const FILTERS: ConversationFilter[] = ['all', 'needs_reply', 'no_answer', 'booked', 'stopped']
+const FILTERS: ConversationFilter[] = ['all', 'open', 'no_answer', 'booked', 'stopped']
 const PAGE = 50
 
 const readFilter = (): ConversationFilter => {
-  const value = hashQuery().get('filter')
+  const raw = hashQuery().get('filter')
+  const value = raw === 'needs_reply' ? 'open' : raw
   return FILTERS.includes(value as ConversationFilter) ? value as ConversationFilter : 'all'
 }
 
@@ -93,8 +94,6 @@ export function ConversationsPage({ id, compact, notify }: {
                 <span className="k1-card__tags">
                   <StatusTag status={item.status} />
                   <span className="k1-vtag is-muted">{item.language.toUpperCase()}</span>
-                  {item.waiting_since && <span className="k1-hint">{p.waiting(relativeTime(item.waiting_since))}</span>}
-                  {!item.waiting_since && item.last_from === 'customer' && <span className="k1-hint">{p.customerLast}</span>}
                 </span>
               </a>
             </li>

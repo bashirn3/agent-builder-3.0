@@ -75,7 +75,7 @@ export function openEnvironment(environment: Environment) {
   go(landing(environment))
 }
 
-// Filters carried in the hash, for example #/live/conversations?filter=needs_reply.
+// Filters carried in the hash, for example #/live/conversations?filter=open.
 export function hashQuery() {
   return new URLSearchParams(window.location.hash.split('?')[1] ?? '')
 }

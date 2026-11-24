@@ -1274,7 +1274,6 @@ body { overscroll-behavior: none; }
 
 /* Statuses */
 .k1-status--live-booked { background: var(--k1-success-bg); color: #15803d; }
-.k1-status--live-needs-reply { background: #fff7ed; color: #c2410c; }
 .k1-status--live-replied, .k1-status--live-in-sequence, .k1-status--live-open { background: #eff6ff; color: #1d4ed8; }
 .k1-status--live-stopped, .k1-status--live-failed { background: #fef2f2; color: var(--k1-danger); }
 .k1-status--live-no-answer, .k1-status--live-waiting, .k1-status--live-left-list, .k1-status--live-holdout, .k1-status--live-closed { background: #f4f4f5; color: #52525b; }

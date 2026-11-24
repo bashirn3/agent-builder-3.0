@@ -64,7 +64,10 @@ function opener(who: Person) {
   return `Hei! Täällä K1 Katsastus ${who.station}. Autosi ${who.plate} katsastusaika lähestyy tietojemme mukaan. Haluatko, että etsin sinulle sopivan ajan? 😊`
 }
 
-function conversation(index: number, status: ConversationStatus): StoredConversation {
+type Plan = ConversationStatus | 'handoff'
+
+function conversation(index: number, plan: Plan): StoredConversation {
+  const status: ConversationStatus = plan === 'handoff' ? 'open' : plan
   const who = person()
   const id = `c_${100 + index}`
   const start = now - int(1, 9) * DAY - int(0, 8) * 3_600_000
@@ -86,7 +89,7 @@ function conversation(index: number, status: ConversationStatus): StoredConversa
     )
     bookings.push({ booking_number: number, station: who.station, time: at(slot), price_eur: 68, green: random() < 0.3, status: 'confirmed' })
     outcome = 'booked'
-  } else if (status === 'needs_reply') {
+  } else if (plan === 'handoff') {
     waiting = at(now - int(20, 240) * 60_000)
     messages.push(
       { from: 'customer', text: 'Voinko puhua jonkun kanssa? Autossa on vikaa jarruissa.', at: waiting },
@@ -126,7 +129,7 @@ function conversation(index: number, status: ConversationStatus): StoredConversa
   }
 }
 
-const STATUS_PLAN: ConversationStatus[] = ['booked', 'no_answer', 'open', 'booked', 'needs_reply', 'no_answer', 'booked', 'stopped', 'no_answer', 'open', 'booked', 'no_answer', 'needs_reply', 'booked', 'no_answer', 'booked', 'stopped', 'no_answer', 'open', 'booked', 'no_answer', 'booked', 'no_answer', 'booked', 'open', 'no_answer']
+const STATUS_PLAN: Plan[] = ['booked', 'no_answer', 'open', 'booked', 'handoff', 'no_answer', 'booked', 'stopped', 'no_answer', 'open', 'booked', 'no_answer', 'handoff', 'booked', 'no_answer', 'booked', 'stopped', 'no_answer', 'open', 'booked', 'no_answer', 'booked', 'no_answer', 'booked', 'open', 'no_answer']
 const CONVERSATIONS = STATUS_PLAN.map((status, index) => conversation(index, status))
   .sort((a, b) => b.item.last_message_at.localeCompare(a.item.last_message_at))
 
@@ -189,7 +192,7 @@ const history = Array.from({ length: 10 }, (_, index) => {
 
 const counts = (items: ConversationItem[]) => ({
   all: items.length,
-  needs_reply: items.filter((item) => item.status === 'needs_reply').length,
+  open: items.filter((item) => item.status === 'open').length,
   no_answer: items.filter((item) => item.status === 'no_answer').length,
   booked: items.filter((item) => item.status === 'booked').length,
   stopped: items.filter((item) => item.status === 'stopped').length,
@@ -214,7 +217,7 @@ function bands(items: LeadItem[]): Bands {
 
 function home(): HomeData {
   const items = CONVERSATIONS.map((entry) => entry.item)
-  const handoffs = items.filter((item) => item.status === 'needs_reply').length
+  const handoffs = CONVERSATIONS.filter((entry) => entry.detail.conversation.outcome === 'handoff').length
   const failed = LEADS.filter((lead) => lead.status === 'failed').length
   const weeks = Array.from({ length: 8 }, (_, index) => ({ week_start: weekStart(now - (7 - index) * 7 * DAY), booked: 0, delivered: index < 2 ? 0 : int(150, 230) }))
   for (const week of weeks) week.booked = Math.round(week.delivered * (0.1 + random() * 0.06))
@@ -231,7 +234,7 @@ function home(): HomeData {
     },
     needs_you: [
       ...(batch.status === 'proposed' ? [{ kind: 'batch_waiting', count: batch.total, title: `Batch of ${batch.total} waiting for release`, link: 'control' }] : []),
-      ...(handoffs ? [{ kind: 'handoff', count: handoffs, title: `${handoffs} customers asked for a person`, link: 'conversations?filter=needs_reply' }] : []),
+      ...(handoffs ? [{ kind: 'handoff', count: handoffs, title: `${handoffs} customers asked for a person`, link: 'conversations?filter=open' }] : []),
       ...(failed ? [{ kind: 'delivery_failed', count: failed, title: `${failed} messages failed to deliver`, link: 'leads?status=failed' }] : []),
     ],
     this_week: { from: weekStart(now), to: isoDay(new Date(weekStart(now)).getTime() + 6 * DAY), sent: 214, delivered: 207, replied: 61, booked: weeks[7].booked, bookings_per_week: weeks },

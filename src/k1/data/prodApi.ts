@@ -13,8 +13,8 @@ export const isSample = (endpoint: ProdEndpoint) => !LIVE.has('all') && !LIVE.ha
 
 export type Delivery = 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
 export type Step = 'opener' | 'reminder_1' | 'reminder_2' | 'reminder_3'
-export type ConversationStatus = 'needs_reply' | 'no_answer' | 'booked' | 'stopped' | 'open' | 'closed'
-export type ConversationFilter = 'all' | 'needs_reply' | 'no_answer' | 'booked' | 'stopped'
+export type ConversationStatus = 'open' | 'no_answer' | 'booked' | 'stopped' | 'closed'
+export type ConversationFilter = 'all' | 'open' | 'no_answer' | 'booked' | 'stopped'
 export type LeadStatus = 'waiting' | 'in_sequence' | 'replied' | 'booked' | 'left_list' | 'stopped' | 'failed' | 'holdout' | 'closed'
 export type Range = 'week' | 'month' | 'all'
 
@@ -166,11 +166,16 @@ async function request<T>(endpoint: ProdEndpoint, path: string, options: { metho
   }
 }
 
+// Replied but not booked is open; the brief's needs_reply status counts as open.
+const asOpen = (status: string) => (status === 'needs_reply' ? 'open' : status) as ConversationStatus
+
 export const prodApi = {
   home: (signal?: AbortSignal) => request<HomeData>('home', 'home', { signal }),
   conversations: (query: { filter: ConversationFilter; search?: string; station?: string; cursor?: string | null; limit?: number }, signal?: AbortSignal) =>
-    request<ConversationList>('conversations', 'conversations', { query, signal }),
-  conversation: (id: string, signal?: AbortSignal) => request<ConversationDetail>('conversation', 'conversation', { query: { id }, signal }),
+    request<ConversationList>('conversations', 'conversations', { query, signal })
+      .then((list) => ({ ...list, items: list.items.map((item) => ({ ...item, status: asOpen(item.status) })) })),
+  conversation: (id: string, signal?: AbortSignal) => request<ConversationDetail>('conversation', 'conversation', { query: { id }, signal })
+    .then((detail) => ({ ...detail, conversation: { ...detail.conversation, status: asOpen(detail.conversation.status) } })),
   leads: (query: { station?: string; status?: string; min_days?: number; max_days?: number; search?: string; cursor?: string | null; limit?: number }, signal?: AbortSignal) =>
     request<LeadList>('leads', 'leads', { query, signal }),
   performance: (range: Range, signal?: AbortSignal) => request<Performance>('performance', 'performance', { query: { range }, signal }),
