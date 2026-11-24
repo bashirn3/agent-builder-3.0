@@ -9,7 +9,7 @@ import {
   toCsv,
 } from '../src/k1/data/fixtures.ts'
 import { applyFormat } from '../src/k1/ui/format.ts'
-import { environmentOf, href, parse, productionVisible } from '../src/k1/routes.ts'
+import { href, parse } from '../src/k1/routes.ts'
 import { hasVisibleReply, maskPhones, matchesFilters, requireAgentReply, type TestChatSummary } from '../src/k1/data/builderApi.ts'
 import { describeChanges, localizeNote } from '../src/k1/data/changes.ts'
 import { en, fi } from '../src/k1/i18n/copy.ts'
@@ -49,8 +49,7 @@ for (const route of [
   { page: 'leads', id: null },
   { page: 'leads', id: 'l-virtanen' },
 ] as const) {
-  const expected = !productionVisible && environmentOf(route.page) === 'production' ? { page: 'playground' } : route
-  assert(JSON.stringify(parse(href(route))) === JSON.stringify(expected), `route round-trip failed for ${JSON.stringify(route)}`)
+  assert(JSON.stringify(parse(href(route))) === JSON.stringify(route), `route round-trip failed for ${JSON.stringify(route)}`)
 }
 
 for (const lead of LEADS) {
