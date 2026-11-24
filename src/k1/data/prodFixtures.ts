@@ -277,7 +277,7 @@ function performance(range: Range): Performance {
   return {
     range,
     funnel: {
-      sent: sum('sent'), delivered, read: sum('read'), replied: sum('replied'), booked_in_chat: sum('booked_in_chat'), left_list: sum('left_list'), converted,
+      sent: sum('sent'), delivered, read: sum('read'), replied: sum('replied'), booked_in_chat: sum('booked_in_chat'), left_list: sum('left_list'), stops: sum('stops'), converted,
       rate: delivered ? converted / delivered : null, holdout, holdout_converted: holdoutConverted,
       uplift: holdout >= 20 && delivered ? converted / delivered - holdoutConverted / holdout : null,
     },

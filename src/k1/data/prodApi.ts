@@ -79,7 +79,7 @@ export type MatrixRow = {
 
 export type Performance = {
   range: Range
-  funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
+  funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; stops?: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
   bookings_per_week: Array<{ week_start: string; before_deadline: number; after_deadline: number; by_step?: Partial<Record<Step, number>> }>
   by_station: Array<{ station: string; delivered: number; converted: number; rate: number | null }>
   send_hours: Array<{ weekday: number; hour: number; sends: number; reply_rate: number | null; booking_rate?: number | null }>

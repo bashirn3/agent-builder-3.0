@@ -690,7 +690,7 @@ export const en = {
     },
     delivery: { queued: 'Queued', sent: 'Sent', delivered: 'Delivered', read: 'Read', failed: 'Failed', cancelled: 'Cancelled' },
     steps: { opener: 'First message', reminder_1: 'Reminder 1', reminder_2: 'Reminder 2', reminder_3: 'Reminder 3' },
-    funnel: { sent: 'Sent', delivered: 'Delivered', read: 'Read', replied: 'Replied', booked: 'Booked', bookedInChat: 'Booked in chat', leftList: 'Left list' },
+    funnel: { sent: 'Sent', delivered: 'Delivered', read: 'Read', replied: 'Replied', booked: 'Booked', bookedInChat: 'Booked in chat', leftList: 'Left list', optOut: 'Opt out' },
     outcomes: { booked: 'Booked', handoff: 'Handed to staff', stopped: 'Stopped' },
     bookingStatus: { confirmed: 'Confirmed', cancelled: 'Cancelled', moved: 'Moved' },
     home: {
@@ -1596,7 +1596,7 @@ export const fi: Copy = {
     },
     delivery: { queued: 'Jonossa', sent: 'Lähetetty', delivered: 'Toimitettu', read: 'Luettu', failed: 'Epäonnistui', cancelled: 'Peruttu' },
     steps: { opener: 'Ensimmäinen viesti', reminder_1: 'Muistutus 1', reminder_2: 'Muistutus 2', reminder_3: 'Muistutus 3' },
-    funnel: { sent: 'Lähetetty', delivered: 'Toimitettu', read: 'Luettu', replied: 'Vastasi', booked: 'Varattu', bookedInChat: 'Varattu chatissa', leftList: 'Poistui listalta' },
+    funnel: { sent: 'Lähetetty', delivered: 'Toimitettu', read: 'Luettu', replied: 'Vastasi', booked: 'Varattu', bookedInChat: 'Varattu chatissa', leftList: 'Poistui listalta', optOut: 'Pyysi lopettamaan' },
     outcomes: { booked: 'Varattu', handoff: 'Siirretty henkilökunnalle', stopped: 'Lopetettu' },
     bookingStatus: { confirmed: 'Vahvistettu', cancelled: 'Peruttu', moved: 'Siirretty' },
     home: {

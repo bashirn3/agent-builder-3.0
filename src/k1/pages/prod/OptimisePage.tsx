@@ -15,6 +15,7 @@ const FIELD_GUIDE = [
   'K1 Katsastus WhatsApp outreach: raw performance data from the Optimise page.',
   'Customers whose vehicle inspection deadline is near get a WhatsApp first message and up to 3 reminders, and can book in the chat.',
   'Times and weekdays are Europe/Helsinki. weekday 1 = Monday. week_start is the Monday of the week.',
+  'funnel.left_list = customers who dropped off K1\'s daily list (booked or inspected elsewhere); funnel.stops = customers who asked us to stop messaging them in the period.',
   'Rates are fractions from 0 to 1. funnel.rate and by_station.rate = converted / delivered, where converted means booked.',
   'holdout = customers deliberately not messaged (10%); holdout_converted = how many of them booked anyway. uplift = rate minus the hold-out booking rate.',
   'send_hours gives reply_rate and booking_rate for messages sent in that weekday and hour. It lists every cell, including those with few sends; the page only shows cells with 10 or more sends.',
@@ -72,10 +73,9 @@ function Report({ data }: { data: Performance }) {
   const funnel: Array<[string, number]> = [
     [t.prod.funnel.sent, f.sent],
     [t.prod.funnel.delivered, f.delivered],
-    [t.prod.funnel.read, f.read],
     [t.prod.funnel.replied, f.replied],
     [t.prod.funnel.bookedInChat, f.booked_in_chat],
-    [t.prod.funnel.leftList, f.left_list],
+    [t.prod.funnel.optOut, f.stops ?? 0],
   ]
   const showUplift = f.uplift != null && f.uplift > UPLIFT_SHOWN_ABOVE
   const top = Math.max(1, f.sent)
