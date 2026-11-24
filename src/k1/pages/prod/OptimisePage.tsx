@@ -7,6 +7,7 @@ import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, f
 
 const RANGES: Range[] = ['week', 'month', 'all']
 const MIN_SENDS = 10
+const UPLIFT_SHOWN_ABOVE = 0.1
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 
@@ -76,15 +77,16 @@ function Report({ data }: { data: Performance }) {
     [t.prod.funnel.bookedInChat, f.booked_in_chat],
     [t.prod.funnel.leftList, f.left_list],
   ]
+  const showUplift = f.uplift != null && f.uplift > UPLIFT_SHOWN_ABOVE
   const top = Math.max(1, f.sent)
   const bestRate = Math.max(0.0001, ...data.by_station.map((row) => row.rate ?? 0))
   return (
     <>
-      <div className="k1-stat-cards">
+      <div className={showUplift ? 'k1-stat-cards' : 'k1-stat-cards k1-stat-cards--three'}>
         <StatCard icon={<Check size={14} />} label={t.prod.funnel.delivered} value={fmtNum(f.delivered)} />
         <StatCard icon={<MessagesSquare size={14} />} label={t.prod.funnel.replied} value={fmtNum(f.replied)} />
         <StatCard icon={<CalendarDays size={14} />} label={p.rate} value={fmtRate(f.rate)} hint={p.rateHint(fmtNum(f.converted), fmtNum(f.delivered))} />
-        <StatCard icon={<Optimise size={14} />} label={p.uplift} value={fmtUplift(f.uplift)} hint={p.upliftHint(fmtNum(f.holdout_converted), fmtNum(f.holdout))} />
+        {showUplift && <StatCard icon={<Optimise size={14} />} label={p.uplift} value={fmtUplift(f.uplift)} hint={p.upliftHint(fmtNum(f.holdout_converted), fmtNum(f.holdout))} />}
       </div>
 
       <BookedAfter data={data} />

@@ -1211,6 +1211,7 @@ body { overscroll-behavior: none; }
 
 .k1-stat-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .k1-stat-cards--five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.k1-stat-cards--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .k1-stat-card { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 14px 16px 16px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: var(--k1-surface); }
 .k1-stat-card__label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--k1-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .k1-stat-card__label svg { flex: none; color: var(--k1-ink-2); }
