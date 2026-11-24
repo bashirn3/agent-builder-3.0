@@ -81,6 +81,7 @@ export function LiveLeadsPage({ compact }: { compact: boolean }) {
         </div>
         {data && (
           <div className="k1-prod-bands" aria-label={p.bands}>
+            <span className="k1-prod-total">{p.total(data.total ?? items.length)}</span>
             {BANDS.map((band) => (
               <span key={band} className="k1-chip k1-prod-band"><span>{t.prod.band(band)}</span><strong>{fmtNum(data.bands[band])}</strong></span>
             ))}

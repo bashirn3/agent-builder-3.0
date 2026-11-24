@@ -7,7 +7,6 @@ export const k1Env = (name: 'K1_API_STAGING' | 'K1_API_PRODUCTION' | 'K1_API_PRO
 
 const STAGING_API = k1Env('K1_API_STAGING').replace(/\/+$/, '')
 const BASE = STAGING_API ? `${STAGING_API}/k1-agent-builder` : import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
-const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefined
 // Points the tester at another agent workflow (for example /booking-chat-v2) without changing the saved setup.
 const CHAT_PATH = (import.meta.env?.VITE_K1_CHAT_PATH as string | undefined)?.trim() || '/booking-chat'
 export const TENANT_KEY = 'k1_katsastus_demo'
@@ -263,7 +262,6 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: {
         'Content-Type': 'application/json',
-        ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
         ...(token ? { 'X-K1-Session': token } : {}),
         ...init?.headers,
       },

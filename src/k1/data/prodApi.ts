@@ -18,7 +18,7 @@ export type ConversationFilter = 'all' | 'needs_reply' | 'no_answer' | 'booked' 
 export type LeadStatus = 'waiting' | 'in_sequence' | 'replied' | 'booked' | 'left_list' | 'stopped' | 'failed' | 'holdout' | 'closed'
 export type Range = 'week' | 'month' | 'all'
 
-export type NeedsYou = { kind: 'batch_waiting' | 'handoff' | 'delivery_failed' | string; title: string; link: string }
+export type NeedsYou = { kind: 'batch_waiting' | 'handoff' | 'delivery_failed' | string; count: number; title: string; link: string }
 
 export type HomeData = {
   status: { outreach_on: boolean; bot_on: boolean; stations_sending: number; stations_total: number; last_send_at: string | null; messages_today: number }
@@ -48,7 +48,7 @@ export type ConversationDetail = {
   conversation: { id: string; status: ConversationStatus; outcome: string | null; reason: string | null; bot_build: string }
   customer: { name: string; phone: string; plate: string; station: string; language: string; deadline: string }
   reminders: Array<{ step: Step; sent_at: string; delivery: Delivery }>
-  messages: Array<{ from: 'bot' | 'customer'; text: string; at: string; kind?: 'reminder' | string; buttons?: string[] }>
+  messages: Array<{ from: 'bot' | 'customer'; text: string; at: string; kind?: 'reminder' | string; step?: Step; buttons?: string[] }>
   bookings: Array<{ booking_number: string; station: string; time: string; price_eur: number; green: boolean; status: string }>
 }
 
@@ -70,7 +70,7 @@ export type LeadItem = {
 }
 
 export type Bands = { '0-6': number; '7-13': number; '14-20': number; '21-30': number }
-export type LeadList = { bands: Bands; items: LeadItem[]; next_cursor: string | null }
+export type LeadList = { total: number; bands: Bands; items: LeadItem[]; next_cursor: string | null }
 
 export type MatrixRow = {
   week_start: string; station: string; eligible: number; holdout: number; sent: number; delivered: number; read: number; replied: number

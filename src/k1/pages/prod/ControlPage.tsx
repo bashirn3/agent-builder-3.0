@@ -48,7 +48,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
     setInWindow(null)
     const timer = setTimeout(() => {
       prodApi.leads({ min_days: range.min_days, max_days: range.max_days, limit: 1 }, controller.signal)
-        .then((list) => setInWindow(Object.values(list.bands).reduce((sum, count) => sum + count, 0)))
+        .then((list) => setInWindow(list.total ?? Object.values(list.bands).reduce((sum, count) => sum + count, 0)))
         .catch(() => { if (!controller.signal.aborted) setInWindow(null) })
     }, 250)
     return () => { clearTimeout(timer); controller.abort() }
@@ -137,7 +137,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
 
   return (
     <div className="k1-page k1-prod">
-      <ProdHead title={t.nav.control} sample={isSample('controls')} onRefresh={reload} refreshing={refreshing} />
+      <ProdHead title={t.nav.control} sample={isSample('controls')} preview={t.prod.previewControl} onRefresh={reload} refreshing={refreshing} />
       {loading ? <CardsSkeleton cards={3} /> : error && !data ? <ErrorState error={error} onRetry={reload} /> : data && plan && (
         <>
           {!editable && <p className="k1-prod-note" role="note">{p.readOnly}</p>}

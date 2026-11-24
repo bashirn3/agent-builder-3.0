@@ -647,6 +647,8 @@ export const en = {
   },
   prod: {
     zone: 'Times in Finnish time (Helsinki)',
+    preview: 'Preview. Names and numbers are examples until K1’s production data is connected. Nothing on this page sends messages.',
+    previewControl: 'Preview. These switches and settings are examples: changes are not saved to K1 and no messages are sent.',
     on: 'On',
     off: 'Off',
     signInAgain: 'Sign in again',
@@ -755,6 +757,7 @@ export const en = {
       window: 'Days to deadline',
       windowHint: 'Only filters this list. What gets sent is set on Control.',
       bands: 'Leads by days to deadline',
+      total: n('{n} lead', '{n} leads'),
       loading: 'Loading leads',
       noMatch: 'No leads match these filters',
       none: 'No leads on the list',
@@ -1530,6 +1533,8 @@ export const fi: Copy = {
   },
   prod: {
     zone: 'Ajat Suomen aikaa (Helsinki)',
+    preview: 'Esikatselu. Nimet ja luvut ovat esimerkkejä, kunnes K1:n tuotantotiedot on yhdistetty. Tältä sivulta ei lähetetä viestejä.',
+    previewControl: 'Esikatselu. Kytkimet ja asetukset ovat esimerkkejä: muutoksia ei tallenneta K1:lle eikä viestejä lähetetä.',
     on: 'Päällä',
     off: 'Pois',
     signInAgain: 'Kirjaudu uudelleen',
@@ -1638,6 +1643,7 @@ export const fi: Copy = {
       window: 'Päivää määräaikaan',
       windowHint: 'Suodattaa vain tätä listaa. Lähetykset määritetään Hallinnassa.',
       bands: 'Liidit päivinä määräaikaan',
+      total: n('{n} liidi', '{n} liidiä'),
       loading: 'Ladataan liidejä',
       noMatch: 'Ei suodattimia vastaavia liidejä',
       none: 'Listalla ei ole liidejä',

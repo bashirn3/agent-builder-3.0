@@ -120,18 +120,26 @@ export function RefreshButton({ onClick, busy }: { onClick: () => void; busy: bo
   )
 }
 
-export function ProdHead({ title, sample, onRefresh, refreshing, children }: { title: string; sample: boolean; onRefresh: () => void; refreshing: boolean; children?: ReactNode }) {
+export function PreviewNote({ text }: { text?: string }) {
+  const t = useCopy()
+  return <p className="k1-prod-note k1-prod-note--preview" role="note">{text ?? t.prod.preview}</p>
+}
+
+export function ProdHead({ title, sample, onRefresh, refreshing, preview, children }: { title: string; sample: boolean; onRefresh: () => void; refreshing: boolean; preview?: string; children?: ReactNode }) {
   const t = useCopy()
   return (
-    <header className="k1-page__head k1-prod-head">
-      <h1 className="k1-page-title">{title}</h1>
-      {sample && <SampleBadge />}
-      <span className="k1-prod-head__zone">{t.prod.zone}</span>
-      <div className="k1-prod-head__end">
-        {children}
-        <RefreshButton onClick={onRefresh} busy={refreshing} />
-      </div>
-    </header>
+    <>
+      <header className="k1-page__head k1-prod-head">
+        <h1 className="k1-page-title">{title}</h1>
+        {sample && <SampleBadge />}
+        <span className="k1-prod-head__zone">{t.prod.zone}</span>
+        <div className="k1-prod-head__end">
+          {children}
+          <RefreshButton onClick={onRefresh} busy={refreshing} />
+        </div>
+      </header>
+      {sample && <PreviewNote text={preview} />}
+    </>
   )
 }
 
@@ -241,11 +249,9 @@ export function DeliveryTag({ delivery }: { delivery: Delivery }) {
 
 export const stepLabel = (step: Step) => copy().prod.steps[step] ?? step
 
-// Titles arrive in English; known kinds are rebuilt from the count in the title so Finnish reads naturally.
 export function needsTitle(item: NeedsYou) {
-  const count = item.title.match(/\d+/)?.[0]
   const phrase = copy().prod.home.needs[item.kind]
-  return phrase && count ? phrase(Number(count)) : item.title
+  return phrase && Number.isFinite(item.count) ? phrase(item.count) : item.title
 }
 
 export function needsHref(link: string) {

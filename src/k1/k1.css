@@ -1186,7 +1186,11 @@ body { overscroll-behavior: none; }
 .k1-prod-head__end .k1-segmented button { height: 32px; padding: 0 13px; font-size: 13px; }
 .k1-prod-state p { max-width: 380px; }
 .k1-prod-state .k1-btn { margin-top: 8px; }
-.k1-prod-note { padding: 10px 14px; border-radius: var(--k1-r-md); background: #eff6ff; color: #1d4ed8; font-size: 13.5px; }
+.k1-prod-note { padding: 10px 14px; border-radius: var(--k1-r-md); background: #eff6ff; color: #1d4ed8; font-size: 13.5px; line-height: 1.5; }
+.k1-prod-note--preview { border: 1px solid #bfdbfe; }
+.k1-prod-list-note { flex: none; margin: 12px 16px 4px; }
+.k1-prod-list-note .k1-prod-note { padding: 8px 12px; font-size: 12.5px; }
+.k1-prod-total { display: inline-flex; align-items: center; height: 30px; margin-right: 4px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .k1-prod-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .k1-prod-grid--home { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr); }

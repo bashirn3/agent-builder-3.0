@@ -68,7 +68,7 @@ function conversation(index: number, status: ConversationStatus): StoredConversa
   const who = person()
   const id = `c_${100 + index}`
   const start = now - int(1, 9) * DAY - int(0, 8) * 3_600_000
-  const messages: ConversationDetail['messages'] = [{ from: 'bot', text: opener(who), at: at(start), kind: 'reminder' }]
+  const messages: ConversationDetail['messages'] = [{ from: 'bot', text: opener(who), at: at(start), kind: 'reminder', step: 'opener' }]
   const reminders: ConversationDetail['reminders'] = [{ step: 'opener', sent_at: at(start), delivery: status === 'no_answer' ? 'delivered' : 'read' }]
   const bookings: ConversationDetail['bookings'] = []
   let outcome: string | null = null
@@ -103,7 +103,7 @@ function conversation(index: number, status: ConversationStatus): StoredConversa
   } else if (status === 'no_answer') {
     const second = start + 7 * DAY
     if (second < now) {
-      messages.push({ from: 'bot', text: `Muistutus: autosi ${who.plate} katsastus lähestyy. Vastaa tähän viestiin, niin etsin sopivan ajan.`, at: at(second), kind: 'reminder' })
+      messages.push({ from: 'bot', text: `Muistutus: autosi ${who.plate} katsastus lähestyy. Vastaa tähän viestiin, niin etsin sopivan ajan.`, at: at(second), kind: 'reminder', step: 'reminder_1' })
       reminders.push({ step: 'reminder_1', sent_at: at(second), delivery: 'delivered' })
     }
   } else {
@@ -228,9 +228,9 @@ function home(): HomeData {
       messages_today: 38,
     },
     needs_you: [
-      ...(batch.status === 'proposed' ? [{ kind: 'batch_waiting', title: `Batch of ${batch.total} waiting for release`, link: 'control' }] : []),
-      ...(handoffs ? [{ kind: 'handoff', title: `${handoffs} customers asked for a person`, link: 'conversations?filter=needs_reply' }] : []),
-      ...(failed ? [{ kind: 'delivery_failed', title: `${failed} messages failed to deliver`, link: 'leads?status=failed' }] : []),
+      ...(batch.status === 'proposed' ? [{ kind: 'batch_waiting', count: batch.total, title: `Batch of ${batch.total} waiting for release`, link: 'control' }] : []),
+      ...(handoffs ? [{ kind: 'handoff', count: handoffs, title: `${handoffs} customers asked for a person`, link: 'conversations?filter=needs_reply' }] : []),
+      ...(failed ? [{ kind: 'delivery_failed', count: failed, title: `${failed} messages failed to deliver`, link: 'leads?status=failed' }] : []),
     ],
     this_week: { from: weekStart(now), to: isoDay(new Date(weekStart(now)).getTime() + 6 * DAY), sent: 214, delivered: 207, replied: 61, booked: weeks[7].booked, bookings_per_week: weeks },
     value: { delivered_contacts: 712, converted: 94, rate: 94 / 712 },
@@ -335,7 +335,7 @@ function respond(path: string, method: string, query: Record<string, unknown>, b
       && (!query.status || lead.status === query.status)
       && lead.days_left >= min && lead.days_left <= max
       && matches(`${lead.plate} ${lead.phone}`, query.search))
-    return { bands: bands(shown), ...page(shown, query.cursor, query.limit) }
+    return { total: shown.length, bands: bands(shown), ...page(shown, query.cursor, query.limit) }
   }
   if (path === 'performance') return performance((query.range as Range) || 'all')
   if (path === 'controls' && method === 'GET') return controls()

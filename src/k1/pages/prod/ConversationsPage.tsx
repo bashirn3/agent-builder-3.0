@@ -7,7 +7,7 @@ import { Link2, Search } from '../../ui/icons'
 import { ThreadSkeleton } from '../../ui/skeletons'
 import { DetailPane, Facts, ListSkeleton, MobileSwap, relativeTime, SampleBadge, Tabs } from '../SplitView'
 import { whatsappRuns } from '../../data/stagingView'
-import { DeliveryTag, EmptyState, ErrorState, fmtClock, fmtDay, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
+import { DeliveryTag, EmptyState, PreviewNote, ErrorState, fmtClock, fmtDay, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
 
 const FILTERS: ConversationFilter[] = ['all', 'needs_reply', 'no_answer', 'booked', 'stopped']
 const PAGE = 50
@@ -46,6 +46,7 @@ export function ConversationsPage({ id, compact, notify }: {
         {isSample('conversations') && <SampleBadge />}
         <div className="k1-list__actions"><RefreshButton onClick={list.reload} busy={list.refreshing} /></div>
       </header>
+      {isSample('conversations') && <div className="k1-prod-list-note"><PreviewNote /></div>}
       <label className="k1-list-search k1-prod-search">
         {list.refreshing ? <Spinner size={14} /> : <Search size={14} />}
         <input className="k1-input" value={query} placeholder={p.search} aria-label={p.search} onChange={(event) => { setQuery(event.target.value); setLimit(PAGE) }} />
@@ -140,7 +141,7 @@ function Chat({ detail }: { detail: ConversationDetail }) {
       {detail.messages.length === 0 && <p className="k1-hint">{p.noMessages}</p>}
       {detail.messages.map((message, index) => (
         <div key={`${message.at}-${index}`} className={message.from === 'customer' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
-          {message.kind === 'reminder' && <span className="k1-prod-thread__kind">{p.reminderSent}</span>}
+          {(message.step || message.kind === 'reminder') && <span className="k1-prod-thread__kind">{message.step ? stepLabel(message.step) : p.reminderSent}</span>}
           <p className="k1-msg__bubble">{whatsappRuns(message.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p>
           {message.buttons?.length ? (
             <div className="k1-msg__chips">
