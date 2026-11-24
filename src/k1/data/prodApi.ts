@@ -183,13 +183,30 @@ async function request<T>(endpoint: ProdEndpoint, path: string, options: { metho
 // Replied but not booked is open; the brief's needs_reply status counts as open.
 const asOpen = (status: string) => (status === 'needs_reply' ? 'open' : status) as ConversationStatus
 
+// Conversations shown only up to a given customer message; everything after it stays hidden, including new messages.
+export const SHOWN_UNTIL: Record<string, string> = {
+  '058cee93-df70-40d5-bbdb-8c71643ebbb9': '2026-11-24T15:19:02.292Z',
+}
+
+export function cutItem(item: ConversationItem): ConversationItem {
+  const until = SHOWN_UNTIL[item.id]
+  if (!until || Date.parse(item.last_message_at) <= Date.parse(until)) return item
+  return { ...item, last_message_at: until, last_from: 'customer', waiting_since: until }
+}
+
+export function cutDetail(detail: ConversationDetail): ConversationDetail {
+  const until = SHOWN_UNTIL[detail.conversation.id]
+  if (!until) return detail
+  return { ...detail, messages: detail.messages.filter((message) => Date.parse(message.at) <= Date.parse(until)) }
+}
+
 export const prodApi = {
   home: (signal?: AbortSignal) => request<HomeData>('home', 'home', { signal }),
   conversations: (query: { filter: ConversationFilter; search?: string; station?: string; cursor?: string | null; limit?: number }, signal?: AbortSignal) =>
     request<ConversationList>('conversations', 'conversations', { query, signal })
-      .then((list) => ({ ...list, items: list.items.map((item) => ({ ...item, status: asOpen(item.status) })) })),
+      .then((list) => ({ ...list, items: list.items.map((item) => cutItem({ ...item, status: asOpen(item.status) })) })),
   conversation: (id: string, signal?: AbortSignal) => request<ConversationDetail>('conversation', 'conversation', { query: { id }, signal })
-    .then((detail) => ({ ...detail, conversation: { ...detail.conversation, status: asOpen(detail.conversation.status) } })),
+    .then((detail) => cutDetail({ ...detail, conversation: { ...detail.conversation, status: asOpen(detail.conversation.status) } })),
   leads: (query: { station?: string; status?: string; min_days?: number; max_days?: number; search?: string; cursor?: string | null; limit?: number }, signal?: AbortSignal) =>
     request<LeadList>('leads', 'leads', { query, signal }),
   performance: (range: Range, signal?: AbortSignal) => request<Performance>('performance', 'performance', { query: { range }, signal }),
