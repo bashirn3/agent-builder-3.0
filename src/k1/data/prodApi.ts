@@ -183,21 +183,25 @@ async function request<T>(endpoint: ProdEndpoint, path: string, options: { metho
 // Replied but not booked is open; the brief's needs_reply status counts as open.
 const asOpen = (status: string) => (status === 'needs_reply' ? 'open' : status) as ConversationStatus
 
-// Conversations shown only up to a given customer message; everything after it stays hidden, including new messages.
-export const SHOWN_UNTIL: Record<string, string> = {
-  '058cee93-df70-40d5-bbdb-8c71643ebbb9': '2026-11-24T15:19:02.292Z',
+// Conversations shown only up to a given customer message, then the closing bot message sent at `close`;
+// everything else after `until` stays hidden, including new messages.
+export const SHOWN_UNTIL: Record<string, { until: string; close?: string }> = {
+  '058cee93-df70-40d5-bbdb-8c71643ebbb9': { until: '2026-11-24T15:19:02.292Z', close: '2026-11-24T15:26:01.885Z' },
 }
 
 export function cutItem(item: ConversationItem): ConversationItem {
-  const until = SHOWN_UNTIL[item.id]
-  if (!until || Date.parse(item.last_message_at) <= Date.parse(until)) return item
-  return { ...item, last_message_at: until, last_from: 'customer', waiting_since: until }
+  const cut = SHOWN_UNTIL[item.id]
+  const last = Date.parse(item.last_message_at)
+  if (!cut || last <= Date.parse(cut.until)) return item
+  if (cut.close && last >= Date.parse(cut.close)) return { ...item, last_message_at: cut.close, last_from: 'bot', waiting_since: null }
+  return { ...item, last_message_at: cut.until, last_from: 'customer', waiting_since: cut.until }
 }
 
 export function cutDetail(detail: ConversationDetail): ConversationDetail {
-  const until = SHOWN_UNTIL[detail.conversation.id]
-  if (!until) return detail
-  return { ...detail, messages: detail.messages.filter((message) => Date.parse(message.at) <= Date.parse(until)) }
+  const cut = SHOWN_UNTIL[detail.conversation.id]
+  if (!cut) return detail
+  const until = Date.parse(cut.until); const close = cut.close ? Date.parse(cut.close) : NaN
+  return { ...detail, messages: detail.messages.filter((message) => { const at = Date.parse(message.at); return at <= until || at === close }) }
 }
 
 export const prodApi = {
