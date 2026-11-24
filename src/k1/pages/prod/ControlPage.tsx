@@ -42,7 +42,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [inWindow, setInWindow] = useState<number | null>(null)
 
-  // The page refreshes every 30 s, so a new answer only replaces Planning when nothing there is being edited.
+  // The page refreshes every minute, so a new answer only replaces Planning when nothing there is being edited.
   const savedPlan = useRef<Plan | null>(null)
   useEffect(() => {
     if (!data) return

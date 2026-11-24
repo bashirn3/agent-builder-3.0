@@ -8,7 +8,7 @@ import { CalendarDays, RefreshCw } from '../../ui/icons'
 import { Skeleton } from '../../ui/controls'
 import { SampleBadge } from '../SplitView'
 
-export const POLL_MS = 30_000
+export const POLL_MS = 60_000
 export const ZONE = 'Europe/Helsinki'
 
 export const PILOT_STATIONS = ['Mikkeli Pitkäjärvi', 'Salo Meriniitty', 'Rauma Papinhaka', 'Kemi Karjalahti']
@@ -20,7 +20,7 @@ function asProdError(failure: unknown) {
   return new ProdError(failure instanceof Error ? failure.message : 'request_failed')
 }
 
-// Loads one production endpoint. With poll, it reloads quietly every 30 seconds while the tab is visible.
+// Loads one production endpoint. With poll, it reloads quietly every minute while the tab is visible.
 export function useProdData<T>(load: (signal: AbortSignal) => Promise<T>, deps: DependencyList, poll = false) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<ProdError | null>(null)
