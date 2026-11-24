@@ -1200,6 +1200,7 @@ body { overscroll-behavior: none; }
 
 .k1-prod-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .k1-prod-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.k1-prod-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .k1-prod-card { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 16px 16px 18px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: var(--k1-surface); }
 .k1-prod-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
 .k1-prod-card__head .k1-section-title { font-size: 14px; line-height: 20px; }
@@ -1381,7 +1382,7 @@ body { overscroll-behavior: none; }
   .k1-prod-head__end:not(:has(.k1-segmented, .k1-prod-date)) { position: absolute; top: 20px; right: 16px; width: auto; }
   .k1-stat-cards, .k1-stat-cards--five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .k1-stat-card { padding: 12px 14px 14px; }
-  .k1-prod-grid--two { grid-template-columns: 1fr; }
+  .k1-prod-grid--two, .k1-prod-grid--three { grid-template-columns: 1fr; }
   .k1-area__plot, .k1-barchart__plot { height: 180px; }
   .k1-barchart__col { padding: 0 3px; }
   .k1-area .k1-chart__axis span:not(.is-key) { display: none; }

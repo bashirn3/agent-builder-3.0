@@ -3,7 +3,7 @@ import { useCopy } from '../../i18n'
 import { href } from '../../routes'
 import { CalendarDays, Check, MessagesSquare, MessageSquareMore } from '../../ui/icons'
 import { AreaChart, StatCard } from './charts'
-import { Card, CardsSkeleton, DatePill, ErrorState, fmtDay, fmtNum, fmtRate, ProdHead, useProdData } from './shared'
+import { Card, CardsSkeleton, DatePill, ErrorState, fmtDay, fmtEur, fmtNum, fmtRate, ProdHead, useProdData } from './shared'
 
 export function HomePage() {
   const t = useCopy()
@@ -41,7 +41,7 @@ export function HomePage() {
             />
           </Card>
 
-          <div className="k1-prod-grid k1-prod-grid--two">
+          <div className={data.savings ? 'k1-prod-grid k1-prod-grid--three' : 'k1-prod-grid k1-prod-grid--two'}>
             <Card title={p.bookingRate}>
               <div className="k1-prod-figure">
                 <strong>{fmtRate(data.value.rate)}</strong>
@@ -58,6 +58,15 @@ export function HomePage() {
               </div>
               <p className="k1-hint">{p.windowHint}</p>
             </Card>
+
+            {data.savings && (
+              <Card title={p.savings}>
+                <div className="k1-prod-figure">
+                  <strong>{fmtEur(data.savings.eur)}</strong>
+                  <span>{p.savingsLabel}</span>
+                </div>
+              </Card>
+            )}
           </div>
         </>
       )}
