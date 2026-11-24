@@ -11,9 +11,9 @@ export type ProdEndpoint = 'home' | 'conversations' | 'conversation' | 'leads' |
 const LIVE = new Set(k1Env('K1_API_PRODUCTION_LIVE').split(',').map((item) => item.trim()).filter(Boolean))
 export const isSample = (endpoint: ProdEndpoint) => !LIVE.has('all') && !LIVE.has(endpoint)
 
-export type Delivery = 'sent' | 'delivered' | 'read' | 'failed'
+export type Delivery = 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
 export type Step = 'opener' | 'reminder_1' | 'reminder_2' | 'reminder_3'
-export type ConversationStatus = 'needs_reply' | 'no_answer' | 'booked' | 'stopped' | 'open'
+export type ConversationStatus = 'needs_reply' | 'no_answer' | 'booked' | 'stopped' | 'open' | 'closed'
 export type ConversationFilter = 'all' | 'needs_reply' | 'no_answer' | 'booked' | 'stopped'
 export type LeadStatus = 'waiting' | 'in_sequence' | 'replied' | 'booked' | 'left_list' | 'stopped' | 'failed' | 'holdout' | 'closed'
 export type Range = 'week' | 'month' | 'all'
@@ -93,7 +93,7 @@ export type Timing = { reminder_1_days_before: number; reminder_2_days_before: n
 export type SendingHours = { days: number[]; from: string; to: string; timezone: string }
 export type Batch = {
   id: string
-  status: 'proposed' | 'released' | 'held'
+  status: 'proposed' | 'released' | 'sending' | 'sent' | 'held' | 'cancelled'
   created_at: string
   total: number
   by_station: Array<{ station: string; count: number }>

@@ -1248,11 +1248,12 @@ body { overscroll-behavior: none; }
 .k1-status--live-stopped, .k1-status--live-failed { background: #fef2f2; color: var(--k1-danger); }
 .k1-status--live-no-answer, .k1-status--live-waiting, .k1-status--live-left-list, .k1-status--live-holdout, .k1-status--live-closed { background: #f4f4f5; color: #52525b; }
 .k1-status--batch-proposed { background: var(--k1-warn-bg); color: #c2410c; }
-.k1-status--batch-released { background: var(--k1-success-bg); color: #15803d; }
-.k1-status--batch-held { background: #f4f4f5; color: #52525b; }
+.k1-status--batch-released, .k1-status--batch-sending, .k1-status--batch-sent { background: var(--k1-success-bg); color: #15803d; }
+.k1-status--batch-held, .k1-status--batch-cancelled { background: #f4f4f5; color: #52525b; }
 .k1-delivery { font-size: 12px; color: var(--k1-muted); }
 .k1-delivery--read, .k1-delivery--delivered { color: #15803d; }
 .k1-delivery--failed { color: var(--k1-danger); font-weight: 500; }
+.k1-delivery--cancelled { text-decoration: line-through; }
 .k1-prod-inline { display: inline-flex; align-items: center; gap: 8px; }
 .k1-prod-fail { color: var(--k1-danger) !important; font-weight: 500; }
 

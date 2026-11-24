@@ -330,12 +330,12 @@ function BatchCard({ controls, editable, busy, onRelease, onHold }: { controls: 
           </div>
           {release === 'manual' ? (
             <div className="k1-prod-batch__actions">
-              <p className="k1-hint">{batch.status === 'proposed' ? p.nothingSends : batch.status === 'released' ? p.releasedNote : p.heldNote}</p>
+              <p className="k1-hint">{batch.status === 'proposed' ? p.nothingSends : batch.status === 'held' || batch.status === 'cancelled' ? p.heldNote : p.releasedNote}</p>
               <button type="button" className="k1-btn k1-btn--outline" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'hold'} onClick={() => onHold(batch)}>
                 {busy === 'hold' && <Spinner />}{p.hold}
               </button>
               <button type="button" className="k1-btn k1-btn--primary" disabled={!editable || batch.status !== 'proposed' || busy !== null} aria-busy={busy === 'release'} onClick={() => onRelease(batch)}>
-                {busy === 'release' && <Spinner />}{batch.status === 'released' ? p.releasedButton : p.release}
+                {busy === 'release' && <Spinner />}{['released', 'sending', 'sent'].includes(batch.status) ? p.releasedButton : p.release}
               </button>
             </div>
           ) : <p className="k1-hint">{p.autoNote}</p>}
