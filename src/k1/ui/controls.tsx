@@ -163,14 +163,16 @@ export function Select<T extends string>({
   )
 }
 
-export function Switch({ checked, onChange, labelledBy, describedBy }: { checked: boolean; onChange: (next: boolean) => void; labelledBy: string; describedBy?: string }) {
+export function Switch({ checked, onChange, labelledBy, label, describedBy, disabled }: { checked: boolean; onChange: (next: boolean) => void; labelledBy?: string; label?: string; describedBy?: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : label}
       aria-describedby={describedBy}
+      disabled={disabled}
       className={`k1-switch${checked ? ' is-on' : ''}`}
       onClick={() => onChange(!checked)}
     >

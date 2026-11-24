@@ -83,7 +83,7 @@ function EnvironmentMenu({ environment }: { environment: Environment }) {
         onSelect: () => { if (option !== environment) openEnvironment(option) },
       }))}
       trigger={(props) => (
-        <button {...props} type="button" className="k1-crumbs__switch" aria-label={`${t.nav.environment}: ${label(environment)}`}>
+        <button {...props} type="button" className={`k1-crumbs__switch is-${environment}`} aria-label={`${t.nav.environment}: ${label(environment)}`}>
           {label(environment)}
           <ChevronsUpDown size={14} />
         </button>
@@ -134,7 +134,7 @@ export function Header({ environment }: { environment: Environment }) {
 
 export function Sidebar({ route, environment, onNavigate }: { route: Route; environment: Environment; onNavigate?: () => void }) {
   const t = useCopy()
-  const inActivity = route.page === 'chats' || route.page === 'leads'
+  const inActivity = ['chats', 'leads', 'liveChats', 'liveLeads'].includes(route.page)
   const [activityOpen, setActivityOpen] = useState(true)
   const link = (to: Route, active: boolean, children: ReactNode, sub = false) => (
     <a
@@ -148,10 +148,15 @@ export function Sidebar({ route, environment, onNavigate }: { route: Route; envi
     </a>
   )
   const production = environment === 'production'
-  const activityChildren = [
-    { key: 'chats', label: production ? t.nav.conversations : t.nav.testChats, to: { page: 'chats', id: null } as Route },
-    { key: 'leads', label: t.nav.leads, to: { page: 'leads', id: null } as Route },
-  ]
+  const activityChildren: Array<{ key: Route['page']; label: string; to: Route }> = production
+    ? [
+      { key: 'liveChats', label: t.nav.conversations, to: { page: 'liveChats', id: null } },
+      { key: 'liveLeads', label: t.nav.leads, to: { page: 'liveLeads' } },
+    ]
+    : [
+      { key: 'chats', label: t.nav.testChats, to: { page: 'chats', id: null } },
+      { key: 'leads', label: t.nav.leads, to: { page: 'leads', id: null } },
+    ]
   return (
     <nav className="k1-nav" aria-label={t.nav.main}>
       {production
@@ -207,7 +212,7 @@ function MobileNav({ route, environment, onClose }: { route: Route; environment:
             <button
               key={option}
               type="button"
-              className={option === environment ? 'is-active' : undefined}
+              className={option === environment ? `is-active is-${option}` : undefined}
               aria-pressed={option === environment}
               onClick={() => { if (option !== environment) { openEnvironment(option); onClose() } }}
             >

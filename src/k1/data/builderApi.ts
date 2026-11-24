@@ -1,4 +1,12 @@
-const BASE = import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
+declare const __K1_ENV__: Record<string, string> | undefined
+
+// Filled in by vite.config.ts with the public K1 addresses only; absent when scripts run under Node.
+const VALUES: Record<string, string> = typeof __K1_ENV__ === 'undefined' ? {} : __K1_ENV__
+
+export const k1Env = (name: 'K1_API_STAGING' | 'K1_API_PRODUCTION' | 'K1_API_PRODUCTION_LIVE') => (VALUES[name] ?? '').trim()
+
+const STAGING_API = k1Env('K1_API_STAGING').replace(/\/+$/, '')
+const BASE = STAGING_API ? `${STAGING_API}/k1-agent-builder` : import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
 const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefined
 // Points the tester at another agent workflow (for example /booking-chat-v2) without changing the saved setup.
 const CHAT_PATH = (import.meta.env?.VITE_K1_CHAT_PATH as string | undefined)?.trim() || '/booking-chat'
@@ -209,6 +217,8 @@ async function readToken(fresh: boolean) {
     throw new AccessError('signin_required')
   }
 }
+
+export const readSessionToken = (fresh = false) => readToken(fresh)
 
 export class AccessError extends Error {
   reason: 'signin_required' | 'team_required'

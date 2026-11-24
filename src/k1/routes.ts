@@ -11,6 +11,8 @@ export type Route =
   | { page: 'calendar' }
   | { page: 'staging' }
   | { page: 'home' }
+  | { page: 'liveChats'; id: string | null }
+  | { page: 'liveLeads' }
   | { page: 'optimise' }
   | { page: 'control' }
   | { page: 'team' }
@@ -18,10 +20,23 @@ export type Route =
 export type Environment = 'staging' | 'production'
 
 const ENVIRONMENT_KEY = 'k1.environment'
-const STAGING_PAGES: Route['page'][] = ['playground', 'compare', 'calendar', 'staging']
-const PRODUCTION_PAGES: Route['page'][] = ['home', 'optimise', 'control']
+const STAGING_PAGES: Route['page'][] = ['playground', 'chats', 'leads', 'compare', 'calendar', 'staging']
+const PRODUCTION_PAGES: Route['page'][] = ['home', 'liveChats', 'liveLeads', 'optimise', 'control']
 
-function storedEnvironment(): Environment {
+const modeParam = (): Environment | null => {
+  if (typeof window === 'undefined') return null
+  const mode = new URLSearchParams(window.location.search).get('mode')
+  return mode === 'production' || mode === 'staging' ? mode : null
+}
+
+function remember(environment: Environment) {
+  try { window.localStorage.setItem(ENVIRONMENT_KEY, environment) } catch { /* storage blocked */ }
+}
+
+// A link with ?mode= wins over the mode this browser used last.
+export function storedEnvironment(): Environment {
+  const fromLink = modeParam()
+  if (fromLink) return fromLink
   try {
     return window.localStorage.getItem(ENVIRONMENT_KEY) === 'production' ? 'production' : 'staging'
   } catch {
@@ -29,20 +44,40 @@ function storedEnvironment(): Environment {
   }
 }
 
-// Activity and Team belong to both environments, so they keep whichever one was open last.
+export const environmentOf = (page: Route['page']): Environment | null =>
+  PRODUCTION_PAGES.includes(page) ? 'production' : STAGING_PAGES.includes(page) ? 'staging' : null
+
+export const landing = (environment = storedEnvironment()): Route => ({ page: environment === 'production' ? 'home' : 'playground' })
+
+// Keeps ?mode= in the address in step with the open page, so a copied link opens in the same mode.
+function writeModeParam(environment: Environment) {
+  if (modeParam() === environment) return
+  const url = new URL(window.location.href)
+  url.searchParams.set('mode', environment)
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+// Team is shared, so it keeps whichever mode was open last.
 export function useEnvironment(route: Route): Environment {
-  const implied = PRODUCTION_PAGES.includes(route.page) ? 'production' : STAGING_PAGES.includes(route.page) ? 'staging' : null
+  const implied = environmentOf(route.page)
   const [remembered, setRemembered] = useState<Environment>(storedEnvironment)
+  const environment = implied ?? remembered
   useEffect(() => {
-    if (!implied) return
-    setRemembered(implied)
-    try { window.localStorage.setItem(ENVIRONMENT_KEY, implied) } catch { /* storage blocked */ }
-  }, [implied])
-  return implied ?? remembered
+    if (implied) setRemembered(implied)
+    remember(environment)
+    writeModeParam(environment)
+  }, [environment, implied])
+  return environment
 }
 
 export function openEnvironment(environment: Environment) {
-  go({ page: environment === 'production' ? 'home' : 'playground' })
+  remember(environment)
+  go(landing(environment))
+}
+
+// Filters carried in the hash, for example #/live/conversations?filter=needs_reply.
+export function hashQuery() {
+  return new URLSearchParams(window.location.hash.split('?')[1] ?? '')
 }
 
 export function parse(hash: string): Route {
@@ -62,7 +97,10 @@ export function parse(hash: string): Route {
     case 'activity':
       if (parts[1] === 'leads') return { page: 'leads', id: parts[2] ?? null }
       return { page: 'chats', id: parts[2] ?? null }
-    default: return { page: 'playground' }
+    case 'live':
+      if (parts[1] === 'leads') return { page: 'liveLeads' }
+      return { page: 'liveChats', id: parts[2] ?? null }
+    default: return parts.length ? { page: 'playground' } : landing()
   }
 }
 
@@ -70,6 +108,8 @@ export function href(route: Route) {
   switch (route.page) {
     case 'chats': return route.id ? `#/activity/chats/${route.id}` : '#/activity/chats'
     case 'leads': return route.id ? `#/activity/leads/${route.id}` : '#/activity/leads'
+    case 'liveChats': return route.id ? `#/live/conversations/${route.id}` : '#/live/conversations'
+    case 'liveLeads': return '#/live/leads'
     case 'calendar': return '#/calendar'
     default: return `#/${route.page}`
   }
@@ -90,9 +130,10 @@ export function navigateTo(to: string, replace: boolean) {
     window.location.assign(url.href)
     return
   }
-  const hash = url.hash || '#/playground'
-  if (replace) window.history.replaceState(null, '', `${url.pathname}${hash}`)
-  else window.history.pushState(null, '', `${url.pathname}${hash}`)
+  const hash = url.hash || href(landing())
+  const search = url.search || window.location.search
+  if (replace) window.history.replaceState(null, '', `${url.pathname}${search}${hash}`)
+  else window.history.pushState(null, '', `${url.pathname}${search}${hash}`)
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
