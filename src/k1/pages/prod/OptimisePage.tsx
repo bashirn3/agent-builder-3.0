@@ -22,6 +22,7 @@ const FIELD_GUIDE = [
   'by_message.step: opener is the first message, reminder_1 to reminder_3 follow it; reminder_3 goes out after the deadline.',
   'bookings_per_week.by_step counts each booking under the last message the customer got before booking.',
   'A null rate or uplift means there is not enough data yet.',
+  'reasons groups not_owner, no longer their vehicle, and not in their name as not owner. Vehicle sold and vehicle off the road stay separate.',
 ]
 
 function rawExport(data: Performance, range: Range, rangeLabel: string) {
@@ -30,8 +31,21 @@ function rawExport(data: Performance, range: Range, rangeLabel: string) {
     range: { key: range, label: rangeLabel },
     sample_data: isSample('performance'),
     copied_at: new Date().toISOString(),
-    data,
+    data: { ...data, reasons: groupedReasons(data.reasons) },
   }, null, 2)
+}
+
+const NOT_OWNER_REASONS = new Set(['not_owner', 'not owner', 'no longer their vehicle', 'not in their name'])
+
+function groupedReasons(reasons: Performance['reasons']) {
+  const counts = new Map<string, number>()
+  for (const reason of reasons) {
+    const label = NOT_OWNER_REASONS.has(reason.label.trim().toLowerCase()) ? 'not owner' : reason.label
+    counts.set(label, (counts.get(label) ?? 0) + reason.count)
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([label, count]) => ({ label, count }))
 }
 
 export function OptimisePage({ notify }: { notify: Notify }) {
@@ -134,7 +148,7 @@ function Report({ data }: { data: Performance }) {
         </Card>
         <Card title={p.reasons}>
           {data.reasons.length
-            ? <PieChart label={p.reasons} slices={data.reasons.map((reason) => ({ key: reason.label, label: reason.label, value: reason.count }))} />
+            ? <PieChart label={p.reasons} slices={groupedReasons(data.reasons).map((reason) => ({ key: reason.label, label: reason.label, value: reason.count }))} />
             : <p className="k1-hint">{p.noReasons}</p>}
         </Card>
       </div>
