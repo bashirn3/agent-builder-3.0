@@ -1,7 +1,7 @@
 import { isSample, prodApi } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
 import { href } from '../../routes'
-import { CalendarDays, Check, MessagesSquare, MessageSquareMore } from '../../ui/icons'
+import { CalendarDays, Check, MessageCircle, MessagesSquare } from '../../ui/icons'
 import { AreaChart, StatCard } from './charts'
 import { Card, CardsSkeleton, DatePill, ErrorState, fmtDay, fmtNum, fmtRate, ProdHead, useProdData } from './shared'
 
@@ -20,10 +20,10 @@ export function HomePage() {
       {loading ? <CardsSkeleton /> : error && !data ? <ErrorState error={error} onRetry={reload} /> : data && (
         <>
           <div className="k1-stat-cards">
-            <StatCard icon={<MessageSquareMore size={14} />} label={t.prod.funnel.sent} value={fmtNum(data.this_week.sent)} />
             <StatCard icon={<Check size={14} />} label={t.prod.funnel.delivered} value={fmtNum(data.this_week.delivered)} />
             <StatCard icon={<MessagesSquare size={14} />} label={t.prod.funnel.replied} value={fmtNum(data.this_week.replied)} />
-            <StatCard icon={<CalendarDays size={14} />} label={t.prod.funnel.booked} value={fmtNum(data.this_week.booked)} />
+            <StatCard icon={<CalendarDays size={14} />} label={t.prod.funnel.booked} value={fmtNum(data.this_week.booked_customers ?? data.this_week.booked)} />
+            <StatCard icon={<MessageCircle size={14} />} label={t.prod.funnel.bookedThroughChat} value={fmtNum(data.this_week.booked_in_chat ?? data.this_week.booked)} />
           </div>
 
           <Card title={p.bookings} aside={<span className="k1-hint">{p.lastWeeks}</span>}>

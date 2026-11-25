@@ -243,7 +243,7 @@ function home(): HomeData {
       ...(handoffs ? [{ kind: 'handoff', count: handoffs, title: `${handoffs} customers asked for a person`, link: 'conversations?filter=open' }] : []),
       ...(failed ? [{ kind: 'delivery_failed', count: failed, title: `${failed} messages failed to deliver`, link: 'leads?status=failed' }] : []),
     ],
-    this_week: { from: weekStart(now), to: isoDay(new Date(weekStart(now)).getTime() + 6 * DAY), sent: 214, delivered: 207, replied: 61, booked: weeks[7].booked, bookings_per_week: weeks },
+    this_week: { from: weekStart(now), to: isoDay(new Date(weekStart(now)).getTime() + 6 * DAY), sent: 214, delivered: 207, replied: 61, booked: weeks[7].booked, booked_in_chat: weeks[7].booked, booked_customers: weeks[7].booked + 4, bookings_per_week: weeks },
     value: { delivered_contacts: 712, converted: 94, rate: 94 / 712 },
     leads_left: { in_window: LEADS.filter((lead) => lead.status === 'waiting' && lead.days_left >= settings.window.min_days && lead.days_left <= settings.window.max_days).length, window: settings.window },
   }

@@ -23,7 +23,7 @@ export type NeedsYou = { kind: 'batch_waiting' | 'handoff' | 'delivery_failed' |
 export type HomeData = {
   status: { outreach_on: boolean; bot_on: boolean; stations_sending: number; stations_total: number; last_send_at: string | null; messages_today: number }
   needs_you: NeedsYou[]
-  this_week: { from: string; to: string; sent: number; delivered: number; replied: number; booked: number; bookings_per_week: Array<{ week_start: string; booked: number; delivered?: number }> }
+  this_week: { from: string; to: string; sent: number; delivered: number; replied: number; booked: number; booked_customers?: number; booked_in_chat?: number; bookings_per_week: Array<{ week_start: string; booked: number; delivered?: number }> }
   value: { delivered_contacts: number; converted: number; rate: number | null }
   leads_left: { in_window: number; window: { min_days: number; max_days: number } }
 }
