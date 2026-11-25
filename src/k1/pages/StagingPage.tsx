@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { describeError, localized, openerPreview, type AgentVersion } from '../data/agentConfig'
 import {
   currentActor,
@@ -7,6 +7,7 @@ import {
   resetCustomer,
   resetStagingSession,
   sendStaging,
+  sendStagingReply,
   type StagingMessage,
   type StagingSession,
 } from '../data/builderApi'
@@ -18,7 +19,10 @@ import { useCopy } from '../i18n'
 import { Select, Spinner } from '../ui/controls'
 import { Dialog } from '../ui/overlay'
 import { RefreshCw } from '../ui/icons'
+import { WaGlyph } from '../ui/WaGlyph'
 import { formatStamp } from './SplitView'
+import { noteStick, sameMessages, scrollIfStuck, useLiveReload } from './liveThread'
+import { latestActivity, pickConversation, stagingParts, whatsappRuns } from '../data/stagingView'
 import { orderVersions, versionHint } from './versionText'
 
 function sendFailure(error: unknown, copy: ReturnType<typeof useCopy>) {
@@ -44,9 +48,15 @@ export function StagingPage({ store, notify }: {
   const [messages, setMessages] = useState<StagingMessage[]>([])
   const [loadingThread, setLoadingThread] = useState(false)
   const [sending, setSending] = useState(false)
+  const [replying, setReplying] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
   const [resetting, setResetting] = useState<StagingSession | null>(null)
   const [country, setCountry] = useState<DialCountry>('fi')
   const [national, setNational] = useState('')
+  const threadRef = useRef<HTMLDivElement>(null)
+  const stick = useRef(true)
+  const phoneRef = useRef<string | null>(null)
+  const conversationRef = useRef<string | null>(null)
   const ids = { version: useId(), lead: useId(), phone: useId(), country: useId(), conversation: useId() }
 
   useEffect(() => {
@@ -71,24 +81,62 @@ export function StagingPage({ store, notify }: {
     listStagingSessions()
       .then((next) => {
         setSessions(next)
-        setSelectedKey((current) => current && next.some((item) => item.phoneKey === current) ? current : next[0]?.phoneKey ?? null)
+        setSelectedKey((current) => pickConversation(current, next))
       })
       .catch((error: unknown) => notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }))
   }
   useEffect(refresh, [])
 
-  const selected = sessions?.find((item) => item.phoneKey === selectedKey) ?? null
+  const selected = sessions?.find((item) => item.conversationId === selectedKey) ?? null
+  const selectedPhone = selected?.phone ?? null
+  phoneRef.current = selectedPhone
+  conversationRef.current = selected?.conversationId ?? null
 
   useEffect(() => {
-    if (!selected) { setMessages([]); return }
+    stick.current = true
+  }, [selectedPhone, selected?.conversationId])
+
+  useEffect(() => {
+    const node = threadRef.current
+    if (!node) return
+    const onScroll = () => noteStick(node, stick)
+    node.addEventListener('scroll', onScroll, { passive: true })
+    return () => node.removeEventListener('scroll', onScroll)
+  }, [selectedPhone])
+
+  useEffect(() => {
+    scrollIfStuck(threadRef.current, stick)
+  }, [messages])
+
+  useEffect(() => {
+    if (!selectedPhone) { setMessages([]); return }
     let cancelled = false
     setLoadingThread(true)
-    getStagingThread(selected.phone)
+    getStagingThread(selectedPhone, selected?.conversationId)
       .then((thread) => { if (!cancelled) setMessages(thread.messages) })
       .catch((error: unknown) => { if (!cancelled) notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) }) })
       .finally(() => { if (!cancelled) setLoadingThread(false) })
     return () => { cancelled = true }
-  }, [selected?.phone, selected?.conversationId])
+  }, [selectedPhone, selected?.conversationId])
+
+  useLiveReload(Boolean(selectedPhone), () => {
+    const phone = phoneRef.current
+    if (!phone) return
+    const conversationId = conversationRef.current
+    void getStagingThread(phone, conversationId)
+      .then((thread) => {
+        if (phoneRef.current !== phone || conversationRef.current !== conversationId) return
+        setMessages((current) => sameMessages(current, thread.messages) ? current : thread.messages)
+        if (!thread.updatedAt || !conversationId) return
+        setSessions((current) => {
+          if (!current) return current
+          const row = current.find((item) => item.conversationId === conversationId)
+          if (!row || row.updatedAt === thread.updatedAt) return current
+          return current.map((item) => item.conversationId === conversationId ? { ...item, updatedAt: thread.updatedAt ?? item.updatedAt } : item)
+        })
+      })
+      .catch(() => {})
+  })
 
   const lead = store.lead
   useEffect(() => {
@@ -110,9 +158,32 @@ export function StagingPage({ store, notify }: {
         : ''
   const canSend = Boolean(version && lead && opener && composed.ok && !composed.placeholder && !sending && !loadingVersion)
   const replied = messages.some((message) => message.role === 'user')
+  const activity = latestActivity(selected?.updatedAt, messages)
   const leadLabel = selected
     ? [selected.plate, shortStation(selected.stationName)].filter(Boolean).join(' · ')
     : ''
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(code)
+      window.setTimeout(() => setCopied((current) => current === code ? null : current), 1500)
+    } catch { /* clipboard blocked */ }
+  }
+
+  const sendReply = async (label: string) => {
+    if (!selectedPhone || replying) return
+    setReplying(label)
+    try {
+      await sendStagingReply(selectedPhone, label)
+      const thread = await getStagingThread(selectedPhone, selected?.conversationId)
+      setMessages(thread.messages)
+    } catch (error) {
+      notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) })
+    } finally {
+      setReplying(null)
+    }
+  }
 
   const send = async () => {
     if (!canSend || !version || !lead || !used || !composed.ok) return
@@ -139,7 +210,7 @@ export function StagingPage({ store, notify }: {
         },
       })
       notify({ title: t.staging.sent, body: t.staging.sentBody(result.versionNumber ?? version.number, phone) })
-      setSelectedKey(phone.replace(/\D/g, ''))
+      setSelectedKey(result.conversationId)
       refresh()
     } catch (error) {
       notify({ tone: 'error', title: t.staging.failed, body: sendFailure(error, t) })
@@ -237,16 +308,6 @@ export function StagingPage({ store, notify }: {
               </button>
             </div>
           </div>
-          <section className="k1-staging__card" aria-labelledby="k1-staging-card">
-            <h2 id="k1-staging-card" className="k1-section-title">{t.staging.stripeTitle}</h2>
-            <p className="k1-hint">{t.staging.stripeNote}</p>
-            <dl>
-              <div><dt>{t.staging.cardNumber}</dt><dd>{t.staging.cardNumberValue}</dd></div>
-              <div><dt>{t.staging.cardExpiry}</dt><dd>{t.staging.cardExpiryValue}</dd></div>
-              <div><dt>{t.staging.cardCvc}</dt><dd>{t.staging.cardCvcValue}</dd></div>
-              <div><dt>{t.staging.cardPromo}</dt><dd>{t.staging.cardPromoValue}</dd></div>
-            </dl>
-          </section>
         </aside>
         <div className="k1-canvas">
           <div className="k1-tester" aria-label={t.staging.conversation}>
@@ -269,10 +330,10 @@ export function StagingPage({ store, notify }: {
                 placeholder={t.staging.chooseConversation}
                 search={{ placeholder: t.staging.chooseConversation, emptyText: t.staging.empty }}
                 options={(sessions ?? []).map((item) => ({
-                  value: item.phoneKey,
+                  value: item.conversationId,
                   label: item.phone,
-                  hint: [item.plate, item.versionNumber ? `v${item.versionNumber}` : ''].filter(Boolean).join(' · '),
-                  keywords: `${item.phone} ${item.plate} ${item.stationName}`,
+                  hint: [item.plate, item.versionNumber ? `v${item.versionNumber}` : '', formatStamp(item.updatedAt)].filter(Boolean).join(' · '),
+                  keywords: `${item.phone} ${item.phoneKey} ${item.plate} ${item.stationName}`,
                 }))}
                 onChange={setSelectedKey}
               />
@@ -282,13 +343,55 @@ export function StagingPage({ store, notify }: {
                 <strong>{leadLabel}</strong>
                 <span>{selected.versionNumber ? `v${selected.versionNumber}` : ''}</span>
                 <span>{replied ? t.staging.statusReplied : t.staging.statusWaiting}</span>
-                <span>{formatStamp(selected.updatedAt)}</span>
+                <span>{activity ? formatStamp(activity) : ''}</span>
               </p>
             )}
-            <div className="k1-tester__thread">
+            <div className="k1-tester__thread" ref={threadRef}>
               {sessions === null || loadingThread ? <p className="k1-hint">{t.common.loading}</p> : !selected ? <p className="k1-hint">{t.staging.noConversation}</p> : messages.length === 0 ? <p className="k1-hint">{t.staging.noMessages}</p> : messages.map((message) => (
                 <div key={message.id} className={message.role === 'user' ? 'k1-msg k1-msg--user' : 'k1-msg'}>
-                  <p className="k1-msg__bubble">{message.text}</p>
+                  {stagingParts(message).map((part, index) => (
+                    <div key={index} className="k1-msg__part">
+                      {part.live && (part.link || part.copy || part.replies.length > 0) ? (
+                        <div className="k1-msg__wa">
+                          {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
+                          <div className="k1-msg__actions">
+                            {part.link ? (
+                              <a className="k1-msg__link" href={part.link.url} target="_blank" rel="noreferrer"><WaGlyph kind="link" />{part.link.label}</a>
+                            ) : null}
+                            {part.copy ? (
+                              <button type="button" className="k1-msg__chip" onClick={() => void copyCode(part.copy!.code)}>
+                                <WaGlyph kind="copy" />{copied === part.copy.code ? part.copy.code : part.copy.label}
+                              </button>
+                            ) : null}
+                            {part.replies.map((label) => (
+                              <button key={label} type="button" className="k1-msg__chip" disabled={replying !== null} onClick={() => void sendReply(label)}>
+                                {replying === label ? <Spinner /> : <WaGlyph kind="reply" />}{label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {part.text ? <p className="k1-msg__bubble">{whatsappRuns(part.text).map((run, runIndex) => run.bold ? <strong key={runIndex}>{run.value}</strong> : run.value)}</p> : null}
+                          {part.link ? <a className="k1-msg__box" href={part.link.url} target="_blank" rel="noreferrer">{part.link.label}</a> : null}
+                          {part.copy ? (
+                            <button type="button" className="k1-msg__box" onClick={() => void copyCode(part.copy!.code)}>
+                              {copied === part.copy.code ? part.copy.code : part.copy.label}
+                            </button>
+                          ) : null}
+                          {part.replies.length > 0 && (
+                            <div className="k1-msg__chips">
+                              {part.replies.map((label) => (
+                                <button key={label} type="button" className="k1-msg__box" disabled={replying !== null} onClick={() => void sendReply(label)}>
+                                  {replying === label ? <Spinner /> : null}{label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

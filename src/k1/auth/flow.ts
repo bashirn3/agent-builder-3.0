@@ -30,7 +30,7 @@ export function authError(error: unknown) {
 }
 
 const callbackUrl = () => `${window.location.origin}/#/sso-callback`
-const homeUrl = () => `${window.location.origin}/#/playground`
+const homeUrl = () => `${window.location.origin}/#/home`
 
 export function useClerkFlow(): AuthFlow | null {
   const signInState = useSignIn()

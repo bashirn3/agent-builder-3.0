@@ -16,6 +16,7 @@ import { onCacheReset } from '../data/builderApi'
 import { Spinner } from '../ui/controls'
 import { ThreadSkeleton } from '../ui/skeletons'
 import { orderVersions, versionHint } from './versionText'
+import { noteStick, sameMessages, scrollIfStuck, useLiveReload } from './liveThread'
 import { DetailPane, Facts, formatStamp, ListPane, MobileSwap, relativeTime } from './SplitView'
 import { TJ_SHOWCASE, canSeeShowcase, matchingShowcase, showcaseById } from '../data/tjShowcase'
 import { useSession } from '../auth/session'
@@ -295,6 +296,10 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
   const [messages, setMessages] = useState<TestMessage[]>([])
   const [query, setQuery] = useState(filters.query)
   const request = useRef(0)
+  const threadRef = useRef<HTMLDivElement>(null)
+  const stick = useRef(true)
+  const openId = useRef(id)
+  openId.current = id
 
   const refresh = () => {
     const ticket = ++request.current
@@ -379,6 +384,34 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       .finally(() => { if (!cancelled) setDetailLoading(false) })
     return () => { cancelled = true }
   }, [id, showcaseAllowed])
+
+  useEffect(() => { stick.current = true }, [id])
+
+  useEffect(() => {
+    const scroller = threadRef.current?.parentElement
+    if (!scroller) return
+    const onScroll = () => noteStick(scroller, stick)
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [id, tab])
+
+  useEffect(() => {
+    scrollIfStuck(threadRef.current?.parentElement ?? null, stick)
+  }, [messages, tab])
+
+  useLiveReload(id != null && !showcaseFor(id), () => {
+    const requested = openId.current
+    if (!requested) return
+    void getTestChat(requested)
+      .then((chat) => {
+        if (!chat || openId.current !== requested) return
+        const next = toMessages(chat)
+        setMessages((current) => sameMessages(current, next) ? current : next)
+        setSelected((current) => current?.conversation.updatedAt === chat.conversation.updatedAt && current.conversation.messageCount === chat.conversation.messageCount ? current : chat)
+        chatCache.set(requested, chat)
+      })
+      .catch(() => {})
+  })
 
   const rate = (messageId: string, value: 'up' | 'down') => {
     const message = messages.find((item) => item.id === messageId)
@@ -530,7 +563,7 @@ export function TestChatsPage({ id, compact, config, filters, onFilters, notify 
       }]}
     >
       {tab === 'chat' ? (
-        <div className={`k1-thread${showcase ? ' k1-thread--showcase' : ''}`}>
+        <div className={`k1-thread${showcase ? ' k1-thread--showcase' : ''}`} ref={threadRef}>
           {!showcase && <p className="k1-thread__version"><span className={`k1-vtag${conversation.isDraft ? ' is-draft' : ''}`}>{versionTag(conversation)}</span> {sourceLabel(conversation.source)} · {formatStamp(conversation.createdAt)}</p>}
           {messages.map((message, index) => showcase ? (
             <div key={message.id} className="k1-showcase__message">

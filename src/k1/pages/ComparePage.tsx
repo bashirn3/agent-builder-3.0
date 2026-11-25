@@ -5,9 +5,8 @@ import { draftTarget, versionTarget, type AgentConfig, type TestTarget } from '.
 import { newId } from '../data/builderApi'
 import type { PlaygroundStore } from '../data/usePlayground'
 import { useTestChat } from '../data/useTestChat'
-import { go } from '../routes'
 import { Menu, Select, Skeleton, type SelectOption } from '../ui/controls'
-import { ArrowUp, Lock, LockOpen, MoreHorizontal, Rocket, ThumbsDown, ThumbsUp } from '../ui/icons'
+import { ArrowUp, Lock, LockOpen, MoreHorizontal, ThumbsDown, ThumbsUp } from '../ui/icons'
 import { Bubble, useAutoGrow } from './PlaygroundPage'
 import { useCopy } from '../i18n'
 import { CompareColumnSkeleton } from '../ui/skeletons'
@@ -84,8 +83,6 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
       submit()
     }
   }
-  const deployable = version && !version.live
-
   return (
     <section className="k1-compare__col" aria-label={t.compare.chat(index + 1)}>
       <header className="k1-compare__head">
@@ -95,16 +92,6 @@ function CompareColumn({ store, config, pick, onPick, options, index, total, onM
             <ThumbsUp size={12} strokeWidth={1.75} />{version.thumbsUp}<ThumbsDown size={12} strokeWidth={1.75} />{version.thumbsDown}
           </span>
         )}
-        <button
-          type="button"
-          className="k1-icon-btn"
-          aria-label={deployable ? t.compare.deploy(version.number) : t.compare.notDeployable}
-          title={deployable ? t.compare.deploy(version.number) : version?.live ? t.compare.alreadyLive : t.compare.saveFirst}
-          disabled={!deployable}
-          onClick={() => version && go({ page: 'deploy', version: version.id })}
-        >
-          <Rocket size={15} strokeWidth={1.75} />
-        </button>
         <Menu
           label={t.compare.actions(index + 1)}
           items={[

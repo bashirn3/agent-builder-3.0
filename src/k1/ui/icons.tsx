@@ -5,9 +5,9 @@ import {
   Calendar03Icon, Copy01Icon, Download04Icon, EyeIcon, FileEditIcon, FilterHorizontalIcon,
   Heading01Icon, InformationCircleIcon, LeftToRightListBulletIcon, LeftToRightListNumberIcon,
   Link01Icon, Logout01Icon, Menu01Icon, Message01Icon, MessageMultiple01Icon, PlayIcon,
-  HistoryIcon, Refresh01Icon, RefreshIcon, Rocket01Icon, SquareLock02Icon, SquareUnlock02Icon, TextBoldIcon,
+  HistoryIcon, Refresh01Icon, RefreshIcon, SquareLock02Icon, SquareUnlock02Icon, TextBoldIcon,
   TextItalicIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon,  WhatsappIcon, BookOpen01Icon,
-  Clock01Icon, UserMultipleIcon, UserAdd01Icon, Delete02Icon,
+  Clock01Icon, UserMultipleIcon, UserAdd01Icon, Delete02Icon, Home01Icon, AnalyticsUpIcon, SlidersVerticalIcon,
 } from '@hugeicons/core-free-icons'
 import { Check as LucideCheck, ChevronsUpDown as LucideUpDown, Columns2 as LucideColumns, Eye as LucideEye, EyeOff as LucideEyeOff, MoreHorizontal as LucideMore, Plus as PlusLucide, Search as LucideSearch, Upload as UploadLucide, X as LucideX } from 'lucide-react'
 
@@ -48,6 +48,9 @@ export const Eye = lucide(LucideEye)
 export const EyeOff = lucide(LucideEyeOff)
 export const FileText = huge(FileEditIcon)
 export const Heading = huge(Heading01Icon)
+export const Home = huge(Home01Icon)
+export const Optimise = huge(AnalyticsUpIcon)
+export const Control = huge(SlidersVerticalIcon)
 export const History = huge(HistoryIcon)
 export const Info = huge(InformationCircleIcon)
 export const Link2 = huge(Link01Icon)
@@ -67,7 +70,6 @@ export const Users = huge(UserMultipleIcon)
 export const UserAdd = huge(UserAdd01Icon)
 export const Play = huge(PlayIcon)
 export const RefreshCw = huge(Refresh01Icon)
-export const Rocket = huge(Rocket01Icon)
 export const RotateCcw = huge(RefreshIcon)
 export const Search = lucide(LucideSearch)
 export const SlidersHorizontal = huge(FilterHorizontalIcon)

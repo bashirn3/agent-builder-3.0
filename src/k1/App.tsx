@@ -4,7 +4,11 @@ import { usePlayground } from './data/usePlayground'
 import { AuthPage, NoTeamPage, SsoCallbackPage } from './pages/AuthPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { ComparePage } from './pages/ComparePage'
-import { DeployPage } from './pages/DeployPage'
+import { ConversationsPage } from './pages/prod/ConversationsPage'
+import { ControlPage } from './pages/prod/ControlPage'
+import { HomePage } from './pages/prod/HomePage'
+import { LiveLeadsPage } from './pages/prod/LiveLeadsPage'
+import { OptimisePage } from './pages/prod/OptimisePage'
 import { LeadsPage } from './pages/LeadsPage'
 import { PlaygroundPage } from './pages/PlaygroundPage'
 import { StagingPage } from './pages/StagingPage'
@@ -12,7 +16,7 @@ import { TeamPage } from './pages/TeamPage'
 import { EMPTY_CHAT_FILTERS, TestChatsPage, type ChatFilters } from './pages/TestChatsPage'
 import { useSession } from './auth/session'
 import { useCopy } from './i18n'
-import { go, useMedia, useRoute } from './routes'
+import { go, landing, useMedia, useRoute } from './routes'
 import { Shell } from './shell/Shell'
 import { ToastStack, useToasts } from './ui/controls'
 import { AppSkeleton } from './ui/skeletons'
@@ -27,7 +31,7 @@ function Workspace({ compact }: { compact: boolean }) {
   const [filters, setFilters] = useState<ChatFilters>(EMPTY_CHAT_FILTERS)
 
   const t = useCopy()
-  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, calendar: t.nav.calendar, staging: t.nav.staging, deploy: t.nav.deploy, team: t.nav.team }
+  const titles: Record<string, string> = { playground: t.nav.playground, compare: t.nav.compare, chats: t.nav.testChats, leads: t.nav.leads, calendar: t.nav.calendar, staging: t.nav.staging, home: t.nav.homePage, liveChats: t.nav.conversations, liveLeads: t.nav.leads, optimise: t.nav.optimise, control: t.nav.control, team: t.nav.team }
   useEffect(() => {
     document.title = `${titles[route.page] ?? 'A-Katsastus'} · A-Katsastus`
   }, [route.page, t])
@@ -39,8 +43,11 @@ function Workspace({ compact }: { compact: boolean }) {
   else if (route.page === 'leads') page = <LeadsPage id={route.id} compact={compact} notify={push} onImported={playground.refreshLeads} />
   else if (route.page === 'calendar') page = <CalendarPage notify={push} />
   else if (route.page === 'staging') page = <StagingPage store={playground} notify={push} />
-  else if (route.page === 'deploy') page = <DeployPage config={playground.config} dirty={playground.dirty} notify={push} versionId={route.version} onChanged={(force) => void playground.refresh({ force })} />
-
+  else if (route.page === 'home') page = <HomePage />
+  else if (route.page === 'liveChats') page = <ConversationsPage id={route.id} compact={compact} notify={push} />
+  else if (route.page === 'liveLeads') page = <LiveLeadsPage compact={compact} />
+  else if (route.page === 'optimise') page = <OptimisePage notify={push} />
+  else if (route.page === 'control') page = <ControlPage notify={push} />
   else if (route.page === 'team') page = <TeamPage notify={push} />
 
   return (
@@ -64,11 +71,11 @@ export default function App() {
   useEffect(() => {
     if (!session.ready) return
     if (isCallback) {
-      if (session.signedIn) go({ page: 'playground' }, true)
+      if (session.signedIn) go(landing(), true)
       return
     }
     if (!isAuth && !session.signedIn) go({ page: 'signin' }, true)
-    if (isAuth && session.signedIn) go({ page: 'playground' }, true)
+    if (isAuth && session.signedIn) go(landing(), true)
   }, [isAuth, isCallback, session.ready, session.signedIn])
 
   return (

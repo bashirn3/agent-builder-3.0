@@ -1,5 +1,12 @@
-const BASE = import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
-const TOKEN = import.meta.env?.VITE_N8N_BUILDER_PUBLIC_TOKEN as string | undefined
+declare const __K1_ENV__: Record<string, string> | undefined
+
+// Filled in by vite.config.ts with the public K1 addresses only; absent when scripts run under Node.
+const VALUES: Record<string, string> = typeof __K1_ENV__ === 'undefined' ? {} : __K1_ENV__
+
+export const k1Env = (name: 'K1_API_STAGING' | 'K1_API_PRODUCTION' | 'K1_API_PRODUCTION_LIVE') => (VALUES[name] ?? '').trim()
+
+const STAGING_API = k1Env('K1_API_STAGING').replace(/\/+$/, '')
+const BASE = STAGING_API ? `${STAGING_API}/k1-agent-builder` : import.meta.env?.VITE_N8N_BUILDER_BASE_URL as string | undefined
 // Points the tester at another agent workflow (for example /booking-chat-v2) without changing the saved setup.
 const CHAT_PATH = (import.meta.env?.VITE_K1_CHAT_PATH as string | undefined)?.trim() || '/booking-chat'
 export const TENANT_KEY = 'k1_katsastus_demo'
@@ -210,6 +217,8 @@ async function readToken(fresh: boolean) {
   }
 }
 
+export const readSessionToken = (fresh = false) => readToken(fresh)
+
 export class AccessError extends Error {
   reason: 'signin_required' | 'team_required'
   constructor(reason: 'signin_required' | 'team_required') {
@@ -253,7 +262,6 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: {
         'Content-Type': 'application/json',
-        ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
         ...(token ? { 'X-K1-Session': token } : {}),
         ...init?.headers,
       },
@@ -557,6 +565,7 @@ export type StagingMessage = {
   role: 'user' | 'agent'
   text: string
   at: string
+  bubbles?: unknown
 }
 
 export type StagingThread = {
@@ -657,11 +666,23 @@ export async function resetStagingSession(phone: string): Promise<{ found: boole
   return { found: Boolean(result.found), conversationId: result.conversationId ?? null }
 }
 
-export async function getStagingThread(phone: string): Promise<StagingThread> {
+// A reply chip is the customer's next WhatsApp message. The text is the chip label, not a free note.
+export async function sendStagingReply(phone: string, text: string): Promise<void> {
+  const label = text.trim()
+  if (!label || label.length > 80) throw new Error('reply_required')
+  if (!remote) return
+  const result = await call<{ ok?: boolean; error?: string }>('/staging-send', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'reply', phone, text: label }),
+  })
+  if (result.ok === false) throw new Error(result.error ?? 'reply_failed')
+}
+
+export async function getStagingThread(phone: string, conversationId?: string | null): Promise<StagingThread> {
   const empty: StagingThread = { found: false, phone, plate: '', stationName: '', versionNumber: null, updatedAt: null, messages: [] }
   if (!remote) {
     const key = phone.replace(/\D/g, '')
-    const session = readStaging().find((item) => item.phone === phone || item.phoneKey === key)
+    const session = readStaging().find((item) => item.conversationId === conversationId || item.phone === phone || item.phoneKey === key)
     if (!session) return empty
     return {
       found: true,
@@ -675,7 +696,7 @@ export async function getStagingThread(phone: string): Promise<StagingThread> {
   }
   const result = await call<StagingThread & { ok?: boolean; error?: string }>('/staging-send', {
     method: 'POST',
-    body: JSON.stringify({ action: 'thread', phone }),
+    body: JSON.stringify({ action: 'thread', phone, ...(conversationId ? { conversationId } : {}) }),
   })
   if (result.ok === false) throw new Error(result.error ?? 'request_failed')
   return {

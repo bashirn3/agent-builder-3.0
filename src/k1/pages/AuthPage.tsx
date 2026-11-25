@@ -165,7 +165,7 @@ export function SsoCallbackPage() {
           <div className="k1-auth__form k1-auth__pending" role="status">
             <Spinner />
             <p>{t.auth.signingIn}</p>
-            {clerkEnabled && <AuthenticateWithRedirectCallback signInForceRedirectUrl="/#/playground" signUpForceRedirectUrl="/#/playground" />}
+            {clerkEnabled && <AuthenticateWithRedirectCallback signInForceRedirectUrl="/#/home" signUpForceRedirectUrl="/#/home" />}
           </div>
         </section>
         <section className="k1-auth__art" aria-hidden="true">

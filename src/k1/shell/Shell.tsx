@@ -1,10 +1,10 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { CalendarDays, ChevronDown, Columns, History, LogOut, MenuIcon, Play, Rocket, Users, WhatsApp, X } from '../ui/icons'
+import { CalendarDays, Check, ChevronDown, ChevronsUpDown, Columns, Control, History, Home, LogOut, MenuIcon, Optimise, Play, Users, WhatsApp, X } from '../ui/icons'
 import { space } from '../../lib/motion'
 import { useSession } from '../auth/session'
 import { setUiLang, useCopy, useUiLang } from '../i18n'
-import { go, href, type Route } from '../routes'
+import { go, href, openEnvironment, useEnvironment, type Environment, type Route } from '../routes'
 import { Collapse, useFocusTrap } from '../ui/overlay'
 import { Menu } from '../ui/controls'
 export function BrandLogo({ height = 22 }: { height?: number }) {
@@ -63,21 +63,49 @@ function useSignOut() {
   }
 }
 
-export function Header() {
+const ENVIRONMENTS: Environment[] = ['staging', 'production']
+
+function useEnvironmentLabel() {
+  const t = useCopy()
+  return (environment: Environment) => environment === 'production' ? t.nav.production : t.nav.staging
+}
+
+function EnvironmentMenu({ environment }: { environment: Environment }) {
+  const t = useCopy()
+  const label = useEnvironmentLabel()
+  return (
+    <Menu
+      label={t.nav.environment}
+      align="start"
+      items={ENVIRONMENTS.map((option) => ({
+        label: label(option),
+        icon: option === environment ? <Check size={16} /> : <span className="k1-menu__spacer" aria-hidden="true" />,
+        onSelect: () => { if (option !== environment) openEnvironment(option) },
+      }))}
+      trigger={(props) => (
+        <button {...props} type="button" className={`k1-crumbs__switch is-${environment}`} aria-label={`${t.nav.environment}: ${label(environment)}`}>
+          {label(environment)}
+          <ChevronsUpDown size={14} />
+        </button>
+      )}
+    />
+  )
+}
+
+export function Header({ environment }: { environment: Environment }) {
   const t = useCopy()
   const { user } = useSession()
   const signOut = useSignOut()
   return (
     <header className="k1-header">
-      <a className="k1-header__home" href={href({ page: 'playground' })} aria-label={t.nav.home}>
+      <a className="k1-header__home" href={href({ page: environment === 'production' ? 'home' : 'playground' })} aria-label={t.nav.home}>
         <BrandLogo />
       </a>
       <nav className="k1-crumbs" aria-label={t.nav.workspace}>
         <span className="k1-crumbs__sep" aria-hidden="true">/</span>
         <span className="k1-crumbs__item">K1 Katsastus</span>
         <span className="k1-crumbs__sep" aria-hidden="true">/</span>
-        <span className="k1-crumbs__item">{t.nav.bookingAgent}</span>
-        <span className="k1-badge">{t.nav.agent}</span>
+        <EnvironmentMenu environment={environment} />
       </nav>
       <div className="k1-header__end">
         <LangSwitch />
@@ -104,14 +132,9 @@ export function Header() {
   )
 }
 
-const activityChildren = [
-  { key: 'chats', label: 'testChats', to: { page: 'chats', id: null } as Route },
-  { key: 'leads', label: 'leads', to: { page: 'leads', id: null } as Route },
-] as const
-
-export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () => void }) {
+export function Sidebar({ route, environment, onNavigate }: { route: Route; environment: Environment; onNavigate?: () => void }) {
   const t = useCopy()
-  const inActivity = route.page === 'chats' || route.page === 'leads'
+  const inActivity = ['chats', 'leads', 'liveChats', 'liveLeads'].includes(route.page)
   const [activityOpen, setActivityOpen] = useState(true)
   const link = (to: Route, active: boolean, children: ReactNode, sub = false) => (
     <a
@@ -124,9 +147,21 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
       {children}
     </a>
   )
+  const production = environment === 'production'
+  const activityChildren: Array<{ key: Route['page']; label: string; to: Route }> = production
+    ? [
+      { key: 'liveChats', label: t.nav.conversations, to: { page: 'liveChats', id: null } },
+      { key: 'liveLeads', label: t.nav.leads, to: { page: 'liveLeads' } },
+    ]
+    : [
+      { key: 'chats', label: t.nav.testChats, to: { page: 'chats', id: null } },
+      { key: 'leads', label: t.nav.leads, to: { page: 'leads', id: null } },
+    ]
   return (
     <nav className="k1-nav" aria-label={t.nav.main}>
-      {link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />{t.nav.playground}</>)}
+      {production
+        ? link({ page: 'home' }, route.page === 'home', <><Home size={16} />{t.nav.homePage}</>)
+        : link({ page: 'playground' }, route.page === 'playground', <><Play className="k1-nav__play" />{t.nav.playground}</>)}
       <button
         type="button"
         className={`k1-nav__item${inActivity && !activityOpen ? ' is-active' : ''}`}
@@ -142,19 +177,28 @@ export function Sidebar({ route, onNavigate }: { route: Route; onNavigate?: () =
       </button>
       <Collapse open={activityOpen} id="k1-nav-activity">
         <div className="k1-nav__group">
-          {activityChildren.map((child) => link(child.to, route.page === child.key, t.nav[child.label], true))}
+          {activityChildren.map((child) => link(child.to, route.page === child.key, child.label, true))}
         </div>
       </Collapse>
-      {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />{t.nav.compare}</>)}
-      {link({ page: 'calendar' }, route.page === 'calendar', <><CalendarDays size={16} strokeWidth={1.75} />{t.nav.calendar}</>)}
-      {link({ page: 'staging' }, route.page === 'staging', <><WhatsApp size={16} />{t.nav.staging}</>)}
-      {link({ page: 'deploy' }, route.page === 'deploy', <><Rocket size={16} strokeWidth={1.75} />{t.nav.deploy}</>)}
+      {production ? (
+        <>
+          {link({ page: 'optimise' }, route.page === 'optimise', <><Optimise size={16} />{t.nav.optimise}</>)}
+          {link({ page: 'control' }, route.page === 'control', <><Control size={16} />{t.nav.control}</>)}
+        </>
+      ) : (
+        <>
+          {link({ page: 'compare' }, route.page === 'compare', <><Columns size={16} strokeWidth={1.75} />{t.nav.compare}</>)}
+          {link({ page: 'calendar' }, route.page === 'calendar', <><CalendarDays size={16} strokeWidth={1.75} />{t.nav.calendar}</>)}
+          {link({ page: 'staging' }, route.page === 'staging', <><WhatsApp size={16} />{t.nav.staging}</>)}
+        </>
+      )}
     </nav>
   )
 }
 
-function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
+function MobileNav({ route, environment, onClose }: { route: Route; environment: Environment; onClose: () => void }) {
   const t = useCopy()
+  const label = useEnvironmentLabel()
   const panelRef = useRef<HTMLDivElement>(null)
   const { user } = useSession()
   const signOut = useSignOut()
@@ -162,10 +206,22 @@ function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
   return (
     <div ref={panelRef} id="k1-mobile-nav" className="k1-mobile-nav" role="dialog" aria-modal="true" aria-label={t.nav.navigation}>
       <div className="k1-mobile-nav__workspace">
-        <strong>{t.nav.bookingAgent}</strong>
-        <span>K1 Katsastus <span className="k1-badge">{t.nav.agent}</span></span>
+        <strong>K1 Katsastus</strong>
+        <div className="k1-segmented" role="group" aria-label={t.nav.environment}>
+          {ENVIRONMENTS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={option === environment ? `is-active is-${option}` : undefined}
+              aria-pressed={option === environment}
+              onClick={() => { if (option !== environment) { openEnvironment(option); onClose() } }}
+            >
+              {label(option)}
+            </button>
+          ))}
+        </div>
       </div>
-      <Sidebar route={route} onNavigate={onClose} />
+      <Sidebar route={route} environment={environment} onNavigate={onClose} />
       <div className="k1-mobile-nav__foot">
         <span className="k1-avatar" aria-hidden="true"><Avatar /></span>
         <span className="k1-mobile-nav__who">{user?.name}{user?.email && user.email !== user.name && <small>{user.email}</small>}</span>
@@ -186,15 +242,16 @@ function MobileNav({ route, onClose }: { route: Route; onClose: () => void }) {
 
 export function Shell({ route, compact, children }: { route: Route; compact: boolean; children: ReactNode }) {
   const [navOpen, setNavOpen] = useState(false)
+  const environment = useEnvironment(route)
   useEffect(() => { if (!compact) setNavOpen(false) }, [compact])
   return (
     <div className="k1-app">
-      {compact ? <MobileHeader navOpen={navOpen} onToggle={() => setNavOpen((open) => !open)} /> : <Header />}
+      {compact ? <MobileHeader navOpen={navOpen} onToggle={() => setNavOpen((open) => !open)} /> : <Header environment={environment} />}
       <div className="k1-body">
-        {!compact && <aside className="k1-sidebar"><Sidebar route={route} /></aside>}
+        {!compact && <aside className="k1-sidebar"><Sidebar route={route} environment={environment} /></aside>}
         <main className="k1-main">{children}</main>
       </div>
-      {compact && navOpen && <MobileNav route={route} onClose={() => setNavOpen(false)} />}
+      {compact && navOpen && <MobileNav route={route} environment={environment} onClose={() => setNavOpen(false)} />}
     </div>
   )
 }

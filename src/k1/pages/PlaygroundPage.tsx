@@ -10,7 +10,6 @@ import type { PlaygroundStore, TestMessage } from '../data/usePlayground'
 import { Select, Skeleton, Spinner, Switch } from '../ui/controls'
 import { stripPrefix } from '../ui/format'
 import { Collapse, Dialog } from '../ui/overlay'
-import { href } from '../routes'
 import { UnderlineTabs } from './SplitView'
 import { LanguageTabs, OpenerField, ReminderFields } from './OpenerField'
 import { detectLanguage, type Lang } from '../data/language'
@@ -625,11 +624,6 @@ export function PlaygroundPage({ store, compact }: { store: PlaygroundStore; com
         ) : (
           <div className="k1-inspector k1-inspector--sheet">
             {loading ? <InspectorSkeleton showTitle={false} /> : <Inspector store={store} showTitle={false} tab={mobileTab} />}
-          </div>
-        )}
-        {!store.dirty && (
-          <div className="k1-mobile-deploy">
-            <a className="k1-btn k1-btn--primary k1-btn--block" href={href({ page: 'deploy' })}>{t.nav.deploy}<ChevronRight /></a>
           </div>
         )}
       </div>
