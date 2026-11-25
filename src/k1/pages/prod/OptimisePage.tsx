@@ -8,6 +8,7 @@ import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, f
 const RANGES: Range[] = ['week', 'month', 'all']
 const MIN_SENDS = 10
 const UPLIFT_SHOWN_ABOVE = 0.1
+const MATRIX_COLUMNS = ['eligible', 'delivered', 'replied', 'booked_in_chat', 'left_list', 'converted', 'holdout', 'holdout_converted', 'stops', 'handoffs'] as const
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
 
@@ -148,7 +149,7 @@ function Report({ data }: { data: Performance }) {
               <tr>
                 <th scope="col">{p.week}</th>
                 <th scope="col">{p.station}</th>
-                {(['eligible', 'sent', 'delivered', 'read', 'replied', 'booked_in_chat', 'left_list', 'converted', 'holdout', 'holdout_converted', 'uplift', 'stops', 'handoffs', 'billable'] as const).map((key) => (
+                {MATRIX_COLUMNS.map((key) => (
                   <th key={key} scope="col" className="k1-table__num">{p.matrixColumns[key]}</th>
                 ))}
               </tr>
@@ -158,13 +159,9 @@ function Report({ data }: { data: Performance }) {
                 <tr key={`${row.week_start}-${row.station}`} className="is-static">
                   <td>{fmtDay(row.week_start)}</td>
                   <td>{row.station}</td>
-                  {([row.eligible, row.sent, row.delivered, row.read, row.replied, row.booked_in_chat, row.left_list, row.converted, row.holdout, row.holdout_converted] as number[]).map((value, index) => (
-                    <td key={index} className="k1-table__num">{fmtNum(value)}</td>
+                  {MATRIX_COLUMNS.map((key) => (
+                    <td key={key} className="k1-table__num">{fmtNum(row[key])}</td>
                   ))}
-                  <td className="k1-table__num">{fmtUplift(row.uplift)}</td>
-                  <td className="k1-table__num">{fmtNum(row.stops)}</td>
-                  <td className="k1-table__num">{fmtNum(row.handoffs)}</td>
-                  <td className="k1-table__num">{fmtNum(row.billable)}</td>
                 </tr>
               ))}
             </tbody>
