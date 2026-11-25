@@ -18,7 +18,7 @@ const FIELD_GUIDE = [
   'funnel.left_list = customers who dropped off K1\'s daily list (booked or inspected elsewhere); funnel.stops = customers who asked us to stop messaging them in the period.',
   'Rates are fractions from 0 to 1. funnel.rate and by_station.rate = converted / delivered, where converted means booked.',
   'holdout = customers deliberately not messaged (10%); holdout_converted = how many of them booked anyway. uplift = rate minus the hold-out booking rate.',
-  'send_hours gives reply_rate and booking_rate for messages sent in that weekday and hour. It lists every cell, including those with few sends; the page only shows cells with 10 or more sends.',
+  'send_hours gives reply_rate and booking_rate for messages sent in that weekday and hour. A booking is counted on the hour we messaged that customer, including when the daily list sweep is what later shows they booked. The reply chart shows cells with 10 or more sends. The booking chart shows those cells and also any hour that already has a booking.',
   'by_message.step: opener is the first message, reminder_1 to reminder_3 follow it; reminder_3 goes out after the deadline.',
   'bookings_per_week.by_step counts each booking under the last message the customer got before booking.',
   'A null rate or uplift means there is not enough data yet.',
@@ -202,17 +202,19 @@ type HourCell = Performance['send_hours'][number]
 
 function SendHours({ data }: { data: Performance }) {
   const p = useCopy().prod.optimise
-  const cells = data.send_hours.filter((cell) => cell.sends >= MIN_SENDS)
-  const hasBookings = cells.some((cell) => cell.booking_rate !== undefined)
+  const busy = data.send_hours.filter((cell) => cell.sends >= MIN_SENDS)
+  const knowsBookings = data.send_hours.some((cell) => cell.booking_rate !== undefined)
+  // The daily sweep only records that a customer left the list. The rate is already tied to the hour we messaged them, so a booking in a quieter hour still has to show.
+  const booked = knowsBookings ? data.send_hours.filter((cell) => cell.sends >= MIN_SENDS || (cell.booking_rate ?? 0) > 0) : []
   return (
     <div className="k1-prod-grid k1-prod-grid--two">
-      <HourHeat title={p.sendHours} cells={cells} rate={(cell) => cell.reply_rate} hint={p.cellHint} />
-      <HourHeat title={p.bookingHours} cells={hasBookings ? cells : []} rate={(cell) => cell.booking_rate ?? null} hint={p.bookingCellHint} />
+      <HourHeat title={p.sendHours} cells={busy} rate={(cell) => cell.reply_rate} hint={p.cellHint} note={p.sendHoursHint(MIN_SENDS)} />
+      <HourHeat title={p.bookingHours} cells={booked} rate={(cell) => cell.booking_rate ?? null} hint={p.bookingCellHint} note={p.bookingHoursHint(MIN_SENDS)} />
     </div>
   )
 }
 
-function HourHeat({ title, cells, rate, hint }: { title: string; cells: HourCell[]; rate: (cell: HourCell) => number | null; hint: (sends: string, rate: string) => string }) {
+function HourHeat({ title, cells, rate, hint, note }: { title: string; cells: HourCell[]; rate: (cell: HourCell) => number | null; hint: (sends: string, rate: string) => string; note: string }) {
   const t = useCopy()
   const p = t.prod.optimise
   const hours = [...new Set(cells.map((cell) => cell.hour))].sort((a, b) => a - b)
@@ -220,7 +222,7 @@ function HourHeat({ title, cells, rate, hint }: { title: string; cells: HourCell
   const top = Math.max(0.01, ...cells.map((cell) => rate(cell) ?? 0))
   const find = (weekday: number, hour: number) => cells.find((cell) => cell.weekday === weekday && cell.hour === hour)
   return (
-    <Card title={title} aside={<span className="k1-hint">{p.sendHoursHint(MIN_SENDS)}</span>}>
+    <Card title={title} aside={<span className="k1-hint">{note}</span>}>
       {cells.length ? (
         <div className="k1-prod-scroll">
           <table className="k1-heat">
