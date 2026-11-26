@@ -7,7 +7,7 @@ import { Card, CardsSkeleton, EmptyState, ErrorState, fmtDay, fmtNum, fmtRate, f
 
 const RANGES: Range[] = ['week', 'month', 'all']
 const MIN_SENDS = 10
-const UPLIFT_SHOWN_ABOVE = 0.1
+const UPLIFT_SHOWN_ABOVE = 0.05
 const MATRIX_COLUMNS = ['eligible', 'delivered', 'replied', 'booked_in_chat', 'left_list', 'converted', 'holdout', 'holdout_converted', 'stops', 'handoffs'] as const
 
 type Notify = (toast: { title: string; body: string; tone?: 'success' | 'error' }) => void
@@ -78,7 +78,7 @@ function Report({ data }: { data: Performance }) {
     [t.prod.funnel.bookedInChat, f.booked_in_chat],
     [t.prod.funnel.leftList, f.left_list],
   ]
-  const showUplift = f.uplift != null && f.uplift > UPLIFT_SHOWN_ABOVE
+  const showUplift = f.uplift != null && f.uplift >= UPLIFT_SHOWN_ABOVE
   const top = Math.max(1, f.sent)
   const bestRate = Math.max(0.0001, ...data.by_station.map((row) => row.rate ?? 0))
   return (
