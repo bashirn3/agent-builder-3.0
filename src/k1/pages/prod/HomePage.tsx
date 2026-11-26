@@ -29,6 +29,7 @@ export function HomePage() {
           <Card title={p.bookings} aside={<span className="k1-hint">{p.lastWeeks}</span>}>
             <AreaChart
               label={p.bookingsPerWeek}
+              scale="log"
               x={weeks.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start) }))}
               series={[
                 ...(hasDelivered ? [{ key: 'delivered', label: t.prod.funnel.delivered, color: '#93c5fd', values: weeks.map((week) => week.delivered ?? 0) }] : []),
