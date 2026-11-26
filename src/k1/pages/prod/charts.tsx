@@ -29,21 +29,23 @@ export type AreaSeries = { key: string; label: string; color: string; values: nu
 
 // Chatbase "Chats started": smooth lines over fading fills, gridlines and no y axis. Several series overlay from
 // zero, largest drawn first so the smaller ones stay visible in front.
-export function AreaChart({ label, x: columns, series, share, footer }: {
+export function AreaChart({ label, x: columns, series, share, footer, scale }: {
   label: string
   x: Array<{ key: string; label: string }>
   series: AreaSeries[]
   share?: boolean
   footer?: (index: number) => ReactNode
+  scale?: 'log'
 }) {
   const id = useId()
   const hover = useHover(columns.length)
   const width = 1000
   const height = 240
   const single = columns.length === 1
-  const top = Math.max(1, ...series.flatMap((item) => item.values)) * 1.15
+  const plot = (value: number) => scale === 'log' ? Math.log1p(Math.max(0, value)) : value
+  const top = Math.max(scale === 'log' ? Math.log1p(1) : 1, ...series.flatMap((item) => item.values.map(plot))) * 1.15
   const xAt = (index: number) => single ? index * width : (index / (columns.length - 1)) * width
-  const y = (value: number) => height - (value / top) * height
+  const y = (value: number) => height - (plot(value) / top) * height
   const path = (values: number[]) => {
     const points = single ? [values[0], values[0]] : values
     const line = points.map((value, index) => {
