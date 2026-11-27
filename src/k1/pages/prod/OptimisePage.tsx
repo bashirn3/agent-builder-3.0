@@ -74,6 +74,7 @@ function Report({ data }: { data: Performance }) {
   const funnel: Array<[string, number]> = [
     [t.prod.funnel.sent, f.sent],
     [t.prod.funnel.delivered, f.delivered],
+    [t.prod.funnel.notOnWhatsapp, f.not_on_whatsapp ?? 0],
     [t.prod.funnel.replied, f.replied],
     [t.prod.funnel.bookedInChat, f.booked_in_chat],
     [t.prod.funnel.leftList, f.left_list],
@@ -96,7 +97,7 @@ function Report({ data }: { data: Performance }) {
         <Card title={p.funnel}>
           <RankTable
             head={[p.stage, p.customers]}
-            rows={funnel.map(([label, value]) => ({ key: label, label, value: fmtNum(value), share: value / top }))}
+            rows={funnel.map(([label, value]) => ({ key: label, label, detail: label === t.prod.funnel.notOnWhatsapp ? p.notOnWhatsappHint : undefined, value: fmtNum(value), share: value / top }))}
           />
         </Card>
         <Card title={p.byStation}>
@@ -135,7 +136,7 @@ function Report({ data }: { data: Performance }) {
         </Card>
         <Card title={p.reasons}>
           {data.reasons.length
-            ? <PieChart label={p.reasons} slices={data.reasons.map((reason) => ({ key: reason.label, label: reason.label, value: reason.count }))} />
+            ? <PieChart label={p.reasons} slices={data.reasons.map((reason) => ({ key: reason.label, label: t.prod.reasonNames[reason.label] ?? reason.label, value: reason.count }))} />
             : <p className="k1-hint">{p.noReasons}</p>}
         </Card>
       </div>
