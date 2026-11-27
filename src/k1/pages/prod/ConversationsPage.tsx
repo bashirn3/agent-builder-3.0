@@ -10,7 +10,7 @@ import { outreachReply, stagingParts, whatsappRuns } from '../../data/stagingVie
 import { WaGlyph } from '../../ui/WaGlyph'
 import { DeliveryTag, EmptyState, PreviewNote, ErrorState, fmtClock, fmtDay, fmtNum, fmtTime, RefreshButton, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
 
-const FILTERS: ConversationFilter[] = ['all', 'open', 'no_answer', 'booked', 'stopped']
+const FILTERS: ConversationFilter[] = ['all', 'open', 'no_answer', 'booked', 'left_list', 'left_quiet', 'stopped']
 const PAGE = 50
 
 const readFilter = (): ConversationFilter => {
@@ -207,7 +207,7 @@ function Details({ detail }: { detail: ConversationDetail }) {
       <Facts heading={p.conversation} rows={[
         [p.status, <StatusTag status={conversation.status} />],
         [p.outcome, conversation.outcome ? t.prod.outcomes[conversation.outcome as keyof typeof t.prod.outcomes] ?? conversation.outcome : '—'],
-        [p.reason, conversation.reason ?? '—'],
+        [p.reason, conversation.reason ? (t.prod.reasonNames[conversation.reason] ?? conversation.reason) : '—'],
         [p.botBuild, <code>{conversation.bot_build}</code>],
       ]} />
       <Facts heading={p.reminders} rows={detail.reminders.length

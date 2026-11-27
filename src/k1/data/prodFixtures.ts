@@ -201,6 +201,8 @@ const counts = (items: ConversationItem[]) => ({
   open: items.filter((item) => item.status === 'open').length,
   no_answer: items.filter((item) => item.status === 'no_answer').length,
   booked: items.filter((item) => item.status === 'booked').length,
+  left_list: items.filter((item) => item.status === 'left_list').length,
+  left_quiet: 0,
   stopped: items.filter((item) => item.status === 'stopped').length,
 })
 

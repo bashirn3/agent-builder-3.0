@@ -13,8 +13,8 @@ export const isSample = (endpoint: ProdEndpoint) => !LIVE.has('all') && !LIVE.ha
 
 export type Delivery = 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
 export type Step = 'opener' | 'reminder_1' | 'reminder_2' | 'reminder_3'
-export type ConversationStatus = 'open' | 'no_answer' | 'booked' | 'stopped' | 'closed'
-export type ConversationFilter = 'all' | 'open' | 'no_answer' | 'booked' | 'stopped'
+export type ConversationStatus = 'open' | 'no_answer' | 'booked' | 'left_list' | 'stopped' | 'closed'
+export type ConversationFilter = 'all' | 'open' | 'no_answer' | 'booked' | 'left_list' | 'left_quiet' | 'stopped'
 export type LeadStatus = 'waiting' | 'in_sequence' | 'replied' | 'booked' | 'left_list' | 'stopped' | 'failed' | 'holdout' | 'closed'
 export type Range = 'week' | 'month' | 'all'
 
@@ -90,7 +90,7 @@ export type MatrixRow = {
 
 export type Performance = {
   range: Range
-  funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; stops?: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
+  funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; not_on_whatsapp?: number; stops?: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
   bookings_per_week: Array<{ week_start: string; before_deadline: number; after_deadline: number; by_step?: Partial<Record<Step, number>> }>
   by_station: Array<{ station: string; delivered: number; converted: number; rate: number | null }>
   send_hours: Array<{ weekday: number; hour: number; sends: number; reply_rate: number | null; booking_rate?: number | null }>
