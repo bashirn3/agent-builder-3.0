@@ -253,10 +253,11 @@ function home(): HomeData {
       booked_in_chat: weeks[7].booked,
       booked_customers: weeks[7].booked + 4,
       bookings_per_week: weeks,
-      bookings_per_day: Array.from({ length: 7 }, (_, index) => {
-        const start = new Date(`${weekStart(now)}T00:00:00Z`).getTime()
-        return { day: isoDay(start + index * DAY), delivered: index > 4 ? 0 : int(20, 48), booked: index > 4 ? 0 : int(0, 4) }
-      }),
+      bookings_per_day: Array.from({ length: 7 }, (_, index) => ({
+        day: isoDay(now - (6 - index) * DAY),
+        delivered: int(20, 48),
+        booked: int(0, 4),
+      })),
     },
     value: { delivered_contacts: 712, converted: 94, rate: 94 / 712 },
     leads_left: { in_window: LEADS.filter((lead) => lead.status === 'waiting' && lead.days_left >= settings.window.min_days && lead.days_left <= settings.window.max_days).length, window: settings.window },

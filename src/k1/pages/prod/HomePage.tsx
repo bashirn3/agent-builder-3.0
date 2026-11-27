@@ -10,8 +10,9 @@ export function HomePage() {
   const p = t.prod.home
   const { data, error, loading, refreshing, reload } = useProdData((signal) => prodApi.home(signal), [], true)
   const week = data?.this_week
-  const days = week?.bookings_per_day ?? []
-  const byDay = days.length > 0 && days.length <= 7
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Helsinki', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const days = (week?.bookings_per_day ?? []).filter((day) => day.day.slice(0, 10) <= today).slice(-7)
+  const byDay = days.length > 0
   const points = byDay
     ? days.map((day) => ({ key: day.day, booked: day.booked, delivered: day.delivered }))
     : (week?.bookings_per_week.slice(-8) ?? []).map((item) => ({ key: item.week_start, booked: item.booked, delivered: item.delivered }))
@@ -31,7 +32,7 @@ export function HomePage() {
             <StatCard icon={<MessageCircle size={14} />} label={t.prod.funnel.bookedThroughChat} value={fmtNum(data.this_week.booked_in_chat ?? data.this_week.booked)} />
           </div>
 
-          <Card title={p.bookings} aside={<span className="k1-hint">{byDay ? p.thisWeek : p.lastWeeks}</span>}>
+          <Card title={p.bookings} aside={<span className="k1-hint">{byDay ? p.lastDays : p.lastWeeks}</span>}>
             <AreaChart
               label={byDay ? p.bookingsPerDay : p.bookingsPerWeek}
               scale="log"
