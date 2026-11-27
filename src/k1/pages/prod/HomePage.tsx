@@ -9,8 +9,13 @@ export function HomePage() {
   const t = useCopy()
   const p = t.prod.home
   const { data, error, loading, refreshing, reload } = useProdData((signal) => prodApi.home(signal), [], true)
-  const weeks = data?.this_week.bookings_per_week.slice(-8) ?? []
-  const hasDelivered = weeks.some((week) => week.delivered !== undefined)
+  const week = data?.this_week
+  const days = week?.bookings_per_day ?? []
+  const byDay = days.length > 0 && days.length <= 7
+  const points = byDay
+    ? days.map((day) => ({ key: day.day, booked: day.booked, delivered: day.delivered }))
+    : (week?.bookings_per_week.slice(-8) ?? []).map((item) => ({ key: item.week_start, booked: item.booked, delivered: item.delivered }))
+  const hasDelivered = points.some((point) => point.delivered !== undefined)
 
   return (
     <div className="k1-page k1-prod">
@@ -26,18 +31,18 @@ export function HomePage() {
             <StatCard icon={<MessageCircle size={14} />} label={t.prod.funnel.bookedThroughChat} value={fmtNum(data.this_week.booked_in_chat ?? data.this_week.booked)} />
           </div>
 
-          <Card title={p.bookings} aside={<span className="k1-hint">{p.lastWeeks}</span>}>
+          <Card title={p.bookings} aside={<span className="k1-hint">{byDay ? p.thisWeek : p.lastWeeks}</span>}>
             <AreaChart
-              label={p.bookingsPerWeek}
+              label={byDay ? p.bookingsPerDay : p.bookingsPerWeek}
               scale="log"
-              x={weeks.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start) }))}
+              x={points.map((point) => ({ key: point.key, label: fmtDay(point.key) }))}
               series={[
-                ...(hasDelivered ? [{ key: 'delivered', label: t.prod.funnel.delivered, color: '#93c5fd', values: weeks.map((week) => week.delivered ?? 0) }] : []),
-                { key: 'booked', label: t.prod.funnel.booked, color: '#1d4ed8', values: weeks.map((week) => week.booked) },
+                ...(hasDelivered ? [{ key: 'delivered', label: t.prod.funnel.delivered, color: '#93c5fd', values: points.map((point) => point.delivered ?? 0) }] : []),
+                { key: 'booked', label: t.prod.funnel.booked, color: '#1d4ed8', values: points.map((point) => point.booked) },
               ]}
               footer={hasDelivered ? (index) => {
-                const week = weeks[index]
-                return week.delivered ? <small>{p.weekRate(fmtRate(week.booked / week.delivered))}</small> : null
+                const point = points[index]
+                return point.delivered ? <small>{p.weekRate(fmtRate(point.booked / point.delivered))}</small> : null
               } : undefined}
             />
           </Card>

@@ -696,6 +696,7 @@ export const en = {
     home: {
       thisWeek: 'This week',
       bookingsPerWeek: 'Delivered messages and bookings per week, last 8 weeks',
+      bookingsPerDay: 'Delivered messages and bookings per day this week',
       bookings: 'Delivered and booked',
       weekRate: (rate: string) => `Booking rate ${rate}`,
       lastWeeks: 'Last 8 weeks',
@@ -1602,6 +1603,7 @@ export const fi: Copy = {
     home: {
       thisWeek: 'Tämä viikko',
       bookingsPerWeek: 'Toimitetut viestit ja varaukset viikoittain, viimeiset 8 viikkoa',
+      bookingsPerDay: 'Toimitetut viestit ja varaukset päivittäin tällä viikolla',
       bookings: 'Toimitetut ja varatut',
       weekRate: (rate: string) => `Varausaste ${rate}`,
       lastWeeks: 'Viimeiset 8 viikkoa',
