@@ -1,6 +1,6 @@
 import type {
   Bands, Batch, ConversationDetail, ConversationFilter, ConversationItem, ConversationStatus, Controls, Delivery, HomeData,
-  LeadItem, LeadStatus, MatrixRow, Performance, Range, SettingsPatch, Step,
+  LeadItem, LeadStatus, MatrixRow, Performance, Range, SettingsPatch, Step, WhatsAppReach, WhatsAppStatus,
 } from './prodApi'
 
 // Invented records in the shape of the brief's example responses. Names, plates and numbers are not real customers.
@@ -15,6 +15,25 @@ const FIRST = ['Matti', 'Liisa', 'Juha', 'Anna', 'Timo', 'Sari', 'Mikko', 'Kaisa
 const LAST = ['Virtanen', 'Korhonen', 'Mäkinen', 'Nieminen', 'Mäkelä', 'Hämäläinen', 'Laine', 'Heikkinen', 'Koskinen', 'Järvinen', 'Lehtonen', 'Lindqvist']
 const LETTERS = 'ABCEFGHIJKLMNOPRSTUVXYZ'
 const DAY = 86_400_000
+
+function waOf(index: number): WhatsAppStatus | null {
+  if (index % 19 === 0) return null
+  if (index % 11 === 0) return 'not_on_whatsapp'
+  if (index % 23 === 0) return 'invalid_phone'
+  return 'on_whatsapp'
+}
+
+function reachOf(leads: Array<Pick<LeadItem, 'whatsapp' | 'holdout'>>): WhatsAppReach {
+  const reach: WhatsAppReach = { checked: 0, on_whatsapp: 0, not_on_whatsapp: 0, invalid_phone: 0, unchecked: 0, holdout_unreachable: 0, share_unreachable: null }
+  for (const lead of leads) {
+    if (!lead.whatsapp) { reach.unchecked++; continue }
+    reach.checked++
+    reach[lead.whatsapp]++
+    if (lead.holdout && lead.whatsapp !== 'on_whatsapp') reach.holdout_unreachable++
+  }
+  reach.share_unreachable = reach.checked ? Math.round((reach.not_on_whatsapp + reach.invalid_phone) / reach.checked * 1000) / 1000 : null
+  return reach
+}
 
 let seed = 20261124
 const random = () => {
@@ -133,7 +152,7 @@ const STATUS_PLAN: Plan[] = ['booked', 'no_answer', 'open', 'booked', 'handoff',
 const CONVERSATIONS = STATUS_PLAN.map((status, index) => conversation(index, status))
   .sort((a, b) => b.item.last_message_at.localeCompare(a.item.last_message_at))
 
-const NEXT: Record<Step, Step | null> = { opener: 'reminder_1', reminder_1: 'reminder_2', reminder_2: 'reminder_3', reminder_3: null }
+const NEXT: Record<Step, Step | null> = { opener: 'reminder_2', reminder_1: 'reminder_2', reminder_2: null, reminder_3: null }
 const LEAD_STATUS: LeadStatus[] = ['waiting', 'waiting', 'waiting', 'in_sequence', 'in_sequence', 'in_sequence', 'in_sequence', 'replied', 'booked', 'left_list', 'failed', 'holdout', 'closed']
 
 const LEADS: LeadItem[] = [
@@ -143,7 +162,7 @@ const LEADS: LeadItem[] = [
     const next = status === 'in_sequence' ? NEXT[lastReminder.step] : null
     return {
       id: `l_${400 + index}`, station: item.station, plate: item.plate, phone: item.phone, language: item.language, vehicle: 'M1', product: random() < 0.8 ? '004' : '004e',
-      deadline: detail.customer.deadline, days_left: Math.round((new Date(detail.customer.deadline).getTime() - now) / DAY), status, holdout: false,
+      deadline: detail.customer.deadline, days_left: Math.round((new Date(detail.customer.deadline).getTime() - now) / DAY), status, holdout: false, whatsapp: waOf(index),
       last_message: lastReminder, next_message: next ? { step: next, due_on: isoDay(now + int(1, 6) * DAY) } : null, conversation_id: item.id,
     }
   }),
@@ -155,9 +174,9 @@ const LEADS: LeadItem[] = [
     const delivery: Delivery = status === 'failed' ? 'failed' : random() < 0.6 ? 'read' : 'delivered'
     return {
       id: `l_${500 + index}`, station: who.station, plate: who.plate, phone: masked(who.digits), language: who.language, vehicle: random() < 0.9 ? 'M1' : 'N1', product: random() < 0.8 ? '004' : '004e',
-      deadline: isoDay(now + days * DAY), days_left: days, status, holdout: status === 'holdout',
+      deadline: isoDay(now + days * DAY), days_left: days, status, holdout: status === 'holdout', whatsapp: waOf(index + 40),
       last_message: sent ? { step: 'opener', sent_at: at(now - int(1, 8) * DAY), delivery } : null,
-      next_message: status === 'waiting' ? { step: 'opener', due_on: isoDay(now + int(0, 3) * DAY) } : status === 'in_sequence' ? { step: 'reminder_1', due_on: isoDay(now + int(1, 6) * DAY) } : null,
+      next_message: status === 'waiting' ? { step: 'opener', due_on: isoDay(now + int(0, 3) * DAY) } : status === 'in_sequence' ? { step: 'reminder_2', due_on: isoDay(now + int(1, 6) * DAY) } : null,
       conversation_id: null,
     }
   }),
@@ -167,13 +186,13 @@ const settings: Omit<Controls, 'can_edit' | 'batch' | 'history'> = {
   outreach_on: true,
   sending_ready: true,
   cap_today: 5,
-  daily_total_cap: 60,
+  daily_total_cap: 110,
   pacing: { min_gap_minutes: 6, max_gap_minutes: 17 },
   ramp: { start_date: isoDay(now + DAY), per_sending_day: [5, 5, 6, 6, 8], after: { min: 15, max: 20 } },
   bot_on: true,
   stations: STATIONS.map((station) => ({ ...station, first_messages_on: true, reminders_on: true })),
   window: { min_days: 2, max_days: 21 },
-  timing: { reminder_1_days_before: 10, reminder_2_days_before: 3, reminder_3_days_after: 3, gap_after_opener_days: 7, gap_between_days: 4 },
+  timing: { reminder_1_days_before: 7, reminder_2_days_before: 7, reminder_3_days_after: 60, gap_after_opener_days: 5, gap_between_days: 4 },
   daily_cap: 50,
   sending_hours: { days: [1, 2, 3, 4, 5], from: '09:00', to: '18:00', timezone: 'Europe/Helsinki' },
   holdout_percent: 10,
@@ -263,6 +282,7 @@ function home(): HomeData {
     },
     value: { delivered_contacts: 712, converted: 94, rate: 94 / 712 },
     leads_left: { in_window: LEADS.filter((lead) => lead.status === 'waiting' && lead.days_left >= settings.window.min_days && lead.days_left <= settings.window.max_days).length, window: settings.window },
+    whatsapp: reachOf(LEADS),
   }
 }
 
@@ -294,7 +314,7 @@ function performance(range: Range): Performance {
   return {
     range,
     funnel: {
-      sent: sum('sent'), delivered, read: sum('read'), replied: sum('replied'), booked_in_chat: sum('booked_in_chat'), left_list: sum('left_list'), stops: sum('stops'), converted,
+      sent: sum('sent'), delivered, read: sum('read'), replied: sum('replied'), booked_in_chat: sum('booked_in_chat'), left_list: sum('left_list'), stops: sum('stops'), not_on_whatsapp: 12, whatsapp: reachOf(LEADS), converted,
       rate: delivered ? converted / delivered : null, holdout, holdout_converted: holdoutConverted,
       uplift: holdout >= 20 && delivered ? converted / delivered - holdoutConverted / holdout : null,
     },
@@ -343,7 +363,7 @@ function applyPatch(patch: SettingsPatch) {
   const range = patch.window ?? settings.window
   if (range.min_days < 0 || range.max_days > 30 || range.min_days > range.max_days) throw { error: 'invalid_window', status: 400 }
   const timing = patch.timing ? { ...settings.timing, ...patch.timing } : settings.timing
-  if (timing.reminder_2_days_before >= timing.reminder_1_days_before) throw { error: 'invalid_timing', status: 400 }
+  if (timing.reminder_2_days_before > timing.reminder_1_days_before) throw { error: 'invalid_timing', status: 400 }
   if (patch.daily_cap !== undefined && (patch.daily_cap < 0 || patch.daily_cap > 1000)) throw { error: 'invalid_daily_cap', status: 400 }
   Object.assign(settings, structuredClone(patch), { timing })
   if (patch.stations) settings.stations = settings.stations.map((station) => ({ ...station, ...patch.stations?.find((item) => item.id === station.id) }))

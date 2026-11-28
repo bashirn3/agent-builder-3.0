@@ -1,10 +1,10 @@
 import { ReactNode, useCallback, useEffect, useRef, useState, type DependencyList } from 'react'
 import { motion } from 'motion/react'
 import { ease } from '../../../lib/motion'
-import { ProdError, type ConversationStatus, type Delivery, type LeadStatus, type Step } from '../../data/prodApi'
+import { ProdError, type ConversationStatus, type Delivery, type LeadStatus, type Step, type WhatsAppStatus } from '../../data/prodApi'
 import { copy, locale, useCopy } from '../../i18n'
 import { href } from '../../routes'
-import { CalendarDays, RefreshCw } from '../../ui/icons'
+import { CalendarDays, Check, RefreshCw } from '../../ui/icons'
 import { Skeleton } from '../../ui/controls'
 import { SampleBadge } from '../SplitView'
 
@@ -214,6 +214,14 @@ export const fmtNum = (value: number) => value.toLocaleString(locale())
 export function StatusTag({ status }: { status: ConversationStatus | LeadStatus }) {
   const t = useCopy()
   return <span className={`k1-status k1-status--live-${status.replace(/_/g, '-')}`}>{t.prod.status[status] ?? status}</span>
+}
+
+export function WhatsAppTag({ status }: { status: WhatsAppStatus | null | undefined }) {
+  const t = useCopy()
+  if (status === undefined) return null
+  if (status === null) return <span className="k1-wa k1-wa--checking">{t.prod.leads.checking}</span>
+  if (status === 'on_whatsapp') return <span className="k1-wa k1-wa--on" title={t.prod.leads.onWhatsapp} aria-label={t.prod.leads.onWhatsapp}><Check size={12} /></span>
+  return <span className="k1-wa k1-wa--off">{t.prod.leads.noWhatsapp}</span>
 }
 
 export function DeliveryTag({ delivery }: { delivery: Delivery }) {

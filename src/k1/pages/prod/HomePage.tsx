@@ -1,7 +1,7 @@
-import { isSample, prodApi } from '../../data/prodApi'
+import { isSample, prodApi, type WhatsAppReach } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
 import { href } from '../../routes'
-import { CalendarDays, Check, MessageCircle, MessagesSquare } from '../../ui/icons'
+import { CalendarDays, Check, MessageCircle, MessagesSquare, WhatsApp } from '../../ui/icons'
 import { AreaChart, StatCard } from './charts'
 import { Card, CardsSkeleton, DatePill, ErrorState, fmtDay, fmtNum, fmtRate, ProdHead, useProdData } from './shared'
 
@@ -31,6 +31,8 @@ export function HomePage() {
             <StatCard icon={<CalendarDays size={14} />} label={t.prod.funnel.booked} value={fmtNum(data.this_week.booked_customers ?? data.this_week.booked)} />
             <StatCard icon={<MessageCircle size={14} />} label={t.prod.funnel.bookedThroughChat} value={fmtNum(data.this_week.booked_in_chat ?? data.this_week.booked)} />
           </div>
+
+          {data.whatsapp && <WhatsAppTile reach={data.whatsapp} />}
 
           <Card title={p.bookings} aside={<span className="k1-hint">{byDay ? p.lastDays : p.lastWeeks}</span>}>
             <AreaChart
@@ -69,5 +71,18 @@ export function HomePage() {
         </>
       )}
     </div>
+  )
+}
+
+function WhatsAppTile({ reach }: { reach: WhatsAppReach }) {
+  const p = useCopy().prod.home
+  const unreachable = reach.not_on_whatsapp + reach.invalid_phone
+  const share = reach.share_unreachable == null ? null : `${(reach.share_unreachable * 100).toFixed(1)}\u00a0%`
+  return (
+    <p className="k1-prod-wa" role="status">
+      <WhatsApp size={14} />
+      <strong>{p.notOnWhatsapp(fmtNum(unreachable), share)}</strong>
+      {reach.unchecked > 0 && <span>{p.checkingLeft(fmtNum(reach.unchecked))}</span>}
+    </p>
   )
 }

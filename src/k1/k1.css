@@ -1209,6 +1209,15 @@ body { overscroll-behavior: none; }
 .k1-prod .k1-table tbody tr.is-static { cursor: default; }
 .k1-prod .k1-table th { width: auto; }
 
+.k1-prod-wa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0; padding: 10px 14px; border: 1px solid var(--k1-line); border-radius: var(--k1-r-lg); background: var(--k1-surface); font-size: 13px; }
+.k1-prod-wa svg { flex: none; color: var(--k1-ink-2); }
+.k1-prod-wa strong { font-weight: 600; }
+.k1-prod-wa span { color: var(--k1-muted); }
+.k1-wa { display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 500; line-height: 1; }
+.k1-wa--on { padding: 0; width: 20px; justify-content: center; background: var(--k1-success-bg); color: #15803d; }
+.k1-wa--off { background: #f4f4f5; color: #52525b; }
+.k1-wa--checking { background: transparent; color: var(--k1-muted); padding: 0; }
+
 .k1-stat-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .k1-stat-cards--five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .k1-stat-cards--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }

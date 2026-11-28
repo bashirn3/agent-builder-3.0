@@ -7,7 +7,7 @@ import { DayRange } from '../../ui/DayRange'
 import { CalendarDays, Search, Users } from '../../ui/icons'
 import { StatCard } from './charts'
 import { CardListSkeleton, TableSkeleton } from '../../ui/skeletons'
-import { DeliveryTag, EmptyState, ErrorState, fmtDay, fmtNum, PILOT_STATIONS, ProdHead, StatusTag, stepLabel, useDebounced, useProdData } from './shared'
+import { DeliveryTag, EmptyState, ErrorState, fmtDay, fmtNum, PILOT_STATIONS, ProdHead, StatusTag, stepLabel, useDebounced, useProdData, WhatsAppTag } from './shared'
 
 const STATUSES: LeadStatus[] = ['waiting', 'in_sequence', 'replied', 'booked', 'left_list', 'stopped', 'failed', 'holdout', 'closed']
 const BANDS: Array<keyof Bands> = ['0-6', '7-13', '14-20', '21-30']
@@ -105,7 +105,7 @@ export function LiveLeadsPage({ compact }: { compact: boolean }) {
                 <a className="k1-lead-card" href={lead.conversation_id ? href({ page: 'liveChats', id: lead.conversation_id }) : undefined}>
                   <span className="k1-lead-card__top"><strong>{lead.plate}</strong><time>{fmtDay(lead.deadline)}</time></span>
                   <span className="k1-lead-card__station">{lead.station}</span>
-                  <span className="k1-prod-inline"><StatusTag status={lead.status} />{p.daysLeft(lead.days_left)}</span>
+                  <span className="k1-prod-inline"><StatusTag status={lead.status} /><WhatsAppTag status={lead.whatsapp} />{p.daysLeft(lead.days_left)}</span>
                 </a>
               </li>
             ))}
@@ -128,7 +128,7 @@ export function LiveLeadsPage({ compact }: { compact: boolean }) {
                   <td className="k1-table__num">{fmtDay(lead.deadline)}</td>
                   <td className="k1-table__num">{lead.days_left}</td>
                   <td>{lead.language.toUpperCase()}</td>
-                  <td><StatusTag status={lead.status} /></td>
+                  <td><span className="k1-prod-inline"><StatusTag status={lead.status} /><WhatsAppTag status={lead.whatsapp} /></span></td>
                   <td>{lead.next_message ? <span className="k1-prod-inline">{stepLabel(lead.next_message.step)}<span className="k1-hint">{fmtDay(lead.next_message.due_on)}</span></span> : '—'}</td>
                   <td>{lead.last_message ? <span className="k1-prod-inline">{stepLabel(lead.last_message.step)}<DeliveryTag delivery={lead.last_message.delivery} /></span> : '—'}</td>
                 </tr>

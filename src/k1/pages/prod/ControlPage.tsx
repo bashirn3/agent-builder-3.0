@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { isSample, ProdError, prodApi, type Batch, type Controls, type Settings, type SettingsPatch, type Timing } from '../../data/prodApi'
+import { isSample, ProdError, prodApi, reminderSwitchedOff, type Batch, type Controls, type Settings, type SettingsPatch, type Step, type Timing } from '../../data/prodApi'
 import { copy, useCopy } from '../../i18n'
 import { Spinner, Switch } from '../../ui/controls'
 import { DayRange } from '../../ui/DayRange'
@@ -142,6 +142,7 @@ export function ControlPage({ notify }: { notify: Notify }) {
 
   const hoursValid = plan ? plan.sending_hours.from < plan.sending_hours.to && plan.sending_hours.days.length > 0 : true
   const capValid = plan ? plan.daily_cap >= 0 && plan.daily_cap <= 1000 : true
+  const remindersOff = plan ? reminderSwitchedOff(plan.timing) : new Set<Step>()
 
   const confirmCopy = confirm?.kind === 'bot'
     ? { title: p.botOffTitle, body: p.botOffBody, action: p.turnOff }
@@ -215,15 +216,26 @@ export function ControlPage({ notify }: { notify: Notify }) {
                 <p className="k1-hint">{p.windowHint}</p>
               </div>
 
-              {TIMING.map((key) => (
-                <label key={key} className="k1-set__row">
-                  <span className="k1-set__label"><strong>{p.timing[key]}</strong></span>
-                  <span className="k1-prod-number">
-                    <input className="k1-input" type="number" min={0} max={60} inputMode="numeric" value={plan.timing[key]} onChange={(event) => setTiming(key, event.target.value)} />
-                    <span>{p.dayUnit}</span>
-                  </span>
-                </label>
-              ))}
+              {TIMING.map((key) => {
+                const step: Step | null = key === 'reminder_1_days_before' ? 'reminder_1' : key === 'reminder_3_days_after' ? 'reminder_3' : null
+                if (step && remindersOff.has(step)) {
+                  return (
+                    <div key={key} className="k1-set__row">
+                      <span className="k1-set__label"><strong>{t.prod.steps[step]}</strong></span>
+                      <span className="k1-prod-number k1-prod-number--read"><strong>{p.off}</strong></span>
+                    </div>
+                  )
+                }
+                return (
+                  <label key={key} className="k1-set__row">
+                    <span className="k1-set__label"><strong>{p.timing[key]}</strong></span>
+                    <span className="k1-prod-number">
+                      <input className="k1-input" type="number" min={0} max={60} inputMode="numeric" value={plan.timing[key]} onChange={(event) => setTiming(key, event.target.value)} />
+                      <span>{p.dayUnit}</span>
+                    </span>
+                  </label>
+                )
+              })}
               <label className="k1-set__row">
                 <span className="k1-set__label"><strong>{p.dailyCap}</strong></span>
                 <span className="k1-prod-number">
