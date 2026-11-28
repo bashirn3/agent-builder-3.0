@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isSample, prodApi, type Performance, type Range, type Step } from '../../data/prodApi'
+import { isSample, prodApi, reminderSwitchedOff, type Performance, type Range, type Step, type Timing } from '../../data/prodApi'
 import { useCopy } from '../../i18n'
 import { CalendarDays, Check, Copy, MessagesSquare, Optimise } from '../../ui/icons'
 import { BarChart, PieChart, RankTable, StatCard } from './charts'
@@ -20,7 +20,7 @@ const FIELD_GUIDE = [
   'Rates are fractions from 0 to 1. funnel.rate and by_station.rate = converted / delivered, where converted means booked.',
   'holdout = customers deliberately not messaged (10%); holdout_converted = how many of them booked anyway. uplift = rate minus the hold-out booking rate.',
   'send_hours gives reply_rate and booking_rate for messages sent in that weekday and hour. It lists every cell, including those with few sends; the page only shows cells with 10 or more sends.',
-  'by_message.step: opener is the first message, reminder_1 to reminder_3 follow it; reminder_3 goes out after the deadline.',
+  'by_message.step: opener is the first message. reminder_2 is the 7-day reminder. reminder_1 is the 14-day reminder and reminder_3 is after the deadline; both are left out of the table while switched off.',
   'bookings_per_week.by_step counts each booking under the last message the customer got before booking.',
   'A null rate or uplift means there is not enough data yet.',
 ]
@@ -39,11 +39,17 @@ export function OptimisePage({ notify }: { notify: Notify }) {
   const t = useCopy()
   const p = t.prod.optimise
   const [range, setRange] = useState<Range>('month')
-  const { data, error, loading, refreshing, reload } = useProdData((signal) => prodApi.performance(range, signal), [range])
+  const { data, error, loading, refreshing, reload } = useProdData(async (signal) => {
+    const [performance, controls] = await Promise.all([
+      prodApi.performance(range, signal),
+      prodApi.controls(signal).catch(() => null),
+    ])
+    return { performance, timing: controls?.timing ?? null }
+  }, [range])
 
   const copyAll = () => {
     if (!data) return
-    void navigator.clipboard?.writeText(rawExport(data, range, p.ranges[range]))
+    void navigator.clipboard?.writeText(rawExport(data.performance, range, p.ranges[range]))
       .then(() => notify({ title: p.copied, body: p.copiedBody(p.ranges[range]) }))
       .catch(() => notify({ tone: 'error', title: t.common.copyFailed, body: t.common.clipboardBlocked }))
   }
@@ -61,23 +67,25 @@ export function OptimisePage({ notify }: { notify: Notify }) {
         </div>
       </ProdHead>
       {loading ? <CardsSkeleton /> : error && !data ? <ErrorState error={error} onRetry={reload} /> : data && (
-        data.funnel.sent === 0 ? <EmptyState title={p.empty} body={p.emptyBody} /> : <Report data={data} />
+        data.performance.funnel.sent === 0 ? <EmptyState title={p.empty} body={p.emptyBody} /> : <Report data={data.performance} timing={data.timing} />
       )}
     </div>
   )
 }
 
-function Report({ data }: { data: Performance }) {
+function Report({ data, timing }: { data: Performance; timing: Timing | null }) {
   const t = useCopy()
   const p = t.prod.optimise
   const f = data.funnel
-  const funnel: Array<[string, number]> = [
+  const off = timing ? reminderSwitchedOff(timing) : new Set<Step>()
+  const funnel: Array<[string, number, string?]> = [
     [t.prod.funnel.sent, f.sent],
     [t.prod.funnel.delivered, f.delivered],
-    [t.prod.funnel.notOnWhatsapp, f.not_on_whatsapp ?? 0],
     [t.prod.funnel.replied, f.replied],
     [t.prod.funnel.bookedInChat, f.booked_in_chat],
     [t.prod.funnel.leftList, f.left_list],
+    [t.prod.funnel.stops, f.stops ?? 0],
+    [t.prod.funnel.notOnWhatsapp, f.not_on_whatsapp ?? 0, p.notOnWhatsappHint],
   ]
   const showUplift = f.uplift != null && f.uplift >= UPLIFT_SHOWN_ABOVE
   const top = Math.max(1, f.sent)
@@ -91,13 +99,13 @@ function Report({ data }: { data: Performance }) {
         {showUplift && <StatCard icon={<Optimise size={14} />} label={p.uplift} value={fmtUplift(f.uplift)} hint={p.upliftHint(fmtNum(f.holdout_converted), fmtNum(f.holdout))} />}
       </div>
 
-      <BookedAfter data={data} />
+      <BookedAfter data={data} off={off} />
 
       <div className="k1-prod-grid k1-prod-grid--two">
         <Card title={p.funnel}>
           <RankTable
             head={[p.stage, p.customers]}
-            rows={funnel.map(([label, value]) => ({ key: label, label, detail: label === t.prod.funnel.notOnWhatsapp ? p.notOnWhatsappHint : undefined, value: fmtNum(value), share: value / top }))}
+            rows={funnel.map(([label, value, detail]) => ({ key: label, label, detail, value: fmtNum(value), share: value / top }))}
           />
         </Card>
         <Card title={p.byStation}>
@@ -122,7 +130,7 @@ function Report({ data }: { data: Performance }) {
                 <tr><th scope="col">{p.message}</th><th scope="col" className="k1-table__num">{t.prod.funnel.sent}</th><th scope="col" className="k1-table__num">{t.prod.funnel.replied}</th><th scope="col" className="k1-table__num">{p.converted}</th></tr>
               </thead>
               <tbody>
-                {data.by_message.map((row) => (
+                {data.by_message.filter((row) => !off.has(row.step)).map((row) => (
                   <tr key={row.step} className="is-static">
                     <td>{stepLabel(row.step)}</td>
                     <td className="k1-table__num">{fmtNum(row.sent)}</td>
@@ -176,13 +184,13 @@ function Report({ data }: { data: Performance }) {
 const STEP_COLORS: Record<Step, string> = { opener: '#1d4ed8', reminder_1: '#3b82f6', reminder_2: '#60a5fa', reminder_3: '#93c5fd' }
 const STEPS: Step[] = ['opener', 'reminder_1', 'reminder_2', 'reminder_3']
 
-function BookedAfter({ data }: { data: Performance }) {
+function BookedAfter({ data, off }: { data: Performance; off: Set<Step> }) {
   const p = useCopy().prod.optimise
   const weeks = data.bookings_per_week
   const x = weeks.map((week) => ({ key: week.week_start, label: fmtDay(week.week_start) }))
   const byStep = weeks.some((week) => week.by_step)
   const raw = byStep
-    ? STEPS.map((step) => ({ key: step, label: step === 'reminder_3' ? p.lastStep : stepLabel(step), color: STEP_COLORS[step], values: weeks.map((week) => week.by_step?.[step] ?? 0) }))
+    ? STEPS.filter((step) => !off.has(step)).map((step) => ({ key: step, label: stepLabel(step), color: STEP_COLORS[step], values: weeks.map((week) => week.by_step?.[step] ?? 0) }))
     : [
       { key: 'before', label: p.beforeDeadline, color: STEP_COLORS.opener, values: weeks.map((week) => week.before_deadline) },
       { key: 'after', label: p.afterDeadline, color: STEP_COLORS.reminder_3, values: weeks.map((week) => week.after_deadline) },

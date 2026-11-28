@@ -13,6 +13,16 @@ export const isSample = (endpoint: ProdEndpoint) => !LIVE.has('all') && !LIVE.ha
 
 export type Delivery = 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
 export type Step = 'opener' | 'reminder_1' | 'reminder_2' | 'reminder_3'
+export type WhatsAppStatus = 'on_whatsapp' | 'not_on_whatsapp' | 'invalid_phone'
+export type WhatsAppReach = {
+  checked: number
+  on_whatsapp: number
+  not_on_whatsapp: number
+  invalid_phone: number
+  unchecked: number
+  holdout_unreachable: number
+  share_unreachable: number | null
+}
 export type ConversationStatus = 'open' | 'no_answer' | 'booked' | 'left_list' | 'stopped' | 'closed'
 export type ConversationFilter = 'all' | 'open' | 'no_answer' | 'booked' | 'left_list' | 'left_quiet' | 'stopped'
 export type LeadStatus = 'waiting' | 'in_sequence' | 'replied' | 'booked' | 'left_list' | 'stopped' | 'failed' | 'holdout' | 'closed'
@@ -37,6 +47,7 @@ export type HomeData = {
   }
   value: { delivered_contacts: number; converted: number; rate: number | null }
   leads_left: { in_window: number; window: { min_days: number; max_days: number } }
+  whatsapp?: WhatsAppReach
 }
 
 export type ConversationItem = {
@@ -75,6 +86,7 @@ export type LeadItem = {
   days_left: number
   status: LeadStatus
   holdout: boolean
+  whatsapp?: WhatsAppStatus | null
   last_message: { step: Step; sent_at: string; delivery: Delivery } | null
   next_message: { step: Step; due_on: string } | null
   conversation_id: string | null
@@ -90,7 +102,7 @@ export type MatrixRow = {
 
 export type Performance = {
   range: Range
-  funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; not_on_whatsapp?: number; stops?: number; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
+  funnel: { sent: number; delivered: number; read: number; replied: number; booked_in_chat: number; left_list: number; not_on_whatsapp?: number; stops?: number; whatsapp?: WhatsAppReach; converted: number; rate: number | null; holdout: number; holdout_converted: number; uplift: number | null }
   bookings_per_week: Array<{ week_start: string; before_deadline: number; after_deadline: number; by_step?: Partial<Record<Step, number>> }>
   by_station: Array<{ station: string; delivered: number; converted: number; rate: number | null }>
   send_hours: Array<{ weekday: number; hour: number; sends: number; reply_rate: number | null; booking_rate?: number | null }>
@@ -101,6 +113,15 @@ export type Performance = {
 
 export type StationControl = { id: number; name: string; first_messages_on: boolean; reminders_on: boolean }
 export type Timing = { reminder_1_days_before: number; reminder_2_days_before: number; reminder_3_days_after: number; gap_after_opener_days: number; gap_between_days: number }
+
+// The 14-day reminder is off when it shares a day with the 7-day one, so the planner never sends it.
+// The after-deadline reminder is off at 0, or at 60, the far setting used to park it.
+export function reminderSwitchedOff(timing: Timing): Set<Step> {
+  const off = new Set<Step>()
+  if (timing.reminder_1_days_before === timing.reminder_2_days_before) off.add('reminder_1')
+  if (timing.reminder_3_days_after === 0 || timing.reminder_3_days_after >= 60) off.add('reminder_3')
+  return off
+}
 export type SendingHours = { days: number[]; from: string; to: string; timezone: string }
 export type Batch = {
   id: string
